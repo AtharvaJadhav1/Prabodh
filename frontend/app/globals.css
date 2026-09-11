@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  background-color: #f6f3ee;
+  color: #2b2523;
+}
+
+.hero-pattern {
+  background-color: #5b2e10;
+  background-image: radial-gradient(circle at 10% 20%, rgba(217, 107, 39, 0.18) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(229, 152, 80, 0.15) 0%, transparent 45%),
+    radial-gradient(#ffffff 0.75px, transparent 0.75px);
+  background-size: 100% 100%, 100% 100%, 28px 28px;
+}
+
+.gold-shimmer {
+  background: linear-gradient(135deg, #e59850 0%, #d96b27 100%);
+}
+
+.watermark-text {
+  user-select: none;
+  pointer-events: none;
+}
+
+.custom-pattern {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* brand-approved (#2D7A4F) is the canonical success / verified / locked-good green.
+   Use brand-approved, brand-approved/5, brand-approved/10 — never raw green-* for branded surfaces. */

@@ -1,0 +1,17 @@
+node_modules
+dist
+.next
+out
+build
+coverage
+*.log
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+storage
+.vercel
+.DS_Store
+*.pem
+next-env.d.ts
+backend/storage

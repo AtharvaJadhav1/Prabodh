@@ -1,0 +1,86 @@
+import { Body, Controller, ForbiddenException, Get, Headers, Inject, Patch, Post, RawBodyRequest, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Webhook } from 'svix';
+import { CurrentUser } from '../../common/current-user.decorator';
+import { ClerkAuthGuard } from '../../common/clerk-auth.guard';
+import { AuthUser } from '../../common/auth.types';
+import { PrismaService } from '../../lib/prisma.service';
+import { IdentityService } from './service';
+
+@Controller()
+export class IdentityController {
+  private readonly identity: IdentityService;
+  private readonly prisma: PrismaService;
+
+  constructor(
+    @Inject(IdentityService) identity: IdentityService,
+    @Inject(PrismaService) prisma: PrismaService,
+  ) {
+    this.identity = identity;
+    this.prisma = prisma;
+  }
+
+  @Post('auth/dev-login')
+  async devLogin(@Body() body: { email?: string }) {
+    if (process.env.ALLOW_DEV_AUTH !== 'true' || process.env.NODE_ENV === 'production') {
+      throw new ForbiddenException('Dev login is disabled');
+    }
+    const email = String(body.email ?? '').trim().toLowerCase();
+    if (!email) throw new UnauthorizedException('Email is required');
+    const user = await this.identity.loginByEmail(email);
+    if (!user || !user.isActive) throw new UnauthorizedException('Unknown or inactive account');
+    return {
+      userId: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      platformRole: user.platformRole,
+      institute: user.institute,
+    };
+  }
+
+  @Patch('me')
+  @UseGuards(ClerkAuthGuard)
+  patchMe(
+    @CurrentUser() user: AuthUser,
+    @Body()
+    body: { fullName?: string; phone?: string; department?: string; institute?: string },
+  ) {
+    return this.identity.updateProfile(user.id, body);
+  }
+
+  @Get('me')
+  @UseGuards(ClerkAuthGuard)
+  me(@CurrentUser() user: AuthUser) {
+    return this.prisma.user.findUnique({ where: { id: user.id } });
+  }
+
+  @Post('webhooks/clerk')
+  async clerkWebhook(
+    @Req() req: RawBodyRequest<Request & { rawBody?: Buffer; body: Record<string, unknown> }>,
+    @Headers('svix-id') svixId?: string,
+    @Headers('svix-timestamp') svixTs?: string,
+    @Headers('svix-signature') svixSig?: string,
+  ) {
+    const secret = process.env.CLERK_WEBHOOK_SECRET;
+    const payload = req.rawBody?.toString('utf8') ?? JSON.stringify(req.body);
+    if (secret) {
+      if (!svixId || !svixTs || !svixSig) {
+        throw new UnauthorizedException('Missing Svix headers');
+      }
+      try {
+        const wh = new Webhook(secret);
+        wh.verify(payload, {
+          'svix-id': svixId,
+          'svix-timestamp': svixTs,
+          'svix-signature': svixSig,
+        });
+      } catch {
+        throw new UnauthorizedException('Invalid Clerk webhook signature');
+      }
+    }
+    const body = typeof req.body === 'object' ? req.body : JSON.parse(payload);
+    const type = String(body.type ?? '');
+    const data = (body.data ?? {}) as Record<string, unknown>;
+    const result = await this.identity.handleClerkEvent(type, data);
+    return { ok: true, result };
+  }
+}

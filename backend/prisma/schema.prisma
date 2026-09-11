@@ -1,0 +1,499 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlatformRole {
+  student
+  institute_mentor
+  industry_mentor
+  admin
+}
+
+enum TeamStatus {
+  forming
+  active
+  locked
+  disqualified
+}
+
+enum InviteStatus {
+  pending
+  accepted
+  expired
+  revoked
+}
+
+enum PsCategory {
+  software
+  hardware
+}
+
+enum IdeaStatus {
+  draft
+  locked
+  abandoned
+}
+
+enum ImportBatchStatus {
+  pending_review
+  activated
+  rejected
+}
+
+enum ImportRowStatus {
+  pending
+  activated
+  failed
+  skipped
+}
+
+enum MentorType {
+  institute
+  industry
+}
+
+enum AssignmentMethod {
+  manual
+  auto_rule
+}
+
+enum StageProgressStatus {
+  not_started
+  in_progress
+  submitted
+  reviewed
+  qualified
+  rejected
+}
+
+enum NotificationType {
+  allocation
+  deadline
+  evaluation_published
+  status_change
+  broadcast
+  comment
+}
+
+enum NotificationLogStatus {
+  queued
+  sent
+  delivered
+  opened
+  bounced
+  failed
+}
+
+enum ExportJobStatus {
+  queued
+  running
+  complete
+  failed
+}
+
+model User {
+  id           String       @id @default(uuid())
+  clerkUserId  String       @unique @map("clerk_user_id")
+  email        String       @unique
+  fullName     String       @map("full_name")
+  platformRole PlatformRole @map("platform_role")
+  institute    String?
+  department   String?
+  phone        String?
+  domainTags   String[]     @default([]) @map("domain_tags")
+  isActive     Boolean      @default(true) @map("is_active")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  ledTeams             Team[]               @relation("TeamLeader")
+  memberships          TeamMember[]
+  mentorAssignments    MentorAssignment[]   @relation("MentorUser")
+  assignedBy           MentorAssignment[]   @relation("AssignedBy")
+  evaluations          Evaluation[]
+  publishedResults     StageResult[]        @relation("PublishedBy")
+  notifications        Notification[]
+  notificationLogs     NotificationLog[]
+  broadcasts           Broadcast[]
+  comments             Comment[]
+  auditLogs            AuditLog[]
+  createdIdea          IdeaSubmission[]     @relation("IdeaAuthor")
+
+  @@map("users")
+}
+
+model Team {
+  id            String     @id @default(uuid())
+  clerkOrgId    String     @unique @map("clerk_org_id")
+  teamCode      String     @unique @map("team_code")
+  name          String
+  theme         String?
+  institute     String
+  leaderUserId  String     @map("leader_user_id")
+  psId          String?    @map("ps_id")
+  status        TeamStatus @default(forming)
+  memberCap     Int        @default(6) @map("member_cap")
+  detailsLockAt DateTime?  @map("details_lock_at")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  leader           User                @relation("TeamLeader", fields: [leaderUserId], references: [id])
+  problemStatement ProblemStatement?   @relation(fields: [psId], references: [id])
+  members          TeamMember[]
+  ideaSubmissions  IdeaSubmission[]
+  mentorAssignments MentorAssignment[]
+  deliverables     Deliverable[]
+  stageStatuses    TeamStageStatus[]
+  evaluations      Evaluation[]
+  stageResults     StageResult[]
+  comments         Comment[]
+
+  @@index([status])
+  @@index([theme])
+  @@index([institute])
+  @@map("teams")
+}
+
+model TeamMember {
+  id                 String       @id @default(uuid())
+  teamId             String       @map("team_id")
+  userId             String?      @map("user_id")
+  invitedEmail       String       @map("invited_email")
+  inviteStatus       InviteStatus @default(pending) @map("invite_status")
+  clerkInvitationId  String?      @map("clerk_invitation_id")
+  joinedAt           DateTime?    @map("joined_at")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  team Team  @relation(fields: [teamId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+
+  @@unique([teamId, invitedEmail])
+  @@map("team_members")
+}
+
+model ProblemStatement {
+  id                  String     @id @default(uuid())
+  code                String     @unique
+  title               String
+  theme               String
+  category            PsCategory
+  organisation        String
+  description         String
+  teamCap             Int?       @map("team_cap")
+  teamsSelectedCount  Int        @default(0) @map("teams_selected_count")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
+
+  teams            Team[]
+  ideaSubmissions  IdeaSubmission[]
+
+  @@index([theme])
+  @@index([category])
+  @@index([organisation])
+  @@map("problem_statements")
+}
+
+model IdeaSubmission {
+  id               String     @id @default(uuid())
+  teamId           String     @map("team_id")
+  psId             String     @map("ps_id")
+  abstract         String
+  techStack        String     @map("tech_stack")
+  feasibilityNotes String     @map("feasibility_notes")
+  status           IdeaStatus @default(draft)
+  version          Int        @default(1)
+  lockedAt         DateTime?  @map("locked_at")
+  authorUserId     String?    @map("author_user_id")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  team             Team             @relation(fields: [teamId], references: [id])
+  problemStatement ProblemStatement @relation(fields: [psId], references: [id])
+  author           User?            @relation("IdeaAuthor", fields: [authorUserId], references: [id])
+
+  @@index([teamId])
+  @@map("idea_submissions")
+}
+
+model MentorAssignment {
+  id                 String           @id @default(uuid())
+  teamId             String           @map("team_id")
+  mentorUserId       String           @map("mentor_user_id")
+  mentorType         MentorType       @map("mentor_type")
+  assignedById       String           @map("assigned_by")
+  assignmentMethod   AssignmentMethod @map("assignment_method")
+  active             Boolean          @default(true)
+  reassignedFromId   String?          @map("reassigned_from_id")
+  assignedAt         DateTime         @default(now()) @map("assigned_at")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  team           Team               @relation(fields: [teamId], references: [id])
+  mentor         User               @relation("MentorUser", fields: [mentorUserId], references: [id])
+  assignedBy     User               @relation("AssignedBy", fields: [assignedById], references: [id])
+  reassignedFrom MentorAssignment?  @relation("ReassignChain", fields: [reassignedFromId], references: [id])
+  reassignedTo   MentorAssignment[] @relation("ReassignChain")
+
+  @@index([teamId])
+  @@index([mentorUserId, active])
+  @@map("mentor_assignments")
+}
+
+model Stage {
+  id        String   @id @default(uuid())
+  name      String
+  sequence  Int
+  deadline  DateTime
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  rubrics       Rubric[]
+  deliverables  Deliverable[]
+  stageStatuses TeamStageStatus[]
+  evaluations   Evaluation[]
+  stageResults  StageResult[]
+
+  @@unique([sequence])
+  @@map("stages")
+}
+
+model Rubric {
+  id        String   @id @default(uuid())
+  stageId   String   @map("stage_id")
+  criteria  String
+  weightage Decimal  @db.Decimal(5, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  stage       Stage         @relation(fields: [stageId], references: [id])
+  evaluations Evaluation[]
+
+  @@map("rubrics")
+}
+
+model Deliverable {
+  id          String   @id @default(uuid())
+  teamId      String   @map("team_id")
+  stageId     String   @map("stage_id")
+  pptUrl      String?  @map("ppt_url")
+  reportUrl   String?  @map("report_url")
+  videoUrl    String?  @map("video_url")
+  githubUrl   String?  @map("github_url")
+  version     Int      @default(1)
+  submittedAt DateTime @default(now()) @map("submitted_at")
+  locked      Boolean  @default(false)
+  scanStatus  String   @default("skipped") @map("scan_status")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  team  Team  @relation(fields: [teamId], references: [id])
+  stage Stage @relation(fields: [stageId], references: [id])
+
+  @@index([teamId, stageId])
+  @@map("deliverables")
+}
+
+model TeamStageStatus {
+  id        String              @id @default(uuid())
+  teamId    String              @map("team_id")
+  stageId   String              @map("stage_id")
+  status    StageProgressStatus @default(not_started)
+  updatedAt DateTime            @updatedAt @map("updated_at")
+
+  team  Team  @relation(fields: [teamId], references: [id])
+  stage Stage @relation(fields: [stageId], references: [id])
+
+  @@unique([teamId, stageId])
+  @@map("team_stage_status")
+}
+
+model Evaluation {
+  id               String   @id @default(uuid())
+  teamId           String   @map("team_id")
+  stageId          String   @map("stage_id")
+  rubricId         String   @map("rubric_id")
+  evaluatorUserId  String   @map("evaluator_user_id")
+  score            Decimal  @db.Decimal(5, 2)
+  feedback         String?
+  submittedAt      DateTime @default(now()) @map("submitted_at")
+  supersededById   String?  @unique @map("superseded_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  team      Team        @relation(fields: [teamId], references: [id])
+  stage     Stage       @relation(fields: [stageId], references: [id])
+  rubric    Rubric      @relation(fields: [rubricId], references: [id])
+  evaluator User        @relation(fields: [evaluatorUserId], references: [id])
+  supersededBy Evaluation?  @relation("EvalSupersede", fields: [supersededById], references: [id])
+  supersedes   Evaluation?  @relation("EvalSupersede")
+
+  @@index([teamId, stageId, evaluatorUserId])
+  @@map("evaluations")
+}
+
+model StageResult {
+  id            String    @id @default(uuid())
+  teamId        String    @map("team_id")
+  stageId       String    @map("stage_id")
+  weightedScore Decimal   @db.Decimal(6, 2) @map("weighted_score")
+  rank          Int?
+  published     Boolean   @default(false)
+  publishedAt   DateTime? @map("published_at")
+  publishedById String?   @map("published_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  team        Team   @relation(fields: [teamId], references: [id])
+  stage       Stage  @relation(fields: [stageId], references: [id])
+  publishedBy User?  @relation("PublishedBy", fields: [publishedById], references: [id])
+
+  @@unique([teamId, stageId])
+  @@index([stageId, published])
+  @@map("stage_results")
+}
+
+model Notification {
+  id            String           @id @default(uuid())
+  userId        String           @map("user_id")
+  type          NotificationType
+  title         String
+  body          String
+  readAt        DateTime?        @map("read_at")
+  relatedEntity String?          @map("related_entity")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model NotificationLog {
+  id                 String                 @id @default(uuid())
+  recipientUserId    String?                @map("recipient_user_id")
+  recipientEmail     String                 @map("recipient_email")
+  template           String
+  providerMessageId  String?                @map("provider_message_id")
+  status             NotificationLogStatus  @default(queued)
+  sentAt             DateTime?              @map("sent_at")
+  deliveredAt        DateTime?              @map("delivered_at")
+  openedAt           DateTime?              @map("opened_at")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
+
+  recipient User? @relation(fields: [recipientUserId], references: [id])
+
+  @@index([providerMessageId])
+  @@map("notification_log")
+}
+
+model Broadcast {
+  id              String    @id @default(uuid())
+  adminUserId     String    @map("admin_user_id")
+  title           String
+  body            String
+  filterCriteria  Json      @default("{}") @map("filter_criteria")
+  recipientCount  Int       @default(0) @map("recipient_count")
+  sentAt          DateTime? @map("sent_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  admin User @relation(fields: [adminUserId], references: [id])
+
+  @@map("broadcasts")
+}
+
+model Comment {
+  id              String   @id @default(uuid())
+  teamId          String   @map("team_id")
+  authorUserId    String   @map("author_user_id")
+  parentCommentId String?  @map("parent_comment_id")
+  message         String
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  team    Team      @relation(fields: [teamId], references: [id])
+  author  User      @relation(fields: [authorUserId], references: [id])
+  parent  Comment?  @relation("CommentThread", fields: [parentCommentId], references: [id])
+  replies Comment[] @relation("CommentThread")
+
+  @@index([teamId])
+  @@map("comments")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String   @map("actor_user_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  before      Json?
+  after       Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  actor User @relation(fields: [actorUserId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+  @@map("audit_log")
+}
+
+model ExportJob {
+  id          String          @id @default(uuid())
+  adminUserId String          @map("admin_user_id")
+  format      String
+  dataset     String
+  status      ExportJobStatus @default(queued)
+  fileKey     String?         @map("file_key")
+  error       String?
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  @@map("export_jobs")
+}
+
+model PlatformSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
+}
+
+model UserImportBatch {
+  id          String            @id @default(uuid())
+  adminUserId String            @map("admin_user_id")
+  status      ImportBatchStatus @default(pending_review)
+  rowCount    Int               @map("row_count")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  rows UserImportRow[]
+
+  @@map("user_import_batches")
+}
+
+model UserImportRow {
+  id           String          @id @default(uuid())
+  batchId      String          @map("batch_id")
+  email        String
+  fullName     String          @map("full_name")
+  platformRole PlatformRole    @map("platform_role")
+  institute    String?
+  department   String?
+  status       ImportRowStatus @default(pending)
+  error        String?
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  batch UserImportBatch @relation(fields: [batchId], references: [id])
+
+  @@map("user_import_rows")
+}
