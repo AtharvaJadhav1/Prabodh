@@ -56,15 +56,9 @@ export class ProblemStatementsRepository {
     authorUserId: string;
   }) {
     return this.prisma.$transaction(async (tx) => {
-      const rows = await tx.$queryRaw<Array<{ id: string; team_cap: number | null; teams_selected_count: number }>>`
-        SELECT id, team_cap, teams_selected_count
-        FROM problem_statements
-        WHERE id = ${input.psId}::uuid
-        FOR UPDATE
-      `;
-      const ps = rows[0];
+      const ps = await tx.problemStatement.findUnique({ where: { id: input.psId } });
       if (!ps) return { error: 'ps_not_found' as const };
-      if (isPsCapReached(ps.teams_selected_count, ps.team_cap)) {
+      if (isPsCapReached(ps.teamsSelectedCount, ps.teamCap)) {
         return { error: 'ps_full' as const };
       }
       await tx.problemStatement.update({
@@ -90,12 +84,9 @@ export class ProblemStatementsRepository {
   async updateDraft(id: string, data: Prisma.IdeaSubmissionUpdateInput, previousPsId?: string, nextPsId?: string) {
     return this.prisma.$transaction(async (tx) => {
       if (previousPsId && nextPsId && previousPsId !== nextPsId) {
-        const rows = await tx.$queryRaw<Array<{ team_cap: number | null; teams_selected_count: number }>>`
-          SELECT team_cap, teams_selected_count FROM problem_statements WHERE id = ${nextPsId}::uuid FOR UPDATE
-        `;
-        const ps = rows[0];
+        const ps = await tx.problemStatement.findUnique({ where: { id: nextPsId } });
         if (!ps) return { error: 'ps_not_found' as const };
-        if (isPsCapReached(ps.teams_selected_count, ps.team_cap)) {
+        if (isPsCapReached(ps.teamsSelectedCount, ps.teamCap)) {
           return { error: 'ps_full' as const };
         }
         await tx.problemStatement.update({
