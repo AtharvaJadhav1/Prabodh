@@ -56,11 +56,20 @@ export default function GroupDrawer() {
       return;
     }
     try {
-      const ok = await sendInvite(trimmed);
-      if (ok) {
+      const result = await sendInvite(trimmed);
+      if (result.ok) {
         setEmail("");
-        setInviteError("");
-        setInviteSuccess(`Invite sent to ${trimmed}.`);
+        if (result.emailSent) {
+          setInviteError("");
+          setInviteSuccess(`Invite email sent to ${trimmed}.`);
+        } else {
+          setInviteSuccess("");
+          setInviteError(
+            result.emailError
+              ? `Invite saved, but email failed: ${result.emailError}`
+              : "Invite saved, but the email was not sent.",
+          );
+        }
         if (flashTimer.current) clearTimeout(flashTimer.current);
         flashTimer.current = setTimeout(() => setInviteSuccess(""), 3500);
       } else {

@@ -31,7 +31,7 @@ type TeamContextValue = {
   approveRequest: (index: number) => void;
   rejectRequest: (index: number) => void;
   removeMember: (index: number) => void;
-  sendInvite: (email: string) => Promise<boolean>;
+  sendInvite: (email: string) => Promise<{ ok: boolean; emailSent: boolean; emailError?: string | null }>;
   revokeInvite: (email: string) => void;
   sendFacultyInvite: (email: string, mentorType?: "institute" | "industry") => Promise<boolean>;
   revokeFacultyInvite: (inviteId?: string) => void;
@@ -208,10 +208,17 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   );
 
   const sendInvite = async (email: string) => {
-    if (!email || !email.includes("@") || !team?.id) return false;
-    await apiPost(`/teams/${team.id}/invite`, { email });
+    if (!email || !email.includes("@") || !team?.id) return { ok: false, emailSent: false };
+    const result = await apiPost<{ emailSent?: boolean; emailError?: string | null }>(
+      `/teams/${team.id}/invite`,
+      { email },
+    );
     await reload();
-    return true;
+    return {
+      ok: true,
+      emailSent: Boolean(result.emailSent),
+      emailError: result.emailError ?? null,
+    };
   };
 
   const revokeInvite = (email: string) => {
@@ -254,9 +261,16 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         loadFacultyDirectory,
         sendFacultyInvite: async (email, mentorType) => {
           if (!team?.id || !email.includes("@")) return false;
-          await apiPost("/mentors/invite", { teamId: team.id, email, mentorType });
+          const result = await apiPost<{ emailSent?: boolean; emailError?: string | null }>("/mentors/invite", {
+            teamId: team.id,
+            email,
+            mentorType,
+          });
           await reload();
-          return true;
+          if (result.emailError) {
+            throw new Error(result.emailError);
+          }
+          return Boolean(result.emailSent ?? true);
         },
         revokeFacultyInvite: (inviteId) => {
           const pending = inviteId

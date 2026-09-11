@@ -192,14 +192,18 @@ export class MentorsService {
           include: { mentor: true, team: true },
         });
 
+    let emailSent = false;
+    let emailError: string | null = null;
     try {
       await sendMentorInviteEmail({
         to: email,
         teamName: team.name,
         leaderName: user.fullName,
       });
+      emailSent = true;
     } catch (err) {
-      console.warn('[mentors.invite] email delivery failed for', email, err);
+      emailError = err instanceof Error ? err.message : 'Email delivery failed';
+      console.error('[mentors.invite] email delivery failed for', email, emailError);
     }
     try {
       await notifyUsers(this.prisma, [mentor.id], {
@@ -212,7 +216,7 @@ export class MentorsService {
     } catch {
       /* in-app notifications are best-effort */
     }
-    return invite;
+    return { ...invite, emailSent, emailError };
   }
 
   async revokeInvite(user: AuthUser, inviteId: string) {

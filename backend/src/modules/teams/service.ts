@@ -162,6 +162,8 @@ export class TeamsService {
             clerkInvitationId,
           });
 
+    let emailSent = false;
+    let emailError: string | null = null;
     try {
       await sendTeamMemberInviteEmail({
         to: email,
@@ -169,11 +171,13 @@ export class TeamsService {
         teamCode: team.teamCode,
         leaderName: user.fullName,
       });
+      emailSent = true;
     } catch (err) {
-      console.warn('[teams.invite] email delivery failed for', email, err);
+      emailError = err instanceof Error ? err.message : 'Email delivery failed';
+      console.error('[teams.invite] email delivery failed for', email, emailError);
     }
 
-    return member;
+    return { ...member, emailSent, emailError };
   }
 
   async revokeInvite(user: AuthUser, teamId: string, memberId: string) {

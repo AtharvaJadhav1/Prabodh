@@ -24,11 +24,20 @@ export default function DispatchInviteCard() {
       return;
     }
     try {
-      const ok = await sendInvite(trimmed);
-      if (ok) {
+      const result = await sendInvite(trimmed);
+      if (result.ok) {
         setEmail("");
-        setError("");
-        setSuccess(`Invite sent to ${trimmed}.`);
+        if (result.emailSent) {
+          setError("");
+          setSuccess(`Invite email sent to ${trimmed}.`);
+        } else {
+          setSuccess("");
+          setError(
+            result.emailError
+              ? `Invite saved, but email failed: ${result.emailError}`
+              : "Invite saved, but the email was not sent. Check Resend settings on the backend.",
+          );
+        }
         if (flashTimer.current) clearTimeout(flashTimer.current);
         flashTimer.current = setTimeout(() => setSuccess(""), 3500);
       } else {
