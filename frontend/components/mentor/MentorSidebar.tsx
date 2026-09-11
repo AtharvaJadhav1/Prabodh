@@ -86,9 +86,6 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
               />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="rounded-full bg-brand-amber/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-brand-primary">
-                SIH&apos;26
-              </span>
               <button
                 type="button"
                 onClick={onCloseMobile}
