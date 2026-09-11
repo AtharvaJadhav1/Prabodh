@@ -96,8 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clerkState.signedIn]);
 
   useEffect(() => {
-    if (!clerkEnabled) {
-      setSession(readSession());
+    const cached = readSession();
+    if (cached?.userId) {
+      setSession(cached);
     }
     setReady(true);
   }, [clerkEnabled]);
@@ -115,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (clerkEnabled) {
       if (!clerkState.loaded || syncing) return;
-      if (!clerkState.signedIn && pathname.startsWith("/dashboard")) {
+      if (!clerkState.signedIn && !session && pathname.startsWith("/dashboard")) {
         router.replace("/login/student");
       }
       if (clerkState.signedIn && session && isPublic) {
