@@ -58,8 +58,15 @@ export default function PwaRegister() {
 
     navigator.serviceWorker
       .register("/sw.js")
-      .then((registration) => {
-        registration.update();
+      .then(async (registration) => {
+        await registration.update();
+        // Drop any lingering old workers that cached login/dashboard HTML.
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(
+          regs.map(async (reg) => {
+            if (reg !== registration) await reg.unregister();
+          }),
+        );
       })
       .catch(() => {
         // Service worker unsupported or unavailable — PWA install falls back to browser menu only.
