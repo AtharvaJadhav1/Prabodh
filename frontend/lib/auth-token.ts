@@ -1,13 +1,19 @@
-let clerkToken: string | null = null;
+let accessToken: string | null = null;
 
-export function setClerkToken(token: string | null) {
-  clerkToken = token;
+export function setAccessToken(token: string | null) {
+  accessToken = token;
 }
 
+export function getAccessToken() {
+  return accessToken;
+}
+
+/** @deprecated use getAccessToken */
 export function getClerkToken() {
-  return clerkToken;
+  return accessToken;
 }
 
-export function clerkEnabled() {
-  return Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+/** @deprecated use setAccessToken */
+export function setClerkToken(token: string | null) {
+  accessToken = token;
 }

@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InviteStatus, PlatformRole } from '@prisma/client';
-import { getClerkClient } from '../../lib/clerk';
+import { signAccessToken } from '../../lib/jwt';
+import { sendOtp, verifyOtp } from '../../lib/otp';
 import { PrismaService } from '../../lib/prisma.service';
 import { IdentityRepository } from './repository';
 
@@ -13,6 +14,80 @@ export class IdentityService {
 
   loginByEmail(email: string) {
     return this.repo.findByEmail(email.toLowerCase());
+  }
+
+  async requestOtp(body: {
+    email: string;
+    purpose: 'login' | 'register';
+    fullName?: string;
+    institute?: string;
+    department?: string;
+    phone?: string;
+  }) {
+    const email = body.email.toLowerCase();
+    const user = await this.repo.findByEmail(email);
+
+    if (body.purpose === 'login') {
+      if (!user || !user.isActive) {
+        throw new NotFoundException('No account found for this email. Register first or contact your admin.');
+      }
+      const result = await sendOtp({ email, purpose: 'login' });
+      return { ok: true, message: 'Verification code sent to your email.', devCode: result.devCode };
+    }
+
+    if (user && user.platformRole !== PlatformRole.student) {
+      throw new BadRequestException('This email is already registered with another role. Sign in instead.');
+    }
+
+    if (!body.fullName?.trim()) {
+      throw new BadRequestException('Full name is required for registration.');
+    }
+
+    const result = await sendOtp({
+      email,
+      purpose: 'register',
+      profile: {
+        email,
+        fullName: body.fullName.trim(),
+        institute: body.institute?.trim(),
+        department: body.department?.trim(),
+        phone: body.phone?.trim(),
+      },
+    });
+    return { ok: true, message: 'Verification code sent to your email.', devCode: result.devCode };
+  }
+
+  async verifyOtpAndIssueToken(body: {
+    email: string;
+    purpose: 'login' | 'register';
+    code: string;
+  }) {
+    const email = body.email.toLowerCase();
+    const check = await verifyOtp({ email, purpose: body.purpose, code: body.code });
+    if (!check.ok) throw new UnauthorizedException(check.reason);
+
+    let user =
+      body.purpose === 'login'
+        ? await this.repo.findByEmail(email)
+        : await this.registerStudent(check.profile ?? { email, fullName: 'Student' });
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Account not found or disabled.');
+    }
+
+    await this.acceptPendingTeamInvites(user.id, user.email);
+
+    const accessToken = signAccessToken(user);
+    return {
+      accessToken,
+      userId: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      platformRole: user.platformRole,
+      institute: user.institute,
+      department: user.department,
+      phone: user.phone,
+    };
   }
 
   async registerStudent(body: {
@@ -178,30 +253,35 @@ export class IdentityService {
     institute?: string;
     department?: string;
   }>) {
-    const clerk = getClerkClient();
     const results: Array<{ email: string; status: string; error?: string }> = [];
 
     for (const row of rows) {
       try {
-        let clerkUserId = `pending:${row.email}`;
-        if (clerk) {
-          const created = await clerk.users.createUser({
-            emailAddress: [row.email],
-            firstName: row.fullName.split(' ')[0],
-            lastName: row.fullName.split(' ').slice(1).join(' ') || undefined,
-            publicMetadata: { role: row.platformRole },
-            skipPasswordRequirement: true,
+        const email = row.email.toLowerCase();
+        const existing = await this.repo.findByEmail(email);
+        if (existing) {
+          await this.prisma.user.update({
+            where: { id: existing.id },
+            data: {
+              fullName: row.fullName,
+              platformRole: row.platformRole,
+              institute: row.institute ?? existing.institute,
+              department: row.department ?? existing.department,
+              isActive: true,
+            },
           });
-          clerkUserId = created.id;
+        } else {
+          await this.prisma.user.create({
+            data: {
+              clerkUserId: `local:${email}`,
+              email,
+              fullName: row.fullName,
+              platformRole: row.platformRole,
+              institute: row.institute,
+              department: row.department,
+            },
+          });
         }
-        await this.repo.upsertFromClerk({
-          clerkUserId,
-          email: row.email.toLowerCase(),
-          fullName: row.fullName,
-          platformRole: row.platformRole,
-          institute: row.institute,
-          department: row.department,
-        });
         results.push({ email: row.email, status: 'created' });
       } catch (err) {
         results.push({

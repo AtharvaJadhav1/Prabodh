@@ -8,6 +8,10 @@ type TextFieldProps = {
   required?: boolean;
   autoComplete?: string;
   inputMode?: "text" | "email" | "numeric";
+  pattern?: string;
+  maxLength?: number;
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   trailing?: ReactNode;
 };
 
@@ -19,6 +23,10 @@ export default function TextField({
   required,
   autoComplete,
   inputMode,
+  pattern,
+  maxLength,
+  value,
+  onChange,
   trailing,
 }: TextFieldProps) {
   return (
@@ -37,6 +45,10 @@ export default function TextField({
           required={required}
           placeholder={placeholder}
           inputMode={inputMode}
+          pattern={pattern}
+          maxLength={maxLength}
+          value={value}
+          onChange={onChange}
           autoComplete={autoComplete}
           className={`w-full rounded-xl border border-brand-sand bg-white py-3 text-sm font-medium text-brand-charcoal shadow-sm transition-all placeholder:text-brand-charcoal/50 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 ${
             trailing ? "pr-16" : "pr-4"

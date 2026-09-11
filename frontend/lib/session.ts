@@ -10,6 +10,8 @@ export type Session = {
   institute?: string | null;
   department?: string | null;
   phone?: string | null;
+  accessToken?: string;
+  /** @deprecated use accessToken */
   clerkToken?: string;
 };
 

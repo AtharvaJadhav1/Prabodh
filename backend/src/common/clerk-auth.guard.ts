@@ -4,9 +4,9 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PlatformRole, Prisma, User } from '@prisma/client';
+import { PlatformRole } from '@prisma/client';
 import { PrismaService } from '../lib/prisma.service';
-import { getClerkClient, roleFromClaims, verifyClerkSession } from '../lib/clerk';
+import { verifyAccessToken } from '../lib/jwt';
 import { AuthUser } from './auth.types';
 
 @Injectable()
@@ -34,94 +34,22 @@ export class ClerkAuthGuard implements CanActivate {
       throw new UnauthorizedException('Missing Bearer token');
     }
     const token = header.slice('Bearer '.length);
-    let payload: Record<string, unknown>;
+
+    let payload;
     try {
-      payload = (await verifyClerkSession(token)) as unknown as Record<string, unknown>;
+      payload = verifyAccessToken(token);
     } catch {
+      throw new UnauthorizedException('Invalid or expired session');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user || !user.isActive) throw new UnauthorizedException('Account not found or disabled');
+    if (user.email.toLowerCase() !== payload.email.toLowerCase()) {
       throw new UnauthorizedException('Invalid session');
     }
 
-    const clerkUserId = String(payload.sub ?? '');
-    if (!clerkUserId) throw new UnauthorizedException('Invalid session subject');
-
-    const profile = await resolveClerkProfile(clerkUserId, payload);
-    const user = await ensureDbUser(this.prisma, clerkUserId, profile);
-    if (!user.isActive) throw new UnauthorizedException('Account disabled');
     req.user = toAuth(user);
     return true;
-  }
-}
-
-function isUniqueViolation(err: unknown): boolean {
-  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
-}
-
-/**
- * Concurrent /me + /teams + webhook used to race on user.create(clerk_user_id).
- * Always re-read after unique conflicts.
- */
-async function ensureDbUser(
-  prisma: PrismaService,
-  clerkUserId: string,
-  profile: {
-    email: string;
-    fullName: string;
-    role: PlatformRole;
-    institute?: string;
-    department?: string;
-    phone?: string;
-  },
-): Promise<User> {
-  const existing = await prisma.user.findUnique({ where: { clerkUserId } });
-  if (existing) return existing;
-
-  if (profile.email) {
-    const byEmail = await prisma.user.findUnique({ where: { email: profile.email } });
-    if (byEmail) {
-      try {
-        return await prisma.user.update({
-          where: { id: byEmail.id },
-          data: {
-            clerkUserId,
-            fullName: profile.fullName || byEmail.fullName,
-            institute: profile.institute ?? byEmail.institute,
-            department: profile.department ?? byEmail.department,
-            phone: profile.phone ?? byEmail.phone,
-            isActive: true,
-          },
-        });
-      } catch (err) {
-        if (isUniqueViolation(err)) {
-          const again = await prisma.user.findUnique({ where: { clerkUserId } });
-          if (again) return again;
-        }
-        throw err;
-      }
-    }
-  }
-
-  try {
-    return await prisma.user.create({
-      data: {
-        clerkUserId,
-        email: profile.email || `${clerkUserId}@unknown.local`,
-        fullName: profile.fullName || 'Student',
-        platformRole: profile.role,
-        institute: profile.institute,
-        department: profile.department,
-        phone: profile.phone,
-      },
-    });
-  } catch (err) {
-    if (isUniqueViolation(err)) {
-      const byClerk = await prisma.user.findUnique({ where: { clerkUserId } });
-      if (byClerk) return byClerk;
-      if (profile.email) {
-        const byEmail = await prisma.user.findUnique({ where: { email: profile.email } });
-        if (byEmail) return byEmail;
-      }
-    }
-    throw err;
   }
 }
 
@@ -141,39 +69,4 @@ function toAuth(user: {
     platformRole: user.platformRole,
     institute: user.institute,
   };
-}
-
-async function resolveClerkProfile(clerkUserId: string, payload: Record<string, unknown>) {
-  const meta = (payload.publicMetadata ?? payload.public_metadata ?? {}) as Record<string, unknown>;
-  let email = String(payload.email ?? payload.email_address ?? '').toLowerCase();
-  let fullName = String(payload.name ?? payload.full_name ?? '');
-  let institute = typeof meta.institute === 'string' ? meta.institute : undefined;
-  let department = typeof meta.department === 'string' ? meta.department : undefined;
-  let phone = typeof meta.phone === 'string' ? meta.phone : undefined;
-  const role = roleFromClaims(payload) as PlatformRole;
-
-  if (!email || !fullName) {
-    const clerk = getClerkClient();
-    if (clerk) {
-      try {
-        const cu = await clerk.users.getUser(clerkUserId);
-        const primary =
-          cu.emailAddresses.find((e) => e.id === cu.primaryEmailAddressId)?.emailAddress ??
-          cu.emailAddresses[0]?.emailAddress;
-        email = (primary ?? email).toLowerCase();
-        fullName = [cu.firstName, cu.lastName].filter(Boolean).join(' ') || fullName;
-        const um = (cu.unsafeMetadata ?? {}) as Record<string, unknown>;
-        const pm = (cu.publicMetadata ?? {}) as Record<string, unknown>;
-        if (!institute && typeof um.institute === 'string') institute = um.institute;
-        if (!department && typeof um.department === 'string') department = um.department;
-        if (!phone && typeof um.phone === 'string') phone = um.phone;
-        if (!institute && typeof pm.institute === 'string') institute = pm.institute;
-        if (!department && typeof pm.department === 'string') department = pm.department;
-      } catch {
-        /* Clerk lookup is best-effort */
-      }
-    }
-  }
-
-  return { email, fullName, role, institute, department, phone };
 }

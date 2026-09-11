@@ -87,7 +87,7 @@ function initials(name: string) {
 }
 
 export function TeamProvider({ children }: { children: ReactNode }) {
-  const { session, ready, syncing } = useAuth();
+  const { session, ready } = useAuth();
   const userId = session?.userId;
   const [team, setTeam] = useState<PortalTeam | null>(null);
   const [stages, setStages] = useState<PortalStage[]>([]);
@@ -196,9 +196,9 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   }, [facultyDirectory.length]);
 
   useEffect(() => {
-    if (!ready || syncing || !userId) return;
+    if (!ready || !userId) return;
     void reload();
-  }, [ready, syncing, userId, reload]);
+  }, [ready, userId, reload]);
 
   const isLead = role === "Team Lead";
   const filledCount = useMemo(() => members.filter((m) => m.status === "Verified").length, [members]);

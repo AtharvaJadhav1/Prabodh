@@ -3,10 +3,11 @@ import { Webhook } from 'svix';
 import { CurrentUser } from '../../common/current-user.decorator';
 import { ClerkAuthGuard } from '../../common/clerk-auth.guard';
 import { AuthUser } from '../../common/auth.types';
+import { consumeToken } from '../../lib/rate-limit';
 import { PrismaService } from '../../lib/prisma.service';
 import { ZodPipe } from '../../common/zod.pipe';
 import { IdentityService } from './service';
-import { registerSchema } from './schema';
+import { otpSendSchema, otpVerifySchema, registerSchema } from './schema';
 
 @Controller()
 export class IdentityController {
@@ -37,6 +38,27 @@ export class IdentityController {
       platformRole: user.platformRole,
       institute: user.institute,
     };
+  }
+
+  @Post('auth/otp/send')
+  async sendOtp(@Body(new ZodPipe(otpSendSchema)) body: unknown) {
+    const parsed = body as {
+      email: string;
+      purpose: 'login' | 'register';
+      fullName?: string;
+      institute?: string;
+      department?: string;
+      phone?: string;
+    };
+    await consumeToken(`otp-send:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 5));
+    return this.identity.requestOtp(parsed);
+  }
+
+  @Post('auth/otp/verify')
+  async verifyOtp(@Body(new ZodPipe(otpVerifySchema)) body: unknown) {
+    const parsed = body as { email: string; purpose: 'login' | 'register'; code: string };
+    await consumeToken(`otp-verify:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 10));
+    return this.identity.verifyOtpAndIssueToken(parsed);
   }
 
   @Post('auth/register')

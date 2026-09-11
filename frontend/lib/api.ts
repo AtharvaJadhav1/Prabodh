@@ -1,5 +1,5 @@
 import { API_BASE } from "./config";
-import { getClerkToken } from "./auth-token";
+import { getAccessToken } from "./auth-token";
 import { readSession } from "./session";
 
 export class ApiError extends Error {
@@ -18,7 +18,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!headers.has("content-type") && init.body && !(init.body instanceof FormData)) {
     headers.set("content-type", "application/json");
   }
-  const bearer = getClerkToken() || session?.clerkToken;
+  const bearer = getAccessToken() || session?.accessToken || session?.clerkToken;
   if (bearer) {
     headers.set("authorization", `Bearer ${bearer}`);
   } else if (session?.userId) {
@@ -66,7 +66,7 @@ export function apiDelete<T>(path: string) {
 export async function apiBlob(path: string) {
   const session = readSession();
   const headers = new Headers();
-  const bearer = getClerkToken() || session?.clerkToken;
+  const bearer = getAccessToken() || session?.accessToken || session?.clerkToken;
   if (bearer) headers.set("authorization", `Bearer ${bearer}`);
   else if (session?.userId) headers.set("x-dev-user-id", session.userId);
   const res = await fetch(`${API_BASE}${path}`, { headers, cache: "no-store" });
