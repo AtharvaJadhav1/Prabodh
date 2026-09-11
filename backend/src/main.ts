@@ -7,7 +7,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   const origins = (process.env.APP_ORIGIN ?? 'http://localhost:3000')
     .split(',')
-    .map((s) => s.trim())
+    .map((s: string) => s.trim())
     .filter(Boolean);
   app.enableCors({
     origin: process.env.NODE_ENV === 'production' ? origins : true,

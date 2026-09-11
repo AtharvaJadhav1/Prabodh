@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../auth/AuthProvider";
+import ClerkSignInPanel from "../auth/ClerkSignInPanel";
 import { dashboardForRole } from "../../lib/session";
 import TextField from "./TextField";
 
@@ -11,7 +12,23 @@ export default function StudentForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, clerkEnabled } = useAuth();
+
+  if (clerkEnabled) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">
+            Student Team Sign In
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-brand-muted">
+            Sign in with Clerk using your institutional email. Your role is assigned from your account.
+          </p>
+        </div>
+        <ClerkSignInPanel path="/login/student" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -20,7 +37,7 @@ export default function StudentForm() {
           Student Team Sign In
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-brand-muted">
-          Sign in with your institutional email. Team lead vs member is determined by your roster, not this form.
+          Local dev sign-in. Team lead vs member is determined by your roster.
         </p>
       </div>
 

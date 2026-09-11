@@ -8,6 +8,7 @@
     "start:dev": "nest start --watch",
     "start:worker": "tsx watch src/worker.ts",
     "build": "tsc -p tsconfig.json",
+    "render:build": "npm install --include=dev && npx prisma generate && npm run build",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
@@ -33,15 +34,15 @@
     "resend": "^4.0.1",
     "rxjs": "^7.8.1",
     "svix": "^1.44.0",
-    "zod": "^3.24.1"
+    "zod": "^3.24.1",
+    "@types/node": "^22.10.2",
+    "prisma": "^6.1.0",
+    "typescript": "^5.7.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",
     "@types/express": "^5.0.0",
-    "@types/node": "^22.10.2",
     "@types/pdfkit": "^0.13.8",
-    "prisma": "^6.1.0",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "tsx": "^4.19.2"
   }
 }
