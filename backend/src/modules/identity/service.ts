@@ -72,6 +72,8 @@ export class IdentityService {
   async requestOtp(body: {
     email: string;
     purpose: 'login' | 'register';
+    accountType?: 'student' | 'faculty';
+    password?: string;
     fullName?: string;
     institute?: string;
     department?: string;
@@ -79,6 +81,9 @@ export class IdentityService {
   }) {
     const email = body.email.toLowerCase();
     const user = await this.repo.findByEmail(email);
+    const accountType = body.accountType ?? 'student';
+    const targetRole =
+      accountType === 'faculty' ? PlatformRole.institute_mentor : PlatformRole.student;
 
     if (body.purpose === 'login') {
       if (!user || !user.isActive) {
@@ -88,12 +93,15 @@ export class IdentityService {
       return { ok: true, message: 'Verification code sent to your email.', devCode: result.devCode };
     }
 
-    if (user && user.platformRole !== PlatformRole.student) {
+    if (user && user.platformRole !== targetRole) {
       throw new BadRequestException('This email is already registered with another role. Sign in instead.');
     }
 
     if (!body.fullName?.trim()) {
       throw new BadRequestException('Full name is required for registration.');
+    }
+    if (!body.password || body.password.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters.');
     }
 
     const result = await sendOtp({
@@ -102,6 +110,8 @@ export class IdentityService {
       profile: {
         email,
         fullName: body.fullName.trim(),
+        password: body.password,
+        platformRole: targetRole,
         institute: body.institute?.trim(),
         department: body.department?.trim(),
         phone: body.phone?.trim(),
@@ -122,7 +132,7 @@ export class IdentityService {
     let user =
       body.purpose === 'login'
         ? await this.repo.findByEmail(email)
-        : await this.registerStudent(check.profile ?? { email, fullName: 'Student' });
+        : await this.registerFromOtpProfile(check.profile ?? { email, fullName: 'Student', password: '', platformRole: 'student' });
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Account not found or disabled.');
@@ -130,6 +140,64 @@ export class IdentityService {
 
     await this.acceptPendingTeamInvites(user.id, user.email);
     return this.issueToken(user);
+  }
+
+  private registerFromOtpProfile(body: {
+    email: string;
+    password: string;
+    fullName: string;
+    platformRole: 'student' | 'institute_mentor';
+    institute?: string;
+    department?: string;
+    phone?: string;
+  }) {
+    if (body.platformRole === PlatformRole.institute_mentor) {
+      return this.registerFaculty(body);
+    }
+    return this.registerStudent(body);
+  }
+
+  async registerFaculty(body: {
+    email: string;
+    password?: string;
+    fullName: string;
+    institute?: string;
+    department?: string;
+    phone?: string;
+  }) {
+    const email = body.email.toLowerCase();
+    const existing = await this.repo.findByEmail(email);
+    if (existing) {
+      if (existing.platformRole !== PlatformRole.institute_mentor) {
+        throw new BadRequestException('This email is already registered with another role. Sign in instead.');
+      }
+      return this.prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          fullName: body.fullName,
+          institute: body.institute ?? existing.institute,
+          department: body.department ?? existing.department,
+          phone: body.phone ?? existing.phone,
+          isActive: true,
+          ...(body.password ? { passwordHash: hashPassword(body.password) } : {}),
+        },
+      });
+    }
+    if (!body.password) {
+      throw new BadRequestException('Password is required for registration.');
+    }
+    return this.prisma.user.create({
+      data: {
+        clerkUserId: `local:${email}`,
+        email,
+        fullName: body.fullName,
+        platformRole: PlatformRole.institute_mentor,
+        institute: body.institute,
+        department: body.department,
+        phone: body.phone,
+        passwordHash: hashPassword(body.password),
+      },
+    });
   }
 
   async registerStudent(body: {
@@ -183,12 +251,57 @@ export class IdentityService {
     department?: string;
     phone?: string;
   }) {
-    const user = await this.registerStudent(body);
-    await this.acceptPendingTeamInvites(user.id, user.email);
-    return this.issueToken(user);
+    const email = body.email.toLowerCase();
+    const result = await sendOtp({
+      email,
+      purpose: 'register',
+      profile: {
+        email,
+        fullName: body.fullName.trim(),
+        password: body.password,
+        platformRole: PlatformRole.student,
+        institute: body.institute?.trim(),
+        department: body.department?.trim(),
+        phone: body.phone?.trim(),
+      },
+    });
+    return {
+      ok: true,
+      message: 'Verification code sent to your email. Enter the OTP to complete registration.',
+      devCode: result.devCode,
+    };
   }
 
-  updateProfile(
+  async registerFacultyWithPassword(body: {
+    email: string;
+    password: string;
+    fullName: string;
+    institute?: string;
+    department?: string;
+    phone?: string;
+  }) {
+    const email = body.email.toLowerCase();
+    const result = await sendOtp({
+      email,
+      purpose: 'register',
+      profile: {
+        email,
+        fullName: body.fullName.trim(),
+        password: body.password,
+        platformRole: PlatformRole.institute_mentor,
+        institute: body.institute?.trim(),
+        department: body.department?.trim(),
+        phone: body.phone?.trim(),
+      },
+    });
+    return {
+      ok: true,
+      message: 'Verification code sent to your email. Enter the OTP to complete faculty registration.',
+      devCode: result.devCode,
+    };
+  }
+
+  async updateProfile(
     userId: string,
     body: {
       fullName?: string;
@@ -198,18 +311,31 @@ export class IdentityService {
       profileJson?: Record<string, unknown>;
     },
   ) {
-    return this.prisma.user.update({
+    const existing = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!existing) throw new NotFoundException('User not found');
+
+    const mergedProfile =
+      body.profileJson !== undefined
+        ? {
+            ...((existing.profileJson as Record<string, unknown> | null) ?? {}),
+            ...body.profileJson,
+          }
+        : undefined;
+
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        fullName: body.fullName,
-        phone: body.phone,
-        department: body.department,
-        institute: body.institute,
-        ...(body.profileJson !== undefined
-          ? { profileJson: body.profileJson as Prisma.InputJsonValue }
+        ...(body.fullName !== undefined ? { fullName: body.fullName } : {}),
+        ...(body.phone !== undefined ? { phone: body.phone } : {}),
+        ...(body.department !== undefined ? { department: body.department } : {}),
+        ...(body.institute !== undefined ? { institute: body.institute } : {}),
+        ...(mergedProfile !== undefined
+          ? { profileJson: mergedProfile as Prisma.InputJsonValue }
           : {}),
       },
     });
+    const { passwordHash: _ph, ...safe } = updated;
+    return safe;
   }
 
   async handleClerkEvent(eventType: string, data: Record<string, unknown>) {

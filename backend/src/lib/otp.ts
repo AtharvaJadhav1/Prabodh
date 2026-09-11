@@ -10,6 +10,8 @@ export type OtpPurpose = 'login' | 'register';
 export type PendingRegistration = {
   email: string;
   fullName: string;
+  password: string;
+  platformRole: 'student' | 'institute_mentor';
   institute?: string;
   department?: string;
   phone?: string;

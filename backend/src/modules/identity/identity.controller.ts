@@ -7,7 +7,7 @@ import { consumeToken } from '../../lib/rate-limit';
 import { PrismaService } from '../../lib/prisma.service';
 import { ZodPipe } from '../../common/zod.pipe';
 import { IdentityService } from './service';
-import { loginSchema, otpSendSchema, otpVerifySchema, patchMeSchema, registerSchema } from './schema';
+import { facultyRegisterSchema, loginSchema, otpSendSchema, otpVerifySchema, patchMeSchema, registerSchema } from './schema';
 
 @Controller()
 export class IdentityController {
@@ -79,6 +79,19 @@ export class IdentityController {
       phone?: string;
     };
     return this.identity.registerWithPassword(parsed);
+  }
+
+  @Post('auth/register/faculty')
+  async registerFaculty(@Body(new ZodPipe(facultyRegisterSchema)) body: unknown) {
+    const parsed = body as {
+      email: string;
+      password: string;
+      fullName: string;
+      institute?: string;
+      department?: string;
+      phone?: string;
+    };
+    return this.identity.registerFacultyWithPassword(parsed);
   }
 
   @Patch('me')

@@ -73,10 +73,17 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!session) return;
-    setProfile((prev) =>
-      mergeProfileFromApi(prev, session, teamName, role),
-    );
-  }, [session, teamName, role, team?.id]);
+    setProfile(mergeProfileFromApi(initialProfile, session, teamName, role));
+  }, [
+    session?.userId,
+    session?.fullName,
+    session?.email,
+    session?.phone,
+    session?.institute,
+    JSON.stringify(session?.profileJson),
+    teamName,
+    role,
+  ]);
 
   const openDrawer = (nextSection: StudentEditSection = "basic") => {
     setSection(nextSection);

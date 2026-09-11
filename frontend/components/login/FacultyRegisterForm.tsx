@@ -7,7 +7,7 @@ import { dashboardForRole } from "../../lib/session";
 import OtpAuthFlow from "./OtpAuthFlow";
 import TextField from "./TextField";
 
-type RegistrationDraft = {
+type FacultyDraft = {
   fullName: string;
   email: string;
   password: string;
@@ -16,21 +16,21 @@ type RegistrationDraft = {
   phone: string;
 };
 
-export default function RegisterForm() {
+export default function FacultyRegisterForm() {
   const router = useRouter();
   const { establishSession } = useAuth();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [draft, setDraft] = useState<RegistrationDraft | null>(null);
+  const [draft, setDraft] = useState<FacultyDraft | null>(null);
 
   if (draft) {
     return (
       <OtpAuthFlow
         purpose="register"
-        title="Verify your email"
-        description="We sent a 6-digit code to your institutional email. Enter it below to activate your student account."
-        submitLabel="Verify & create account"
+        title="Verify faculty email"
+        description="Enter the OTP sent to your official university email to complete faculty registration."
+        submitLabel="Verify & create faculty account"
         initialEmail={draft.email}
         profile={{
           fullName: draft.fullName,
@@ -38,7 +38,7 @@ export default function RegisterForm() {
           department: draft.department,
           phone: draft.phone,
           password: draft.password,
-          accountType: "student",
+          accountType: "faculty",
         }}
         onSuccess={(result) => {
           establishSession(result);
@@ -52,11 +52,10 @@ export default function RegisterForm() {
     <div className="space-y-6">
       <div>
         <h1 className="font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">
-          Student Registration
+          Faculty Registration
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-brand-muted">
-          Create a student account with your institutional email. You will receive an OTP to verify your email before
-          accessing the dashboard.
+          Register with your official university email. Students can invite you as a mentor using this email address.
         </p>
       </div>
       <form
@@ -66,7 +65,7 @@ export default function RegisterForm() {
           setError("");
           setLoading(true);
           const form = new FormData(e.currentTarget);
-          const payload: RegistrationDraft = {
+          const payload: FacultyDraft = {
             fullName: String(form.get("fullName") ?? ""),
             email: String(form.get("email") ?? ""),
             password: String(form.get("password") ?? ""),
@@ -86,12 +85,12 @@ export default function RegisterForm() {
           }
         }}
       >
-        <TextField id="fullName" label="Full name" placeholder="Aarav Sharma" required autoComplete="name" />
+        <TextField id="fullName" label="Full name" placeholder="Dr. Neha Kulkarni" required autoComplete="name" />
         <TextField
           id="email"
-          label="Institutional email"
+          label="Official university email"
           type="email"
-          placeholder="you@mituniversity.edu.in"
+          placeholder="faculty@mituniversity.edu.in"
           required
           autoComplete="email"
         />
@@ -126,7 +125,7 @@ export default function RegisterForm() {
           required
           autoComplete="organization"
         />
-        <TextField id="department" label="Department" placeholder="CSE" autoComplete="organization-title" />
+        <TextField id="department" label="Department" placeholder="CSE" required autoComplete="organization-title" />
         <TextField id="phone" label="Phone" type="text" placeholder="Optional" autoComplete="tel" />
         {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
         <button
@@ -139,8 +138,8 @@ export default function RegisterForm() {
       </form>
       <p className="text-center text-sm text-brand-muted">
         Already registered?{" "}
-        <a href="/login/student" className="font-semibold text-brand-primary hover:text-brand-hover">
-          Sign in
+        <a href="/login/faculty" className="font-semibold text-brand-primary hover:text-brand-hover">
+          Faculty sign in
         </a>
       </p>
     </div>

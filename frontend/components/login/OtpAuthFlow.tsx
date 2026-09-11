@@ -25,6 +25,8 @@ type Props = {
   initialEmail?: string;
   profile?: {
     fullName: string;
+    password?: string;
+    accountType?: "student" | "faculty";
     institute?: string;
     department?: string;
     phone?: string;
@@ -57,7 +59,12 @@ export default function OtpAuthFlow({
       const res = await apiPost<{ message: string; devCode?: string }>("/auth/otp/send", {
         email,
         purpose,
-        ...(profile ?? {}),
+        fullName: profile?.fullName,
+        password: profile?.password,
+        accountType: profile?.accountType,
+        institute: profile?.institute,
+        department: profile?.department,
+        phone: profile?.phone,
       });
       if (res.devCode) setDevHint(`Dev code: ${res.devCode}`);
       setStep("otp");
@@ -160,12 +167,20 @@ export default function OtpAuthFlow({
           </button>
           <button
             type="button"
+            disabled={loading}
+            onClick={() => void sendCode()}
+            className="w-full text-sm font-semibold text-brand-primary hover:text-brand-hover disabled:opacity-60"
+          >
+            Resend code
+          </button>
+          <button
+            type="button"
             onClick={() => {
               setStep("email");
               setCode("");
               setError("");
             }}
-            className="w-full text-sm font-semibold text-brand-primary hover:text-brand-hover"
+            className="w-full text-sm font-semibold text-brand-muted hover:text-brand-deep"
           >
             Use a different email
           </button>

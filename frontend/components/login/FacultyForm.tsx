@@ -10,15 +10,23 @@ export default function FacultyForm() {
   const { establishSession } = useAuth();
 
   return (
-    <LoginPasswordForm
-      portal="faculty"
-      title="Faculty & Evaluator Sign In"
-      description="Sign in with your official university email. Admin, institute mentor, and industry mentor dashboards follow your account role."
-      submitLabel="Sign in"
-      onSuccess={(result) => {
-        establishSession(result);
-        router.replace(dashboardForRole(result.platformRole));
-      }}
-    />
+    <div className="space-y-6">
+      <LoginPasswordForm
+        portal="faculty"
+        title="Faculty & Evaluator Sign In"
+        description="Sign in with your official university email. Admin, institute mentor, and industry mentor dashboards follow your account role."
+        submitLabel="Sign in"
+        onSuccess={(result) => {
+          establishSession(result);
+          router.replace(dashboardForRole(result.platformRole));
+        }}
+      />
+      <p className="text-center text-sm text-brand-muted">
+        New faculty member?{" "}
+        <a href="/register/faculty" className="font-semibold text-brand-primary hover:text-brand-hover">
+          Register here
+        </a>
+      </p>
+    </div>
   );
 }

@@ -247,18 +247,24 @@ export default function RepositoryBrowser() {
                     disabled={busy === stmt.code || !teamId}
                     onClick={async () => {
                       const psId = ids[stmt.code];
-                      if (!teamId || !psId) return;
+                      if (!teamId) {
+                        setSelectError("Create or join a team before selecting a problem statement.");
+                        return;
+                      }
+                      if (!psId) {
+                        setSelectError("Problem statement ID missing. Refresh and try again.");
+                        return;
+                      }
                       setBusy(stmt.code);
                       try {
                         setSelectError("");
-                        const idea = await apiPost<{ id: string }>("/idea-submissions", {
+                        await apiPost("/idea-submissions/select", {
                           teamId,
                           psId,
                           abstract: (stmt.description + " Selected via SIH portal.").slice(0, 400).padEnd(20, "."),
                           techStack: "To be confirmed",
                           feasibilityNotes: "Draft feasibility captured at PS selection.",
                         });
-                        await apiPost(`/idea-submissions/${idea.id}/lock`, {});
                         await reload();
                       } catch (err) {
                         setSelectError(err instanceof Error ? err.message : "Could not select this problem statement");

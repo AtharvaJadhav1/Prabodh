@@ -25,6 +25,8 @@ export default function MentorDashboardPage() {
     if (!session) return;
     void api<
       Array<{
+        pendingInvite?: boolean;
+        inviteId?: string;
         team: {
           id: string;
           name: string;
@@ -52,7 +54,7 @@ export default function MentorDashboardPage() {
               problemTitle: row.team.problemStatement?.title ?? "No PS locked yet",
               leader: row.team.leader?.fullName ?? "—",
               leaderPrn: row.team.leader?.email ?? "",
-              milestone: "Assigned",
+              milestone: row.pendingInvite ? "Invite pending — accept in Group Requests" : "Assigned",
               domains: row.team.theme ? [row.team.theme] : [],
               score: published ? Number(published.weightedScore) : undefined,
               publishStatus: published ? "published" : undefined,
@@ -105,7 +107,7 @@ export default function MentorDashboardPage() {
         <EmptyState
           icon={<DashboardIcon className="h-10 w-10" />}
           heading={groups.length === 0 ? "No teams allocated yet" : `No teams match "${search || track}"`}
-          description="Allocated teams from the backend appear here after an admin assigns you."
+          description="Teams appear here when students invite you by email or an admin assigns you."
           action={
             <button
               type="button"

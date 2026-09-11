@@ -117,21 +117,20 @@ export class ProblemStatementsRepository {
 
   lockIdea(id: string, teamId: string, psId: string) {
     return this.prisma.$transaction(async (tx) => {
+      const ps = await tx.problemStatement.findUnique({ where: { id: psId } });
       const idea = await tx.ideaSubmission.update({
         where: { id },
         data: { status: IdeaStatus.locked, lockedAt: new Date() },
       });
       await tx.team.update({
         where: { id: teamId },
-        data: { psId, status: 'locked', detailsLockAt: new Date(), theme: undefined },
+        data: {
+          psId,
+          status: 'locked',
+          detailsLockAt: new Date(),
+          ...(ps?.theme ? { theme: ps.theme } : {}),
+        },
       });
-      const ps = await tx.problemStatement.findUnique({ where: { id: psId } });
-      if (ps) {
-        await tx.team.update({
-          where: { id: teamId },
-          data: { theme: ps.theme },
-        });
-      }
       return idea;
     });
   }

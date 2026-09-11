@@ -23,20 +23,39 @@ export default function ManualEntryForm() {
 
   const submit = async () => {
     if (!team?.id || locked) return;
+    if (title.trim().length < 5) {
+      setError("Title must be at least 5 characters.");
+      return;
+    }
+    if (domainFit.trim().length < 2) {
+      setError("Domain/theme must be at least 2 characters.");
+      return;
+    }
+    const abstract = methodology.trim().length >= 20
+      ? methodology.trim()
+      : `${methodology.trim()} — student innovation proposal.`.padEnd(20, ".");
+    const description = abstract;
+    if (techStack.trim().length < 2) {
+      setError("Tech stack must be at least 2 characters.");
+      return;
+    }
+    const feasibilityNotes = feasibility.trim().length >= 10
+      ? feasibility.trim()
+      : `${feasibility.trim()} — feasibility review pending.`.padEnd(10, ".");
     setBusy(true);
     setError("");
     setMessage("");
     try {
       await apiPost("/idea-submissions/manual", {
         teamId: team.id,
-        title,
-        theme: domainFit,
+        title: title.trim(),
+        theme: domainFit.trim(),
         category: track,
         organisation: "Student Innovation",
-        description: methodology,
-        abstract: methodology,
-        techStack,
-        feasibilityNotes: feasibility,
+        description,
+        abstract,
+        techStack: techStack.trim(),
+        feasibilityNotes,
       });
       setMessage("Manual problem statement submitted and locked.");
       await reload();

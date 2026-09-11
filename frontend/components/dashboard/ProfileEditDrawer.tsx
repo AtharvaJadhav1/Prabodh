@@ -74,6 +74,8 @@ export default function ProfileEditDrawer() {
   } = useProfile();
 
   const [draft, setDraft] = useState<Profile>(profile);
+  const [saveError, setSaveError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (drawerOpen) setDraft(profile);
@@ -83,22 +85,31 @@ export default function ProfileEditDrawer() {
   const patchContacts = (contacts: Profile["contacts"]) => patch({ contacts });
   const patchSkills = (skills: Profile["skills"]) => patch({ skills });
 
-  const handleSave = () => {
-    updateBasicInfo({
-      fullName: draft.fullName,
-      bio: draft.bio,
-      school: draft.school,
-      team: draft.team,
-      role: draft.role,
-      hackathonBadge: draft.hackathonBadge,
-    });
-    updateContacts(draft.contacts);
-    updateSkills(draft.skills);
-    setProjects(draft.projects);
-    setCertifications(draft.certifications);
-    setExperience(draft.experience);
-    setAchievements(draft.achievements);
-    void saveProfileJson(draft).then(() => closeDrawer());
+  const handleSave = async () => {
+    setSaveError("");
+    setSaving(true);
+    try {
+      await saveProfileJson(draft);
+      updateBasicInfo({
+        fullName: draft.fullName,
+        bio: draft.bio,
+        school: draft.school,
+        team: draft.team,
+        role: draft.role,
+        hackathonBadge: draft.hackathonBadge,
+      });
+      updateContacts(draft.contacts);
+      updateSkills(draft.skills);
+      setProjects(draft.projects);
+      setCertifications(draft.certifications);
+      setExperience(draft.experience);
+      setAchievements(draft.achievements);
+      closeDrawer();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Could not save profile");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const primaryEmpty: Skill = { name: "", level: undefined, tag: undefined };
@@ -111,7 +122,7 @@ export default function ProfileEditDrawer() {
     <DrawerShell
       open={drawerOpen}
       title="Edit Profile"
-      subtitle="Changes stay saved for this session."
+      subtitle="Your profile is saved to your account."
       icon={<UserIcon className="h-5 w-5 text-brand-primary" />}
       onClose={closeDrawer}
       footer={
@@ -125,14 +136,16 @@ export default function ProfileEditDrawer() {
           </button>
           <button
             type="button"
-            onClick={handleSave}
-            className="flex-1 rounded-xl bg-brand-primary px-4 py-3 text-sm font-bold text-white shadow-md shadow-brand-primary/25 transition-colors hover:bg-brand-hover"
+            onClick={() => void handleSave()}
+            disabled={saving}
+            className="flex-1 rounded-xl bg-brand-primary px-4 py-3 text-sm font-bold text-white shadow-md shadow-brand-primary/25 transition-colors hover:bg-brand-hover disabled:opacity-60"
           >
-            Save Changes
+            {saving ? "Saving…" : "Save Changes"}
           </button>
         </div>
       }
     >
+      {saveError ? <p className="mb-4 text-sm font-medium text-red-700">{saveError}</p> : null}
       <DrawerSectionNav sections={sections} active={section} onSelect={openDrawer} />
 
       {section === "basic" && (

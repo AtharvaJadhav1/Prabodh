@@ -23,7 +23,18 @@ export const loginSchema = z.object({
 export const otpSendSchema = z.object({
   email: z.string().email(),
   purpose: z.enum(['login', 'register']),
+  accountType: z.enum(['student', 'faculty']).optional(),
+  password: z.string().min(8).max(128).optional(),
   fullName: z.string().min(2).max(120).optional(),
+  institute: z.string().min(2).max(200).optional(),
+  department: z.string().max(120).optional(),
+  phone: z.string().max(30).optional(),
+});
+
+export const facultyRegisterSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8).max(128),
+  fullName: z.string().min(2).max(120),
   institute: z.string().min(2).max(200).optional(),
   department: z.string().max(120).optional(),
   phone: z.string().max(30).optional(),

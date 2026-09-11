@@ -46,7 +46,8 @@ export default function MentorInvitePanel() {
           Dual mentorship
         </h2>
         <p className="mt-2 text-sm text-brand-muted">
-          Team leaders invite institute and industry mentors by email. Mentors accept from their faculty inbox.
+          Team leaders invite faculty by their registered email address. The invited team appears on the faculty dashboard
+          once the invite is sent.
         </p>
         {assignments.length === 0 && pending.length === 0 ? (
           <div className="mt-4 rounded-xl border border-dashed border-brand-softline bg-brand-cream p-5 text-center text-sm text-brand-muted">

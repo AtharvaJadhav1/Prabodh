@@ -46,6 +46,12 @@ export class ProblemStatementsController {
     return this.service.createIdea(user, body as never);
   }
 
+  @Post('idea-submissions/select')
+  @Roles(PlatformRole.student)
+  selectAndLock(@CurrentUser() user: AuthUser, @Body(new ZodPipe(createIdeaSchema)) body: unknown) {
+    return this.service.selectAndLock(user, body as never);
+  }
+
   @Post('idea-submissions/manual')
   @Roles(PlatformRole.student)
   createManualIdea(@CurrentUser() user: AuthUser, @Body(new ZodPipe(manualIdeaSchema)) body: unknown) {

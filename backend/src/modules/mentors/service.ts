@@ -106,8 +106,48 @@ export class MentorsService {
     return next;
   }
 
-  myTeams(user: AuthUser) {
-    return this.repo.teamsForMentor(user.id);
+  async myTeams(user: AuthUser) {
+    const assignments = await this.repo.teamsForMentor(user.id);
+    const pendingInvites = await this.prisma.mentorInvite.findMany({
+      where: {
+        inviteStatus: InviteStatus.pending,
+        OR: [{ mentorUserId: user.id }, { invitedEmail: user.email }],
+      },
+      include: {
+        team: {
+          include: {
+            problemStatement: true,
+            leader: true,
+            members: { include: { user: true } },
+            mentorAssignments: { where: { active: true }, include: { mentor: true } },
+            stageResults: { include: { stage: true } },
+            ideaSubmissions: {
+              orderBy: { version: 'desc' },
+              take: 5,
+              include: { problemStatement: true },
+            },
+            deliverables: { orderBy: { submittedAt: 'desc' }, take: 20, include: { stage: true } },
+            stageStatuses: { include: { stage: true } },
+          },
+        },
+      },
+    });
+
+    const assignedTeamIds = new Set(assignments.map((a) => a.teamId));
+    const inviteRows = pendingInvites
+      .filter((invite) => !assignedTeamIds.has(invite.teamId))
+      .map((invite) => ({
+        id: `invite:${invite.id}`,
+        teamId: invite.teamId,
+        mentorUserId: user.id,
+        mentorType: invite.mentorType,
+        active: false,
+        pendingInvite: true,
+        inviteId: invite.id,
+        team: invite.team,
+      }));
+
+    return [...assignments, ...inviteRows];
   }
 
   listFaculty() {

@@ -68,6 +68,26 @@ export class ProblemStatementsService {
     return result.idea;
   }
 
+  async selectAndLock(user: AuthUser, body: z.infer<typeof createIdeaSchema>) {
+    const team = await this.teams.assertTeamAccess(user, body.teamId);
+    if (!this.teams.isLeader(user, team)) {
+      throw new ForbiddenException('Only the team leader can select a problem statement');
+    }
+    const existing = await this.repo.findLatestIdeaForTeam(body.teamId);
+    if (existing?.status === IdeaStatus.locked) {
+      throw new ForbiddenException('Problem statement already locked for this team');
+    }
+    if (existing?.status === IdeaStatus.draft) {
+      await this.repo.abandonDraft(existing.id);
+    }
+    const result = await this.repo.createDraftWithCap({ ...body, authorUserId: user.id });
+    if ('error' in result && result.error === 'ps_not_found') throw new NotFoundException('Problem statement not found');
+    if ('error' in result && result.error === 'ps_full') {
+      throw new ConflictException('PS full: team cap reached for this problem statement');
+    }
+    return this.repo.lockIdea(result.idea.id, body.teamId, body.psId);
+  }
+
   async patchIdea(user: AuthUser, id: string, body: z.infer<typeof patchIdeaSchema>) {
     const idea = await this.repo.findIdea(id);
     if (!idea) throw new NotFoundException('Idea not found');
