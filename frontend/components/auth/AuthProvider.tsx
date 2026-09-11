@@ -118,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!clerkState.signedIn && pathname.startsWith("/dashboard")) {
         router.replace("/login/student");
       }
-      if (clerkState.signedIn && session && (pathname.startsWith("/login") || pathname.startsWith("/register"))) {
+      if (clerkState.signedIn && session && isPublic) {
         router.replace(dashboardForRole(session.platformRole));
       }
       return;
@@ -127,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!session && pathname.startsWith("/dashboard")) {
       router.replace("/login/student");
     }
-    if (session && isPublic && pathname.startsWith("/login")) {
+    if (session && isPublic) {
       router.replace(dashboardForRole(session.platformRole));
     }
   }, [ready, session, pathname, router, clerkEnabled, clerkState, syncing]);
