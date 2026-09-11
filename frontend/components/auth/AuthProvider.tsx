@@ -75,12 +75,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   const isDashboard = pathname.startsWith("/dashboard");
+  const isCallback = pathname.startsWith("/auth/callback");
   const isPublic =
     pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/register");
 
   const clerkBooting = clerkEnabled && !clerkState.loaded;
-  const syncingProfile = clerkEnabled && clerkState.signedIn && isDashboard && !session;
-  const showAuthLoading = clerkBooting || (syncingProfile && !syncError);
+  const needsProfile = isDashboard || isCallback;
+  const syncingProfile = clerkEnabled && clerkState.signedIn && needsProfile && !session;
+  const showAuthLoading = clerkBooting || (syncingProfile && !syncError && isDashboard);
 
   const refreshMe = useCallback(async () => {
     if (!clerkState.signedIn && !readSession()?.userId) return;
@@ -175,7 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ) : null}
       {showAuthLoading ? (
         <AuthLoading label={clerkBooting ? "Loading…" : "Syncing your session…"} />
-      ) : syncError && isDashboard ? (
+      ) : syncError && (isDashboard || isCallback) ? (
         <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-brand-canvas px-4 text-center">
           <p className="text-sm font-medium text-brand-muted">Signed in, but we could not load your profile.</p>
           <p className="max-w-md text-sm text-red-700">{syncError}</p>

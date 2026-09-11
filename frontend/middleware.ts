@@ -7,23 +7,14 @@ const isPublicRoute = createRouteMatcher([
   "/register(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
+  "/auth/callback(.*)",
 ]);
 
-const isAuthLanding = createRouteMatcher(["/", "/login(.*)", "/register(.*)"]);
-
 export default clerkMiddleware(async (auth, request) => {
-  const { userId } = await auth();
-
-  if (userId && isAuthLanding(request)) {
-    const target = request.nextUrl.pathname.startsWith("/login/faculty")
-      ? "/dashboard/mentor"
-      : "/dashboard/student";
-    return NextResponse.redirect(new URL(target, request.url));
-  }
-
   if (!isPublicRoute(request)) {
     await auth.protect();
   }
+  return NextResponse.next();
 });
 
 export const config = {

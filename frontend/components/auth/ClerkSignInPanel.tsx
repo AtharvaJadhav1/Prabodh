@@ -1,18 +1,14 @@
 "use client";
 
 import { SignIn } from "@clerk/nextjs";
-import { CLERK_SIGN_UP_REDIRECT, MENTOR_DASHBOARD, STUDENT_DASHBOARD } from "../../lib/config";
 
 type Props = {
   path: string;
 };
 
-function redirectForLoginPath(path: string) {
-  return path.includes("faculty") ? MENTOR_DASHBOARD : STUDENT_DASHBOARD;
-}
+const CALLBACK = "/auth/callback";
 
 export default function ClerkSignInPanel({ path }: Props) {
-  const dashboard = redirectForLoginPath(path);
   const signUpUrl = path.includes("faculty") ? path : "/register";
 
   return (
@@ -21,8 +17,9 @@ export default function ClerkSignInPanel({ path }: Props) {
         routing="path"
         path={path}
         signUpUrl={signUpUrl}
-        forceRedirectUrl={dashboard}
-        signUpForceRedirectUrl={CLERK_SIGN_UP_REDIRECT}
+        forceRedirectUrl={CALLBACK}
+        fallbackRedirectUrl={CALLBACK}
+        signUpForceRedirectUrl={CALLBACK}
         appearance={{
           elements: {
             rootBox: "w-full",

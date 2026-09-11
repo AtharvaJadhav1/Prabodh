@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { SignUp } from "@clerk/nextjs";
 import { useAuth } from "../auth/AuthProvider";
 import { apiPost } from "../../lib/api";
-import { CLERK_SIGN_IN_REDIRECT, CLERK_SIGN_UP_REDIRECT } from "../../lib/config";
+import { AUTH_CALLBACK } from "../../lib/config";
 import { dashboardForRole } from "../../lib/session";
 import TextField from "./TextField";
 
@@ -69,8 +69,9 @@ function ClerkRegisterForm() {
           routing="path"
           path="/register"
           signInUrl="/login/student"
-          forceRedirectUrl={CLERK_SIGN_UP_REDIRECT}
-          signInForceRedirectUrl={CLERK_SIGN_IN_REDIRECT}
+          forceRedirectUrl={AUTH_CALLBACK}
+          fallbackRedirectUrl={AUTH_CALLBACK}
+          signInForceRedirectUrl={AUTH_CALLBACK}
           appearance={{
             elements: {
               rootBox: "w-full",

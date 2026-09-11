@@ -1,7 +1,7 @@
 "use client";
 
 import { ClerkProvider } from "@clerk/nextjs";
-import { CLERK_PUBLISHABLE_KEY, CLERK_SIGN_IN_REDIRECT, CLERK_SIGN_UP_REDIRECT } from "../../lib/config";
+import { CLERK_PUBLISHABLE_KEY } from "../../lib/config";
 import { AuthProvider } from "./AuthProvider";
 
 export default function AuthProviders({ children }: { children: React.ReactNode }) {
@@ -15,8 +15,8 @@ export default function AuthProviders({ children }: { children: React.ReactNode 
       signInUrl="/login/student"
       signUpUrl="/register"
       afterSignOutUrl="/login/student"
-      signInFallbackRedirectUrl={CLERK_SIGN_IN_REDIRECT}
-      signUpFallbackRedirectUrl={CLERK_SIGN_UP_REDIRECT}
+      signInFallbackRedirectUrl="/auth/callback"
+      signUpFallbackRedirectUrl="/auth/callback"
     >
       {inner}
     </ClerkProvider>
