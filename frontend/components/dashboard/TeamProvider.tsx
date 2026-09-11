@@ -98,6 +98,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<StudentRole>("Team Lead");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [memberIds, setMemberIds] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
   const [facultyDirectory, setFacultyDirectory] = useState<
     Array<{
       id: string;

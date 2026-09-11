@@ -45,7 +45,7 @@ export default function GroupDrawer() {
     }
   }, [drawerOpen]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmed = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setInviteError("Enter a valid institute email, e.g. name@mituniversity.edu.in");
@@ -55,15 +55,19 @@ export default function GroupDrawer() {
       setInviteError("Team is full — revoke a pending invite before sending new ones.");
       return;
     }
-    const ok = sendInvite(trimmed);
-    if (ok) {
-      setEmail("");
-      setInviteError("");
-      setInviteSuccess(`Invite sent to ${trimmed}.`);
-      if (flashTimer.current) clearTimeout(flashTimer.current);
-      flashTimer.current = setTimeout(() => setInviteSuccess(""), 3500);
-    } else {
-      setInviteError("This student is already invited.");
+    try {
+      const ok = await sendInvite(trimmed);
+      if (ok) {
+        setEmail("");
+        setInviteError("");
+        setInviteSuccess(`Invite sent to ${trimmed}.`);
+        if (flashTimer.current) clearTimeout(flashTimer.current);
+        flashTimer.current = setTimeout(() => setInviteSuccess(""), 3500);
+      } else {
+        setInviteError("Could not send this invite.");
+      }
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : "Could not send invite");
     }
   };
 

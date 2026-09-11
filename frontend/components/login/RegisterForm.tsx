@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSignUp } from "@clerk/nextjs";
+import { SignUp } from "@clerk/nextjs";
 import { useAuth } from "../auth/AuthProvider";
-import { apiPatch, apiPost } from "../../lib/api";
+import { apiPost } from "../../lib/api";
 import { dashboardForRole } from "../../lib/session";
 import TextField from "./TextField";
 
@@ -61,105 +61,32 @@ function LocalRegisterForm({ login }: { login: (email: string) => Promise<{ plat
 }
 
 function ClerkRegisterForm() {
-  const { isLoaded, signUp, setActive } = useSignUp();
-  const router = useRouter();
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [pendingVerification, setPendingVerification] = useState(false);
-  const [code, setCode] = useState("");
-  const [profile, setProfile] = useState({ institute: "", department: "", phone: "" });
-
-  const submitRegister = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!isLoaded || !signUp) return;
-    setError("");
-    setLoading(true);
-    const form = new FormData(e.currentTarget);
-    const fullName = String(form.get("fullName") ?? "").trim();
-    const [firstName, ...rest] = fullName.split(" ");
-    const lastName = rest.join(" ");
-    const email = String(form.get("email") ?? "");
-    const password = String(form.get("password") ?? "");
-    const institute = String(form.get("institute") ?? "");
-    const department = String(form.get("department") ?? "");
-    const phone = String(form.get("phone") ?? "");
-    setProfile({ institute, department, phone });
-    try {
-      await signUp.create({
-        emailAddress: email,
-        password,
-        firstName: firstName || fullName,
-        lastName: lastName || undefined,
-        unsafeMetadata: { role: "student", institute, department, phone },
-      });
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setPendingVerification(true);
-    } catch (err) {
-      setError(clerkError(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isLoaded || !signUp) return;
-    setError("");
-    setLoading(true);
-    try {
-      const result = await signUp.attemptEmailAddressVerification({ code });
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
-        try {
-          await apiPatch("/me", profile);
-        } catch {
-          /* profile sync is best-effort after Clerk session exists */
-        }
-        router.push("/dashboard/student");
-      } else {
-        setError("Additional verification is required. Try signing in.");
-      }
-    } catch (err) {
-      setError(clerkError(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <RegisterLayout>
-      {pendingVerification ? (
-        <form className="space-y-4" onSubmit={(e) => void verify(e)}>
-          <p className="text-sm text-brand-muted">Enter the verification code sent to your email.</p>
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            placeholder="Verification code"
-            className="w-full rounded-xl border border-brand-sand bg-white px-4 py-3 text-sm outline-none focus:border-brand-primary"
-            required
-          />
-          {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {loading ? "Verifying…" : "Verify and continue"}
-          </button>
-        </form>
-      ) : (
-        <form className="space-y-4" onSubmit={(e) => void submitRegister(e)}>
-          <RegisterFields includePassword />
-          {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
-          <button
-            type="submit"
-            disabled={loading || !isLoaded}
-            className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
-          >
-            {loading ? "Creating account…" : "Create student account"}
-          </button>
-        </form>
-      )}
+      <div className="flex justify-center">
+        <SignUp
+          routing="path"
+          path="/register"
+          signInUrl="/login/student"
+          appearance={{
+            elements: {
+              rootBox: "w-full",
+              cardBox: "w-full shadow-none border border-brand-sand rounded-2xl",
+              card: "shadow-[0_2px_8px_rgba(91,46,16,0.04)] rounded-2xl",
+              headerTitle: "font-serif text-brand-deep",
+              headerSubtitle: "text-brand-muted text-sm",
+              formButtonPrimary:
+                "bg-brand-primary hover:bg-brand-hover text-sm font-semibold rounded-xl normal-case",
+              formFieldInput: "rounded-xl border-brand-sand text-sm",
+              footerActionLink: "text-brand-primary font-semibold",
+            },
+            variables: {
+              colorPrimary: "#D96B27",
+              borderRadius: "0.75rem",
+            },
+          }}
+        />
+      </div>
     </RegisterLayout>
   );
 }
@@ -213,12 +140,4 @@ function RegisterFields({ includePassword = false }: { includePassword?: boolean
       <TextField id="phone" label="Phone" type="text" placeholder="Optional" autoComplete="tel" />
     </>
   );
-}
-
-function clerkError(err: unknown) {
-  if (err && typeof err === "object" && "errors" in err) {
-    const errors = (err as { errors?: Array<{ longMessage?: string; message?: string }> }).errors;
-    return errors?.[0]?.longMessage || errors?.[0]?.message || "Registration failed";
-  }
-  return err instanceof Error ? err.message : "Registration failed";
 }
