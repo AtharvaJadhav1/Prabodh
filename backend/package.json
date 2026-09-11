@@ -36,13 +36,13 @@
     "svix": "^1.44.0",
     "zod": "^3.24.1",
     "@types/node": "^22.10.2",
+    "@types/pdfkit": "^0.13.8",
     "prisma": "^6.1.0",
     "typescript": "^5.7.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.9",
     "@types/express": "^5.0.0",
-    "@types/pdfkit": "^0.13.8",
     "tsx": "^4.19.2"
   }
 }
