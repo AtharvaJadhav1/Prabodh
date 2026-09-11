@@ -4,7 +4,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { InviteStatus, PlatformRole } from '@prisma/client';
+import { PlatformRole } from '@prisma/client';
 import { PrismaService } from '../lib/prisma.service';
 import { getClerkClient, roleFromClaims, verifyClerkSession } from '../lib/clerk';
 import { AuthUser } from './auth.types';
@@ -78,10 +78,6 @@ export class ClerkAuthGuard implements CanActivate {
       }
     }
     if (!user.isActive) throw new UnauthorizedException('Account disabled');
-    await this.prisma.teamMember.updateMany({
-      where: { invitedEmail: user.email, inviteStatus: InviteStatus.pending },
-      data: { inviteStatus: InviteStatus.accepted, userId: user.id, joinedAt: new Date() },
-    });
     req.user = toAuth(user);
     return true;
   }

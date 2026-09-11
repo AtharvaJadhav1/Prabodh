@@ -1,12 +1,15 @@
 export type EmailTemplate =
   | 'mentor_allocation'
+  | 'team_invite'
   | 'deadline_reminder'
   | 'evaluation_published'
   | 'admin_broadcast'
   | 'status_change';
 
-function layout(title: string, bodyHtml: string, ctaLabel = 'Open SIH Portal') {
-  const origin = process.env.APP_ORIGIN ?? 'http://localhost:3000';
+function layout(title: string, bodyHtml: string, ctaLabel = 'Open SIH Portal', ctaUrl?: string) {
+  const raw = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_ORIGIN ?? 'http://localhost:3000';
+  const origin = raw.split(',')[0].trim();
+  const href = ctaUrl ?? origin;
   return `<!doctype html>
 <html>
   <body style="margin:0;background:#0f172a;font-family:Segoe UI,Roboto,sans-serif;color:#0f172a">
@@ -17,7 +20,7 @@ function layout(title: string, bodyHtml: string, ctaLabel = 'Open SIH Portal') {
           <tr><td style="padding-top:12px;font-size:22px;font-weight:700">${escapeHtml(title)}</td></tr>
           <tr><td style="padding-top:16px;font-size:15px;line-height:1.6;color:#334155">${bodyHtml}</td></tr>
           <tr><td style="padding-top:24px">
-            <a href="${origin}" style="background:#2563eb;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;display:inline-block">${ctaLabel}</a>
+            <a href="${href}" style="background:#2563eb;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;display:inline-block">${ctaLabel}</a>
           </td></tr>
           <tr><td style="padding-top:28px;font-size:12px;color:#94a3b8">Scores and sensitive evaluation data are only shown after you sign in.</td></tr>
         </table>
@@ -27,11 +30,29 @@ function layout(title: string, bodyHtml: string, ctaLabel = 'Open SIH Portal') {
 </html>`;
 }
 
-export function renderEmail(template: EmailTemplate, title: string, body: string) {
+export function renderEmail(
+  template: EmailTemplate,
+  title: string,
+  body: string,
+  ctaLabel?: string,
+  ctaUrl?: string,
+) {
   const safe = `<p>${escapeHtml(body)}</p>`;
   switch (template) {
+    case 'team_invite':
+      return layout(
+        title,
+        `${safe}<p>Use the same email address when you register so your invite is linked automatically.</p>`,
+        ctaLabel ?? 'Register & join team',
+        ctaUrl,
+      );
     case 'mentor_allocation':
-      return layout(title, `${safe}<p>Open your mentor dashboard to review the assigned team.</p>`);
+      return layout(
+        title,
+        `${safe}<p>Open your mentor dashboard to review the invitation.</p>`,
+        ctaLabel ?? 'Open mentor dashboard',
+        ctaUrl,
+      );
     case 'deadline_reminder':
       return layout(title, `${safe}<p>Submit deliverables before the stage locks.</p>`);
     case 'evaluation_published':

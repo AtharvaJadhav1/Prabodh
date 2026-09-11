@@ -19,7 +19,7 @@ export default function NotificationBell() {
 
   useEffect(() => {
     load();
-    const id = window.setInterval(load, 30_000);
+    const id = window.setInterval(load, 90_000);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.userId]);

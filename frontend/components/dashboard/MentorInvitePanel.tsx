@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTeam } from "./TeamProvider";
 import { GradCapIcon, CheckIcon, SendIcon, ClockIcon } from "./icons";
 
 export default function MentorInvitePanel() {
-  const { team, isLead, sendFacultyInvite, revokeFacultyInvite, facultyDirectory } = useTeam();
+  const { team, isLead, sendFacultyInvite, revokeFacultyInvite, facultyDirectory, loadFacultyDirectory } = useTeam();
   const assignments = team?.mentorAssignments ?? [];
   const pending = (team?.mentorInvites ?? []).filter((i) => i.inviteStatus === "pending");
   const [email, setEmail] = useState("");
@@ -13,6 +13,10 @@ export default function MentorInvitePanel() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (isLead) void loadFacultyDirectory();
+  }, [isLead, loadFacultyDirectory]);
 
   const handleSend = async (targetEmail = email) => {
     const trimmed = targetEmail.trim().toLowerCase();

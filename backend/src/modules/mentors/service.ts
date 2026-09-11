@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
 import { pickLeastLoadedMentor } from '../../domain/rules';
 import { writeAudit } from '../../lib/audit';
+import { sendMentorInviteEmail } from '../../lib/invite-email';
 import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { getSettingNumber } from '../../lib/settings';
@@ -192,6 +193,15 @@ export class MentorsService {
         });
 
     try {
+      await sendMentorInviteEmail({
+        to: email,
+        teamName: team.name,
+        leaderName: user.fullName,
+      });
+    } catch (err) {
+      console.warn('[mentors.invite] email delivery failed for', email, err);
+    }
+    try {
       await notifyUsers(this.prisma, [mentor.id], {
         type: 'allocation',
         template: 'mentor_allocation',
@@ -200,7 +210,7 @@ export class MentorsService {
         relatedEntity: `team:${team.id}`,
       });
     } catch {
-      /* notifications are best-effort */
+      /* in-app notifications are best-effort */
     }
     return invite;
   }

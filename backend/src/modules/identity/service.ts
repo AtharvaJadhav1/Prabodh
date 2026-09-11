@@ -159,11 +159,15 @@ export class IdentityService {
     return { teamId: team.id, email, accepted: true };
   }
 
-  private async acceptPendingInvitesForUser(userId: string, email: string, clerkUserId: string) {
+  async acceptPendingTeamInvites(userId: string, email: string) {
     await this.prisma.teamMember.updateMany({
       where: { invitedEmail: email, inviteStatus: InviteStatus.pending },
       data: { inviteStatus: InviteStatus.accepted, userId, joinedAt: new Date() },
     });
+  }
+
+  private async acceptPendingInvitesForUser(userId: string, email: string, clerkUserId: string) {
+    await this.acceptPendingTeamInvites(userId, email);
     void clerkUserId;
   }
 

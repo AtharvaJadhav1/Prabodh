@@ -2,12 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import { useAuth as useClerkAuth } from "@clerk/nextjs";
-import { usePathname, useRouter } from "next/navigation";
-import { api } from "../../lib/api";
+import { api, ApiError } from "../../lib/api";
 import { setClerkToken } from "../../lib/auth-token";
 import {
   clearSession,
-  dashboardForRole,
+  readSession,
   writeSession,
   type PlatformRole,
   type Session,
@@ -39,11 +38,26 @@ function toSession(user: {
   };
 }
 
+async function fetchMe(getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>) {
+  const token = await getToken();
+  setClerkToken(token ?? null);
+  if (!token) throw new ApiError(401, "Missing Clerk token");
+  const me = await api<{
+    id: string;
+    email: string;
+    fullName: string;
+    platformRole: PlatformRole;
+    institute?: string | null;
+    department?: string | null;
+    phone?: string | null;
+  }>("/me");
+  return toSession(me);
+}
+
 export default function ClerkSessionBridge({ onSession, onClerkState, registerSignOut }: Props) {
   const { isSignedIn, isLoaded, getToken, signOut } = useClerkAuth();
-  const router = useRouter();
-  const pathname = usePathname();
   const syncing = useRef(false);
+  const syncedUserId = useRef<string | null>(null);
 
   useEffect(() => {
     onClerkState({ loaded: isLoaded, signedIn: Boolean(isSignedIn) });
@@ -58,6 +72,7 @@ export default function ClerkSessionBridge({ onSession, onClerkState, registerSi
     if (!isLoaded) return;
 
     if (!isSignedIn) {
+      syncedUserId.current = null;
       setClerkToken(null);
       clearSession();
       onSession(null);
@@ -69,34 +84,45 @@ export default function ClerkSessionBridge({ onSession, onClerkState, registerSi
 
     void (async () => {
       try {
-        const token = await getToken();
-        setClerkToken(token ?? null);
-        const me = await api<{
-          id: string;
-          email: string;
-          fullName: string;
-          platformRole: PlatformRole;
-          institute?: string | null;
-          department?: string | null;
-          phone?: string | null;
-        }>("/me");
-        const next = toSession(me);
+        let next: Session;
+        try {
+          next = await fetchMe(getToken);
+        } catch (firstErr) {
+          if (firstErr instanceof ApiError && (firstErr.status === 401 || firstErr.status === 403)) {
+            throw firstErr;
+          }
+          try {
+            next = await fetchMe((opts) => getToken(opts));
+          } catch {
+            const cached = readSession();
+            if (cached?.userId) {
+              onSession(cached);
+              return;
+            }
+            throw firstErr;
+          }
+        }
+        syncedUserId.current = next.userId;
         writeSession(next);
         onSession(next);
-
-        if (pathname.startsWith("/login")) {
-          router.replace(dashboardForRole(next.platformRole));
+      } catch (err) {
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          syncedUserId.current = null;
+          setClerkToken(null);
+          clearSession();
+          onSession(null);
+          await signOut();
+          return;
         }
-      } catch {
-        setClerkToken(null);
-        clearSession();
-        onSession(null);
-        await signOut();
+        const cached = readSession();
+        if (cached?.userId) {
+          onSession(cached);
+        }
       } finally {
         syncing.current = false;
       }
     })();
-  }, [isLoaded, isSignedIn, getToken, onSession, pathname, router, signOut]);
+  }, [isLoaded, isSignedIn, getToken, onSession, signOut]);
 
   useEffect(() => {
     if (!isSignedIn) return;

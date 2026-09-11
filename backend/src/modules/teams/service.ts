@@ -9,6 +9,7 @@ import { AuthUser } from '../../common/auth.types';
 import { writeAudit } from '../../lib/audit';
 import { getClerkClient } from '../../lib/clerk';
 import { PrismaService } from '../../lib/prisma.service';
+import { sendTeamMemberInviteEmail } from '../../lib/invite-email';
 import { consumeToken } from '../../lib/rate-limit';
 import { getSettingNumber } from '../../lib/settings';
 import { generateTeamCode, TeamsRepository } from './repository';
@@ -148,19 +149,31 @@ export class TeamsService {
       }
     }
 
-    if (existing && (existing.inviteStatus === InviteStatus.revoked || existing.inviteStatus === InviteStatus.expired)) {
-      return this.prisma.teamMember.update({
-        where: { id: existing.id },
-        data: { inviteStatus: InviteStatus.pending, clerkInvitationId },
+    const member =
+      existing && (existing.inviteStatus === InviteStatus.revoked || existing.inviteStatus === InviteStatus.expired)
+        ? await this.prisma.teamMember.update({
+            where: { id: existing.id },
+            data: { inviteStatus: InviteStatus.pending, clerkInvitationId },
+          })
+        : await this.repo.addMember({
+            team: { connect: { id: teamId } },
+            invitedEmail: email,
+            inviteStatus: InviteStatus.pending,
+            clerkInvitationId,
+          });
+
+    try {
+      await sendTeamMemberInviteEmail({
+        to: email,
+        teamName: team.name,
+        teamCode: team.teamCode,
+        leaderName: user.fullName,
       });
+    } catch (err) {
+      console.warn('[teams.invite] email delivery failed for', email, err);
     }
 
-    return this.repo.addMember({
-      team: { connect: { id: teamId } },
-      invitedEmail: email,
-      inviteStatus: InviteStatus.pending,
-      clerkInvitationId,
-    });
+    return member;
   }
 
   async revokeInvite(user: AuthUser, teamId: string, memberId: string) {

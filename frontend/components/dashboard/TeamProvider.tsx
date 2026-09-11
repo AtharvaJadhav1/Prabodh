@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { type Member, type JoinRequest, type OutgoingInvite, type StudentRole } from "../../data/studentDashboard";
 import { api, apiPost } from "../../lib/api";
 import type { PortalStage, PortalTeam } from "../../lib/types";
@@ -43,6 +43,7 @@ type TeamContextValue = {
     platformRole: string;
     domainTags: string[];
   }>;
+  loadFacultyDirectory: () => Promise<void>;
   reload: () => Promise<void>;
   createTeam: (name: string) => Promise<void>;
 };
@@ -86,7 +87,8 @@ function initials(name: string) {
 }
 
 export function TeamProvider({ children }: { children: ReactNode }) {
-  const { session } = useAuth();
+  const { session, ready, syncing } = useAuth();
+  const userId = session?.userId;
   const [team, setTeam] = useState<PortalTeam | null>(null);
   const [stages, setStages] = useState<PortalStage[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -110,19 +112,52 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     }>
   >([]);
   const [error, setError] = useState<string | null>(null);
+  const stagesLoaded = useRef(false);
+
+  const applyTeamDetail = useCallback((detail: PortalTeam) => {
+    setTeam(detail);
+    setMembers(mapMembers(detail, detail.memberCap));
+    const pending = detail.members.filter((m) => m.inviteStatus === "pending");
+    setInvites(
+      pending.map((m) => ({
+        email: m.invitedEmail,
+        sentAt: "Pending",
+        status: "Invitation Sent — Awaiting Student Accept",
+      })),
+    );
+    const ids: Record<string, string> = {};
+    for (const m of detail.members) ids[m.invitedEmail] = m.id;
+    setMemberIds(ids);
+    if (userId) {
+      setRole(detail.leaderUserId === userId ? "Team Lead" : "Team Member");
+    }
+    const inst = detail.mentorAssignments?.find((a) => a.mentorType === "institute");
+    const pendingMentor = detail.mentorInvites?.find((i) => i.inviteStatus === "pending");
+    if (inst) {
+      setFacultyInviteStatus("verified");
+      setFacultyInviteEmail(inst.mentor.fullName);
+    } else if (pendingMentor) {
+      setFacultyInviteStatus("sent");
+      setFacultyInviteEmail(pendingMentor.mentor?.fullName ?? pendingMentor.invitedEmail);
+    } else {
+      setFacultyInviteStatus("none");
+      setFacultyInviteEmail("");
+    }
+  }, [userId]);
 
   const reload = useCallback(async () => {
-    if (!session) return;
+    if (!userId) return;
     setLoading(true);
     setError(null);
     try {
-      const [list, stageRows] = await Promise.all([
-        api<{ items?: PortalTeam[] } | PortalTeam[]>("/teams"),
-        api<PortalStage[]>("/stages"),
-      ]);
-      setStages(stageRows);
+      const list = await api<{ items?: PortalTeam[] } | PortalTeam[]>("/teams");
+      if (!stagesLoaded.current) {
+        const stageRows = await api<PortalStage[]>("/stages");
+        setStages(stageRows);
+        stagesLoaded.current = true;
+      }
       const items = Array.isArray(list) ? list : list.items ?? [];
-      let mine = items[0];
+      const mine = items[0];
       if (!mine) {
         setTeam(null);
         setMembers([]);
@@ -131,47 +166,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         return;
       }
       const detail = await api<PortalTeam>(`/teams/${mine.id}`);
-      setTeam(detail);
-      setMembers(mapMembers(detail, detail.memberCap));
-      const pending = detail.members.filter((m) => m.inviteStatus === "pending");
-      setInvites(
-        pending.map((m) => ({
-          email: m.invitedEmail,
-          sentAt: "Pending",
-          status: "Invitation Sent — Awaiting Student Accept",
-        })),
-      );
-      const ids: Record<string, string> = {};
-      for (const m of detail.members) ids[m.invitedEmail] = m.id;
-      setMemberIds(ids);
-      setRole(detail.leaderUserId === session.userId ? "Team Lead" : "Team Member");
-      const inst = detail.mentorAssignments?.find((a) => a.mentorType === "institute");
-      const pendingMentor = detail.mentorInvites?.find((i) => i.inviteStatus === "pending");
-      if (inst) {
-        setFacultyInviteStatus("verified");
-        setFacultyInviteEmail(inst.mentor.fullName);
-      } else if (pendingMentor) {
-        setFacultyInviteStatus("sent");
-        setFacultyInviteEmail(pendingMentor.mentor?.fullName ?? pendingMentor.invitedEmail);
-      } else {
-        setFacultyInviteStatus("none");
-        setFacultyInviteEmail("");
-      }
-      try {
-        const faculty = await api<
-          Array<{
-            id: string;
-            fullName: string;
-            email: string;
-            department?: string | null;
-            platformRole: string;
-            domainTags: string[];
-          }>
-        >("/mentors/faculty");
-        setFacultyDirectory(faculty);
-      } catch {
-        setFacultyDirectory([]);
-      }
+      applyTeamDetail(detail);
     } catch (err) {
       setTeam(null);
       setMembers([]);
@@ -179,11 +174,31 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [session]);
+  }, [userId, applyTeamDetail]);
+
+  const loadFacultyDirectory = useCallback(async () => {
+    if (facultyDirectory.length) return;
+    try {
+      const faculty = await api<
+        Array<{
+          id: string;
+          fullName: string;
+          email: string;
+          department?: string | null;
+          platformRole: string;
+          domainTags: string[];
+        }>
+      >("/mentors/faculty");
+      setFacultyDirectory(faculty);
+    } catch {
+      setFacultyDirectory([]);
+    }
+  }, [facultyDirectory.length]);
 
   useEffect(() => {
+    if (!ready || syncing || !userId) return;
     void reload();
-  }, [reload]);
+  }, [ready, syncing, userId, reload]);
 
   const isLead = role === "Team Lead";
   const filledCount = useMemo(() => members.filter((m) => m.status === "Verified").length, [members]);
@@ -236,6 +251,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         sendInvite,
         revokeInvite,
         facultyDirectory,
+        loadFacultyDirectory,
         sendFacultyInvite: async (email, mentorType) => {
           if (!team?.id || !email.includes("@")) return false;
           await apiPost("/mentors/invite", { teamId: team.id, email, mentorType });

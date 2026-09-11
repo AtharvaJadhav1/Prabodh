@@ -94,7 +94,9 @@ export default function DispatchInviteCard() {
                 </span>{" "}
                 awaiting acceptance.
               </span>
-              <span className="block">The invitee must verify their PRN before joining the roster.</span>
+              <span className="block">
+                An email is sent with a link to register. They must sign up using the same invited email.
+              </span>
             </p>
           </div>
         </>

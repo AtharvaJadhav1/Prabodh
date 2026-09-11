@@ -47,32 +47,35 @@ export default function RepositoryBrowser() {
   useEffect(() => {
     const q = search.trim();
     const category = activeFilter === "Software" ? "software" : activeFilter === "Hardware" ? "hardware" : undefined;
-    const params = new URLSearchParams();
-    if (q) params.set("q", q);
-    if (category) params.set("category", category);
-    void api<{ items: Array<{ id: string; code: string; title: string; theme: string; category: string; organisation: string; description: string }> }>(
-      `/problem-statements?${params.toString()}`,
-    )
-      .then((res) => {
-        const nextIds: Record<string, string> = {};
-        setRemote(
-          res.items.map((ps) => {
-            nextIds[ps.code] = ps.id;
-            return {
-              code: ps.code,
-              title: ps.title,
-              domain: ps.theme,
-              ministry: ps.organisation,
-              category: ps.category,
-              description: ps.description,
-              postedBy: ps.organisation,
-              updatedAgo: "live",
-            };
-          }),
-        );
-        setIds(nextIds);
-      })
-      .catch(() => setRemote(null));
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams();
+      if (q) params.set("q", q);
+      if (category) params.set("category", category);
+      void api<{ items: Array<{ id: string; code: string; title: string; theme: string; category: string; organisation: string; description: string }> }>(
+        `/problem-statements?${params.toString()}`,
+      )
+        .then((res) => {
+          const nextIds: Record<string, string> = {};
+          setRemote(
+            res.items.map((ps) => {
+              nextIds[ps.code] = ps.id;
+              return {
+                code: ps.code,
+                title: ps.title,
+                domain: ps.theme,
+                ministry: ps.organisation,
+                category: ps.category,
+                description: ps.description,
+                postedBy: ps.organisation,
+                updatedAgo: "live",
+              };
+            }),
+          );
+          setIds(nextIds);
+        })
+        .catch(() => setRemote(null));
+    }, 300);
+    return () => window.clearTimeout(timer);
   }, [search, activeFilter]);
 
   const source = remote ?? [];

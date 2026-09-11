@@ -25,6 +25,7 @@ import ClerkSessionBridge from "./ClerkSessionBridge";
 type AuthContextValue = {
   session: Session | null;
   ready: boolean;
+  syncing: boolean;
   clerkEnabled: boolean;
   login: (email: string) => Promise<Session>;
   logout: () => Promise<void>;
@@ -63,6 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
+  const syncing = clerkEnabled && clerkState.signedIn && !session;
+
   const refreshMe = useCallback(async () => {
     const current = readSession();
     if (!current?.userId && !clerkState.signedIn) return;
@@ -77,6 +80,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone?: string | null;
       }>("/me");
       const next = { ...(current ?? {}), ...toSession(me) } as Session;
+      if (
+        current?.userId === next.userId &&
+        current?.email === next.email &&
+        current?.fullName === next.fullName &&
+        current?.platformRole === next.platformRole
+      ) {
+        return;
+      }
       writeSession(next);
       setSession(next);
     } catch {
@@ -92,16 +103,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clerkEnabled]);
 
   useEffect(() => {
-    if (!ready || !session || clerkEnabled) return;
+    if (!ready || clerkEnabled) return;
+    const current = readSession();
+    if (!current?.userId) return;
     void refreshMe();
-  }, [ready, session, clerkEnabled, refreshMe]);
+  }, [ready, clerkEnabled, refreshMe]);
 
   useEffect(() => {
     if (!ready) return;
     const isPublic = pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/register");
 
     if (clerkEnabled) {
-      if (!clerkState.loaded) return;
+      if (!clerkState.loaded || syncing) return;
       if (!clerkState.signedIn && pathname.startsWith("/dashboard")) {
         router.replace("/login/student");
       }
@@ -117,12 +130,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (session && isPublic && pathname.startsWith("/login")) {
       router.replace(dashboardForRole(session.platformRole));
     }
-  }, [ready, session, pathname, router, clerkEnabled, clerkState]);
+  }, [ready, session, pathname, router, clerkEnabled, clerkState, syncing]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
       ready: ready && (!clerkEnabled || clerkState.loaded),
+      syncing,
       clerkEnabled,
       login: async (email: string) => {
         const user = await apiPost<Session>("/auth/dev-login", { email });
@@ -140,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       refreshMe,
     }),
-    [session, ready, clerkEnabled, clerkState, clerkSignOut, router, refreshMe],
+    [session, ready, syncing, clerkEnabled, clerkState, clerkSignOut, router, refreshMe],
   );
 
   return (
@@ -152,7 +166,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           registerSignOut={setClerkSignOut}
         />
       ) : null}
-      {children}
+      {syncing ? (
+        <div className="flex min-h-screen items-center justify-center bg-brand-canvas text-sm font-medium text-brand-muted">
+          Syncing your session…
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 }
