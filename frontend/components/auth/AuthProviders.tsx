@@ -1,7 +1,7 @@
 "use client";
 
 import { ClerkProvider } from "@clerk/nextjs";
-import { absoluteAuthCallback, CLERK_PUBLISHABLE_KEY, publicAppUrl } from "../../lib/config";
+import { AUTH_CALLBACK, CLERK_PUBLISHABLE_KEY } from "../../lib/config";
 import { AuthProvider } from "./AuthProvider";
 
 export default function AuthProviders({ children }: { children: React.ReactNode }) {
@@ -9,20 +9,17 @@ export default function AuthProviders({ children }: { children: React.ReactNode 
 
   if (!CLERK_PUBLISHABLE_KEY) return inner;
 
-  const appUrl = publicAppUrl();
-  const callback = absoluteAuthCallback();
-
+  // Relative URLs only — absolute URLs + Render localhost broke Clerk cookies before.
   return (
     <ClerkProvider
       publishableKey={CLERK_PUBLISHABLE_KEY}
       signInUrl="/login/student"
       signUpUrl="/register"
       afterSignOutUrl="/login/student"
-      signInFallbackRedirectUrl={callback}
-      signUpFallbackRedirectUrl={callback}
-      signInForceRedirectUrl={callback}
-      signUpForceRedirectUrl={callback}
-      allowedRedirectOrigins={[appUrl]}
+      signInFallbackRedirectUrl={AUTH_CALLBACK}
+      signUpFallbackRedirectUrl={AUTH_CALLBACK}
+      signInForceRedirectUrl={AUTH_CALLBACK}
+      signUpForceRedirectUrl={AUTH_CALLBACK}
     >
       {inner}
     </ClerkProvider>

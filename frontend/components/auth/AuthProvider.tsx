@@ -80,7 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     !syncError;
 
   const refreshMe = useCallback(async () => {
-    if (!clerkState.signedIn && !readSession()?.userId) return;
     try {
       const me = await api<{
         id: string;
@@ -98,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       setSyncError(err instanceof Error ? err.message : "Could not sync your account");
     }
-  }, [clerkState.signedIn]);
+  }, []);
 
   useEffect(() => {
     const cached = readSession();
@@ -112,27 +111,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refreshMe();
   }, [ready, clerkEnabled, refreshMe]);
 
-  // Signed-in users on login/register → dashboard (hard nav).
+  // Soft redirect only — never window.location (that interrupted Clerk mid-login).
   useEffect(() => {
     if (!ready || !clerkEnabled) return;
     if (!clerkState.loaded || !clerkState.signedIn || !session) return;
     if (!isAuthEntry) return;
-    window.location.assign(dashboardForRole(session.platformRole));
-  }, [ready, clerkEnabled, clerkState, session, isAuthEntry]);
-
-  // Client-only dashboard gate (middleware no longer redirects — that raced cookies).
-  useEffect(() => {
-    if (!ready || !clerkEnabled || !isDashboard) return;
-    if (!clerkState.loaded) return;
-    if (clerkState.signedIn) return;
-    // Allow a short grace for hydration; then require login.
-    const t = window.setTimeout(() => {
-      if (!readSession()?.userId) {
-        window.location.replace("/login/student");
-      }
-    }, 4000);
-    return () => window.clearTimeout(t);
-  }, [ready, clerkEnabled, isDashboard, clerkState]);
+    router.replace(dashboardForRole(session.platformRole));
+  }, [ready, clerkEnabled, clerkState, session, isAuthEntry, router]);
 
   // Dev-auth only.
   useEffect(() => {
@@ -165,22 +150,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [session, ready, syncing, syncError, clerkEnabled, clerkState, clerkSignOut, refreshMe],
   );
 
-  return (
-    <AuthContext.Provider value={value}>
-      {clerkEnabled ? (
-        <ClerkSessionBridge
-          key={syncRetry}
-          onSession={setSession}
-          onClerkState={setClerkState}
-          onSyncFailed={setSyncError}
-          registerSignOut={setClerkSignOut}
-        />
-      ) : null}
-      {syncing && isDashboard ? (
+  // Dashboard: wait for Clerk. NEVER auto-bounce to login (that was the loop).
+  let body: ReactNode = children;
+  if (clerkEnabled && isDashboard) {
+    if (!clerkState.loaded || (clerkState.signedIn && !session && !syncError)) {
+      body = (
         <div className="flex min-h-screen items-center justify-center bg-brand-canvas text-sm font-medium text-brand-muted">
-          Syncing your session…
+          {clerkState.signedIn ? "Syncing your session…" : "Checking sign-in…"}
         </div>
-      ) : syncError && isDashboard ? (
+      );
+    } else if (syncError && clerkState.signedIn) {
+      body = (
         <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-brand-canvas px-4 text-center">
           <p className="text-sm font-medium text-brand-muted">Could not load your profile from the API.</p>
           <p className="max-w-md text-sm text-red-700">{syncError}</p>
@@ -195,13 +175,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             Retry
           </button>
         </div>
-      ) : !clerkEnabled || !isDashboard || clerkState.signedIn || session ? (
-        children
-      ) : (
-        <div className="flex min-h-screen items-center justify-center bg-brand-canvas text-sm font-medium text-brand-muted">
-          Checking sign-in…
+      );
+    } else if (clerkState.loaded && !clerkState.signedIn && !session) {
+      body = (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-brand-canvas px-4 text-center">
+          <p className="text-sm font-medium text-brand-muted">You need to sign in to open the dashboard.</p>
+          <a
+            href="/login/student"
+            className="rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-hover"
+          >
+            Go to student login
+          </a>
         </div>
-      )}
+      );
+    }
+  }
+
+  return (
+    <AuthContext.Provider value={value}>
+      {clerkEnabled ? (
+        <ClerkSessionBridge
+          key={syncRetry}
+          onSession={setSession}
+          onClerkState={setClerkState}
+          onSyncFailed={setSyncError}
+          registerSignOut={setClerkSignOut}
+        />
+      ) : null}
+      {body}
     </AuthContext.Provider>
   );
 }

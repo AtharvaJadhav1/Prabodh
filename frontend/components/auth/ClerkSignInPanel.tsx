@@ -1,7 +1,7 @@
 "use client";
 
 import { SignIn } from "@clerk/nextjs";
-import { absoluteAuthCallback } from "../../lib/config";
+import { AUTH_CALLBACK } from "../../lib/config";
 
 type Props = {
   path: string;
@@ -9,8 +9,6 @@ type Props = {
 
 export default function ClerkSignInPanel({ path }: Props) {
   const signUpUrl = path.includes("faculty") ? path : "/register";
-  // Absolute public URL — never Render localhost:10000.
-  const afterAuth = absoluteAuthCallback();
 
   return (
     <div className="flex justify-center">
@@ -18,9 +16,9 @@ export default function ClerkSignInPanel({ path }: Props) {
         routing="path"
         path={path}
         signUpUrl={signUpUrl}
-        forceRedirectUrl={afterAuth}
-        fallbackRedirectUrl={afterAuth}
-        signUpForceRedirectUrl={afterAuth}
+        forceRedirectUrl={AUTH_CALLBACK}
+        fallbackRedirectUrl={AUTH_CALLBACK}
+        signUpForceRedirectUrl={AUTH_CALLBACK}
         appearance={{
           elements: {
             rootBox: "w-full",
