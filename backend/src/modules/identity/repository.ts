@@ -14,27 +14,47 @@ export class IdentityRepository {
     return this.prisma.user.findUnique({ where: { email } });
   }
 
-  upsertFromClerk(data: {
+  async upsertFromClerk(data: {
     clerkUserId: string;
     email: string;
     fullName: string;
     platformRole: PlatformRole;
     institute?: string | null;
     department?: string | null;
+    phone?: string | null;
     isActive?: boolean;
   }) {
-    return this.prisma.user.upsert({
-      where: { clerkUserId: data.clerkUserId },
-      create: data,
-      update: {
-        email: data.email,
-        fullName: data.fullName,
-        platformRole: data.platformRole,
-        institute: data.institute,
-        department: data.department,
-        isActive: data.isActive ?? true,
-      },
-    });
+    const byClerk = await this.prisma.user.findUnique({ where: { clerkUserId: data.clerkUserId } });
+    if (byClerk) {
+      return this.prisma.user.update({
+        where: { id: byClerk.id },
+        data: {
+          email: data.email,
+          fullName: data.fullName || byClerk.fullName,
+          institute: data.institute ?? byClerk.institute,
+          department: data.department ?? byClerk.department,
+          phone: data.phone ?? byClerk.phone,
+          isActive: data.isActive ?? true,
+        },
+      });
+    }
+
+    const byEmail = await this.prisma.user.findUnique({ where: { email: data.email } });
+    if (byEmail) {
+      return this.prisma.user.update({
+        where: { id: byEmail.id },
+        data: {
+          clerkUserId: data.clerkUserId,
+          fullName: data.fullName || byEmail.fullName,
+          institute: data.institute ?? byEmail.institute,
+          department: data.department ?? byEmail.department,
+          phone: data.phone ?? byEmail.phone,
+          isActive: data.isActive ?? true,
+        },
+      });
+    }
+
+    return this.prisma.user.create({ data });
   }
 
   deactivateByClerkId(clerkUserId: string) {

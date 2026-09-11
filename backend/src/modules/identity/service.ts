@@ -15,6 +15,43 @@ export class IdentityService {
     return this.repo.findByEmail(email.toLowerCase());
   }
 
+  async registerStudent(body: {
+    email: string;
+    fullName: string;
+    institute?: string;
+    department?: string;
+    phone?: string;
+  }) {
+    const email = body.email.toLowerCase();
+    const existing = await this.repo.findByEmail(email);
+    if (existing) {
+      if (existing.platformRole !== PlatformRole.student) {
+        throw new BadRequestException('This email is already registered with another role. Sign in instead.');
+      }
+      return this.prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          fullName: body.fullName,
+          institute: body.institute ?? existing.institute,
+          department: body.department ?? existing.department,
+          phone: body.phone ?? existing.phone,
+          isActive: true,
+        },
+      });
+    }
+    return this.prisma.user.create({
+      data: {
+        clerkUserId: `pending:${email}`,
+        email,
+        fullName: body.fullName,
+        platformRole: PlatformRole.student,
+        institute: body.institute,
+        department: body.department,
+        phone: body.phone,
+      },
+    });
+  }
+
   updateProfile(
     userId: string,
     body: { fullName?: string; phone?: string; department?: string; institute?: string },
@@ -58,12 +95,18 @@ export class IdentityService {
     const fullName = `${first} ${last}`.trim() || email;
     const meta = (data.public_metadata ?? {}) as Record<string, unknown>;
     const platformRole = parseRole(meta.role);
+    const institute = typeof meta.institute === 'string' ? meta.institute : undefined;
+    const department = typeof meta.department === 'string' ? meta.department : undefined;
+    const phone = typeof meta.phone === 'string' ? meta.phone : undefined;
 
     const user = await this.repo.upsertFromClerk({
       clerkUserId,
       email,
       fullName,
       platformRole,
+      institute,
+      department,
+      phone,
     });
     await this.acceptPendingInvitesForUser(user.id, email, clerkUserId);
     return user;

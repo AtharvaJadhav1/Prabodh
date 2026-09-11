@@ -31,10 +31,18 @@ type TeamContextValue = {
   approveRequest: (index: number) => void;
   rejectRequest: (index: number) => void;
   removeMember: (index: number) => void;
-  sendInvite: (email: string) => boolean;
+  sendInvite: (email: string) => Promise<boolean>;
   revokeInvite: (email: string) => void;
-  sendFacultyInvite: (email: string) => void;
-  revokeFacultyInvite: () => void;
+  sendFacultyInvite: (email: string, mentorType?: "institute" | "industry") => Promise<boolean>;
+  revokeFacultyInvite: (inviteId?: string) => void;
+  facultyDirectory: Array<{
+    id: string;
+    fullName: string;
+    email: string;
+    department?: string | null;
+    platformRole: string;
+    domainTags: string[];
+  }>;
   reload: () => Promise<void>;
   createTeam: (name: string) => Promise<void>;
 };
@@ -90,7 +98,16 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<StudentRole>("Team Lead");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [memberIds, setMemberIds] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
+  const [facultyDirectory, setFacultyDirectory] = useState<
+    Array<{
+      id: string;
+      fullName: string;
+      email: string;
+      department?: string | null;
+      platformRole: string;
+      domainTags: string[];
+    }>
+  >([]);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
@@ -128,12 +145,31 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       setMemberIds(ids);
       setRole(detail.leaderUserId === session.userId ? "Team Lead" : "Team Member");
       const inst = detail.mentorAssignments?.find((a) => a.mentorType === "institute");
+      const pendingMentor = detail.mentorInvites?.find((i) => i.inviteStatus === "pending");
       if (inst) {
         setFacultyInviteStatus("verified");
         setFacultyInviteEmail(inst.mentor.fullName);
+      } else if (pendingMentor) {
+        setFacultyInviteStatus("sent");
+        setFacultyInviteEmail(pendingMentor.mentor?.fullName ?? pendingMentor.invitedEmail);
       } else {
         setFacultyInviteStatus("none");
         setFacultyInviteEmail("");
+      }
+      try {
+        const faculty = await api<
+          Array<{
+            id: string;
+            fullName: string;
+            email: string;
+            department?: string | null;
+            platformRole: string;
+            domainTags: string[];
+          }>
+        >("/mentors/faculty");
+        setFacultyDirectory(faculty);
+      } catch {
+        setFacultyDirectory([]);
       }
     } catch (err) {
       setTeam(null);
@@ -155,9 +191,10 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     [requests, requestResults],
   );
 
-  const sendInvite = (email: string) => {
+  const sendInvite = async (email: string) => {
     if (!email || !email.includes("@") || !team?.id) return false;
-    void apiPost(`/teams/${team.id}/invite`, { email }).then(() => reload());
+    await apiPost(`/teams/${team.id}/invite`, { email });
+    await reload();
     return true;
   };
 
@@ -197,13 +234,20 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         removeMember: () => undefined,
         sendInvite,
         revokeInvite,
-        sendFacultyInvite: (email) => {
-          setFacultyInviteStatus("sent");
-          setFacultyInviteEmail(email);
+        facultyDirectory,
+        sendFacultyInvite: async (email, mentorType) => {
+          if (!team?.id || !email.includes("@")) return false;
+          await apiPost("/mentors/invite", { teamId: team.id, email, mentorType });
+          await reload();
+          return true;
         },
-        revokeFacultyInvite: () => {
-          setFacultyInviteStatus("none");
-          setFacultyInviteEmail("");
+        revokeFacultyInvite: (inviteId) => {
+          const pending = inviteId
+            ? team?.mentorInvites?.find((i) => i.id === inviteId)
+            : team?.mentorInvites?.find((i) => i.inviteStatus === "pending");
+          if (pending) {
+            void apiPost(`/mentors/invites/${pending.id}/revoke`, {}).then(() => reload());
+          }
         },
         reload,
         createTeam: async (name: string) => {

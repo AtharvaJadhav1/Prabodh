@@ -15,7 +15,9 @@ export default function MentorsCard() {
         Mentors
       </h2>
       {assignments.length === 0 ? (
-        <p className="mt-3 text-sm text-brand-muted">No mentors allocated yet. Admins assign institute and industry mentors.</p>
+        <p className="mt-3 text-sm text-brand-muted">
+          No mentors assigned yet. Team leaders can invite faculty by email.
+        </p>
       ) : (
         <ul className="mt-3 space-y-2">
           {assignments.map((a) => (
@@ -35,7 +37,7 @@ export default function MentorsCard() {
         href="/dashboard/student/mentors"
         className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-brand-softline px-4 py-2.5 text-sm font-bold"
       >
-        {isLead ? "View mentor details" : "View mentors"}
+        {isLead ? "Invite or view mentors" : "View mentors"}
         <ArrowRightIcon className="h-4 w-4" />
       </Link>
     </section>

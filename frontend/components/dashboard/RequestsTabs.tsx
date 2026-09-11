@@ -125,7 +125,7 @@ function ActiveRosterTab() {
               Faculty Mentor &amp; Guide Track
               <span className="text-xs font-normal text-brand-muted">(1 Designated Mentor)</span>
             </h3>
-            <p className="text-xs text-brand-muted">Institute and industry mentors allocated by admin.</p>
+            <p className="text-xs text-brand-muted">Institute and industry mentors invited by the team leader.</p>
           </div>
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand-softline bg-brand-cream px-2.5 py-1 text-xs font-semibold text-brand-deep">
             <BadgeCheckIcon className="h-3.5 w-3.5 text-brand-primary" />
@@ -142,7 +142,7 @@ function ActiveRosterTab() {
               <div>
                 <p className="text-sm font-bold text-brand-deep">No mentors assigned</p>
                 <p className="mt-0.5 text-[11px] text-brand-muted">
-                  An administrator allocates institute and industry mentors.
+                  An administrator or team leader can invite an institute mentor.
                 </p>
               </div>
             </div>

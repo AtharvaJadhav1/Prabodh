@@ -122,6 +122,8 @@ model User {
   comments             Comment[]
   auditLogs            AuditLog[]
   createdIdea          IdeaSubmission[]     @relation("IdeaAuthor")
+  mentorInvitesReceived MentorInvite[]      @relation("MentorInvitee")
+  mentorInvitesSent    MentorInvite[]       @relation("MentorInviter")
 
   @@map("users")
 }
@@ -151,6 +153,7 @@ model Team {
   evaluations      Evaluation[]
   stageResults     StageResult[]
   comments         Comment[]
+  mentorInvites    MentorInvite[]
 
   @@index([status])
   @@index([theme])
@@ -242,6 +245,27 @@ model MentorAssignment {
   @@index([teamId])
   @@index([mentorUserId, active])
   @@map("mentor_assignments")
+}
+
+model MentorInvite {
+  id           String       @id @default(uuid())
+  teamId       String       @map("team_id")
+  invitedEmail String       @map("invited_email")
+  mentorUserId String?      @map("mentor_user_id")
+  mentorType   MentorType   @map("mentor_type")
+  inviteStatus InviteStatus @default(pending) @map("invite_status")
+  invitedById  String       @map("invited_by")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  team     Team  @relation(fields: [teamId], references: [id])
+  mentor   User? @relation("MentorInvitee", fields: [mentorUserId], references: [id])
+  invitedBy User @relation("MentorInviter", fields: [invitedById], references: [id])
+
+  @@unique([teamId, invitedEmail, mentorType])
+  @@index([invitedEmail, inviteStatus])
+  @@index([mentorUserId, inviteStatus])
+  @@map("mentor_invites")
 }
 
 model Stage {

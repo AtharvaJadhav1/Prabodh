@@ -31,19 +31,23 @@ export class TeamsService {
     const clerk = getClerkClient();
     let clerkOrgId = `local-org-${teamCode}`;
     if (clerk) {
-      const org = await clerk.organizations.createOrganization({
-        name: body.name,
-        createdBy: user.clerkUserId,
-      });
-      clerkOrgId = org.id;
       try {
-        await clerk.organizations.updateOrganizationMembership({
-          organizationId: org.id,
-          userId: user.clerkUserId,
-          role: 'org:admin',
+        const org = await clerk.organizations.createOrganization({
+          name: body.name,
+          createdBy: user.clerkUserId,
         });
+        clerkOrgId = org.id;
+        try {
+          await clerk.organizations.updateOrganizationMembership({
+            organizationId: org.id,
+            userId: user.clerkUserId,
+            role: 'org:admin',
+          });
+        } catch {
+          // createdBy is already org admin in most Clerk configs
+        }
       } catch {
-        // createdBy is already org admin in most Clerk configs
+        // Keep a local org id so team creation still works if Clerk orgs are unavailable.
       }
     }
 
@@ -130,14 +134,25 @@ export class TeamsService {
 
     const clerk = getClerkClient();
     let clerkInvitationId: string | null = null;
-    if (clerk) {
-      const invitation = await clerk.organizations.createOrganizationInvitation({
-        organizationId: team.clerkOrgId,
-        emailAddress: email,
-        role: 'org:member',
-        inviterUserId: user.clerkUserId,
+    if (clerk && !team.clerkOrgId.startsWith('local-org-')) {
+      try {
+        const invitation = await clerk.organizations.createOrganizationInvitation({
+          organizationId: team.clerkOrgId,
+          emailAddress: email,
+          role: 'org:member',
+          inviterUserId: user.clerkUserId,
+        });
+        clerkInvitationId = invitation.id;
+      } catch {
+        // Clerk org invite is optional; portal invite still lands in the roster.
+      }
+    }
+
+    if (existing && (existing.inviteStatus === InviteStatus.revoked || existing.inviteStatus === InviteStatus.expired)) {
+      return this.prisma.teamMember.update({
+        where: { id: existing.id },
+        data: { inviteStatus: InviteStatus.pending, clerkInvitationId },
       });
-      clerkInvitationId = invitation.id;
     }
 
     return this.repo.addMember({

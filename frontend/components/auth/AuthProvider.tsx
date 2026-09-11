@@ -98,14 +98,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!ready) return;
-    const isPublic = pathname === "/" || pathname.startsWith("/login");
+    const isPublic = pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/register");
 
     if (clerkEnabled) {
       if (!clerkState.loaded) return;
       if (!clerkState.signedIn && pathname.startsWith("/dashboard")) {
         router.replace("/login/student");
       }
-      if (clerkState.signedIn && session && pathname.startsWith("/login")) {
+      if (clerkState.signedIn && session && (pathname.startsWith("/login") || pathname.startsWith("/register"))) {
         router.replace(dashboardForRole(session.platformRole));
       }
       return;

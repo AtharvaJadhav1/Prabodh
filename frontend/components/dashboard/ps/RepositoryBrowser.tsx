@@ -42,7 +42,7 @@ export default function RepositoryBrowser() {
   const [remote, setRemote] = useState<SiStatement[] | null>(null);
   const [ids, setIds] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
-  const { isLead, teamId } = useTeam();
+  const { isLead, teamId, reload } = useTeam();
 
   useEffect(() => {
     const q = search.trim();
@@ -252,6 +252,7 @@ export default function RepositoryBrowser() {
                           feasibilityNotes: "Draft feasibility captured at PS selection.",
                         });
                         await apiPost(`/idea-submissions/${idea.id}/lock`, {});
+                        await reload();
                       } catch {
                         /* draft may already exist */
                       } finally {

@@ -26,6 +26,12 @@ export default function StudentForm() {
           </p>
         </div>
         <ClerkSignInPanel path="/login/student" />
+        <p className="text-center text-sm text-brand-muted">
+          New to the portal?{" "}
+          <a href="/register" className="font-semibold text-brand-primary hover:text-brand-hover">
+            Create a student account
+          </a>
+        </p>
       </div>
     );
   }
@@ -99,6 +105,12 @@ export default function StudentForm() {
         >
           {loading ? "Signing in…" : "Sign In to Student Workspace"}
         </button>
+        <p className="text-center text-sm text-brand-muted">
+          New to the portal?{" "}
+          <a href="/register" className="font-semibold text-brand-primary hover:text-brand-hover">
+            Create a student account
+          </a>
+        </p>
       </form>
     </div>
   );

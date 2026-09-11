@@ -100,6 +100,11 @@ export default function Hero() {
                 Student Login
               </Link>
               <span className="text-brand-sand">•</span>
+              <Link href="/register" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary">
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-primary"></span>
+                Student Register
+              </Link>
+              <span className="text-brand-sand">•</span>
               <Link href="/login/faculty" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary"></span>
                 Mentor Login

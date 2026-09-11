@@ -1,14 +1,28 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   mentorMaxCap,
-  initialPendingRequests,
-  initialRequestHistory,
   mentorProfile,
   type GroupRequest,
   type GroupRequestHistoryEntry,
 } from "../../data/mentorDashboard";
+import { api, apiPost } from "../../lib/api";
+import { useAuth } from "../auth/AuthProvider";
+
+type MentorInviteRow = {
+  id: string;
+  mentorType: string;
+  createdAt: string;
+  team: {
+    teamCode: string;
+    name: string;
+    theme?: string | null;
+    leader?: { fullName: string };
+    members?: unknown[];
+    problemStatement?: { theme?: string; title?: string } | null;
+  };
+};
 
 type MentorRequestContextValue = {
   pendingRequests: GroupRequest[];
@@ -23,29 +37,51 @@ type MentorRequestContextValue = {
 
 const MentorRequestContext = createContext<MentorRequestContextValue | null>(null);
 
-function computeDomainMatchPercent(
-  pending: GroupRequest[],
-  expertiseAreas: string[],
-): number {
+function computeDomainMatchPercent(pending: GroupRequest[], expertiseAreas: string[]): number {
   if (pending.length === 0) return 0;
   const expertiseText = expertiseAreas.map((a) => a.toLowerCase()).join(" ");
   let matched = 0;
   for (const req of pending) {
     const hasMatch = req.domains.some((d) => {
       const dl = d.toLowerCase();
-      return (
-        expertiseText.includes(dl) ||
-        dl.split(/\s+/).some((w) => w.length > 2 && expertiseText.includes(w))
-      );
+      return expertiseText.includes(dl) || dl.split(/\s+/).some((w) => w.length > 2 && expertiseText.includes(w));
     });
     if (hasMatch) matched++;
   }
   return Math.round((matched / pending.length) * 100);
 }
 
+function mapInvite(row: MentorInviteRow): GroupRequest {
+  return {
+    id: row.id,
+    groupId: row.team.teamCode,
+    teamName: row.team.name,
+    leaderName: row.team.leader?.fullName ?? "Team lead",
+    memberCount: row.team.members?.length ?? 0,
+    allocatedRole: row.mentorType === "industry" ? "Industry Mentor" : "Institute Mentor",
+    allocatedAt: new Date(row.createdAt).toLocaleDateString(),
+    domains: [row.team.problemStatement?.theme ?? row.team.theme ?? "Unassigned"].filter(Boolean) as string[],
+  };
+}
+
 export function MentorRequestProvider({ children }: { children: ReactNode }) {
-  const [pendingRequests, setPendingRequests] = useState<GroupRequest[]>(initialPendingRequests);
-  const [requestHistory, setRequestHistory] = useState<GroupRequestHistoryEntry[]>(initialRequestHistory);
+  const { session } = useAuth();
+  const [pendingRequests, setPendingRequests] = useState<GroupRequest[]>([]);
+  const [requestHistory, setRequestHistory] = useState<GroupRequestHistoryEntry[]>([]);
+
+  const reload = useCallback(async () => {
+    if (!session) return;
+    try {
+      const rows = await api<MentorInviteRow[]>("/mentors/invites");
+      setPendingRequests(rows.map(mapInvite));
+    } catch {
+      setPendingRequests([]);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   const pendingCount = pendingRequests.length;
   const acceptedCount = useMemo(
@@ -62,54 +98,56 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
 
   const acceptRequest = useCallback(
     (id: string) => {
-      const now = new Date();
-    const dateStr = `${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}/${now.getFullYear()}`;
-      setPendingRequests((prev) => {
-        const target = prev.find((r) => r.id === id);
-        if (!target) return prev;
-        setRequestHistory((h) => [
-          {
-            groupId: target.groupId,
-            teamName: target.teamName,
-            leaderName: target.leaderName,
-            memberCount: target.memberCount,
-            allocatedRole: target.allocatedRole,
-            status: "ACCEPTED",
-            receivedDate: target.allocatedAt,
-            respondedDate: dateStr,
-          },
-          ...h,
-        ]);
-        return prev.filter((r) => r.id !== id);
-      });
+      const target = pendingRequests.find((r) => r.id === id);
+      void apiPost(`/mentors/invites/${id}/accept`, {})
+        .then(() => {
+          if (target) {
+            setRequestHistory((h) => [
+              {
+                groupId: target.groupId,
+                teamName: target.teamName,
+                leaderName: target.leaderName,
+                memberCount: target.memberCount,
+                allocatedRole: target.allocatedRole,
+                status: "ACCEPTED",
+                receivedDate: target.allocatedAt,
+                respondedDate: new Date().toLocaleDateString(),
+              },
+              ...h,
+            ]);
+          }
+          setPendingRequests((prev) => prev.filter((r) => r.id !== id));
+        })
+        .catch(() => undefined);
     },
-    [],
+    [pendingRequests],
   );
 
   const declineRequest = useCallback(
     (id: string) => {
-      const now = new Date();
-    const dateStr = `${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}/${now.getFullYear()}`;
-      setPendingRequests((prev) => {
-        const target = prev.find((r) => r.id === id);
-        if (!target) return prev;
-        setRequestHistory((h) => [
-          {
-            groupId: target.groupId,
-            teamName: target.teamName,
-            leaderName: target.leaderName,
-            memberCount: target.memberCount,
-            allocatedRole: target.allocatedRole,
-            status: "DECLINED",
-            receivedDate: target.allocatedAt,
-            respondedDate: dateStr,
-          },
-          ...h,
-        ]);
-        return prev.filter((r) => r.id !== id);
-      });
+      const target = pendingRequests.find((r) => r.id === id);
+      void apiPost(`/mentors/invites/${id}/decline`, {})
+        .then(() => {
+          if (target) {
+            setRequestHistory((h) => [
+              {
+                groupId: target.groupId,
+                teamName: target.teamName,
+                leaderName: target.leaderName,
+                memberCount: target.memberCount,
+                allocatedRole: target.allocatedRole,
+                status: "DECLINED",
+                receivedDate: target.allocatedAt,
+                respondedDate: new Date().toLocaleDateString(),
+              },
+              ...h,
+            ]);
+          }
+          setPendingRequests((prev) => prev.filter((r) => r.id !== id));
+        })
+        .catch(() => undefined);
     },
-    [],
+    [pendingRequests],
   );
 
   return (

@@ -13,7 +13,7 @@ export default function DispatchInviteCard() {
 
   const seatsLeft = capacity - filledCount;
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmed = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setError("Enter a valid institute email, e.g. name@mituniversity.edu.in");
@@ -23,15 +23,19 @@ export default function DispatchInviteCard() {
       setError("Team is full — revoke a pending invite before sending new ones.");
       return;
     }
-    const ok = sendInvite(trimmed);
-    if (ok) {
-      setEmail("");
-      setError("");
-      setSuccess(`Invite sent to ${trimmed}.`);
-      if (flashTimer.current) clearTimeout(flashTimer.current);
-      flashTimer.current = setTimeout(() => setSuccess(""), 3500);
-    } else {
-      setError("This student is already invited.");
+    try {
+      const ok = await sendInvite(trimmed);
+      if (ok) {
+        setEmail("");
+        setError("");
+        setSuccess(`Invite sent to ${trimmed}.`);
+        if (flashTimer.current) clearTimeout(flashTimer.current);
+        flashTimer.current = setTimeout(() => setSuccess(""), 3500);
+      } else {
+        setError("Could not send this invite.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send invite");
     }
   };
 

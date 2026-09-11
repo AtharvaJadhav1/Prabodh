@@ -66,6 +66,13 @@ export type PortalTeam = {
     mentorType: string;
     mentor: { id: string; fullName: string; email: string; platformRole: string };
   }>;
+  mentorInvites?: Array<{
+    id: string;
+    invitedEmail: string;
+    mentorType: string;
+    inviteStatus: string;
+    mentor?: { id: string; fullName: string; email: string } | null;
+  }>;
   ideaSubmissions?: Array<{
     id: string;
     status: string;

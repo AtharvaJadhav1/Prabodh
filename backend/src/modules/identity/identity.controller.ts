@@ -4,7 +4,9 @@ import { CurrentUser } from '../../common/current-user.decorator';
 import { ClerkAuthGuard } from '../../common/clerk-auth.guard';
 import { AuthUser } from '../../common/auth.types';
 import { PrismaService } from '../../lib/prisma.service';
+import { ZodPipe } from '../../common/zod.pipe';
 import { IdentityService } from './service';
+import { registerSchema } from './schema';
 
 @Controller()
 export class IdentityController {
@@ -34,6 +36,27 @@ export class IdentityController {
       fullName: user.fullName,
       platformRole: user.platformRole,
       institute: user.institute,
+    };
+  }
+
+  @Post('auth/register')
+  async register(@Body(new ZodPipe(registerSchema)) body: unknown) {
+    const parsed = body as {
+      email: string;
+      fullName: string;
+      institute?: string;
+      department?: string;
+      phone?: string;
+    };
+    const user = await this.identity.registerStudent(parsed);
+    return {
+      userId: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      platformRole: user.platformRole,
+      institute: user.institute,
+      department: user.department,
+      phone: user.phone,
     };
   }
 

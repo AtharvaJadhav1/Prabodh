@@ -27,7 +27,7 @@ export default function GroupRequestsPage() {
         { label: "Group Requests" },
       ]}
       title="Group Assignment Requests"
-      subtitle="Review and accept or decline group allocation requests from the Nodal Admin."
+      subtitle="Review and accept or decline group mentorship invitations from student team leaders."
       showActions={false}
     >
       <div className="mx-auto max-w-7xl space-y-6">

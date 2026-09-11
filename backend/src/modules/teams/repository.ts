@@ -21,6 +21,7 @@ export class TeamsRepository {
         members: { include: { user: true } },
         leader: true,
         problemStatement: true,
+        mentorInvites: { include: { mentor: true } },
         mentorAssignments: { where: { active: true }, include: { mentor: true } },
         ideaSubmissions: { orderBy: { version: 'desc' }, take: 3, include: { problemStatement: true } },
         deliverables: { orderBy: { submittedAt: 'desc' }, take: 12 },

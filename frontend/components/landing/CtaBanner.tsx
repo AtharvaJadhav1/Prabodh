@@ -14,16 +14,16 @@ export default function CtaBanner() {
               Ready to represent MIT-ADT at SIH 2026?
             </h3>
             <p className="mt-2 text-sm text-white/80">
-              Sign in through your verified college Clerk credentials to form your team or submit problem
-              statements.
+              Register with your college email, form a team, invite members and faculty mentors, and lock a problem
+              statement.
             </p>
           </div>
           <div className="flex flex-wrap gap-4">
             <Link
-              href="/login/student"
+              href="/register"
               className="group inline-flex items-center gap-2 rounded-xl bg-brand-primary px-7 py-3.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-brand-hover"
             >
-              Access SIH Portal
+              Register now
               <ArrowRightIcon className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
             </Link>
             <a
