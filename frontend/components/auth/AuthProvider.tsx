@@ -55,20 +55,35 @@ function toSession(user: {
   };
 }
 
+function AuthLoading({ label }: { label: string }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-brand-canvas text-sm font-medium text-brand-muted">
+      {label}
+    </div>
+  );
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const clerkEnabled = Boolean(CLERK_PUBLISHABLE_KEY);
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
   const [clerkState, setClerkState] = useState({ loaded: !clerkEnabled, signedIn: false });
   const [clerkSignOut, setClerkSignOut] = useState<(() => Promise<void>) | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncRetry, setSyncRetry] = useState(0);
   const pathname = usePathname();
   const router = useRouter();
 
-  const syncing = clerkEnabled && clerkState.signedIn && !session;
+  const isDashboard = pathname.startsWith("/dashboard");
+  const isPublic =
+    pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/register");
+
+  const clerkBooting = clerkEnabled && !clerkState.loaded;
+  const syncingProfile = clerkEnabled && clerkState.signedIn && isDashboard && !session;
+  const showAuthLoading = clerkBooting || (syncingProfile && !syncError);
 
   const refreshMe = useCallback(async () => {
-    const current = readSession();
-    if (!current?.userId && !clerkState.signedIn) return;
+    if (!clerkState.signedIn && !readSession()?.userId) return;
     try {
       const me = await api<{
         id: string;
@@ -79,26 +94,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         department?: string | null;
         phone?: string | null;
       }>("/me");
-      const next = { ...(current ?? {}), ...toSession(me) } as Session;
-      if (
-        current?.userId === next.userId &&
-        current?.email === next.email &&
-        current?.fullName === next.fullName &&
-        current?.platformRole === next.platformRole
-      ) {
-        return;
-      }
+      const next = toSession(me);
       writeSession(next);
       setSession(next);
     } catch {
-      /* keep cached session if API is unreachable */
+      /* keep current session on refresh failure */
     }
   }, [clerkState.signedIn]);
 
   useEffect(() => {
-    const cached = readSession();
-    if (cached?.userId) {
-      setSession(cached);
+    if (!clerkEnabled) {
+      setSession(readSession());
     }
     setReady(true);
   }, [clerkEnabled]);
@@ -111,33 +117,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [ready, clerkEnabled, refreshMe]);
 
   useEffect(() => {
-    if (!ready) return;
-    const isPublic = pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/register");
+    if (!ready || !clerkEnabled) return;
+    if (!clerkState.loaded || showAuthLoading) return;
 
-    if (clerkEnabled) {
-      if (!clerkState.loaded || syncing) return;
-      if (!clerkState.signedIn && !session && pathname.startsWith("/dashboard")) {
-        router.replace("/login/student");
-      }
-      if (clerkState.signedIn && session && isPublic) {
-        router.replace(dashboardForRole(session.platformRole));
-      }
-      return;
+    if (clerkState.signedIn && session && isPublic) {
+      router.replace(dashboardForRole(session.platformRole));
     }
+  }, [ready, session, pathname, router, clerkEnabled, clerkState, isPublic, showAuthLoading]);
 
-    if (!session && pathname.startsWith("/dashboard")) {
+  useEffect(() => {
+    if (!ready || clerkEnabled) return;
+
+    if (!session && isDashboard) {
       router.replace("/login/student");
+      return;
     }
     if (session && isPublic) {
       router.replace(dashboardForRole(session.platformRole));
     }
-  }, [ready, session, pathname, router, clerkEnabled, clerkState, syncing]);
+  }, [ready, session, pathname, router, clerkEnabled, isDashboard, isPublic]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
       ready: ready && (!clerkEnabled || clerkState.loaded),
-      syncing,
+      syncing: syncingProfile,
       clerkEnabled,
       login: async (email: string) => {
         const user = await apiPost<Session>("/auth/dev-login", { email });
@@ -151,25 +155,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (clerkEnabled && clerkSignOut) {
           await clerkSignOut();
         }
-        router.push("/");
+        router.push("/login/student");
       },
       refreshMe,
     }),
-    [session, ready, syncing, clerkEnabled, clerkState, clerkSignOut, router, refreshMe],
+    [session, ready, syncingProfile, clerkEnabled, clerkState, clerkSignOut, router, refreshMe],
   );
 
   return (
     <AuthContext.Provider value={value}>
       {clerkEnabled ? (
         <ClerkSessionBridge
+          key={syncRetry}
           onSession={setSession}
           onClerkState={setClerkState}
+          onSyncFailed={setSyncError}
           registerSignOut={setClerkSignOut}
         />
       ) : null}
-      {syncing ? (
-        <div className="flex min-h-screen items-center justify-center bg-brand-canvas text-sm font-medium text-brand-muted">
-          Syncing your session…
+      {showAuthLoading ? (
+        <AuthLoading label={clerkBooting ? "Loading…" : "Syncing your session…"} />
+      ) : syncError && isDashboard ? (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-brand-canvas px-4 text-center">
+          <p className="text-sm font-medium text-brand-muted">Signed in, but we could not load your profile.</p>
+          <p className="max-w-md text-sm text-red-700">{syncError}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setSyncError(null);
+              setSyncRetry((n) => n + 1);
+            }}
+            className="rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-hover"
+          >
+            Retry
+          </button>
         </div>
       ) : (
         children

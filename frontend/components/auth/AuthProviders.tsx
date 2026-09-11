@@ -12,6 +12,8 @@ export default function AuthProviders({ children }: { children: React.ReactNode 
   return (
     <ClerkProvider
       publishableKey={CLERK_PUBLISHABLE_KEY}
+      signInUrl="/login/student"
+      signUpUrl="/register"
       afterSignOutUrl="/login/student"
       signInFallbackRedirectUrl={CLERK_SIGN_IN_REDIRECT}
       signUpFallbackRedirectUrl={CLERK_SIGN_UP_REDIRECT}

@@ -11,7 +11,14 @@ export async function verifyClerkSession(token: string) {
   if (!secretKey) {
     throw new Error('CLERK_SECRET_KEY is not set');
   }
-  return verifyToken(token, { secretKey });
+  const authorizedParties = (process.env.CLERK_AUTHORIZED_PARTIES ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  return verifyToken(token, {
+    secretKey,
+    ...(authorizedParties.length ? { authorizedParties } : {}),
+  });
 }
 
 export type ClerkRole = 'student' | 'institute_mentor' | 'industry_mentor' | 'admin';

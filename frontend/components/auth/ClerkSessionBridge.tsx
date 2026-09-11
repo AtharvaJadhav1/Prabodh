@@ -4,17 +4,12 @@ import { useEffect, useRef } from "react";
 import { useAuth as useClerkAuth } from "@clerk/nextjs";
 import { api, ApiError } from "../../lib/api";
 import { setClerkToken } from "../../lib/auth-token";
-import {
-  clearSession,
-  readSession,
-  writeSession,
-  type PlatformRole,
-  type Session,
-} from "../../lib/session";
+import { writeSession, type PlatformRole, type Session } from "../../lib/session";
 
 type Props = {
   onSession: (session: Session | null) => void;
   onClerkState: (state: { loaded: boolean; signedIn: boolean }) => void;
+  onSyncFailed: (message: string | null) => void;
   registerSignOut: (signOut: (() => Promise<void>) | null) => void;
 };
 
@@ -46,13 +41,13 @@ async function fetchMeWithRetry(
   getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,
 ) {
   let lastErr: unknown;
-  for (let attempt = 0; attempt < 6; attempt++) {
+  for (let attempt = 0; attempt < 8; attempt++) {
     try {
       const token = await getToken(attempt > 0 ? { skipCache: true } : undefined);
       setClerkToken(token ?? null);
       if (!token) {
         lastErr = new ApiError(401, "Missing Clerk token");
-        await sleep(250 * (attempt + 1));
+        await sleep(300 * (attempt + 1));
         continue;
       }
       const me = await api<{
@@ -67,8 +62,8 @@ async function fetchMeWithRetry(
       return toSession(me);
     } catch (err) {
       lastErr = err;
-      if (err instanceof ApiError && (err.status === 401 || err.status === 403) && attempt < 5) {
-        await sleep(400 * (attempt + 1));
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403) && attempt < 7) {
+        await sleep(500 * (attempt + 1));
         continue;
       }
       throw err;
@@ -77,10 +72,15 @@ async function fetchMeWithRetry(
   throw lastErr;
 }
 
-export default function ClerkSessionBridge({ onSession, onClerkState, registerSignOut }: Props) {
-  const { isSignedIn, isLoaded, getToken, signOut } = useClerkAuth();
+export default function ClerkSessionBridge({
+  onSession,
+  onClerkState,
+  onSyncFailed,
+  registerSignOut,
+}: Props) {
+  const { isSignedIn, isLoaded, userId, getToken, signOut } = useClerkAuth();
   const syncing = useRef(false);
-  const syncedUserId = useRef<string | null>(null);
+  const syncedClerkUserId = useRef<string | null>(null);
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
 
@@ -96,52 +96,43 @@ export default function ClerkSessionBridge({ onSession, onClerkState, registerSi
   useEffect(() => {
     if (!isLoaded) return;
 
-    if (!isSignedIn) {
-      const timer = window.setTimeout(() => {
-        syncedUserId.current = null;
-        setClerkToken(null);
-        clearSession();
-        onSession(null);
-      }, 800);
-      return () => window.clearTimeout(timer);
-    }
-
-    const cached = readSession();
-    if (cached?.userId && cached.userId === syncedUserId.current) {
-      onSession(cached);
+    if (!isSignedIn || !userId) {
+      syncedClerkUserId.current = null;
+      setClerkToken(null);
+      onSyncFailed(null);
+      onSession(null);
       return;
     }
 
+    if (syncedClerkUserId.current === userId) return;
     if (syncing.current) return;
     syncing.current = true;
+    onSyncFailed(null);
 
     void (async () => {
       try {
         const next = await fetchMeWithRetry((opts) => getTokenRef.current(opts));
-        syncedUserId.current = next.userId;
+        syncedClerkUserId.current = userId;
         writeSession(next);
         onSession(next);
-      } catch {
-        const cachedSession = readSession();
-        if (cachedSession?.userId) {
-          onSession(cachedSession);
-          syncedUserId.current = cachedSession.userId;
-          return;
-        }
-        syncedUserId.current = null;
+      } catch (err) {
+        syncedClerkUserId.current = null;
+        onSession(null);
+        onSyncFailed(err instanceof Error ? err.message : "Could not sync your account");
       } finally {
         syncing.current = false;
       }
     })();
-  }, [isLoaded, isSignedIn, onSession]);
+  }, [isLoaded, isSignedIn, userId, onSession, onSyncFailed]);
 
   useEffect(() => {
     if (!isSignedIn) return;
+    void getTokenRef.current().then((token) => setClerkToken(token ?? null));
     const id = window.setInterval(() => {
       void getTokenRef.current().then((token) => setClerkToken(token ?? null));
-    }, 50_000);
+    }, 45_000);
     return () => window.clearInterval(id);
-  }, [isSignedIn]);
+  }, [isSignedIn, userId]);
 
   return null;
 }
