@@ -10,17 +10,21 @@ const isPublicRoute = createRouteMatcher([
   "/auth/callback(.*)",
 ]);
 
+/**
+ * Always call auth() — required for Clerk to finish __clerk_handshake and set session cookies.
+ * Skipping auth() on public routes was leaving users signed-out after login.
+ */
 export default clerkMiddleware(async (auth, request) => {
+  const session = await auth();
+
   if (isPublicRoute(request)) {
     return NextResponse.next();
   }
 
-  const { userId } = await auth();
-  if (!userId) {
-    // Always send through /auth/callback after login — never redirect_url=/dashboard/*
-    // which races the Clerk cookie and bounces users back to login.
+  if (!session.userId) {
     const login = new URL("/login/student", request.url);
-    login.searchParams.set("redirect_url", new URL("/auth/callback", request.url).toString());
+    // Land on callback after sign-in so handshake can complete before /dashboard.
+    login.searchParams.set("redirect_url", `${request.nextUrl.origin}/auth/callback`);
     return NextResponse.redirect(login);
   }
 

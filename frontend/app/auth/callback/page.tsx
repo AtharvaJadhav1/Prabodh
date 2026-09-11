@@ -1,65 +1,82 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useAuth as useClerkAuth } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "../../../components/auth/AuthProvider";
 import { dashboardForRole } from "../../../lib/session";
 
-/**
- * Public post-login landing. Waits for Clerk handshake + /me before /dashboard.
- * Must NOT redirect to login while __clerk_handshake is still settling.
- */
-export default function AuthCallbackPage() {
+function AuthCallbackInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isLoaded, isSignedIn } = useClerkAuth();
-  const { session, syncing, clerkEnabled, syncError } = useAuth();
+  const { session, clerkEnabled } = useAuth();
   const sent = useRef(false);
-  const [waitedOut, setWaitedOut] = useState(false);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setWaitedOut(true), 12_000);
-    return () => window.clearTimeout(t);
-  }, []);
+  const reloaded = useRef(false);
+  const [status, setStatus] = useState("Confirming your session…");
 
   useEffect(() => {
     if (sent.current) return;
-
     if (!clerkEnabled) {
       sent.current = true;
       router.replace("/login/student");
       return;
     }
-
     if (!isLoaded) return;
 
-    if (!isSignedIn) {
-      // Clerk often lands here with ?__clerk_handshake=... before cookies exist.
-      if (!waitedOut) return;
-      sent.current = true;
-      router.replace("/login/student");
-      return;
-    }
+    const hasHandshake = Boolean(searchParams.get("__clerk_handshake"));
 
-    if (syncing || !session) {
-      if (waitedOut) {
-        sent.current = true;
-        router.replace("/dashboard/student");
+    if (!isSignedIn) {
+      if (hasHandshake && !reloaded.current) {
+        reloaded.current = true;
+        setStatus("Securing your session…");
+        const t = window.setTimeout(() => {
+          window.location.replace("/auth/callback");
+        }, 800);
+        return () => window.clearTimeout(t);
       }
-      return;
+
+      setStatus("Waiting for Clerk…");
+      const t = window.setTimeout(() => {
+        if (sent.current) return;
+        setStatus("Still waiting — use Back to login if this hangs.");
+      }, 8000);
+      return () => window.clearTimeout(t);
     }
 
     sent.current = true;
-    router.replace(dashboardForRole(session.platformRole));
-  }, [clerkEnabled, isLoaded, isSignedIn, session, syncing, router, waitedOut]);
+    router.replace(session ? dashboardForRole(session.platformRole) : "/dashboard/student");
+  }, [clerkEnabled, isLoaded, isSignedIn, session, router, searchParams]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-brand-canvas px-4 text-center">
-      <p className="text-sm font-medium text-brand-muted">Finishing sign-in…</p>
-      <p className="text-xs text-brand-charcoal/60">
-        {isSignedIn ? "Loading your profile…" : "Confirming your Clerk session…"}
-      </p>
-      {syncError ? <p className="max-w-md text-sm text-red-700">{syncError}</p> : null}
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-brand-canvas px-4 text-center">
+      <p className="text-sm font-medium text-brand-muted">{status}</p>
+      {isLoaded && !isSignedIn ? (
+        <button
+          type="button"
+          onClick={() => {
+            sent.current = true;
+            router.replace("/login/student");
+          }}
+          className="rounded-xl border border-brand-sand px-5 py-2.5 text-sm font-semibold text-brand-deep hover:border-brand-primary/40"
+        >
+          Back to login
+        </button>
+      ) : null}
     </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-brand-canvas text-sm font-medium text-brand-muted">
+          Finishing sign-in…
+        </div>
+      }
+    >
+      <AuthCallbackInner />
+    </Suspense>
   );
 }

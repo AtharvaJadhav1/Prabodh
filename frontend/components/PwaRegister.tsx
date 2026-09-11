@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { XIcon, SparklesIcon, WifiOffIcon, PowerIcon, CheckIcon } from "./icons-pwa";
 
 type BeforeInstallPromptEvent = Event & {
@@ -15,10 +15,17 @@ export default function PwaRegister() {
   const [swToast, setSwToast] = useState(false);
   const [offlineToastSeen, setOfflineToastSeen] = useState(true);
   const [installDismissed, setInstallDismissed] = useState(false);
-  const offlineListener = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+
+    // Auth was breaking due to stale SW caches — unregister all workers for now.
+    void navigator.serviceWorker.getRegistrations().then((regs) => {
+      void Promise.all(regs.map((r) => r.unregister()));
+    });
+    if ("caches" in window) {
+      void caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))));
+    }
 
     setStandalone(
       window.matchMedia("(display-mode: standalone)").matches ||
@@ -38,46 +45,17 @@ export default function PwaRegister() {
       setOfflineToastSeen(false);
     };
     const onOnline = () => setOffline(false);
-    const onMessage = (event: MessageEvent) => {
-      if (event.data && event.data.type === "SW_READY" && !offlineListener.current) {
-        offlineListener.current = true;
-        const seen = localStorage.getItem("sih-pwa-ready");
-        if (seen !== event.data.version) {
-          localStorage.setItem("sih-pwa-ready", event.data.version);
-          setSwToast(true);
-          window.setTimeout(() => setSwToast(false), 5000);
-        }
-      }
-    };
 
     window.addEventListener("beforeinstallprompt", onInstallPrompt);
     window.addEventListener("appinstalled", onAppInstalled);
     window.addEventListener("offline", onOffline);
     window.addEventListener("online", onOnline);
-    navigator.serviceWorker.addEventListener("message", onMessage);
-
-    navigator.serviceWorker
-      .register("/sw.js")
-      .then(async (registration) => {
-        await registration.update();
-        // Drop any lingering old workers that cached login/dashboard HTML.
-        const regs = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(
-          regs.map(async (reg) => {
-            if (reg !== registration) await reg.unregister();
-          }),
-        );
-      })
-      .catch(() => {
-        // Service worker unsupported or unavailable — PWA install falls back to browser menu only.
-      });
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onInstallPrompt);
       window.removeEventListener("appinstalled", onAppInstalled);
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("online", onOnline);
-      navigator.serviceWorker.removeEventListener("message", onMessage);
     };
   }, []);
 

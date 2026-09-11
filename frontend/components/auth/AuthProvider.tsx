@@ -56,14 +56,6 @@ function toSession(user: {
   };
 }
 
-function AuthLoading({ label }: { label: string }) {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-brand-canvas text-sm font-medium text-brand-muted">
-      {label}
-    </div>
-  );
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const clerkEnabled = Boolean(CLERK_PUBLISHABLE_KEY);
   const [session, setSession] = useState<Session | null>(null);
@@ -76,14 +68,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   const isDashboard = pathname.startsWith("/dashboard");
-  const isCallback = pathname.startsWith("/auth/callback");
-  const isPublic =
-    pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/register");
+  const isAuthEntry =
+    pathname.startsWith("/login") || pathname.startsWith("/register");
 
-  const clerkBooting = clerkEnabled && !clerkState.loaded;
-  const needsProfile = isDashboard || isCallback;
-  const syncingProfile = clerkEnabled && clerkState.signedIn && needsProfile && !session;
-  const showAuthLoading = clerkBooting || (syncingProfile && !syncError && isDashboard);
+  const syncing =
+    clerkEnabled && clerkState.signedIn && isDashboard && !session && !syncError;
 
   const refreshMe = useCallback(async () => {
     if (!clerkState.signedIn && !readSession()?.userId) return;
@@ -100,51 +89,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const next = toSession(me);
       writeSession(next);
       setSession(next);
+      setSyncError(null);
     } catch {
-      /* keep current session on refresh failure */
+      /* keep current session */
     }
   }, [clerkState.signedIn]);
 
   useEffect(() => {
-    if (!clerkEnabled) {
-      setSession(readSession());
-    }
+    if (!clerkEnabled) setSession(readSession());
     setReady(true);
   }, [clerkEnabled]);
 
   useEffect(() => {
     if (!ready || clerkEnabled) return;
-    const current = readSession();
-    if (!current?.userId) return;
+    if (!readSession()?.userId) return;
     void refreshMe();
   }, [ready, clerkEnabled, refreshMe]);
 
+  // Only auto-route signed-in users away from login/register (not home, not callback).
   useEffect(() => {
     if (!ready || !clerkEnabled) return;
-    if (!clerkState.loaded || showAuthLoading) return;
+    if (!clerkState.loaded || !clerkState.signedIn || !session) return;
+    if (!isAuthEntry) return;
+    router.replace(dashboardForRole(session.platformRole));
+  }, [ready, clerkEnabled, clerkState, session, isAuthEntry, router]);
 
-    if (clerkState.signedIn && session && isPublic) {
-      router.replace(dashboardForRole(session.platformRole));
-    }
-  }, [ready, session, pathname, router, clerkEnabled, clerkState, isPublic, showAuthLoading]);
-
+  // Dev-auth only: no Clerk key.
   useEffect(() => {
     if (!ready || clerkEnabled) return;
-
-    if (!session && isDashboard) {
-      router.replace("/login/student");
-      return;
-    }
-    if (session && isPublic) {
-      router.replace(dashboardForRole(session.platformRole));
-    }
-  }, [ready, session, pathname, router, clerkEnabled, isDashboard, isPublic]);
+    if (!session && isDashboard) router.replace("/login/student");
+    if (session && isAuthEntry) router.replace(dashboardForRole(session.platformRole));
+  }, [ready, clerkEnabled, session, isDashboard, isAuthEntry, router]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
       ready: ready && (!clerkEnabled || clerkState.loaded),
-      syncing: syncingProfile,
+      syncing,
       syncError,
       clerkEnabled,
       login: async (email: string) => {
@@ -156,14 +137,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout: async () => {
         clearSession();
         setSession(null);
-        if (clerkEnabled && clerkSignOut) {
-          await clerkSignOut();
-        }
+        if (clerkEnabled && clerkSignOut) await clerkSignOut();
         router.push("/login/student");
       },
       refreshMe,
     }),
-    [session, ready, syncingProfile, syncError, clerkEnabled, clerkState, clerkSignOut, router, refreshMe],
+    [session, ready, syncing, syncError, clerkEnabled, clerkState, clerkSignOut, router, refreshMe],
   );
 
   return (
@@ -177,11 +156,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           registerSignOut={setClerkSignOut}
         />
       ) : null}
-      {showAuthLoading ? (
-        <AuthLoading label={clerkBooting ? "Loading…" : "Syncing your session…"} />
-      ) : syncError && (isDashboard || isCallback) ? (
+      {syncing ? (
+        <div className="flex min-h-screen items-center justify-center bg-brand-canvas text-sm font-medium text-brand-muted">
+          Syncing your session…
+        </div>
+      ) : syncError && isDashboard ? (
         <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-brand-canvas px-4 text-center">
-          <p className="text-sm font-medium text-brand-muted">Signed in, but we could not load your profile.</p>
+          <p className="text-sm font-medium text-brand-muted">Could not load your profile from the API.</p>
           <p className="max-w-md text-sm text-red-700">{syncError}</p>
           <button
             type="button"
