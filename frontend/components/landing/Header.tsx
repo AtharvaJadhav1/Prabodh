@@ -6,11 +6,10 @@ import Link from "next/link";
 import { PortalIcon, MenuIcon, XIcon, ArrowRightIcon } from "./icons";
 
 const navLinks = [
-  { label: "Hackathon Stages", href: "#hackathon-stages" },
-  { label: "Accreditations", href: "#accreditations" },
-  { label: "Awards & Recognition", href: "#awards" },
+  { label: "Lifecycle Stages", href: "#prabodh-stages" },
+  { label: "TRL Levels", href: "#trl-levels" },
   { label: "Campus", href: "#campus" },
-  { label: "Leadership", href: "#leadership" },
+  { label: "Mentors", href: "#leadership" },
 ];
 
 export default function Header() {

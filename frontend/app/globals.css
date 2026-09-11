@@ -11,9 +11,8 @@ body {
 .hero-pattern {
   background-color: #5b2e10;
   background-image: radial-gradient(circle at 10% 20%, rgba(217, 107, 39, 0.18) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(229, 152, 80, 0.15) 0%, transparent 45%),
-    radial-gradient(#ffffff 0.75px, transparent 0.75px);
-  background-size: 100% 100%, 100% 100%, 28px 28px;
+    radial-gradient(circle at 90% 80%, rgba(229, 152, 80, 0.15) 0%, transparent 45%);
+  background-size: 100% 100%, 100% 100%;
 }
 
 .gold-shimmer {
@@ -23,6 +22,10 @@ body {
 .watermark-text {
   user-select: none;
   pointer-events: none;
+}
+
+section[id] {
+  scroll-margin-top: 4.5rem;
 }
 
 .custom-pattern {

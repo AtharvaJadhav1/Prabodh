@@ -1,22 +1,25 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRightIcon, CheckIcon } from "./icons";
+import ParticleField from "./ParticleField";
 
 const features = [
   {
-    title: "Dual Mentorship System",
-    desc: "Institute & Industry Mentors collaboration and direct review gates.",
+    title: "Team Formation & Problem Lock",
+    desc: "Team rosters, invites, and join-request approvals tied to a finalized, mentor-approved problem statement.",
   },
   {
-    title: "Milestone Gates",
-    desc: "From Internal Hackathon vetting directly to the Grand SIH Finale.",
+    title: "Dual Mentor Tracking",
+    desc: "Institute & industry mentor allocation, review gates, and milestone deliverable submission tracking.",
   },
   {
-    title: "Clerk Role-Based Access",
-    desc: "Custom views tailored for Student, Mentor & Nodal Admin.",
+    title: "Rubric-Based Scoring",
+    desc: "Multi-criteria evaluations with grades, publish workflow, and live progress across evaluated teams.",
   },
   {
-    title: "Real-time Scoring & Rubrics",
-    desc: "Standardized evaluation criteria and live progression stage funnel.",
+    title: "Admin Evaluation Console",
+    desc: "Stage & rubric configuration, mentor allocation, broadcasts, and aggregated platform reports.",
   },
 ];
 
@@ -26,22 +29,33 @@ export default function Hero() {
       id="home"
       className="hero-pattern relative overflow-hidden px-4 pb-24 pt-16 text-white sm:px-6 lg:px-8 lg:pb-32 lg:pt-20"
     >
-      <div className="watermark-text absolute right-[-5%] top-1/4 font-serif text-[20vw] font-black leading-none tracking-tighter text-white/[0.03]">
-        SIH 2026
+      <div className="absolute inset-0 z-0">
+        <ParticleField
+          idleAlpha={0.22}
+          hoverAlpha={0.9}
+          baseSize={1.8}
+          hoverSize={3}
+          hoverDisplacement={28}
+          influenceRadius={220}
+        />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-7xl">
+      <div className="watermark-text absolute right-[-5%] top-1/4 font-serif text-[20vw] font-black leading-none tracking-tighter text-white/[0.03]">
+        Prabodh
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-7xl pointer-events-none">
         <div className="mx-auto mb-12 max-w-3xl text-center sm:mb-16">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-medium tracking-wide text-brand-cream shadow-inner backdrop-blur-sm sm:text-sm">
             <span className="h-2 w-2 animate-pulse rounded-full bg-brand-amber"></span>
-            MIT ADT University • Smart India Hackathon 2026 Portal
+            Prabodh Incubation Portal 2026
           </div>
           <h1 className="mb-5 text-3xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-5xl lg:text-6xl">
-            Smart India Hackathon <br className="hidden sm:inline" />
-            Management &amp; Mentorship Portal
+            Prabodh Incubation <br className="hidden sm:inline" />
+            &amp; Mentorship Portal
           </h1>
           <p className="mx-auto max-w-2xl text-base font-normal leading-relaxed text-white/80 sm:text-xl">
-            Centralized submission, dual-mentor tracking, and milestone-based evaluation for all participating teams.
+            Centralized submission, dual-mentor tracking, and milestone-based evaluation for all incubating projects.
           </p>
         </div>
 
@@ -62,7 +76,7 @@ export default function Hero() {
           </div>
 
           <h2 className="mb-3 text-2xl font-extrabold tracking-tight text-brand-deep sm:text-3xl">
-            Smart India Hackathon (SIH) Portal
+            Prabodh Incubation Portal
           </h2>
           <p className="mb-8 text-base leading-relaxed text-brand-charcoal/85 sm:text-lg">
             All-in-one workspace for team formation (up to 6 members), problem statement lock-in, institute
@@ -89,23 +103,23 @@ export default function Hero() {
           <div className="space-y-4">
             <Link
               href="/login/student"
-              className="group inline-flex w-full transform items-center justify-center gap-3 rounded-xl bg-brand-primary px-8 py-4 text-lg font-bold text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-hover hover:shadow-xl"
+              className="group inline-flex w-full transform items-center justify-center gap-3 rounded-xl bg-brand-primary px-8 py-4 text-lg font-bold text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-hover hover:shadow-xl pointer-events-auto"
             >
-              <span>Access SIH Portal</span>
+              <span>Access Prabodh Portal</span>
               <ArrowRightIcon className="h-5 w-5 transform transition-transform duration-200 group-hover:translate-x-1.5" />
             </Link>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-sm font-semibold text-brand-deep sm:gap-8">
-              <Link href="/login/student" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary">
+              <Link href="/login/student" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary pointer-events-auto">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary"></span>
                 Student Login
               </Link>
               <span className="text-brand-sand">•</span>
-              <Link href="/login/faculty" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary">
+              <Link href="/login/faculty" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary pointer-events-auto">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary"></span>
                 Mentor Login
               </Link>
               <span className="text-brand-sand">•</span>
-              <Link href="/login/faculty" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary">
+              <Link href="/login/faculty" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary pointer-events-auto">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary"></span>
                 Nodal Admin Console
               </Link>

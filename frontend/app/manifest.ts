@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "SIH 2026 Portal — MIT-ADT University",
-    short_name: "SIH Portal",
+    name: "Prabodh — SIH 2026 Portal",
+    short_name: "Prabodh",
     description:
-      "Smart India Hackathon 2026 internal qualifier portal for MIT-ADT — team formation, milestone gates, dual-mentor tracking, and deliverable submission.",
+      "Smart India Hackathon 2026 internal qualifier portal by Prabodh — team formation, milestone gates, dual-mentor tracking, and deliverable submission.",
     start_url: "/",
     scope: "/",
     display: "standalone",
