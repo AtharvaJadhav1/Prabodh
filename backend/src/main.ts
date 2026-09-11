@@ -5,12 +5,17 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
   app.setGlobalPrefix('api');
-  const origins = (process.env.APP_ORIGIN ?? 'http://localhost:3000')
-    .split(',')
-    .map((s: string) => s.trim())
+  const origins = [
+    ...(process.env.APP_ORIGIN ?? 'http://localhost:3000').split(','),
+    ...(process.env.NEXT_PUBLIC_APP_URL ?? '').split(','),
+    'https://prabodh-2.onrender.com',
+    'http://localhost:3000',
+  ]
+    .map((s: string) => s.trim().replace(/\/$/, ''))
     .filter(Boolean);
+  const allowed = [...new Set(origins)];
   app.enableCors({
-    origin: process.env.NODE_ENV === 'production' ? origins : true,
+    origin: process.env.NODE_ENV === 'production' ? allowed : true,
     credentials: true,
   });
   const port = Number(process.env.PORT ?? 3001);

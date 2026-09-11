@@ -22,7 +22,8 @@ export default function StudentForm() {
             Student Team Sign In
           </h1>
           <p className="mt-2 text-sm leading-relaxed text-brand-muted">
-            Sign in with Clerk using your institutional email. Your role is assigned from your account.
+            Sign in with your institutional email. If Clerk asks for a code, check inbox and spam.
+            New users must use Create account first — sign-in will not email a code to unknown addresses.
           </p>
         </div>
         <ClerkSignInPanel path="/login/student" />

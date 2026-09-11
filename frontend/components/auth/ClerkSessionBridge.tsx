@@ -41,13 +41,13 @@ async function fetchMe(
   getToken: (opts?: { skipCache?: boolean }) => Promise<string | null>,
 ) {
   let lastErr: unknown;
-  for (let attempt = 0; attempt < 8; attempt++) {
+  for (let attempt = 0; attempt < 10; attempt++) {
     try {
       const token = await getToken(attempt > 0 ? { skipCache: true } : undefined);
       setClerkToken(token ?? null);
       if (!token) {
         lastErr = new ApiError(401, "Missing Clerk token");
-        await sleep(300 * (attempt + 1));
+        await sleep(350 * (attempt + 1));
         continue;
       }
       const me = await api<{
@@ -62,7 +62,12 @@ async function fetchMe(
       return toSession(me);
     } catch (err) {
       lastErr = err;
-      if (err instanceof ApiError && (err.status === 401 || err.status === 403) && attempt < 7) {
+      // Never signOut on transient API failures — that caused login loops.
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403 || err.status >= 500) && attempt < 9) {
+        await sleep(400 * (attempt + 1));
+        continue;
+      }
+      if (!(err instanceof ApiError) && attempt < 9) {
         await sleep(400 * (attempt + 1));
         continue;
       }
@@ -82,6 +87,7 @@ export default function ClerkSessionBridge({
   const syncing = useRef(false);
   const synced = useRef<string | null>(null);
   const getTokenRef = useRef(getToken);
+  const clearTimer = useRef<number | null>(null);
   getTokenRef.current = getToken;
 
   useEffect(() => {
@@ -97,12 +103,23 @@ export default function ClerkSessionBridge({
     if (!isLoaded) return;
 
     if (!isSignedIn || !userId) {
-      synced.current = null;
-      setClerkToken(null);
-      clearSession();
-      onSyncFailed(null);
-      onSession(null);
-      return;
+      // Debounce clear — Clerk briefly reports signed-out during hydration / handshake.
+      if (clearTimer.current) window.clearTimeout(clearTimer.current);
+      clearTimer.current = window.setTimeout(() => {
+        synced.current = null;
+        setClerkToken(null);
+        clearSession();
+        onSyncFailed(null);
+        onSession(null);
+      }, 1500);
+      return () => {
+        if (clearTimer.current) window.clearTimeout(clearTimer.current);
+      };
+    }
+
+    if (clearTimer.current) {
+      window.clearTimeout(clearTimer.current);
+      clearTimer.current = null;
     }
 
     if (synced.current === userId || syncing.current) return;
@@ -115,9 +132,10 @@ export default function ClerkSessionBridge({
         synced.current = userId;
         writeSession(next);
         onSession(next);
+        onSyncFailed(null);
       } catch (err) {
         synced.current = null;
-        onSession(null);
+        // Keep any existing local session so the UI does not bounce to login.
         onSyncFailed(err instanceof Error ? err.message : "Could not sync your account");
       } finally {
         syncing.current = false;

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { SignUp } from "@clerk/nextjs";
 import { useAuth } from "../auth/AuthProvider";
 import { apiPost } from "../../lib/api";
-import { AUTH_CALLBACK } from "../../lib/config";
+import { absoluteAuthCallback } from "../../lib/config";
 import { dashboardForRole } from "../../lib/session";
 import TextField from "./TextField";
 
@@ -62,6 +62,7 @@ function LocalRegisterForm({ login }: { login: (email: string) => Promise<{ plat
 }
 
 function ClerkRegisterForm() {
+  const afterAuth = absoluteAuthCallback();
   return (
     <RegisterLayout>
       <div className="flex justify-center">
@@ -69,9 +70,9 @@ function ClerkRegisterForm() {
           routing="path"
           path="/register"
           signInUrl="/login/student"
-          forceRedirectUrl={AUTH_CALLBACK}
-          fallbackRedirectUrl={AUTH_CALLBACK}
-          signInForceRedirectUrl={AUTH_CALLBACK}
+          forceRedirectUrl={afterAuth}
+          fallbackRedirectUrl={afterAuth}
+          signInForceRedirectUrl={afterAuth}
           appearance={{
             elements: {
               rootBox: "w-full",
@@ -104,6 +105,7 @@ function RegisterLayout({ children }: { children: React.ReactNode }) {
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-brand-muted">
           Create a student account to form a team, invite members and mentors, and select a problem statement.
+          After you submit, Clerk emails a one-time code — check spam if it does not arrive within a minute.
         </p>
       </div>
       {children}

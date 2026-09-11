@@ -68,11 +68,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   const isDashboard = pathname.startsWith("/dashboard");
+  const isCallback = pathname.startsWith("/auth/callback");
   const isAuthEntry =
     pathname.startsWith("/login") || pathname.startsWith("/register");
 
   const syncing =
-    clerkEnabled && clerkState.signedIn && isDashboard && !session && !syncError;
+    clerkEnabled &&
+    clerkState.signedIn &&
+    (isDashboard || isCallback) &&
+    !session &&
+    !syncError;
 
   const refreshMe = useCallback(async () => {
     if (!clerkState.signedIn && !readSession()?.userId) return;
@@ -96,9 +101,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clerkState.signedIn]);
 
   useEffect(() => {
-    if (!clerkEnabled) setSession(readSession());
+    // Warm UI from cache; ClerkSessionBridge is the source of truth when Clerk is on.
+    const cached = readSession();
+    if (cached?.userId) setSession(cached);
     setReady(true);
-  }, [clerkEnabled]);
+  }, []);
 
   useEffect(() => {
     if (!ready || clerkEnabled) return;
@@ -106,13 +113,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refreshMe();
   }, [ready, clerkEnabled, refreshMe]);
 
-  // Only auto-route signed-in users away from login/register (not home, not callback).
+  // Only auto-route signed-in users away from login/register once profile is ready.
   useEffect(() => {
     if (!ready || !clerkEnabled) return;
     if (!clerkState.loaded || !clerkState.signedIn || !session) return;
     if (!isAuthEntry) return;
-    router.replace(dashboardForRole(session.platformRole));
-  }, [ready, clerkEnabled, clerkState, session, isAuthEntry, router]);
+    // Hard nav so middleware always sees the cookie.
+    window.location.assign(dashboardForRole(session.platformRole));
+  }, [ready, clerkEnabled, clerkState, session, isAuthEntry]);
 
   // Dev-auth only: no Clerk key.
   useEffect(() => {
@@ -138,11 +146,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearSession();
         setSession(null);
         if (clerkEnabled && clerkSignOut) await clerkSignOut();
-        router.push("/login/student");
+        window.location.assign("/login/student");
       },
       refreshMe,
     }),
-    [session, ready, syncing, syncError, clerkEnabled, clerkState, clerkSignOut, router, refreshMe],
+    [session, ready, syncing, syncError, clerkEnabled, clerkState, clerkSignOut, refreshMe],
   );
 
   return (
@@ -156,7 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           registerSignOut={setClerkSignOut}
         />
       ) : null}
-      {syncing ? (
+      {syncing && isDashboard ? (
         <div className="flex min-h-screen items-center justify-center bg-brand-canvas text-sm font-medium text-brand-muted">
           Syncing your session…
         </div>
