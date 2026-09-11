@@ -95,13 +95,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       writeSession(next);
       setSession(next);
       setSyncError(null);
-    } catch {
-      /* keep current session */
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : "Could not sync your account");
     }
   }, [clerkState.signedIn]);
 
   useEffect(() => {
-    // Warm UI from cache; ClerkSessionBridge is the source of truth when Clerk is on.
     const cached = readSession();
     if (cached?.userId) setSession(cached);
     setReady(true);
@@ -113,16 +112,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void refreshMe();
   }, [ready, clerkEnabled, refreshMe]);
 
-  // Only auto-route signed-in users away from login/register once profile is ready.
+  // Signed-in users on login/register → dashboard (hard nav).
   useEffect(() => {
     if (!ready || !clerkEnabled) return;
     if (!clerkState.loaded || !clerkState.signedIn || !session) return;
     if (!isAuthEntry) return;
-    // Hard nav so middleware always sees the cookie.
     window.location.assign(dashboardForRole(session.platformRole));
   }, [ready, clerkEnabled, clerkState, session, isAuthEntry]);
 
-  // Dev-auth only: no Clerk key.
+  // Client-only dashboard gate (middleware no longer redirects — that raced cookies).
+  useEffect(() => {
+    if (!ready || !clerkEnabled || !isDashboard) return;
+    if (!clerkState.loaded) return;
+    if (clerkState.signedIn) return;
+    // Allow a short grace for hydration; then require login.
+    const t = window.setTimeout(() => {
+      if (!readSession()?.userId) {
+        window.location.replace("/login/student");
+      }
+    }, 4000);
+    return () => window.clearTimeout(t);
+  }, [ready, clerkEnabled, isDashboard, clerkState]);
+
+  // Dev-auth only.
   useEffect(() => {
     if (!ready || clerkEnabled) return;
     if (!session && isDashboard) router.replace("/login/student");
@@ -183,8 +195,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             Retry
           </button>
         </div>
-      ) : (
+      ) : !clerkEnabled || !isDashboard || clerkState.signedIn || session ? (
         children
+      ) : (
+        <div className="flex min-h-screen items-center justify-center bg-brand-canvas text-sm font-medium text-brand-muted">
+          Checking sign-in…
+        </div>
       )}
     </AuthContext.Provider>
   );

@@ -8,6 +8,9 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/auth/callback(.*)",
+  // Dashboard is client-gated. Middleware redirects here race Clerk cookies on Render
+  // and bounce users login ↔ dashboard forever.
+  "/dashboard(.*)",
 ]);
 
 const isLoginRoute = createRouteMatcher(["/login(.*)", "/register(.*)", "/sign-in(.*)", "/sign-up(.*)"]);
@@ -43,14 +46,9 @@ function isBadRedirectTarget(value: string | null) {
   return /localhost|127\.0\.0\.1/i.test(value);
 }
 
-function safeNextPath(pathname: string) {
-  if (!pathname.startsWith("/dashboard")) return "/dashboard/student";
-  return pathname;
-}
-
 export default clerkMiddleware(async (auth, request) => {
-  // Must call auth() so __clerk_handshake can set cookies.
-  const session = await auth();
+  // Must call auth() so __clerk_handshake can set cookies on every route.
+  await auth();
   const origin = publicOrigin(request);
   const url = request.nextUrl.clone();
 
@@ -64,14 +62,7 @@ export default clerkMiddleware(async (auth, request) => {
     return NextResponse.next();
   }
 
-  if (!session.userId) {
-    // Never bounce straight to /login — that races the Clerk cookie and causes
-    // dashboard flash → login loops. Finish the handshake on /auth/callback first.
-    const callback = new URL("/auth/callback", origin);
-    callback.searchParams.set("next", safeNextPath(request.nextUrl.pathname));
-    return NextResponse.redirect(callback);
-  }
-
+  // Non-dashboard protected paths (if any later) — keep open for now.
   return NextResponse.next();
 });
 

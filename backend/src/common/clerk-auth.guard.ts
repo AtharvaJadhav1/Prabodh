@@ -4,7 +4,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PlatformRole } from '@prisma/client';
+import { PlatformRole, Prisma, User } from '@prisma/client';
 import { PrismaService } from '../lib/prisma.service';
 import { getClerkClient, roleFromClaims, verifyClerkSession } from '../lib/clerk';
 import { AuthUser } from './auth.types';
@@ -44,42 +44,84 @@ export class ClerkAuthGuard implements CanActivate {
     const clerkUserId = String(payload.sub ?? '');
     if (!clerkUserId) throw new UnauthorizedException('Invalid session subject');
 
-    let user = await this.prisma.user.findUnique({ where: { clerkUserId } });
-    if (!user) {
-      const profile = await resolveClerkProfile(clerkUserId, payload);
-      if (profile.email) {
-        const byEmail = await this.prisma.user.findUnique({ where: { email: profile.email } });
-        if (byEmail) {
-          user = await this.prisma.user.update({
-            where: { id: byEmail.id },
-            data: {
-              clerkUserId,
-              fullName: profile.fullName || byEmail.fullName,
-              institute: profile.institute ?? byEmail.institute,
-              department: profile.department ?? byEmail.department,
-              phone: profile.phone ?? byEmail.phone,
-              isActive: true,
-            },
-          });
-        }
-      }
-      if (!user) {
-        user = await this.prisma.user.create({
-          data: {
-            clerkUserId,
-            email: profile.email || `${clerkUserId}@unknown.local`,
-            fullName: profile.fullName || 'Student',
-            platformRole: profile.role,
-            institute: profile.institute,
-            department: profile.department,
-            phone: profile.phone,
-          },
-        });
-      }
-    }
+    const profile = await resolveClerkProfile(clerkUserId, payload);
+    const user = await ensureDbUser(this.prisma, clerkUserId, profile);
     if (!user.isActive) throw new UnauthorizedException('Account disabled');
     req.user = toAuth(user);
     return true;
+  }
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
+}
+
+/**
+ * Concurrent /me + /teams + webhook used to race on user.create(clerk_user_id).
+ * Always re-read after unique conflicts.
+ */
+async function ensureDbUser(
+  prisma: PrismaService,
+  clerkUserId: string,
+  profile: {
+    email: string;
+    fullName: string;
+    role: PlatformRole;
+    institute?: string;
+    department?: string;
+    phone?: string;
+  },
+): Promise<User> {
+  const existing = await prisma.user.findUnique({ where: { clerkUserId } });
+  if (existing) return existing;
+
+  if (profile.email) {
+    const byEmail = await prisma.user.findUnique({ where: { email: profile.email } });
+    if (byEmail) {
+      try {
+        return await prisma.user.update({
+          where: { id: byEmail.id },
+          data: {
+            clerkUserId,
+            fullName: profile.fullName || byEmail.fullName,
+            institute: profile.institute ?? byEmail.institute,
+            department: profile.department ?? byEmail.department,
+            phone: profile.phone ?? byEmail.phone,
+            isActive: true,
+          },
+        });
+      } catch (err) {
+        if (isUniqueViolation(err)) {
+          const again = await prisma.user.findUnique({ where: { clerkUserId } });
+          if (again) return again;
+        }
+        throw err;
+      }
+    }
+  }
+
+  try {
+    return await prisma.user.create({
+      data: {
+        clerkUserId,
+        email: profile.email || `${clerkUserId}@unknown.local`,
+        fullName: profile.fullName || 'Student',
+        platformRole: profile.role,
+        institute: profile.institute,
+        department: profile.department,
+        phone: profile.phone,
+      },
+    });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      const byClerk = await prisma.user.findUnique({ where: { clerkUserId } });
+      if (byClerk) return byClerk;
+      if (profile.email) {
+        const byEmail = await prisma.user.findUnique({ where: { email: profile.email } });
+        if (byEmail) return byEmail;
+      }
+    }
+    throw err;
   }
 }
 
