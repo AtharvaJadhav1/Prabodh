@@ -11,7 +11,7 @@ import { PrismaService } from '../../lib/prisma.service';
 import { getSettingNumber } from '../../lib/settings';
 import { TeamsService } from '../teams/service';
 import { ProblemStatementsRepository } from './repository';
-import { createIdeaSchema, createPsSchema, patchIdeaSchema, patchPsSchema } from './schema';
+import { createIdeaSchema, createPsSchema, manualIdeaSchema, patchIdeaSchema, patchPsSchema } from './schema';
 
 @Injectable()
 export class ProblemStatementsService {
@@ -120,5 +120,39 @@ export class ProblemStatementsService {
   async releaseStaleDrafts() {
     const hours = await getSettingNumber(this.prisma, 'draft_hold_hours');
     return this.repo.releaseStaleDrafts(hours);
+  }
+
+  async submitManualIdea(user: AuthUser, body: z.infer<typeof manualIdeaSchema>) {
+    const team = await this.teams.assertTeamAccess(user, body.teamId);
+    if (!this.teams.isLeader(user, team)) {
+      throw new ForbiddenException('Only the team leader can submit a manual problem statement');
+    }
+    const existing = await this.repo.findLatestIdeaForTeam(body.teamId);
+    if (existing?.status === IdeaStatus.locked) {
+      throw new ForbiddenException('Problem statement already locked for this team');
+    }
+    const code = `STU-${team.teamCode}-${Date.now().toString(36).toUpperCase()}`;
+    const ps = await this.repo.createPs({
+      code,
+      title: body.title,
+      theme: body.theme,
+      category: body.category,
+      organisation: body.organisation,
+      description: body.description,
+      teamCap: 1,
+    });
+    if (existing) {
+      await this.prisma.ideaSubmission.delete({ where: { id: existing.id } });
+    }
+    const draft = await this.repo.createDraftWithCap({
+      teamId: body.teamId,
+      psId: ps.id,
+      abstract: body.abstract,
+      techStack: body.techStack,
+      feasibilityNotes: body.feasibilityNotes,
+      authorUserId: user.id,
+    });
+    if ('error' in draft) throw new ConflictException('Could not create manual submission');
+    return this.repo.lockIdea(draft.idea.id, body.teamId, ps.id);
   }
 }

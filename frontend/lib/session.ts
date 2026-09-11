@@ -11,6 +11,7 @@ export type Session = {
   department?: string | null;
   phone?: string | null;
   accessToken?: string;
+  profileJson?: Record<string, unknown>;
   /** @deprecated use accessToken */
   clerkToken?: string;
 };

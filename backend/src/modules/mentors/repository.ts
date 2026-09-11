@@ -35,9 +35,16 @@ export class MentorsRepository {
           include: {
             problemStatement: true,
             leader: true,
-            members: true,
+            members: { include: { user: true } },
             mentorAssignments: { where: { active: true }, include: { mentor: true } },
             stageResults: { include: { stage: true } },
+            ideaSubmissions: {
+              orderBy: { version: 'desc' },
+              take: 5,
+              include: { problemStatement: true },
+            },
+            deliverables: { orderBy: { submittedAt: 'desc' }, take: 20, include: { stage: true } },
+            stageStatuses: { include: { stage: true } },
           },
         },
       },

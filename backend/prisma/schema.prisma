@@ -105,6 +105,8 @@ model User {
   institute    String?
   department   String?
   phone        String?
+  passwordHash String?      @map("password_hash")
+  profileJson  Json?        @map("profile_json")
   domainTags   String[]     @default([]) @map("domain_tags")
   isActive     Boolean      @default(true) @map("is_active")
   createdAt    DateTime     @default(now()) @map("created_at")

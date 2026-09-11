@@ -7,10 +7,17 @@ export const clerkUserWebhookSchema = z.object({
 
 export const registerSchema = z.object({
   email: z.string().email(),
+  password: z.string().min(8).max(128),
   fullName: z.string().min(2).max(120),
   institute: z.string().min(2).max(200).optional(),
   department: z.string().max(120).optional(),
   phone: z.string().max(30).optional(),
+});
+
+export const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1).max(128),
+  portal: z.enum(['student', 'faculty']),
 });
 
 export const otpSendSchema = z.object({
@@ -26,4 +33,12 @@ export const otpVerifySchema = z.object({
   email: z.string().email(),
   purpose: z.enum(['login', 'register']),
   code: z.string().regex(/^\d{6}$/),
+});
+
+export const patchMeSchema = z.object({
+  fullName: z.string().min(2).max(120).optional(),
+  phone: z.string().max(30).optional(),
+  department: z.string().max(120).optional(),
+  institute: z.string().max(200).optional(),
+  profileJson: z.record(z.unknown()).optional(),
 });

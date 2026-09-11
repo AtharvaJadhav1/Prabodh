@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import { InviteStatus, PlatformRole } from '@prisma/client';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { InviteStatus, PlatformRole, Prisma } from '@prisma/client';
 import { signAccessToken } from '../../lib/jwt';
 import { sendOtp, verifyOtp } from '../../lib/otp';
+import { hashPassword, verifyPassword } from '../../lib/password';
 import { PrismaService } from '../../lib/prisma.service';
 import { IdentityRepository } from './repository';
 
@@ -14,6 +15,58 @@ export class IdentityService {
 
   loginByEmail(email: string) {
     return this.repo.findByEmail(email.toLowerCase());
+  }
+
+  private issueToken(user: {
+    id: string;
+    email: string;
+    fullName: string;
+    platformRole: PlatformRole;
+    institute: string | null;
+    department: string | null;
+    phone: string | null;
+    profileJson?: unknown;
+  }) {
+    const accessToken = signAccessToken(user);
+    return {
+      accessToken,
+      userId: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      platformRole: user.platformRole,
+      institute: user.institute,
+      department: user.department,
+      phone: user.phone,
+      profileJson: user.profileJson ?? null,
+    };
+  }
+
+  private assertPortal(role: PlatformRole, portal: 'student' | 'faculty') {
+    const facultyRoles: PlatformRole[] = [
+      PlatformRole.admin,
+      PlatformRole.institute_mentor,
+      PlatformRole.industry_mentor,
+    ];
+    if (portal === 'student' && role !== PlatformRole.student) {
+      throw new ForbiddenException('This account is not a student. Use the faculty login portal.');
+    }
+    if (portal === 'faculty' && !facultyRoles.includes(role)) {
+      throw new ForbiddenException('This account is not faculty or admin. Use the student login portal.');
+    }
+  }
+
+  async loginWithPassword(body: { email: string; password: string; portal: 'student' | 'faculty' }) {
+    const email = body.email.toLowerCase();
+    const user = await this.repo.findByEmail(email);
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Invalid email or password.');
+    }
+    if (!verifyPassword(body.password, user.passwordHash)) {
+      throw new UnauthorizedException('Invalid email or password.');
+    }
+    this.assertPortal(user.platformRole, body.portal);
+    await this.acceptPendingTeamInvites(user.id, user.email);
+    return this.issueToken(user);
   }
 
   async requestOtp(body: {
@@ -76,22 +129,12 @@ export class IdentityService {
     }
 
     await this.acceptPendingTeamInvites(user.id, user.email);
-
-    const accessToken = signAccessToken(user);
-    return {
-      accessToken,
-      userId: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      platformRole: user.platformRole,
-      institute: user.institute,
-      department: user.department,
-      phone: user.phone,
-    };
+    return this.issueToken(user);
   }
 
   async registerStudent(body: {
     email: string;
+    password?: string;
     fullName: string;
     institute?: string;
     department?: string;
@@ -111,25 +154,49 @@ export class IdentityService {
           department: body.department ?? existing.department,
           phone: body.phone ?? existing.phone,
           isActive: true,
+          ...(body.password ? { passwordHash: hashPassword(body.password) } : {}),
         },
       });
     }
+    if (!body.password) {
+      throw new BadRequestException('Password is required for registration.');
+    }
     return this.prisma.user.create({
       data: {
-        clerkUserId: `pending:${email}`,
+        clerkUserId: `local:${email}`,
         email,
         fullName: body.fullName,
         platformRole: PlatformRole.student,
         institute: body.institute,
         department: body.department,
         phone: body.phone,
+        passwordHash: hashPassword(body.password),
       },
     });
   }
 
+  async registerWithPassword(body: {
+    email: string;
+    password: string;
+    fullName: string;
+    institute?: string;
+    department?: string;
+    phone?: string;
+  }) {
+    const user = await this.registerStudent(body);
+    await this.acceptPendingTeamInvites(user.id, user.email);
+    return this.issueToken(user);
+  }
+
   updateProfile(
     userId: string,
-    body: { fullName?: string; phone?: string; department?: string; institute?: string },
+    body: {
+      fullName?: string;
+      phone?: string;
+      department?: string;
+      institute?: string;
+      profileJson?: Record<string, unknown>;
+    },
   ) {
     return this.prisma.user.update({
       where: { id: userId },
@@ -138,6 +205,9 @@ export class IdentityService {
         phone: body.phone,
         department: body.department,
         institute: body.institute,
+        ...(body.profileJson !== undefined
+          ? { profileJson: body.profileJson as Prisma.InputJsonValue }
+          : {}),
       },
     });
   }

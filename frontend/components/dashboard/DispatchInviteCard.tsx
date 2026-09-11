@@ -9,6 +9,7 @@ export default function DispatchInviteCard() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [sending, setSending] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const seatsLeft = capacity - filledCount;
@@ -23,6 +24,8 @@ export default function DispatchInviteCard() {
       setError("Team is full — revoke a pending invite before sending new ones.");
       return;
     }
+    setSending(true);
+    setSuccess(`Invite queued for ${trimmed}…`);
     try {
       const result = await sendInvite(trimmed);
       if (result.ok) {
@@ -44,7 +47,10 @@ export default function DispatchInviteCard() {
         setError("Could not send this invite.");
       }
     } catch (err) {
+      setSuccess("");
       setError(err instanceof Error ? err.message : "Could not send invite");
+    } finally {
+      setSending(false);
     }
   };
 
@@ -81,9 +87,10 @@ export default function DispatchInviteCard() {
             <button
               type="button"
               onClick={handleSend}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white shadow-md shadow-brand-primary/25 transition-all duration-150 hover:bg-brand-hover active:scale-[0.99]"
+              disabled={sending}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white shadow-md shadow-brand-primary/25 transition-all duration-150 hover:bg-brand-hover active:scale-[0.99] disabled:opacity-60"
             >
-              <SendIcon className="h-4 w-4" /> Send
+              <SendIcon className="h-4 w-4" /> {sending ? "Sending…" : "Send"}
             </button>
           </div>
           {error && <p className="mt-1.5 text-xs font-semibold text-brand-charcoal/80">{error}</p>}

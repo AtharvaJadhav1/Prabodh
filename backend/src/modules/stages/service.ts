@@ -114,6 +114,22 @@ export class StagesService {
     return row;
   }
 
+  async deleteDeliverable(user: AuthUser, stageId: string, deliverableId: string) {
+    const row = await this.prisma.deliverable.findFirst({
+      where: { id: deliverableId, stageId },
+    });
+    if (!row) throw new NotFoundException('Deliverable not found');
+    const team = await this.teams.assertTeamAccess(user, row.teamId);
+    if (!this.teams.isLeader(user, team)) {
+      throw new ForbiddenException('Only the team leader can delete deliverables');
+    }
+    if (row.locked) {
+      throw new HttpException('Deliverable is locked and cannot be deleted', 423);
+    }
+    await this.prisma.deliverable.delete({ where: { id: deliverableId } });
+    return { deleted: true };
+  }
+
   async statusTracker(user: AuthUser, teamId: string) {
     await this.teams.assertTeamAccess(user, teamId);
     const stages = await this.prisma.stage.findMany({ orderBy: { sequence: 'asc' } });

@@ -42,6 +42,7 @@ export default function RepositoryBrowser() {
   const [remote, setRemote] = useState<SiStatement[] | null>(null);
   const [ids, setIds] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const [selectError, setSelectError] = useState("");
   const { isLead, teamId, reload } = useTeam();
 
   useEffect(() => {
@@ -201,6 +202,8 @@ export default function RepositoryBrowser() {
         </div>
       </div>
 
+      {selectError ? <p className="text-sm font-medium text-red-700">{selectError}</p> : null}
+
       {/* PS Card List */}
       <div className="flex flex-col gap-4">
         {filtered.length === 0 ? (
@@ -247,6 +250,7 @@ export default function RepositoryBrowser() {
                       if (!teamId || !psId) return;
                       setBusy(stmt.code);
                       try {
+                        setSelectError("");
                         const idea = await apiPost<{ id: string }>("/idea-submissions", {
                           teamId,
                           psId,
@@ -256,8 +260,8 @@ export default function RepositoryBrowser() {
                         });
                         await apiPost(`/idea-submissions/${idea.id}/lock`, {});
                         await reload();
-                      } catch {
-                        /* draft may already exist */
+                      } catch (err) {
+                        setSelectError(err instanceof Error ? err.message : "Could not select this problem statement");
                       } finally {
                         setBusy(null);
                       }

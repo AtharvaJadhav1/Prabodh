@@ -61,6 +61,15 @@ export class StagesController {
     return this.stages.submitDeliverable(user, stageId, body as never);
   }
 
+  @Delete('stages/:stageId/deliverables/:deliverableId')
+  deleteDeliverable(
+    @CurrentUser() user: AuthUser,
+    @Param('stageId') stageId: string,
+    @Param('deliverableId') deliverableId: string,
+  ) {
+    return this.stages.deleteDeliverable(user, stageId, deliverableId);
+  }
+
   @Get('teams/:teamId/status-tracker')
   tracker(@CurrentUser() user: AuthUser, @Param('teamId') teamId: string) {
     return this.stages.statusTracker(user, teamId);

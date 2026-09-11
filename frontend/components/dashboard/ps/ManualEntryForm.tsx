@@ -1,17 +1,51 @@
 "use client";
 
 import { useState } from "react";
-import { LockIcon, InfoIcon } from "../icons";
+import { apiPost } from "../../../lib/api";
+import { LockIcon } from "../icons";
 import { useTeam } from "../TeamProvider";
 
 export default function ManualEntryForm() {
-  const { team } = useTeam();
+  const { team, isLead, reload } = useTeam();
   const idea = team?.ideaSubmissions?.[0];
   const locked = Boolean(team?.problemStatement) || idea?.status === "locked";
   const [title, setTitle] = useState(team?.problemStatement?.title ?? "");
-  const [track, setTrack] = useState(team?.problemStatement?.category ?? "");
+  const [track, setTrack] = useState<"software" | "hardware">(
+    (team?.problemStatement?.category as "software" | "hardware") ?? "software",
+  );
   const [domainFit, setDomainFit] = useState(team?.problemStatement?.theme ?? "");
   const [methodology, setMethodology] = useState(idea?.abstract ?? "");
+  const [techStack, setTechStack] = useState(idea?.techStack ?? "");
+  const [feasibility, setFeasibility] = useState(idea?.feasibilityNotes ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  const submit = async () => {
+    if (!team?.id || locked) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await apiPost("/idea-submissions/manual", {
+        teamId: team.id,
+        title,
+        theme: domainFit,
+        category: track,
+        organisation: "Student Innovation",
+        description: methodology,
+        abstract: methodology,
+        techStack,
+        feasibilityNotes: feasibility,
+      });
+      setMessage("Manual problem statement submitted and locked.");
+      await reload();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not submit manual problem statement");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6 rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)] sm:p-6">
@@ -21,18 +55,8 @@ export default function ManualEntryForm() {
         </span>
         <h3 className="mt-1 text-lg font-bold text-brand-deep">Manual Problem Statement Proposal</h3>
         <p className="mt-1 max-w-2xl text-sm text-brand-muted">
-          Original student-innovation ideas are recorded after you lock an official repository statement, or via
-          institute process. This form reflects your live team idea when one exists.
+          Propose your own innovation idea. This creates a custom problem statement and locks it to your team.
         </p>
-      </div>
-
-      <div className="flex items-center gap-2 rounded-xl border border-brand-softline bg-brand-cream p-3 text-sm text-brand-muted">
-        <InfoIcon className="h-5 w-5 shrink-0 text-brand-primary" />
-        <span>
-          {locked
-            ? `A problem statement is already attached${team?.problemStatement?.code ? ` (${team.problemStatement.code})` : ""}.`
-            : "No problem statement is locked yet. Browse the official repository to select one."}
-        </span>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -40,56 +64,80 @@ export default function ManualEntryForm() {
           <label className="font-mono text-xs font-bold text-brand-deep">Problem Statement Title</label>
           <input
             type="text"
-            disabled
+            disabled={locked || !isLead}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="None selected"
-            className="w-full rounded-xl border border-brand-softline bg-brand-cream px-4 py-2.5 text-sm text-brand-deep cursor-not-allowed"
+            placeholder="Your innovation title"
+            className="w-full rounded-xl border border-brand-softline bg-white px-4 py-2.5 text-sm text-brand-deep disabled:bg-brand-cream"
           />
         </div>
         <div className="flex flex-col gap-1">
           <label className="font-mono text-xs font-bold text-brand-deep">Track Category</label>
-          <input
-            type="text"
-            disabled
+          <select
+            disabled={locked || !isLead}
             value={track}
-            onChange={(e) => setTrack(e.target.value)}
-            placeholder="—"
-            className="w-full rounded-xl border border-brand-softline bg-brand-cream px-4 py-2.5 text-sm text-brand-deep cursor-not-allowed"
-          />
+            onChange={(e) => setTrack(e.target.value as "software" | "hardware")}
+            className="w-full rounded-xl border border-brand-softline bg-white px-4 py-2.5 text-sm text-brand-deep disabled:bg-brand-cream"
+          >
+            <option value="software">Software</option>
+            <option value="hardware">Hardware</option>
+          </select>
         </div>
         <div className="flex flex-col gap-1">
-          <label className="font-mono text-xs font-bold text-brand-deep">Domain Fit</label>
+          <label className="font-mono text-xs font-bold text-brand-deep">Domain / Theme</label>
           <input
             type="text"
-            disabled
+            disabled={locked || !isLead}
             value={domainFit}
             onChange={(e) => setDomainFit(e.target.value)}
-            placeholder="—"
-            className="w-full rounded-xl border border-brand-softline bg-brand-cream px-4 py-2.5 text-sm text-brand-deep cursor-not-allowed"
+            placeholder="e.g. HealthTech"
+            className="w-full rounded-xl border border-brand-softline bg-white px-4 py-2.5 text-sm text-brand-deep disabled:bg-brand-cream"
           />
         </div>
         <div className="flex flex-col gap-1 md:col-span-2">
           <label className="font-mono text-xs font-bold text-brand-deep">Abstract / methodology</label>
           <textarea
-            disabled
+            disabled={locked || !isLead}
             rows={4}
             value={methodology}
             onChange={(e) => setMethodology(e.target.value)}
-            placeholder="Appears after an idea is submitted."
-            className="w-full rounded-xl border border-brand-softline bg-brand-cream px-4 py-2.5 text-sm leading-relaxed text-brand-deep cursor-not-allowed"
+            className="w-full rounded-xl border border-brand-softline bg-white px-4 py-2.5 text-sm leading-relaxed text-brand-deep disabled:bg-brand-cream"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="font-mono text-xs font-bold text-brand-deep">Tech stack</label>
+          <input
+            type="text"
+            disabled={locked || !isLead}
+            value={techStack}
+            onChange={(e) => setTechStack(e.target.value)}
+            className="w-full rounded-xl border border-brand-softline bg-white px-4 py-2.5 text-sm text-brand-deep disabled:bg-brand-cream"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="font-mono text-xs font-bold text-brand-deep">Feasibility notes</label>
+          <input
+            type="text"
+            disabled={locked || !isLead}
+            value={feasibility}
+            onChange={(e) => setFeasibility(e.target.value)}
+            className="w-full rounded-xl border border-brand-softline bg-white px-4 py-2.5 text-sm text-brand-deep disabled:bg-brand-cream"
           />
         </div>
       </div>
 
+      {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+      {message ? <p className="text-sm font-medium text-green-700">{message}</p> : null}
+
       <div className="flex items-center justify-end pt-2">
         <button
           type="button"
-          disabled
-          className="inline-flex items-center gap-2 rounded-xl bg-brand-sand px-5 py-2.5 text-sm font-bold text-brand-muted/60 cursor-not-allowed"
+          disabled={locked || !isLead || busy || !team?.id}
+          onClick={() => void submit()}
+          className="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
         >
           <LockIcon className="h-4 w-4" />
-          {locked ? "Locked on official repository" : "Select a repository PS to continue"}
+          {locked ? "Problem statement locked" : busy ? "Submitting…" : "Submit & lock manual PS"}
         </button>
       </div>
     </div>

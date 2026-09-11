@@ -34,12 +34,38 @@ type ProfileContextValue = {
   setCertifications: (certifications: Certification[]) => void;
   setExperience: (experience: Experience[]) => void;
   setAchievements: (achievements: Achievement[]) => void;
+  saveProfileJson: (profile: Profile) => Promise<void>;
 };
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
 
+function mergeProfileFromApi(base: Profile, session: { fullName: string; email: string; institute?: string | null; phone?: string | null; profileJson?: Record<string, unknown> }, teamName: string, role: string): Profile {
+  const saved = (session.profileJson ?? {}) as Partial<Profile>;
+  return {
+    ...base,
+    ...saved,
+    initials: initialsFrom(session.fullName),
+    fullName: session.fullName,
+    school: session.institute ?? saved.school ?? base.school,
+    prn: session.email,
+    team: teamName,
+    role,
+    contacts: {
+      ...base.contacts,
+      ...(saved.contacts ?? {}),
+      email: session.email,
+      phone: session.phone ?? saved.contacts?.phone ?? base.contacts.phone,
+    },
+    skills: saved.skills ?? base.skills,
+    projects: saved.projects ?? base.projects,
+    certifications: saved.certifications ?? base.certifications,
+    experience: saved.experience ?? base.experience,
+    achievements: saved.achievements ?? base.achievements,
+  };
+}
+
 export function ProfileProvider({ children }: { children: ReactNode }) {
-  const { session } = useAuth();
+  const { session, refreshMe } = useAuth();
   const { teamName, role, team } = useTeam();
   const [profile, setProfile] = useState<Profile>(initialProfile);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -47,20 +73,9 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!session) return;
-    setProfile((prev) => ({
-      ...prev,
-      initials: initialsFrom(session.fullName),
-      fullName: session.fullName,
-      school: session.institute ?? prev.school,
-      prn: session.email,
-      team: teamName,
-      role,
-      contacts: {
-        ...prev.contacts,
-        email: session.email,
-        phone: session.phone ?? prev.contacts.phone,
-      },
-    }));
+    setProfile((prev) =>
+      mergeProfileFromApi(prev, session, teamName, role),
+    );
   }, [session, teamName, role, team?.id]);
 
   const openDrawer = (nextSection: StudentEditSection = "basic") => {
@@ -70,16 +85,25 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   const closeDrawer = () => setDrawerOpen(false);
 
-  const updateBasicInfo: ProfileContextValue["updateBasicInfo"] = (updates) => {
-    setProfile((prev) => ({ ...prev, ...updates }));
-  };
-
-  const updateContacts: ProfileContextValue["updateContacts"] = (contacts) => {
-    setProfile((prev) => ({ ...prev, contacts }));
-  };
-
-  const updateSkills: ProfileContextValue["updateSkills"] = (skills) => {
-    setProfile((prev) => ({ ...prev, skills }));
+  const saveProfileJson = async (next: Profile) => {
+    const { apiPatch } = await import("../../lib/api");
+    await apiPatch("/me", {
+      fullName: next.fullName,
+      phone: next.contacts.phone,
+      institute: next.school,
+      profileJson: {
+        bio: next.bio,
+        hackathonBadge: next.hackathonBadge,
+        contacts: next.contacts,
+        skills: next.skills,
+        projects: next.projects,
+        certifications: next.certifications,
+        experience: next.experience,
+        achievements: next.achievements,
+      },
+    });
+    setProfile(next);
+    await refreshMe();
   };
 
   return (
@@ -90,13 +114,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         section,
         openDrawer,
         closeDrawer,
-        updateBasicInfo,
-        updateContacts,
-        updateSkills,
+        updateBasicInfo: (updates) => setProfile((prev) => ({ ...prev, ...updates })),
+        updateContacts: (contacts) => setProfile((prev) => ({ ...prev, contacts })),
+        updateSkills: (skills) => setProfile((prev) => ({ ...prev, skills })),
         setProjects: (projects) => setProfile((prev) => ({ ...prev, projects })),
         setCertifications: (certifications) => setProfile((prev) => ({ ...prev, certifications })),
         setExperience: (experience) => setProfile((prev) => ({ ...prev, experience })),
         setAchievements: (achievements) => setProfile((prev) => ({ ...prev, achievements })),
+        saveProfileJson,
       }}
     >
       {children}

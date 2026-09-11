@@ -18,6 +18,11 @@ export default function EvaluateDrawer({ group, open, onClose }: Props) {
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [activity, setActivity] = useState<{
+    problemStatement?: { code: string; title: string } | null;
+    ideaSubmissions?: Array<{ abstract: string; techStack: string; status: string }>;
+    deliverables?: Array<{ version: number; githubUrl?: string | null; pptUrl?: string | null; reportUrl?: string | null; submittedAt: string }>;
+  } | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -26,7 +31,14 @@ export default function EvaluateDrawer({ group, open, onClose }: Props) {
       const first = rows.find((s) => s.isActive) ?? rows[0];
       if (first) setStageId(first.id);
     });
-  }, [open]);
+    if (group.id) {
+      void api<{
+        problemStatement?: { code: string; title: string } | null;
+        ideaSubmissions?: Array<{ abstract: string; techStack: string; status: string }>;
+        deliverables?: Array<{ version: number; githubUrl?: string | null; pptUrl?: string | null; reportUrl?: string | null; submittedAt: string }>;
+      }>(`/teams/${group.id}`).then(setActivity).catch(() => setActivity(null));
+    }
+  }, [open, group.id]);
 
   if (!open) return null;
   const stage = stages.find((s) => s.id === stageId);
@@ -38,6 +50,28 @@ export default function EvaluateDrawer({ group, open, onClose }: Props) {
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5">
         <h3 className="text-lg font-bold text-brand-deep">Score {group.teamName}</h3>
         <p className="text-xs text-brand-muted">{group.problemTitle}</p>
+
+        {activity ? (
+          <div className="mt-4 rounded-xl border border-brand-softline bg-brand-cream p-3 text-xs text-brand-deep">
+            <p className="font-bold">Student activity</p>
+            <p className="mt-1">
+              PS: {activity.problemStatement ? `${activity.problemStatement.code} — ${activity.problemStatement.title}` : "Not selected yet"}
+            </p>
+            {activity.ideaSubmissions?.[0] ? (
+              <p className="mt-1">Idea: {activity.ideaSubmissions[0].abstract.slice(0, 120)}… ({activity.ideaSubmissions[0].status})</p>
+            ) : null}
+            <p className="mt-1">Deliverables: {activity.deliverables?.length ?? 0} submission(s)</p>
+            {activity.deliverables?.slice(0, 3).map((d) => (
+              <p key={`${d.version}-${d.submittedAt}`} className="text-brand-muted">
+                v{d.version} · {new Date(d.submittedAt).toLocaleDateString()}
+                {d.githubUrl ? " · GitHub" : ""}
+                {d.pptUrl ? " · PPT" : ""}
+                {d.reportUrl ? " · Report" : ""}
+              </p>
+            ))}
+          </div>
+        ) : null}
+
         <label className="mt-4 block text-xs font-bold uppercase">Stage</label>
         <select value={stageId} onChange={(e) => setStageId(e.target.value)} className="mt-1 w-full rounded-xl border border-brand-sand px-3 py-2 text-sm">
           {stages.map((s) => (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { api, apiPost } from "../../lib/api";
+import { apiDelete, apiPost } from "../../lib/api";
 import { useTeam } from "./TeamProvider";
 import { FileCheckIcon, FileTextIcon, GithubIcon, LockIcon } from "./icons";
 
@@ -11,7 +11,7 @@ export default function DeliverablesCard() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const stage = stages.find((s) => s.isActive) ?? stages[0];
-  const latest = team?.deliverables?.[0];
+  const deliverables = team?.deliverables ?? [];
 
   const submitGithub = async () => {
     if (!team || !stage || !githubUrl) return;
@@ -21,7 +21,7 @@ export default function DeliverablesCard() {
       await apiPost(`/stages/${stage.id}/deliverables`, { teamId: team.id, githubUrl });
       setGithubUrl("");
       setMessage("Deliverable saved.");
-      await reload();
+      void reload();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -43,8 +43,7 @@ export default function DeliverablesCard() {
       });
       const put = await fetch(presign.url, { method: "PUT", body: file, headers: { "content-type": file.type || "application/pdf" } });
       if (!put.ok) throw new Error("Storage upload failed");
-      const publicBase = "";
-      const storedUrl = publicBase ? `${publicBase}/${presign.key}` : presign.url.split("?")[0];
+      const storedUrl = presign.url.split("?")[0];
       await apiPost(`/stages/${stage.id}/deliverables`, {
         teamId: team.id,
         ...(kind === "ppt" ? { pptUrl: storedUrl } : {}),
@@ -52,9 +51,23 @@ export default function DeliverablesCard() {
         ...(kind === "video" ? { videoUrl: storedUrl } : {}),
       });
       setMessage("File submitted.");
-      await reload();
+      void reload();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Upload failed — check S3 configuration");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeDeliverable = async (deliverableId: string) => {
+    if (!stage) return;
+    setBusy(true);
+    try {
+      await apiDelete(`/stages/${stage.id}/deliverables/${deliverableId}`);
+      setMessage("Deliverable removed.");
+      void reload();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Could not delete");
     } finally {
       setBusy(false);
     }
@@ -78,25 +91,48 @@ export default function DeliverablesCard() {
       <ul className="mt-5 space-y-3 text-sm">
         <li className="flex items-center justify-between rounded-xl border border-brand-softline p-3">
           <span className="flex items-center gap-2 font-semibold text-brand-deep">
-            <FileTextIcon className="h-4 w-4" /> PPT {latest?.pptUrl ? "• uploaded" : ""}
+            <FileTextIcon className="h-4 w-4" /> Upload PPT / Report / Video
           </span>
           {isLead ? (
-            <input type="file" accept=".ppt,.pptx,.pdf" disabled={busy} onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void uploadFile("ppt", file);
-            }} />
-          ) : null}
-        </li>
-        <li className="flex items-center justify-between rounded-xl border border-brand-softline p-3">
-          <span className="font-semibold text-brand-deep">Report {latest?.reportUrl ? "• uploaded" : ""}</span>
-          {isLead ? (
-            <input type="file" accept=".pdf,.doc,.docx" disabled={busy} onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void uploadFile("report", file);
-            }} />
+            <div className="flex flex-wrap gap-2">
+              <input type="file" accept=".ppt,.pptx,.pdf" disabled={busy} onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void uploadFile("ppt", file);
+              }} />
+              <input type="file" accept=".pdf,.doc,.docx" disabled={busy} onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void uploadFile("report", file);
+              }} />
+            </div>
           ) : null}
         </li>
       </ul>
+
+      {deliverables.length > 0 ? (
+        <div className="mt-4 space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-brand-muted">Submitted versions</p>
+          {deliverables.map((d) => (
+            <div key={d.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-softline p-3 text-xs">
+              <div className="space-y-1">
+                <p className="font-semibold text-brand-deep">v{d.version} · {new Date(d.submittedAt).toLocaleString()}</p>
+                {d.githubUrl ? <a href={d.githubUrl} className="text-brand-primary" target="_blank" rel="noreferrer">GitHub</a> : null}
+                {d.pptUrl ? <p className="text-brand-muted">PPT uploaded</p> : null}
+                {d.reportUrl ? <p className="text-brand-muted">Report uploaded</p> : null}
+              </div>
+              {isLead && !d.locked ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void removeDeliverable(d.id)}
+                  className="rounded-lg border border-red-200 px-3 py-1.5 font-semibold text-red-700 hover:bg-red-50"
+                >
+                  Delete
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap gap-2">
         <div className="relative flex min-w-[220px] flex-1 items-center">
@@ -118,11 +154,6 @@ export default function DeliverablesCard() {
           Save GitHub
         </button>
       </div>
-      {latest?.githubUrl ? (
-        <a href={latest.githubUrl} className="mt-2 inline-block text-xs font-semibold text-brand-primary" target="_blank" rel="noreferrer">
-          Current repo: {latest.githubUrl}
-        </a>
-      ) : null}
       {message ? <p className="mt-2 text-xs font-medium text-brand-deep">{message}</p> : null}
 
       <div className="mt-5 rounded-xl border border-brand-warmBorder bg-brand-lightOrange p-4 text-xs text-brand-deep">

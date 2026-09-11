@@ -26,3 +26,15 @@ export const createPsSchema = z.object({
 });
 
 export const patchPsSchema = createPsSchema.partial();
+
+export const manualIdeaSchema = z.object({
+  teamId: z.string().uuid(),
+  title: z.string().min(5),
+  theme: z.string().min(2),
+  category: z.enum(['software', 'hardware']),
+  organisation: z.string().min(2).default('Student Innovation'),
+  description: z.string().min(10),
+  abstract: z.string().min(20),
+  techStack: z.string().min(2),
+  feasibilityNotes: z.string().min(10),
+});

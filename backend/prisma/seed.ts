@@ -1,6 +1,8 @@
 import { PrismaClient, PlatformRole, PsCategory } from '@prisma/client';
+import { hashPassword } from '../src/lib/password';
 
 const prisma = new PrismaClient();
+const DEFAULT_PASSWORD = 'Prabodh@123';
 
 const INSTITUTE = 'MIT Art, Design and Technology University';
 
@@ -294,6 +296,7 @@ async function upsertUser(data: {
   domainTags?: string[];
   clerkUserId: string;
 }) {
+  const passwordHash = hashPassword(DEFAULT_PASSWORD);
   return prisma.user.upsert({
     where: { email: data.email },
     update: {
@@ -303,8 +306,9 @@ async function upsertUser(data: {
       department: data.department,
       domainTags: data.domainTags ?? [],
       isActive: true,
+      passwordHash,
     },
-    create: data,
+    create: { ...data, passwordHash },
   });
 }
 
@@ -398,11 +402,53 @@ async function main() {
     });
   }
 
+  const leader = studentRows.find((u) => u.email === 'leader@institute.edu');
+  const mentor = facultyRows.find((u) => u.email === 'faculty@institute.edu');
+  if (leader) {
+    const teamCode = 'DEMO01';
+    const team = await prisma.team.upsert({
+      where: { teamCode },
+      update: { name: 'Demo SIH Team', institute: INSTITUTE, leaderUserId: leader.id },
+      create: {
+        clerkOrgId: `local-org-${teamCode}`,
+        teamCode,
+        name: 'Demo SIH Team',
+        institute: INSTITUTE,
+        leaderUserId: leader.id,
+        members: {
+          create: {
+            userId: leader.id,
+            invitedEmail: leader.email,
+            inviteStatus: 'accepted',
+            joinedAt: new Date(),
+          },
+        },
+      },
+    });
+    if (mentor) {
+      const existing = await prisma.mentorAssignment.findFirst({
+        where: { teamId: team.id, mentorUserId: mentor.id, active: true },
+      });
+      if (!existing) {
+        await prisma.mentorAssignment.create({
+          data: {
+            teamId: team.id,
+            mentorUserId: mentor.id,
+            mentorType: 'institute',
+            assignedById: admin.id,
+            assignmentMethod: 'manual',
+          },
+        });
+      }
+    }
+  }
+
   console.log('Seed complete', {
     adminId: admin.id,
     students: studentRows.length,
     faculty: facultyRows.length,
     problemStatements: problemStatements.length,
+    defaultPassword: DEFAULT_PASSWORD,
   });
 }
 

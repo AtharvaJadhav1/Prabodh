@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { PlatformRole } from '@prisma/client';
 import { CurrentUser } from '../../common/current-user.decorator';
 import { AuthUser } from '../../common/auth.types';
@@ -48,6 +48,16 @@ export class TeamsController {
     @Body(new ZodPipe(inviteSchema)) body: unknown,
   ) {
     return this.teams.invite(user, teamId, body as never);
+  }
+
+  @Delete(':teamId/members/:memberId')
+  @Roles(PlatformRole.student)
+  removeMember(
+    @CurrentUser() user: AuthUser,
+    @Param('teamId') teamId: string,
+    @Param('memberId') memberId: string,
+  ) {
+    return this.teams.removeMember(user, teamId, memberId);
   }
 
   @Post(':teamId/invite/:memberId/revoke')

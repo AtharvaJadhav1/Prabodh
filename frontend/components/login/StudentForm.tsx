@@ -3,35 +3,34 @@
 import { useRouter } from "next/navigation";
 import { useAuth } from "../auth/AuthProvider";
 import { dashboardForRole } from "../../lib/session";
-import OtpAuthFlow from "./OtpAuthFlow";
+import LoginPasswordForm from "./LoginPasswordForm";
 
 export default function StudentForm() {
   const router = useRouter();
   const { establishSession } = useAuth();
 
   return (
-    <div className="space-y-6">
-    <OtpAuthFlow
-      purpose="login"
+    <LoginPasswordForm
+      portal="student"
       title="Student Team Sign In"
-      description="Enter your institutional email. We will send a one-time verification code — check inbox and spam."
+      description="Sign in with your institutional email and password."
       submitLabel="Sign in to student workspace"
+      footer={
+        <p className="text-center text-sm text-brand-muted">
+          New to the portal?{" "}
+          <a href="/register" className="font-semibold text-brand-primary hover:text-brand-hover">
+            Create a student account
+          </a>
+        </p>
+      }
       onSuccess={(result) => {
         establishSession(result);
-        router.push(
+        router.replace(
           result.platformRole === "student"
             ? "/dashboard/student"
-            : dashboardForRole(result.platformRole as never),
+            : dashboardForRole(result.platformRole),
         );
       }}
     />
-    <p className="text-center text-sm text-brand-muted">
-      New to the portal?{" "}
-      <a href="/register" className="font-semibold text-brand-primary hover:text-brand-hover">
-        Create a student account
-      </a>
-    </p>
-    </div>
   );
 }
-

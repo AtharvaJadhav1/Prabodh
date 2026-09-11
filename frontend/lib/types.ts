@@ -24,6 +24,7 @@ export type PortalDeliverable = {
   githubUrl?: string | null;
   submittedAt: string;
   stageId?: string;
+  locked?: boolean;
 };
 
 export type PortalStage = {

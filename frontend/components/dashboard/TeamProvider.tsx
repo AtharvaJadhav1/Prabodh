@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { type Member, type JoinRequest, type OutgoingInvite, type StudentRole } from "../../data/studentDashboard";
-import { api, apiPost } from "../../lib/api";
+import { api, apiDelete, apiPost } from "../../lib/api";
 import type { PortalStage, PortalTeam } from "../../lib/types";
 import { useAuth } from "../auth/AuthProvider";
 
@@ -209,14 +209,18 @@ export function TeamProvider({ children }: { children: ReactNode }) {
 
   const sendInvite = async (email: string) => {
     if (!email || !email.includes("@") || !team?.id) return { ok: false, emailSent: false };
+    setInvites((prev) => [
+      ...prev.filter((i) => i.email !== email),
+      { email, sentAt: "Just now", status: "Invitation Sent — Awaiting Student Accept" },
+    ]);
     const result = await apiPost<{ emailSent?: boolean; emailError?: string | null }>(
       `/teams/${team.id}/invite`,
       { email },
     );
-    await reload();
+    void reload();
     return {
       ok: true,
-      emailSent: Boolean(result.emailSent),
+      emailSent: Boolean(result.emailSent ?? true),
       emailError: result.emailError ?? null,
     };
   };
@@ -254,7 +258,12 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         closeDrawer: () => setDrawerOpen(false),
         approveRequest: (index) => setRequestResults((prev) => ({ ...prev, [index]: "approved" })),
         rejectRequest: (index) => setRequestResults((prev) => ({ ...prev, [index]: "rejected" })),
-        removeMember: () => undefined,
+        removeMember: (index: number) => {
+          const member = members[index];
+          const id = member?.inviteEmail ? memberIds[member.inviteEmail] : undefined;
+          if (!team?.id || !id || !isLead) return;
+          void apiDelete(`/teams/${team.id}/members/${id}`).then(() => reload());
+        },
         sendInvite,
         revokeInvite,
         facultyDirectory,

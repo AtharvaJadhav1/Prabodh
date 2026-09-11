@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -33,6 +34,7 @@ type AuthContextValue = {
     institute?: string | null;
     department?: string | null;
     phone?: string | null;
+    profileJson?: Record<string, unknown> | null;
   }) => void;
   logout: () => void;
   refreshMe: () => Promise<void>;
@@ -50,6 +52,7 @@ function toSession(user: {
   department?: string | null;
   phone?: string | null;
   accessToken?: string;
+  profileJson?: Record<string, unknown> | null;
 }): Session {
   return {
     userId: user.userId ?? user.id ?? "",
@@ -60,6 +63,7 @@ function toSession(user: {
     department: user.department,
     phone: user.phone,
     accessToken: user.accessToken,
+    profileJson: user.profileJson ?? undefined,
   };
 }
 
@@ -68,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const refreshed = useRef(false);
 
   const isDashboard = pathname.startsWith("/dashboard");
   const isAuthEntry = pathname.startsWith("/login") || pathname.startsWith("/register");
@@ -81,25 +86,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setReady(true);
   }, []);
 
-  const establishSession = useCallback(
-    (payload: {
-      accessToken: string;
-      userId: string;
-      email: string;
-      fullName: string;
-      platformRole: PlatformRole;
-      institute?: string | null;
-      department?: string | null;
-      phone?: string | null;
-    }) => {
-      const next = toSession(payload);
-      writeSession(next);
-      setAccessToken(payload.accessToken);
-      setSession(next);
-    },
-    [],
-  );
-
   const refreshMe = useCallback(async () => {
     const cached = readSession();
     if (!cached?.accessToken) return;
@@ -112,17 +98,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       institute?: string | null;
       department?: string | null;
       phone?: string | null;
+      profileJson?: Record<string, unknown> | null;
     }>("/me");
-    const next = toSession({ ...me, userId: me.id, accessToken: cached.accessToken });
+    const next = toSession({ ...me, userId: me.id, accessToken: cached.accessToken, profileJson: me.profileJson });
     writeSession(next);
     setSession(next);
   }, []);
 
   useEffect(() => {
+    if (!ready || refreshed.current) return;
+    refreshed.current = true;
+    const cached = readSession();
+    if (!cached?.accessToken) return;
+    void refreshMe().catch(() => {
+      /* keep cached session on transient errors */
+    });
+  }, [ready, refreshMe]);
+
+  useEffect(() => {
     if (!ready) return;
-    if (!session && isDashboard) router.replace("/login/student");
-    if (session && isAuthEntry) router.replace(dashboardForRole(session.platformRole));
-  }, [ready, session, isDashboard, isAuthEntry, router]);
+    if (!session && isDashboard) {
+      const login = pathname.startsWith("/dashboard/mentor") || pathname.startsWith("/dashboard/industry")
+        ? "/login/faculty"
+        : pathname.startsWith("/dashboard/admin")
+          ? "/login/faculty"
+          : "/login/student";
+      router.replace(login);
+    }
+  }, [ready, session, isDashboard, pathname, router]);
+
+  useEffect(() => {
+    if (!ready || !session || !isAuthEntry) return;
+    router.replace(dashboardForRole(session.platformRole));
+  }, [ready, session, isAuthEntry, router]);
+
+  const establishSession = useCallback(
+    (payload: {
+      accessToken: string;
+      userId: string;
+      email: string;
+      fullName: string;
+      platformRole: PlatformRole;
+      institute?: string | null;
+      department?: string | null;
+      phone?: string | null;
+      profileJson?: Record<string, unknown> | null;
+    }) => {
+      const next = toSession(payload);
+      writeSession(next);
+      setAccessToken(payload.accessToken);
+      setSession(next);
+    },
+    [],
+  );
 
   const value = useMemo<AuthContextValue>(
     () => ({

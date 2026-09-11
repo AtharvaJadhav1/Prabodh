@@ -7,7 +7,7 @@ import { consumeToken } from '../../lib/rate-limit';
 import { PrismaService } from '../../lib/prisma.service';
 import { ZodPipe } from '../../common/zod.pipe';
 import { IdentityService } from './service';
-import { otpSendSchema, otpVerifySchema, registerSchema } from './schema';
+import { loginSchema, otpSendSchema, otpVerifySchema, patchMeSchema, registerSchema } from './schema';
 
 @Controller()
 export class IdentityController {
@@ -40,6 +40,13 @@ export class IdentityController {
     };
   }
 
+  @Post('auth/login')
+  async login(@Body(new ZodPipe(loginSchema)) body: unknown) {
+    const parsed = body as { email: string; password: string; portal: 'student' | 'faculty' };
+    await consumeToken(`login:${parsed.email}`, Number(process.env.LOGIN_RATE_LIMIT_PER_MIN ?? 15));
+    return this.identity.loginWithPassword(parsed);
+  }
+
   @Post('auth/otp/send')
   async sendOtp(@Body(new ZodPipe(otpSendSchema)) body: unknown) {
     const parsed = body as {
@@ -65,38 +72,32 @@ export class IdentityController {
   async register(@Body(new ZodPipe(registerSchema)) body: unknown) {
     const parsed = body as {
       email: string;
+      password: string;
       fullName: string;
       institute?: string;
       department?: string;
       phone?: string;
     };
-    const user = await this.identity.registerStudent(parsed);
-    return {
-      userId: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      platformRole: user.platformRole,
-      institute: user.institute,
-      department: user.department,
-      phone: user.phone,
-    };
+    return this.identity.registerWithPassword(parsed);
   }
 
   @Patch('me')
   @UseGuards(ClerkAuthGuard)
   patchMe(
     @CurrentUser() user: AuthUser,
-    @Body()
-    body: { fullName?: string; phone?: string; department?: string; institute?: string },
+    @Body(new ZodPipe(patchMeSchema)) body: unknown,
   ) {
-    return this.identity.updateProfile(user.id, body);
+    return this.identity.updateProfile(user.id, body as never);
   }
 
   @Get('me')
   @UseGuards(ClerkAuthGuard)
   async me(@CurrentUser() user: AuthUser) {
     await this.identity.acceptPendingTeamInvites(user.id, user.email);
-    return this.prisma.user.findUnique({ where: { id: user.id } });
+    const row = await this.prisma.user.findUnique({ where: { id: user.id } });
+    if (!row) return null;
+    const { passwordHash: _ph, ...safe } = row;
+    return safe;
   }
 
   @Post('webhooks/clerk')

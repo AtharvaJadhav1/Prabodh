@@ -6,7 +6,7 @@ import { CurrentUser } from '../../common/current-user.decorator';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
 import { ZodPipe } from '../../common/zod.pipe';
-import { createIdeaSchema, createPsSchema, patchIdeaSchema, patchPsSchema } from './schema';
+import { createIdeaSchema, createPsSchema, manualIdeaSchema, patchIdeaSchema, patchPsSchema } from './schema';
 import { ProblemStatementsService } from './service';
 
 @Controller()
@@ -44,6 +44,12 @@ export class ProblemStatementsController {
   @Roles(PlatformRole.student)
   createIdea(@CurrentUser() user: AuthUser, @Body(new ZodPipe(createIdeaSchema)) body: unknown) {
     return this.service.createIdea(user, body as never);
+  }
+
+  @Post('idea-submissions/manual')
+  @Roles(PlatformRole.student)
+  createManualIdea(@CurrentUser() user: AuthUser, @Body(new ZodPipe(manualIdeaSchema)) body: unknown) {
+    return this.service.submitManualIdea(user, body as never);
   }
 
   @Patch('idea-submissions/:id')

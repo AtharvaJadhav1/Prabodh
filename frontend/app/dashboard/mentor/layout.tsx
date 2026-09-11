@@ -1,3 +1,4 @@
+import DashboardRoleGuard from "../../../components/auth/DashboardRoleGuard";
 import { MentorRequestProvider } from "../../../components/mentor/MentorRequestProvider";
 
 export const metadata = {
@@ -7,5 +8,9 @@ export const metadata = {
 };
 
 export default function MentorDashboardLayout({ children }: { children: React.ReactNode }) {
-  return <MentorRequestProvider>{children}</MentorRequestProvider>;
+  return (
+    <DashboardRoleGuard>
+      <MentorRequestProvider>{children}</MentorRequestProvider>
+    </DashboardRoleGuard>
+  );
 }

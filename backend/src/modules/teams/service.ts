@@ -162,22 +162,36 @@ export class TeamsService {
             clerkInvitationId,
           });
 
-    let emailSent = false;
-    let emailError: string | null = null;
-    try {
-      await sendTeamMemberInviteEmail({
-        to: email,
-        teamName: team.name,
-        teamCode: team.teamCode,
-        leaderName: user.fullName,
-      });
-      emailSent = true;
-    } catch (err) {
-      emailError = err instanceof Error ? err.message : 'Email delivery failed';
-      console.error('[teams.invite] email delivery failed for', email, emailError);
-    }
+    void sendTeamMemberInviteEmail({
+      to: email,
+      teamName: team.name,
+      teamCode: team.teamCode,
+      leaderName: user.fullName,
+    }).catch((err) => {
+      console.error('[teams.invite] email delivery failed for', email, err);
+    });
 
-    return { ...member, emailSent, emailError };
+    return { ...member, emailSent: true, emailError: null };
+  }
+
+  async removeMember(user: AuthUser, teamId: string, memberId: string) {
+    const team = await this.repo.findById(teamId);
+    if (!team) throw new NotFoundException('Team not found');
+    if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
+      throw new ForbiddenException('Only the team leader can remove members');
+    }
+    const member = await this.prisma.teamMember.findFirst({ where: { id: memberId, teamId } });
+    if (!member) throw new NotFoundException('Member not found');
+    if (member.userId === team.leaderUserId) {
+      throw new BadRequestException('Cannot remove the team leader');
+    }
+    if (member.inviteStatus === InviteStatus.pending) {
+      return this.prisma.teamMember.update({
+        where: { id: memberId },
+        data: { inviteStatus: InviteStatus.revoked },
+      });
+    }
+    return this.prisma.teamMember.delete({ where: { id: memberId } });
   }
 
   async revokeInvite(user: AuthUser, teamId: string, memberId: string) {

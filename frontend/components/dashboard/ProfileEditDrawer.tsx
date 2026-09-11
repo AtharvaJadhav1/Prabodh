@@ -10,7 +10,6 @@ import type {
   Achievement,
 } from "../../data/studentProfile";
 import { useProfile, type StudentEditSection } from "./ProfileProvider";
-import { apiPatch } from "../../lib/api";
 import DrawerShell from "../profile/DrawerShell";
 import DrawerSectionNav, { type DrawerSection } from "../profile/DrawerSectionNav";
 import TextInput from "../profile/TextInput";
@@ -71,6 +70,7 @@ export default function ProfileEditDrawer() {
     setCertifications,
     setExperience,
     setAchievements,
+    saveProfileJson,
   } = useProfile();
 
   const [draft, setDraft] = useState<Profile>(profile);
@@ -98,12 +98,7 @@ export default function ProfileEditDrawer() {
     setCertifications(draft.certifications);
     setExperience(draft.experience);
     setAchievements(draft.achievements);
-    void apiPatch("/me", {
-      fullName: draft.fullName,
-      phone: draft.contacts.phone,
-      institute: draft.school,
-    });
-    closeDrawer();
+    void saveProfileJson(draft).then(() => closeDrawer());
   };
 
   const primaryEmpty: Skill = { name: "", level: undefined, tag: undefined };
