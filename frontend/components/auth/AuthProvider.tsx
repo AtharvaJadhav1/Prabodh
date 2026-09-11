@@ -26,6 +26,7 @@ type AuthContextValue = {
   session: Session | null;
   ready: boolean;
   syncing: boolean;
+  syncError: string | null;
   clerkEnabled: boolean;
   login: (email: string) => Promise<Session>;
   logout: () => Promise<void>;
@@ -144,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       ready: ready && (!clerkEnabled || clerkState.loaded),
       syncing: syncingProfile,
+      syncError,
       clerkEnabled,
       login: async (email: string) => {
         const user = await apiPost<Session>("/auth/dev-login", { email });
@@ -161,7 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       refreshMe,
     }),
-    [session, ready, syncingProfile, clerkEnabled, clerkState, clerkSignOut, router, refreshMe],
+    [session, ready, syncingProfile, syncError, clerkEnabled, clerkState, clerkSignOut, router, refreshMe],
   );
 
   return (

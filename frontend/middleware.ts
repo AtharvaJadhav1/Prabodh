@@ -11,9 +11,19 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
-  if (!isPublicRoute(request)) {
-    await auth.protect();
+  if (isPublicRoute(request)) {
+    return NextResponse.next();
   }
+
+  const { userId } = await auth();
+  if (!userId) {
+    // Always send through /auth/callback after login — never redirect_url=/dashboard/*
+    // which races the Clerk cookie and bounces users back to login.
+    const login = new URL("/login/student", request.url);
+    login.searchParams.set("redirect_url", new URL("/auth/callback", request.url).toString());
+    return NextResponse.redirect(login);
+  }
+
   return NextResponse.next();
 });
 
