@@ -94,11 +94,6 @@ export default function IndustryMentorsPage() {
 
   return (
     <MentorShell
-      breadcrumb={[
-        { label: "SIH 2026 Portal" },
-        { label: "Faculty & Mentorship" },
-        { label: "Industry Mentors" },
-      ]}
       title="Industry Mentors"
       subtitle="Industry experts allocated to your teams by a nodal admin. Mapping is managed in the admin console."
     >

@@ -22,13 +22,8 @@ export default function GroupRequestsPage() {
 
   return (
     <MentorShell
-      breadcrumb={[
-        { label: "SIH 2026 Portal" },
-        { label: "Group Requests" },
-      ]}
       title="Group Assignment Requests"
       subtitle="Review and accept or decline group mentorship invitations from student team leaders."
-      showActions={false}
     >
       <div className="mx-auto max-w-7xl space-y-6">
         <GroupRequestMetricCards
