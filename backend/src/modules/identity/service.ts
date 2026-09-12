@@ -72,7 +72,7 @@ export class IdentityService {
   async requestOtp(body: {
     email: string;
     purpose: 'login' | 'register';
-    accountType?: 'student' | 'faculty';
+    accountType?: 'student' | 'faculty' | 'industry';
     password?: string;
     fullName?: string;
     institute?: string;
@@ -83,7 +83,11 @@ export class IdentityService {
     const user = await this.repo.findByEmail(email);
     const accountType = body.accountType ?? 'student';
     const targetRole =
-      accountType === 'faculty' ? PlatformRole.institute_mentor : PlatformRole.student;
+      accountType === 'industry'
+        ? PlatformRole.industry_mentor
+        : accountType === 'faculty'
+          ? PlatformRole.institute_mentor
+          : PlatformRole.student;
 
     if (body.purpose === 'login') {
       if (!user || !user.isActive) {
@@ -146,13 +150,19 @@ export class IdentityService {
     email: string;
     password: string;
     fullName: string;
-    platformRole: 'student' | 'institute_mentor';
+    platformRole: 'student' | 'institute_mentor' | 'industry_mentor';
     institute?: string;
     department?: string;
     phone?: string;
   }) {
-    if (body.platformRole === PlatformRole.institute_mentor) {
-      return this.registerFaculty(body);
+    if (
+      body.platformRole === PlatformRole.institute_mentor ||
+      body.platformRole === PlatformRole.industry_mentor
+    ) {
+      return this.registerFaculty({
+        ...body,
+        mentorKind: body.platformRole === PlatformRole.industry_mentor ? 'industry' : 'institute',
+      });
     }
     return this.registerStudent(body);
   }
@@ -164,11 +174,14 @@ export class IdentityService {
     institute?: string;
     department?: string;
     phone?: string;
+    mentorKind?: 'institute' | 'industry';
   }) {
     const email = body.email.toLowerCase();
+    const role =
+      body.mentorKind === 'industry' ? PlatformRole.industry_mentor : PlatformRole.institute_mentor;
     const existing = await this.repo.findByEmail(email);
     if (existing) {
-      if (existing.platformRole !== PlatformRole.institute_mentor) {
+      if (existing.platformRole !== role) {
         throw new BadRequestException('This email is already registered with another role. Sign in instead.');
       }
       return this.prisma.user.update({
@@ -191,7 +204,7 @@ export class IdentityService {
         clerkUserId: `local:${email}`,
         email,
         fullName: body.fullName,
-        platformRole: PlatformRole.institute_mentor,
+        platformRole: role,
         institute: body.institute,
         department: body.department,
         phone: body.phone,
@@ -279,8 +292,11 @@ export class IdentityService {
     institute?: string;
     department?: string;
     phone?: string;
+    mentorKind?: 'institute' | 'industry';
   }) {
     const email = body.email.toLowerCase();
+    const role =
+      body.mentorKind === 'industry' ? PlatformRole.industry_mentor : PlatformRole.institute_mentor;
     const result = await sendOtp({
       email,
       purpose: 'register',
@@ -288,7 +304,7 @@ export class IdentityService {
         email,
         fullName: body.fullName.trim(),
         password: body.password,
-        platformRole: PlatformRole.institute_mentor,
+        platformRole: role,
         institute: body.institute?.trim(),
         department: body.department?.trim(),
         phone: body.phone?.trim(),
@@ -296,7 +312,10 @@ export class IdentityService {
     });
     return {
       ok: true,
-      message: 'Verification code sent to your email. Enter the OTP to complete faculty registration.',
+      message:
+        role === PlatformRole.industry_mentor
+          ? 'Verification code sent. Enter the OTP to complete industry mentor registration.'
+          : 'Verification code sent to your email. Enter the OTP to complete faculty registration.',
       devCode: result.devCode,
     };
   }

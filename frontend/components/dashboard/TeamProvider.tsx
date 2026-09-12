@@ -34,7 +34,7 @@ type TeamContextValue = {
   removeMember: (index: number) => void;
   sendInvite: (email: string) => Promise<{ ok: boolean; emailSent: boolean; emailError?: string | null }>;
   revokeInvite: (email: string) => void;
-  sendFacultyInvite: (email: string) => Promise<boolean>;
+  sendFacultyInvite: (email: string, mentorType?: "institute" | "industry") => Promise<boolean>;
   revokeFacultyInvite: (inviteId?: string) => void;
   facultyDirectory: Array<{
     id: string;
@@ -273,11 +273,12 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         revokeInvite,
         facultyDirectory,
         loadFacultyDirectory,
-        sendFacultyInvite: async (email) => {
+        sendFacultyInvite: async (email, mentorType = "institute") => {
           if (!team?.id || !email.includes("@")) return false;
           const result = await apiPost<{ emailSent?: boolean; emailError?: string | null }>("/mentors/invite", {
             teamId: team.id,
             email,
+            mentorType,
           });
           await reload();
           if (result.emailError) {

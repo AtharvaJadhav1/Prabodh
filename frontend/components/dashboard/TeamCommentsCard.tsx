@@ -1,15 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiPost } from "../../lib/api";
+import type { PortalComment } from "../../lib/types";
+import { useAuth } from "../auth/AuthProvider";
 import { useTeam } from "./TeamProvider";
 import { MessageIcon } from "./icons";
 
 export default function TeamCommentsCard() {
-  const { team, reload } = useTeam();
+  const { team } = useTeam();
+  const { session } = useAuth();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const comments = team?.comments ?? [];
+  const [error, setError] = useState("");
+  const [comments, setComments] = useState<PortalComment[]>(team?.comments ?? []);
+
+  useEffect(() => {
+    if (!busy) setComments(team?.comments ?? []);
+  }, [team?.id, team?.comments, busy]);
 
   return (
     <section className="rounded-2xl border border-brand-softline bg-white p-5 sm:p-6">
@@ -30,12 +38,30 @@ export default function TeamCommentsCard() {
         className="mt-3 flex gap-2"
         onSubmit={async (e) => {
           e.preventDefault();
-          if (!team || !message.trim()) return;
+          if (!team || !message.trim() || busy) return;
+          const text = message.trim();
           setBusy(true);
+          setError("");
           try {
-            await apiPost(`/teams/${team.id}/comments`, { message: message.trim() });
+            // Local-only update. Do NOT call team.reload() — it sets loading=true and
+            // blanks the whole dashboard for several seconds.
+            const created = await apiPost<PortalComment>(`/teams/${team.id}/comments`, { message: text });
+            setComments((prev) => [
+              ...prev,
+              {
+                id: created.id,
+                message: created.message ?? text,
+                createdAt: created.createdAt ?? new Date().toISOString(),
+                author: created.author ?? {
+                  id: session?.userId ?? "",
+                  fullName: session?.fullName ?? "You",
+                  email: session?.email ?? "",
+                },
+              },
+            ]);
             setMessage("");
-            await reload();
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Could not post comment");
           } finally {
             setBusy(false);
           }
@@ -47,10 +73,15 @@ export default function TeamCommentsCard() {
           placeholder="Write a comment"
           className="flex-1 rounded-xl border border-brand-sand px-3 py-2 text-sm"
         />
-        <button type="submit" disabled={busy} className="rounded-xl bg-brand-primary px-3 py-2 text-xs font-bold text-white">
-          Post
+        <button
+          type="submit"
+          disabled={busy}
+          className="rounded-xl bg-brand-primary px-3 py-2 text-xs font-bold text-white disabled:opacity-60"
+        >
+          {busy ? "…" : "Post"}
         </button>
       </form>
+      {error ? <p className="mt-2 text-xs font-semibold text-red-700">{error}</p> : null}
     </section>
   );
 }

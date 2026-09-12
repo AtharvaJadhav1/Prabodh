@@ -11,7 +11,7 @@ export type PendingRegistration = {
   email: string;
   fullName: string;
   password: string;
-  platformRole: 'student' | 'institute_mentor';
+  platformRole: 'student' | 'institute_mentor' | 'industry_mentor';
   institute?: string;
   department?: string;
   phone?: string;

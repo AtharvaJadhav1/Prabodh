@@ -26,7 +26,7 @@ type Props = {
   profile?: {
     fullName: string;
     password?: string;
-    accountType?: "student" | "faculty";
+    accountType?: "student" | "faculty" | "industry";
     institute?: string;
     department?: string;
     phone?: string;

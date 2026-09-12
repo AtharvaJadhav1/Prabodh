@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useTeam } from "./TeamProvider";
 import { GradCapIcon, CheckIcon, ArrowRightIcon } from "./icons";
 
+function mentorKindLabel(kind: string) {
+  return kind === "industry" ? "Industry Mentor" : "Institute Mentor";
+}
+
 export default function MentorsCard() {
   const { team, isLead } = useTeam();
   const assignments = team?.mentorAssignments ?? [];
@@ -16,7 +20,7 @@ export default function MentorsCard() {
       </h2>
       {assignments.length === 0 ? (
         <p className="mt-3 text-sm text-brand-muted">
-          No mentors assigned yet. Team leaders can invite faculty by email.
+          No mentors assigned yet. Team leaders can invite faculty and industry mentors by email.
         </p>
       ) : (
         <ul className="mt-3 space-y-2">
@@ -24,7 +28,7 @@ export default function MentorsCard() {
             <li key={a.id} className="rounded-xl border border-brand-softline bg-brand-cream p-3">
               <p className="text-sm font-bold text-brand-deep">{a.mentor.fullName}</p>
               <p className="text-xs text-brand-muted">
-                Institute Mentor · {a.mentor.email}
+                {mentorKindLabel(a.mentorType)} · {a.mentor.email}
               </p>
               <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-brand-approved">
                 <CheckIcon className="h-3 w-3" /> Assigned

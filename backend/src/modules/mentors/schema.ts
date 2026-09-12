@@ -14,4 +14,5 @@ export const autoAllocateSchema = z.object({
 export const mentorInviteSchema = z.object({
   teamId: z.string().uuid(),
   email: z.string().email(),
+  mentorType: z.enum(['institute', 'industry']).default('institute'),
 });

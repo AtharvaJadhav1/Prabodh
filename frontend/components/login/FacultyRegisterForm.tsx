@@ -7,6 +7,8 @@ import { dashboardForRole } from "../../lib/session";
 import OtpAuthFlow from "./OtpAuthFlow";
 import TextField from "./TextField";
 
+type MentorKind = "institute" | "industry";
+
 type FacultyDraft = {
   fullName: string;
   email: string;
@@ -14,6 +16,7 @@ type FacultyDraft = {
   institute: string;
   department: string;
   phone: string;
+  mentorKind: MentorKind;
 };
 
 export default function FacultyRegisterForm() {
@@ -22,15 +25,21 @@ export default function FacultyRegisterForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [mentorKind, setMentorKind] = useState<MentorKind>("institute");
   const [draft, setDraft] = useState<FacultyDraft | null>(null);
 
   if (draft) {
+    const isIndustry = draft.mentorKind === "industry";
     return (
       <OtpAuthFlow
         purpose="register"
-        title="Verify faculty email"
-        description="Enter the OTP sent to your official university email to complete faculty registration."
-        submitLabel="Verify & create faculty account"
+        title={isIndustry ? "Verify industry mentor email" : "Verify faculty email"}
+        description={
+          isIndustry
+            ? "Enter the OTP sent to your work email to create your industry mentor account."
+            : "Enter the OTP sent to your official university email to complete faculty registration."
+        }
+        submitLabel={isIndustry ? "Verify & create industry mentor ID" : "Verify & create faculty account"}
         initialEmail={draft.email}
         profile={{
           fullName: draft.fullName,
@@ -38,7 +47,7 @@ export default function FacultyRegisterForm() {
           department: draft.department,
           phone: draft.phone,
           password: draft.password,
-          accountType: "faculty",
+          accountType: isIndustry ? "industry" : "faculty",
         }}
         onSuccess={(result) => {
           establishSession(result);
@@ -52,10 +61,10 @@ export default function FacultyRegisterForm() {
     <div className="space-y-6">
       <div>
         <h1 className="font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">
-          Faculty Registration
+          Mentor Registration
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-brand-muted">
-          Register with your official university email. Students can invite you as a mentor using this email address.
+          Create an institute faculty ID or an industry mentor ID. Students invite you using this email address.
         </p>
       </div>
       <form
@@ -72,6 +81,7 @@ export default function FacultyRegisterForm() {
             institute: String(form.get("institute") ?? ""),
             department: String(form.get("department") ?? ""),
             phone: String(form.get("phone") ?? ""),
+            mentorKind,
           };
           try {
             if (payload.password.length < 8) {
@@ -85,12 +95,25 @@ export default function FacultyRegisterForm() {
           }
         }}
       >
+        <div className="space-y-1.5">
+          <label className="block text-xs font-bold uppercase tracking-wider text-brand-deep">Account type</label>
+          <select
+            value={mentorKind}
+            onChange={(e) => setMentorKind(e.target.value as MentorKind)}
+            className="w-full rounded-xl border border-brand-sand bg-white px-4 py-3 text-sm font-medium text-brand-charcoal outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+          >
+            <option value="institute">Institute mentor (faculty)</option>
+            <option value="industry">Industry mentor</option>
+          </select>
+        </div>
         <TextField id="fullName" label="Full name" placeholder="Dr. Neha Kulkarni" required autoComplete="name" />
         <TextField
           id="email"
-          label="Official university email"
+          label={mentorKind === "industry" ? "Work email" : "Official university email"}
           type="email"
-          placeholder="faculty@mituniversity.edu.in"
+          placeholder={
+            mentorKind === "industry" ? "mentor@company.com" : "faculty@mituniversity.edu.in"
+          }
           required
           autoComplete="email"
         />
@@ -120,12 +143,22 @@ export default function FacultyRegisterForm() {
         </div>
         <TextField
           id="institute"
-          label="Institute"
-          placeholder="MIT Art, Design and Technology University"
+          label={mentorKind === "industry" ? "Organisation / Company" : "Institute"}
+          placeholder={
+            mentorKind === "industry"
+              ? "Acme Technologies"
+              : "MIT Art, Design and Technology University"
+          }
           required
           autoComplete="organization"
         />
-        <TextField id="department" label="Department" placeholder="CSE" required autoComplete="organization-title" />
+        <TextField
+          id="department"
+          label={mentorKind === "industry" ? "Domain / Expertise" : "Department"}
+          placeholder={mentorKind === "industry" ? "AI / IoT" : "CSE"}
+          required
+          autoComplete="organization-title"
+        />
         <TextField id="phone" label="Phone" type="text" placeholder="Optional" autoComplete="tel" />
         {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
         <button
@@ -133,13 +166,17 @@ export default function FacultyRegisterForm() {
           disabled={loading}
           className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
         >
-          {loading ? "Sending verification code…" : "Continue — verify email"}
+          {loading
+            ? "Sending verification code…"
+            : mentorKind === "industry"
+              ? "Continue — create industry mentor ID"
+              : "Continue — verify email"}
         </button>
       </form>
       <p className="text-center text-sm text-brand-muted">
         Already registered?{" "}
         <a href="/login/faculty" className="font-semibold text-brand-primary hover:text-brand-hover">
-          Faculty sign in
+          Faculty / mentor sign in
         </a>
       </p>
     </div>

@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTeam } from "./TeamProvider";
 import { GradCapIcon, CheckIcon, SendIcon, ClockIcon } from "./icons";
+
+type MentorKind = "institute" | "industry";
+
+function mentorKindLabel(kind: MentorKind | string) {
+  return kind === "industry" ? "Industry Mentor" : "Institute Mentor";
+}
 
 export default function MentorInvitePanel() {
   const { team, isLead, mentorLocked, sendFacultyInvite, revokeFacultyInvite, facultyDirectory, loadFacultyDirectory } =
@@ -10,9 +16,26 @@ export default function MentorInvitePanel() {
   const assignments = team?.mentorAssignments ?? [];
   const pending = (team?.mentorInvites ?? []).filter((i) => i.inviteStatus === "pending");
   const [email, setEmail] = useState("");
+  const [mentorType, setMentorType] = useState<MentorKind>("institute");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const hasInstitute = assignments.some((a) => a.mentorType === "institute");
+  const hasIndustry = assignments.some((a) => a.mentorType === "industry");
+  const instituteLocked = mentorLocked || hasInstitute;
+  const inviteBlocked =
+    (mentorType === "institute" && instituteLocked) || (mentorType === "industry" && hasIndustry);
+
+  const filteredDirectory = useMemo(
+    () =>
+      facultyDirectory.filter((f) =>
+        mentorType === "industry"
+          ? f.platformRole === "industry_mentor"
+          : f.platformRole === "institute_mentor",
+      ),
+    [facultyDirectory, mentorType],
+  );
 
   useEffect(() => {
     if (isLead) void loadFacultyDirectory();
@@ -21,16 +44,28 @@ export default function MentorInvitePanel() {
   const handleSend = async (targetEmail = email) => {
     const trimmed = targetEmail.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError("Enter a faculty email, e.g. neha.kulkarni@mituniversity.edu.in");
+      setError(
+        mentorType === "industry"
+          ? "Enter an industry mentor email, e.g. mentor@company.com"
+          : "Enter a faculty email, e.g. neha.kulkarni@mituniversity.edu.in",
+      );
+      return;
+    }
+    if (inviteBlocked) {
+      setError(
+        mentorType === "industry"
+          ? "This team already has an industry mentor."
+          : "Faculty mentor slot is already locked.",
+      );
       return;
     }
     setBusy(true);
     setError("");
     setSuccess("");
     try {
-      await sendFacultyInvite(trimmed);
+      await sendFacultyInvite(trimmed, mentorType);
       setEmail("");
-      setSuccess(`Mentor invitation sent to ${trimmed}.`);
+      setSuccess(`${mentorKindLabel(mentorType)} invitation sent to ${trimmed}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send mentor invite");
     } finally {
@@ -43,11 +78,10 @@ export default function MentorInvitePanel() {
       <div className="rounded-2xl border border-brand-softline bg-white p-5 sm:p-6">
         <h2 className="flex items-center gap-2 text-base font-bold text-brand-deep">
           <GradCapIcon className="h-5 w-5 text-brand-primary" />
-          Faculty Mentor Invites
+          Mentor Invites
         </h2>
         <p className="mt-2 text-sm text-brand-muted">
-          Invites are first-come, first-served: the first faculty member to accept is locked in as your mentor, and all
-          other invitations are automatically cancelled.
+          Invite an institute faculty mentor and an industry mentor. Each slot locks when that mentor accepts.
         </p>
         {assignments.length === 0 && pending.length === 0 ? (
           <div className="mt-4 rounded-xl border border-dashed border-brand-softline bg-brand-cream p-5 text-center text-sm text-brand-muted">
@@ -58,7 +92,7 @@ export default function MentorInvitePanel() {
             {assignments.map((a) => (
               <li key={a.id} className="rounded-xl border border-brand-softline p-4">
                 <p className="text-sm font-bold text-brand-deep">{a.mentor.fullName}</p>
-                <p className="text-xs text-brand-muted">Institute Mentor</p>
+                <p className="text-xs text-brand-muted">{mentorKindLabel(a.mentorType)}</p>
                 <span className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-brand-approved">
                   <CheckIcon className="h-3.5 w-3.5" /> Active assignment
                 </span>
@@ -67,6 +101,7 @@ export default function MentorInvitePanel() {
             {pending.map((i) => (
               <li key={i.id} className="rounded-xl border border-brand-softline p-3.5">
                 <p className="truncate text-sm font-bold text-brand-deep">{i.mentor?.fullName ?? i.invitedEmail}</p>
+                <p className="text-xs text-brand-muted">{mentorKindLabel(i.mentorType ?? "institute")}</p>
                 <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-brand-softline pt-2.5">
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-primary">
                     <ClockIcon className="h-3.5 w-3.5" /> Invite sent — awaiting acceptance
@@ -89,28 +124,54 @@ export default function MentorInvitePanel() {
 
       {isLead ? (
         <div className="rounded-2xl border border-brand-softline bg-white p-5 sm:p-6">
-          {mentorLocked ? (
-            <>
-              <h3 className="text-sm font-bold text-brand-deep">Faculty slot locked</h3>
-              <p className="mt-1 text-xs text-brand-muted">
-                A faculty mentor has accepted the invitation and is locked in for your team. Further invites are closed.
+          <h3 className="text-sm font-bold text-brand-deep">Invite a mentor by email</h3>
+          <p className="mt-1 text-xs text-brand-muted">
+            Mentors must register first at{" "}
+            <a href="/register/faculty" className="font-semibold text-brand-primary hover:underline">
+              /register/faculty
+            </a>
+            . Choose institute or industry, then invite by the same email.
+          </p>
+
+          <div className="mt-3 space-y-1.5">
+            <label className="block text-xs font-bold uppercase tracking-wider text-brand-muted">Mentor type</label>
+            <select
+              value={mentorType}
+              onChange={(e) => {
+                setMentorType(e.target.value as MentorKind);
+                setError("");
+                setSuccess("");
+              }}
+              className="h-10 w-full rounded-xl border border-brand-softline bg-brand-cream px-3 text-sm text-brand-deep outline-none focus:border-brand-primary focus:bg-white sm:h-11"
+            >
+              <option value="institute">Institute mentor (faculty)</option>
+              <option value="industry">Industry mentor</option>
+            </select>
+          </div>
+
+          {inviteBlocked ? (
+            <div className="mt-4">
+              <p className="text-xs text-brand-muted">
+                {mentorType === "industry"
+                  ? "An industry mentor is already assigned for this team."
+                  : "A faculty mentor has accepted and this slot is locked."}
               </p>
               <span className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-brand-approved/30 bg-brand-approved/10 px-2.5 py-1 text-xs font-bold text-brand-approved">
                 <CheckIcon className="h-3.5 w-3.5" /> Assigned / Locked
               </span>
-            </>
+            </div>
           ) : (
             <>
-              <h3 className="text-sm font-bold text-brand-deep">Invite a faculty mentor by email</h3>
-              <p className="mt-1 text-xs text-brand-muted">
-                You may invite multiple faculty members at once; the first to accept locks in the slot.
-              </p>
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="faculty.email@mituniversity.edu.in"
+                  placeholder={
+                    mentorType === "industry"
+                      ? "mentor@company.com"
+                      : "faculty.email@mituniversity.edu.in"
+                  }
                   className="h-10 w-full rounded-xl border border-brand-softline bg-brand-cream px-3 py-2 text-sm text-brand-deep outline-none focus:border-brand-primary focus:bg-white sm:h-11"
                 />
                 <button
@@ -125,27 +186,35 @@ export default function MentorInvitePanel() {
               {error ? <p className="mt-2 text-xs font-semibold text-red-700">{error}</p> : null}
               {success ? <p className="mt-2 text-xs font-bold text-brand-approved">{success}</p> : null}
 
-              <h4 className="mt-6 text-xs font-bold uppercase tracking-wider text-brand-muted">Faculty directory</h4>
+              <h4 className="mt-6 text-xs font-bold uppercase tracking-wider text-brand-muted">
+                {mentorType === "industry" ? "Industry mentor directory" : "Faculty directory"}
+              </h4>
               <ul className="mt-3 divide-y divide-brand-softline rounded-xl border border-brand-softline">
-                {facultyDirectory.map((f) => (
-                  <li key={f.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-brand-deep">{f.fullName}</p>
-                      <p className="truncate text-[11px] text-brand-muted">
-                        {f.email}
-                        {f.department ? ` · ${f.department}` : ""}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void handleSend(f.email)}
-                      className="shrink-0 rounded-lg border border-brand-primary/40 bg-brand-primary/10 px-2.5 py-1 text-[11px] font-bold text-brand-primary transition-colors hover:bg-brand-primary/20"
-                    >
-                      Invite
-                    </button>
+                {filteredDirectory.length === 0 ? (
+                  <li className="px-4 py-3 text-xs text-brand-muted">
+                    No registered {mentorType === "industry" ? "industry mentors" : "faculty"} yet.
                   </li>
-                ))}
+                ) : (
+                  filteredDirectory.map((f) => (
+                    <li key={f.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold text-brand-deep">{f.fullName}</p>
+                        <p className="truncate text-[11px] text-brand-muted">
+                          {f.email}
+                          {f.department ? ` · ${f.department}` : ""}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void handleSend(f.email)}
+                        className="shrink-0 rounded-lg border border-brand-primary/40 bg-brand-primary/10 px-2.5 py-1 text-[11px] font-bold text-brand-primary transition-colors hover:bg-brand-primary/20"
+                      >
+                        Invite
+                      </button>
+                    </li>
+                  ))
+                )}
               </ul>
             </>
           )}
