@@ -165,10 +165,10 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }: Props) {
           <button
             type="button"
             onClick={() => logout()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-bold text-brand-deep transition-colors hover:bg-brand-cream hover:text-brand-primary"
+            className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-brand-primary px-4 py-2.5 text-xs font-bold tracking-wide text-white shadow-sm transition-all duration-200 hover:bg-brand-hover hover:shadow-md sm:text-sm"
           >
-            <LogoutIcon className="h-4 w-4" />
-            <span>Logout</span>
+            <LogoutIcon className="h-5 w-5 shrink-0" />
+            <span className="whitespace-nowrap">Logout</span>
           </button>
         </div>
       </aside>

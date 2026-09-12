@@ -169,10 +169,10 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 logout();
                 router.push("/");
               }}
-              className="inline-flex items-center gap-2.5 rounded-xl border border-brand-softline bg-white px-3 py-2.5 text-sm font-semibold text-brand-charcoal/80 transition-colors hover:border-brand-primary/40 hover:bg-white hover:text-brand-primary"
+              className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-brand-primary px-4 py-2.5 text-xs font-bold tracking-wide text-white shadow-sm transition-all duration-200 hover:bg-brand-hover hover:shadow-md sm:text-sm"
             >
-              <LogoutIcon className="h-5 w-5 text-brand-muted" />
-              <span>Logout</span>
+              <LogoutIcon className="h-5 w-5 shrink-0" />
+              <span className="whitespace-nowrap">Logout</span>
             </button>
           </div>
         </div>
