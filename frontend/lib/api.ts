@@ -12,6 +12,14 @@ export class ApiError extends Error {
   }
 }
 
+const REQUEST_TIMEOUT_MS = 12_000;
+
+function withTimeoutSignal(init: RequestInit = {}): RequestInit {
+  const timeoutSignal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  if (init.signal) return { ...init, signal: AbortSignal.any([init.signal, timeoutSignal]) };
+  return { ...init, signal: timeoutSignal };
+}
+
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const session = readSession();
   const headers = new Headers(init.headers);
@@ -26,7 +34,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
+    ...withTimeoutSignal(init),
     headers,
     cache: "no-store",
   });
@@ -69,7 +77,11 @@ export async function apiBlob(path: string) {
   const bearer = getAccessToken() || session?.accessToken || session?.clerkToken;
   if (bearer) headers.set("authorization", `Bearer ${bearer}`);
   else if (session?.userId) headers.set("x-dev-user-id", session.userId);
-  const res = await fetch(`${API_BASE}${path}`, { headers, cache: "no-store" });
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...withTimeoutSignal(),
+    headers,
+    cache: "no-store",
+  });
   if (!res.ok) throw new ApiError(res.status, res.statusText);
   return res.blob();
 }

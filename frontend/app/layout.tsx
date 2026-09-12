@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   applicationName: "Prabodh",
   manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/icon.ico", type: "image/x-icon" }],
+    icon: [{ url: "/icons/pwa/icon-192.png", type: "image/png", sizes: "192x192" }],
     apple: [{ url: "/icons/pwa/apple-touch-icon-180.png", sizes: "180x180", type: "image/png" }],
   },
   appleWebApp: {

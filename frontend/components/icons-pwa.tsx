@@ -49,3 +49,16 @@ export function CheckIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function RefreshIcon({ className }: IconProps) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M4 4v6h6M20 20v-6h-6M4 10a8 8 0 0112.4-3.4M20 14a8 8 0 01-12.4 3.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}

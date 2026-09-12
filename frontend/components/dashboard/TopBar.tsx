@@ -2,6 +2,7 @@
 
 import { type ReactNode } from "react";
 import NotificationBell from "../chrome/NotificationBell";
+import RefreshButton from "../chrome/RefreshButton";
 import { useTeam } from "./TeamProvider";
 import { ClockIcon, MenuIcon } from "./icons";
 
@@ -47,6 +48,7 @@ export default function TopBar({ onMenuClick, title = "Student Team Workspace", 
             <ClockIcon className="h-3.5 w-3.5" />
             Lock: {stage ? new Date(stage.deadline).toLocaleDateString() : "—"}
           </span>
+          <RefreshButton />
           <NotificationBell />
         </div>
       </div>

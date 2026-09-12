@@ -1,6 +1,7 @@
 "use client";
 
 import NotificationBell from "../chrome/NotificationBell";
+import RefreshButton from "../chrome/RefreshButton";
 import { useAuth } from "../auth/AuthProvider";
 import { ChevronRightIcon, CalendarIcon, BriefcaseIcon } from "../dashboard/icons";
 
@@ -67,6 +68,7 @@ export default function IndustryTopBar({
                 Industry Review Window
               </span>
             )}
+            <RefreshButton />
             <NotificationBell />
           </div>
         </div>
