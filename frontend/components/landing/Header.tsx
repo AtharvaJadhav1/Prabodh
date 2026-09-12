@@ -45,7 +45,7 @@ export default function Header() {
           <div className="flex items-center gap-3">
             <Link
               href="/login/student"
-              className="inline-flex transform items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-hover hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/40"
+              className="hidden transform items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-hover hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/40 md:inline-flex"
             >
               <PortalIcon className="h-4 w-4" />
               <span>Access Portal</span>
