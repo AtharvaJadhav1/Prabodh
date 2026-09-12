@@ -4,10 +4,7 @@ import ProfileTabs from "../../../../components/dashboard/ProfileTabs";
 
 export default function StudentProfilePage() {
   return (
-    <DashboardShell
-      title="My Profile"
-      subtitle={<>Manage your SIH participant profile and track record.</>}
-    >
+    <DashboardShell title="My Profile">
       <div className="mx-auto max-w-5xl space-y-6">
         <ProfileHeaderCard />
         <ProfileTabs />
