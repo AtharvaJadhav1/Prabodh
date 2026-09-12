@@ -53,8 +53,8 @@ self.addEventListener("activate", (event) => {
 });
 
 async function networkFirst(request, cacheName, timeoutMs) {
-  const cache = await caches.open(cacheName);
   try {
+    const cache = await caches.open(cacheName);
     const res = await Promise.race([fetch(request), timeout(timeoutMs)]);
     if (res && res.ok) {
       const copy = res.clone();
@@ -62,38 +62,51 @@ async function networkFirst(request, cacheName, timeoutMs) {
     }
     return res;
   } catch (err) {
-    const cached = await caches.match(request, { cacheName });
-    if (cached) return cached;
-    if (request.mode === "navigate") {
-      return caches.match("/offline.html", { cacheName: SHELL_CACHE });
+    try {
+      const cached = await caches.match(request, { cacheName });
+      if (cached) return cached;
+      if (request.mode === "navigate") {
+        const offline = await caches.match("/offline.html", { cacheName: SHELL_CACHE });
+        if (offline) return offline;
+      }
+      return Response.error();
+    } catch (fallbackErr) {
+      return Response.error();
     }
-    return cached;
   }
 }
 
 async function staleWhileRevalidate(request) {
-  const cached = await caches.match(request, { cacheName: STATIC_CACHE });
-  const network = fetch(request)
-    .then((res) => {
-      if (res && res.ok) {
-        const copy = res.clone();
-        caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy));
-      }
-      return res;
-    })
-    .catch(() => undefined);
-  return cached || network;
+  try {
+    const cached = await caches.match(request, { cacheName: STATIC_CACHE });
+    const network = fetch(request)
+      .then((res) => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy));
+        }
+        return res;
+      })
+      .catch(() => undefined);
+    return (cached || (await network) || Response.error());
+  } catch (err) {
+    return Response.error();
+  }
 }
 
 async function cacheFirst(request, cacheName) {
-  const cached = await caches.match(request, { cacheName });
-  if (cached) return cached;
-  const res = await fetch(request);
-  if (res && res.ok) {
-    const copy = res.clone();
-    caches.open(cacheName).then((cache) => cache.put(request, copy));
+  try {
+    const cached = await caches.match(request, { cacheName });
+    if (cached) return cached;
+    const res = await fetch(request);
+    if (res && res.ok) {
+      const copy = res.clone();
+      caches.open(cacheName).then((cache) => cache.put(request, copy));
+    }
+    return res;
+  } catch (err) {
+    return Response.error();
   }
-  return res;
 }
 
 self.addEventListener("fetch", (event) => {

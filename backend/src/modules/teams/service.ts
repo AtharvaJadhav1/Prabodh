@@ -2,9 +2,11 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InviteStatus, TeamStatus } from '@prisma/client';
+import { InviteStatus, Prisma, TeamStatus } from '@prisma/client';
 import { AuthUser } from '../../common/auth.types';
 import { writeAudit } from '../../lib/audit';
 import { getClerkClient } from '../../lib/clerk';
@@ -16,8 +18,12 @@ import { generateTeamCode, TeamsRepository } from './repository';
 import { createTeamSchema, inviteSchema, patchTeamSchema } from './schema';
 import { z } from 'zod';
 
+const MAX_TEAM_CODE_ATTEMPTS = 3;
+
 @Injectable()
 export class TeamsService {
+  private readonly logger = new Logger(TeamsService.name);
+
   constructor(
     private readonly repo: TeamsRepository,
     private readonly prisma: PrismaService,
@@ -27,50 +33,77 @@ export class TeamsService {
     if (user.platformRole !== 'student') {
       throw new ForbiddenException('Only students can create teams');
     }
-    const defaultCap = await getSettingNumber(this.prisma, 'member_cap');
-    const teamCode = await generateTeamCode(this.prisma);
-    const clerk = getClerkClient();
-    let clerkOrgId = `local-org-${teamCode}`;
-    if (clerk) {
-      try {
-        const org = await clerk.organizations.createOrganization({
-          name: body.name,
-          createdBy: user.clerkUserId,
-        });
-        clerkOrgId = org.id;
-        try {
-          await clerk.organizations.updateOrganizationMembership({
-            organizationId: org.id,
-            userId: user.clerkUserId,
-            role: 'org:admin',
-          });
-        } catch {
-          // createdBy is already org admin in most Clerk configs
-        }
-      } catch {
-        // Keep a local org id so team creation still works if Clerk orgs are unavailable.
-      }
-    }
 
-    const team = await this.repo.create({
-      clerkOrgId,
-      teamCode,
-      name: body.name,
-      institute: body.institute,
-      theme: body.theme,
-      memberCap: body.memberCap ?? defaultCap,
-      status: TeamStatus.forming,
-      leader: { connect: { id: user.id } },
-      members: {
-        create: {
-          userId: user.id,
-          invitedEmail: user.email,
-          inviteStatus: InviteStatus.accepted,
-          joinedAt: new Date(),
-        },
-      },
-    });
-    return team;
+    try {
+      const defaultCap = await getSettingNumber(this.prisma, 'member_cap');
+
+      for (let attempt = 1; attempt <= MAX_TEAM_CODE_ATTEMPTS; attempt++) {
+        const teamCode = await generateTeamCode(this.prisma);
+        const clerk = getClerkClient();
+        let clerkOrgId = `local-org-${teamCode}`;
+        if (clerk) {
+          try {
+            const org = await clerk.organizations.createOrganization({
+              name: body.name,
+              createdBy: user.clerkUserId,
+            });
+            clerkOrgId = org.id;
+            try {
+              await clerk.organizations.updateOrganizationMembership({
+                organizationId: org.id,
+                userId: user.clerkUserId,
+                role: 'org:admin',
+              });
+            } catch {
+              // createdBy is already org admin in most Clerk configs
+            }
+          } catch {
+            // Keep a local org id so team creation still works if Clerk orgs are unavailable.
+          }
+        }
+
+        try {
+          return await this.repo.create({
+            clerkOrgId,
+            teamCode,
+            name: body.name,
+            institute: body.institute,
+            theme: body.theme,
+            memberCap: body.memberCap ?? defaultCap,
+            status: TeamStatus.forming,
+            leader: { connect: { id: user.id } },
+            members: {
+              create: {
+                userId: user.id,
+                invitedEmail: user.email,
+                inviteStatus: InviteStatus.accepted,
+                joinedAt: new Date(),
+              },
+            },
+          });
+        } catch (err) {
+          const isTeamCodeCollision =
+            err instanceof Prisma.PrismaClientKnownRequestError &&
+            err.code === 'P2002' &&
+            (err.meta?.target as string[] | undefined)?.includes('team_code');
+          if (isTeamCodeCollision && attempt < MAX_TEAM_CODE_ATTEMPTS) {
+            this.logger.warn(`Team code collision on "${teamCode}", retrying (attempt ${attempt})`);
+            continue;
+          }
+          throw err;
+        }
+      }
+      throw new InternalServerErrorException('Could not allocate a unique team code, please try again');
+    } catch (err) {
+      if (err instanceof ForbiddenException || err instanceof InternalServerErrorException) {
+        throw err;
+      }
+      this.logger.error(
+        `Failed to create team for user ${user.id}: ${(err as Error).message}`,
+        (err as Error).stack,
+      );
+      throw new InternalServerErrorException('Failed to create team');
+    }
   }
 
   async get(user: AuthUser, teamId: string) {
