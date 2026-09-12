@@ -9,7 +9,6 @@ import {
   CompassIcon,
   MessageIcon,
   PersonIcon,
-  ShieldCheckIcon,
   BriefcaseIcon,
   LogoutIcon,
   XIcon,
@@ -93,22 +92,7 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
           </div>
         </div>
 
-        <div className="border-b border-brand-softline px-4 py-4">
-          <div className="rounded-2xl border border-brand-softline bg-white p-4">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-brand-muted">Active Role</p>
-              <span className="inline-flex items-center gap-1 rounded-full bg-brand-approved/10 px-2 py-0.5 text-[10px] font-bold uppercase text-brand-approved">
-                <ShieldCheckIcon className="h-3 w-3" /> Verified
-              </span>
-            </div>
-            <div className="mt-1.5 flex items-center justify-between text-sm">
-              <span className="truncate font-extrabold text-brand-deep">{role}</span>
-              <span className="font-semibold text-brand-muted">{session?.department ?? ""}</span>
-            </div>
-          </div>
-        </div>
-
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4 pt-4">
           {navItems.map((item) => {
             const active =
               item.match === "exact"

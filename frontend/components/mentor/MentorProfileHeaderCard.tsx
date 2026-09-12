@@ -2,7 +2,6 @@
 
 import { useMentorProfile } from "./MentorProfileProvider";
 import {
-  BadgeCheckIcon,
   ShieldCheckIcon,
   MailIcon,
   MapPinIcon,
@@ -15,17 +14,12 @@ import {
 
 export default function MentorProfileHeaderCard() {
   const { profile, openDrawer } = useMentorProfile();
-  const { initials, fullName, verified, designation, department, facultyId, roleBadge, email, location, socials } = profile;
+  const { initials, fullName, designation, department, facultyId, roleBadge, email, location, socials } = profile;
 
   return (
     <section className="overflow-hidden rounded-2xl border border-brand-sand bg-white shadow-sm">
       {/* Cover Banner */}
-      <div className="custom-pattern relative flex h-24 w-full items-end justify-end bg-gradient-to-r from-brand-deep via-[#7E3B14] to-brand-deep-deep px-6">
-        <span className="relative z-10 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-black/30 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur-md">
-          <ShieldCheckIcon className="h-3.5 w-3.5 text-brand-amber" />
-          Institutional Identity Verified
-        </span>
-      </div>
+      <div className="custom-pattern relative flex h-24 w-full items-end justify-end bg-gradient-to-r from-brand-deep via-[#7E3B14] to-brand-deep-deep px-6" />
 
       {/* Bio & Identity */}
       <div className="relative px-8 pb-6 pt-4">
@@ -38,12 +32,6 @@ export default function MentorProfileHeaderCard() {
             <div className="pt-5">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-2xl font-bold tracking-tight text-brand-deep">{fullName}</h2>
-                {verified && (
-                  <span className="inline-flex items-center gap-1 rounded border border-brand-approved/20 bg-brand-approved/10 px-2 py-0.5 text-[11px] font-semibold text-brand-approved">
-                    <BadgeCheckIcon className="h-3.5 w-3.5" />
-                    Verified Faculty
-                  </span>
-                )}
               </div>
               <p className="mt-0.5 text-xs font-medium text-brand-muted">
                 {designation} &bull; {department}

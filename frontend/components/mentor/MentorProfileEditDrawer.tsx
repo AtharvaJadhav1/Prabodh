@@ -32,47 +32,53 @@ const sections: DrawerSection<MentorEditSection>[] = [
   { key: "record", label: "Track Record", icon: TrophyIcon },
 ];
 
+const designationOptions = [
+  "Assistant Professor",
+  "Associate Professor",
+  "Professor",
+  "Professor & Head of Department (HOD)",
+  "Dean / Associate Dean",
+  "Adjunct / Visiting Faculty",
+  "Research Scholar / Teaching Assistant",
+  "Other / Custom",
+];
+
+const designationChips = ["Assistant Professor", "Associate Professor", "Professor", "Professor & Head of Department (HOD)"];
+
+const labelClass = "block text-xs font-bold uppercase tracking-wider text-brand-deep";
+
 const selectClass =
   "w-full rounded-xl border border-brand-sand bg-white px-4 py-2.5 text-sm font-medium text-brand-charcoal shadow-sm transition-all focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none";
 
 export default function MentorProfileEditDrawer() {
   const {
     profile,
+    saving,
     drawerOpen,
     section,
     openDrawer,
     closeDrawer,
-    updateBasicInfo,
-    setSocials,
-    setNextAction,
-    setCohorts,
-    setDomainExpertise,
-    setTrackRecord,
+    saveProfile,
   } = useMentorProfile();
 
   const [draft, setDraft] = useState<MentorProfile>(profile);
+  const [customDesignation, setCustomDesignation] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (drawerOpen) setDraft(profile);
+    if (drawerOpen) {
+      setDraft(profile);
+      setError("");
+    }
   }, [drawerOpen, profile]);
 
   const patch = (p: Partial<MentorProfile>) => setDraft((prev) => ({ ...prev, ...p }));
 
   const handleSave = () => {
-    updateBasicInfo({
-      fullName: draft.fullName,
-      designation: draft.designation,
-      department: draft.department,
-      email: draft.email,
-      location: draft.location,
-      roleBadge: draft.roleBadge,
-    });
-    setSocials(draft.socials);
-    setNextAction(draft.nextAction);
-    setCohorts(draft.cohorts);
-    setDomainExpertise(draft.domainExpertise);
-    setTrackRecord(draft.trackRecord);
-    closeDrawer();
+    setError("");
+    void saveProfile(draft)
+      .then(() => closeDrawer())
+      .catch((err) => setError(err instanceof Error ? err.message : "Could not save profile"));
   };
 
   const socialEmpty = { label: "", href: "" };
@@ -103,21 +109,29 @@ export default function MentorProfileEditDrawer() {
           <button
             type="button"
             onClick={closeDrawer}
-            className="flex-1 rounded-xl border border-brand-sand px-4 py-3 text-sm font-bold text-brand-charcoal/70 transition-colors hover:border-brand-primary/40 hover:text-brand-primary"
+            disabled={saving}
+            className="flex-1 rounded-xl border border-brand-sand px-4 py-3 text-sm font-bold text-brand-charcoal/70 transition-colors hover:border-brand-primary/40 hover:text-brand-primary disabled:opacity-50"
           >
             Discard
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="flex-1 rounded-xl bg-brand-primary px-4 py-3 text-sm font-bold text-white shadow-md shadow-brand-primary/25 transition-colors hover:bg-brand-hover"
+            disabled={saving}
+            className="flex-1 rounded-xl bg-brand-primary px-4 py-3 text-sm font-bold text-white shadow-md shadow-brand-primary/25 transition-colors hover:bg-brand-hover disabled:opacity-60"
           >
-            Save Changes
+            {saving ? "Saving…" : "Save Changes"}
           </button>
         </div>
       }
     >
       <DrawerSectionNav sections={sections} active={section} onSelect={openDrawer} />
+
+      {error ? (
+        <p className="mb-3 rounded-lg border border-brand-overdue/20 bg-brand-overdue/5 px-3 py-2 text-xs font-semibold text-brand-overdue">
+          {error}
+        </p>
+      ) : null}
 
       {section === "basic" && (
         <div className="space-y-4">
@@ -127,16 +141,78 @@ export default function MentorProfileEditDrawer() {
             onChange={(fullName) => patch({ fullName })}
             required
           />
+          <div className="space-y-1.5">
+            <label className={labelClass}>
+              Designation<span className="text-brand-primary"> *</span>
+            </label>
+            <select
+              value={
+                !draft.designation
+                  ? ""
+                  : designationOptions.includes(draft.designation)
+                    ? draft.designation
+                    : "Other / Custom"
+              }
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "Other / Custom") {
+                  setCustomDesignation(draft.designation);
+                  patch({ designation: draft.designation });
+                } else {
+                  setCustomDesignation("");
+                  patch({ designation: value });
+                }
+              }}
+              className={selectClass}
+            >
+              {!draft.designation ? (
+                <option value="" disabled>
+                  Select a designation…
+                </option>
+              ) : null}
+              {designationOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            {!draft.designation || designationOptions.includes(draft.designation) ? null : (
+              <TextInput
+                label="Custom Designation"
+                value={draft.designation}
+                onChange={(designation) => {
+                  setCustomDesignation(designation);
+                  patch({ designation });
+                }}
+                placeholder="e.g. Director, Training & Placement"
+                required
+              />
+            )}
+            <div className="flex flex-wrap gap-1.5 pt-1.5">
+              {designationChips.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  onClick={() => {
+                    setCustomDesignation("");
+                    patch({ designation: chip });
+                  }}
+                  className={`border border-brand-softline bg-brand-canvas px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                    draft.designation === chip
+                      ? "border-brand-primary/40 text-brand-primary"
+                      : "text-brand-charcoal/80 hover:bg-brand-primary/10"
+                  }`}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          </div>
           <TextInput
-            label="Designation"
-            value={draft.designation}
-            onChange={(designation) => patch({ designation })}
-            required
-          />
-          <TextInput
-            label="Department"
+            label="Department / Discipline"
             value={draft.department}
             onChange={(department) => patch({ department })}
+            placeholder="e.g. CSE, IT, AI & ML, Mechanical, Electronics"
             required
           />
           <TextInput

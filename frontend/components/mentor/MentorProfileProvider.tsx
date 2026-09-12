@@ -13,22 +13,25 @@ import { apiPatch } from "../../lib/api";
 
 export type MentorEditSection = "basic" | "socials" | "overview" | "expertise" | "record";
 
+type SavedMentorProfile = {
+  designation?: string;
+  roleBadge?: string;
+  location?: string;
+  socials?: MentorProfile["socials"];
+  nextAction?: string;
+  cohorts?: MentorCohort[];
+  domainExpertise?: MentorExpertise[];
+  trackRecord?: MentorTrackRecordEntry[];
+};
+
 type MentorProfileContextValue = {
   profile: MentorProfile;
+  saving: boolean;
   drawerOpen: boolean;
   section: MentorEditSection;
   openDrawer: (section?: MentorEditSection) => void;
   closeDrawer: () => void;
-  updateBasicInfo: (
-    updates: Partial<
-      Pick<MentorProfile, "fullName" | "designation" | "department" | "email" | "location" | "roleBadge">
-    >
-  ) => void;
-  setSocials: (socials: MentorProfile["socials"]) => void;
-  setNextAction: (nextAction: string) => void;
-  setCohorts: (cohorts: MentorCohort[]) => void;
-  setDomainExpertise: (expertise: MentorExpertise[]) => void;
-  setTrackRecord: (trackRecord: MentorTrackRecordEntry[]) => void;
+  saveProfile: (next: MentorProfile) => Promise<void>;
 };
 
 const MentorProfileContext = createContext<MentorProfileContextValue | null>(null);
@@ -38,18 +41,26 @@ export function MentorProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<MentorProfile>(initialMentorProfile);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [section, setSection] = useState<MentorEditSection>("basic");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!session) return;
+    const saved = (session.profileJson ?? {}) as SavedMentorProfile;
     setProfile((prev) => ({
       ...prev,
       initials: initialsFrom(session.fullName),
       fullName: session.fullName,
       email: session.email,
       department: session.department ?? prev.department,
-      designation: session.department ?? prev.designation,
+      designation: saved.designation ?? prev.designation,
+      roleBadge: saved.roleBadge ?? prev.roleBadge,
+      location: saved.location ?? prev.location,
+      socials: saved.socials ?? prev.socials,
+      nextAction: saved.nextAction ?? prev.nextAction,
+      cohorts: saved.cohorts ?? prev.cohorts,
+      domainExpertise: saved.domainExpertise ?? prev.domainExpertise,
+      trackRecord: saved.trackRecord ?? prev.trackRecord,
       facultyId: session.userId,
-      location: session.institute ?? prev.location,
     }));
   }, [session]);
 
@@ -60,29 +71,40 @@ export function MentorProfileProvider({ children }: { children: ReactNode }) {
 
   const closeDrawer = () => setDrawerOpen(false);
 
-  const updateBasicInfo: MentorProfileContextValue["updateBasicInfo"] = (updates) => {
-    setProfile((prev) => ({ ...prev, ...updates }));
-    void apiPatch("/me", {
-      fullName: updates.fullName,
-      department: updates.department,
-      institute: updates.location,
-    }).then(() => refreshMe());
+  const saveProfile: MentorProfileContextValue["saveProfile"] = async (next) => {
+    setProfile(next);
+    setSaving(true);
+    try {
+      await apiPatch("/me", {
+        fullName: next.fullName,
+        department: next.department,
+        profileJson: {
+          designation: next.designation,
+          roleBadge: next.roleBadge,
+          location: next.location,
+          socials: next.socials,
+          nextAction: next.nextAction,
+          cohorts: next.cohorts,
+          domainExpertise: next.domainExpertise,
+          trackRecord: next.trackRecord,
+        },
+      });
+      await refreshMe();
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <MentorProfileContext.Provider
       value={{
         profile,
+        saving,
         drawerOpen,
         section,
         openDrawer,
         closeDrawer,
-        updateBasicInfo,
-        setSocials: (socials) => setProfile((prev) => ({ ...prev, socials })),
-        setNextAction: (nextAction) => setProfile((prev) => ({ ...prev, nextAction })),
-        setCohorts: (cohorts) => setProfile((prev) => ({ ...prev, cohorts })),
-        setDomainExpertise: (domainExpertise) => setProfile((prev) => ({ ...prev, domainExpertise })),
-        setTrackRecord: (trackRecord) => setProfile((prev) => ({ ...prev, trackRecord })),
+        saveProfile,
       }}
     >
       {children}
