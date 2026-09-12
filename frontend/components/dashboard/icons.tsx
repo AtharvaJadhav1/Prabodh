@@ -119,6 +119,15 @@ export function UserCogIcon({ className }: IconProps) {
   );
 }
 
+export function UploadCloudIcon({ className }: IconProps) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 14.9A7 7 0 1115.7 8h1.8a4.5 4.5 0 010 9H5.5A3.5 3.5 0 014 14.9z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 12v6m-3-3l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function FileCheckIcon({ className }: IconProps) {
   return (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
