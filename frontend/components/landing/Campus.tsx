@@ -30,10 +30,10 @@ const features = [
 
 export default function Campus() {
   return (
-    <section id="campus" className="bg-brand-cream py-24">
+    <section id="campus" className="bg-brand-cream py-12 sm:py-16 md:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="overflow-hidden rounded-3xl border border-brand-sand bg-white p-8 shadow-xl sm:p-12 lg:p-14">
-          <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-12">
+        <div className="overflow-hidden rounded-3xl border border-brand-sand bg-white p-4 shadow-xl sm:p-6 md:p-8 lg:p-14">
+          <div className="grid grid-cols-1 items-center gap-6 sm:gap-8 lg:grid-cols-12 lg:gap-10">
             <div className="relative lg:col-span-6">
               <div className="group relative overflow-hidden rounded-2xl border border-brand-sand shadow-lg">
                 <Image

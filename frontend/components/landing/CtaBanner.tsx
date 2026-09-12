@@ -3,9 +3,9 @@ import { ArrowRightIcon } from "./icons";
 
 export default function CtaBanner() {
   return (
-    <section className="bg-brand-cream py-16">
+    <section className="bg-brand-cream py-12 sm:py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center justify-between gap-8 rounded-3xl border border-brand-sand/30 bg-gradient-to-r from-brand-deep to-[#753c15] p-8 text-white shadow-xl sm:p-12 lg:flex-row">
+        <div className="flex flex-col items-center justify-between gap-6 rounded-3xl border border-brand-sand/30 bg-gradient-to-r from-brand-deep to-[#753c15] p-5 text-white shadow-xl sm:gap-8 sm:p-12 lg:flex-row">
           <div className="max-w-2xl">
             <span className="text-xs font-bold uppercase tracking-widest text-brand-amber">
               Registration Deadline Approaching
@@ -18,17 +18,17 @@ export default function CtaBanner() {
               statements.
             </p>
           </div>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:gap-4">
             <Link
               href="/login/student"
-              className="group inline-flex items-center gap-2 rounded-xl bg-brand-primary px-7 py-3.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-brand-hover"
+              className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-primary px-7 py-3.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-brand-hover sm:w-auto"
             >
               Access Prabodh Portal
-              <ArrowRightIcon className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+              <ArrowRightIcon className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:translate-x-1" />
             </Link>
             <a
               href="#prabodh-stages"
-              className="rounded-xl border border-white/20 bg-white/10 px-7 py-3.5 text-sm font-bold text-white transition-colors hover:bg-white/20"
+              className="w-full rounded-xl border border-white/20 bg-white/10 px-7 py-3.5 text-center text-sm font-bold text-white transition-colors hover:bg-white/20 sm:w-auto"
             >
               Download Guidelines
             </a>

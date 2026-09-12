@@ -35,10 +35,10 @@ const leaders: Leader[] = [
 
 export default function Leadership() {
   return (
-    <section id="leadership" className="border-t border-brand-sand bg-white py-24">
+    <section id="leadership" className="border-t border-brand-sand bg-white py-12 sm:py-16 md:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeading eyebrow="Guidance" title="Our Mentors & Guides" subtitle="Experienced academic and industry leaders steering incubation, innovation, and mentorship for Prabodh." />
-        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 md:grid-cols-3">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 sm:gap-8 md:grid-cols-3">
           {leaders.map((leader) => (
             <div
               key={leader.name}

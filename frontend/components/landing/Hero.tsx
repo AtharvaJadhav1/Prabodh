@@ -27,7 +27,7 @@ export default function Hero() {
   return (
     <section
       id="home"
-      className="hero-pattern relative overflow-hidden px-4 pb-24 pt-16 text-white sm:px-6 lg:px-8 lg:pb-32 lg:pt-20"
+      className="hero-pattern relative overflow-hidden px-4 pb-16 pt-12 text-white sm:px-6 sm:pb-24 sm:pt-16 lg:px-8 lg:pb-32 lg:pt-20"
     >
       <div className="absolute inset-0 z-0">
         <ParticleField
@@ -113,12 +113,12 @@ export default function Hero() {
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary"></span>
                 Student Login
               </Link>
-              <span className="text-brand-sand">•</span>
+              <span className="hidden text-brand-sand sm:inline-block">•</span>
               <Link href="/login/faculty" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary pointer-events-auto">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary"></span>
                 Mentor Login
               </Link>
-              <span className="text-brand-sand">•</span>
+              <span className="hidden text-brand-sand sm:inline-block">•</span>
               <Link href="/login/faculty" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary pointer-events-auto">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary"></span>
                 Nodal Admin Console

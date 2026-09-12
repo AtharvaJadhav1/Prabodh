@@ -35,14 +35,14 @@ const stages: Stage[] = [
 
 export default function Stages() {
   return (
-    <section id="prabodh-stages" className="border-b border-brand-sand bg-white py-20">
+    <section id="prabodh-stages" className="border-b border-brand-sand bg-white py-12 sm:py-16 md:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeading
           eyebrow="Structured Execution"
           title="End-to-End Prabodh Lifecycle"
           subtitle="A proven phase-driven framework guiding any event or incubation — from ideation to showcase."
         />
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-4">
           {stages.map((stage) => (
             <div
               key={stage.num}

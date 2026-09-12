@@ -16,9 +16,9 @@ const resourceLinks = [
 
 export default function Footer() {
   return (
-    <footer className="border-t border-[#753c15] bg-brand-deep pb-12 pt-16 text-brand-cream">
+    <footer className="border-t border-[#753c15] bg-brand-deep pb-10 pt-12 text-brand-cream sm:pb-12 sm:pt-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-10 border-b border-white/10 pb-12 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-8 border-b border-white/10 pb-8 sm:gap-10 sm:pb-12 md:grid-cols-2 lg:grid-cols-3">
           <div>
             <div className="mb-4 flex items-center gap-3">
               <Image

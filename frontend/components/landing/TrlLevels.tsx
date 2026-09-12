@@ -108,7 +108,7 @@ const numPad = (n: number) => String(n).padStart(2, "0");
 
 export default function TrlLevels() {
   return (
-    <section id="trl-levels" className="border-y border-stone-200/70 bg-[#FAFAF9] py-20">
+    <section id="trl-levels" className="border-y border-stone-200/70 bg-[#FAFAF9] py-12 sm:py-16 md:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeading
           eyebrow="Innovation Maturity"
@@ -116,7 +116,7 @@ export default function TrlLevels() {
           subtitle="The industry-standard ladder every Prabodh-guided project climbs, from first concept to deployed system."
         />
 
-        <div className="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8">
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3 lg:gap-8">
           {phases.map((phase) => (
             <div
               key={phase.key}
