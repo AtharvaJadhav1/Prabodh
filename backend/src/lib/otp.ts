@@ -1,6 +1,6 @@
 import { createHash, randomInt } from 'crypto';
 import { getRedis } from './queue';
-import { sendTransactionalEmail } from './resend';
+import { resolveOtpFromAddress, sendTransactionalEmail } from './resend';
 
 const OTP_TTL_SEC = Number(process.env.OTP_TTL_SEC ?? 600);
 const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS ?? 5);
@@ -69,7 +69,12 @@ export async function sendOtp(opts: {
   `;
 
   try {
-    await sendTransactionalEmail({ to: email, subject, html });
+    await sendTransactionalEmail({
+      to: email,
+      subject,
+      html,
+      from: resolveOtpFromAddress(),
+    });
     return {};
   } catch (err) {
     if (process.env.NODE_ENV !== 'production') {

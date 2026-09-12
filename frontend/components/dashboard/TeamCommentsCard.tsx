@@ -7,6 +7,23 @@ import { useAuth } from "../auth/AuthProvider";
 import { useTeam } from "./TeamProvider";
 import { MessageIcon } from "./icons";
 
+function normalizeComment(
+  raw: Partial<PortalComment> & { id?: string; message?: string },
+  fallback: { message: string; author: PortalComment["author"] },
+): PortalComment {
+  return {
+    id: raw.id ?? `local-${Date.now()}`,
+    message: raw.message ?? fallback.message,
+    createdAt:
+      typeof raw.createdAt === "string"
+        ? raw.createdAt
+        : raw.createdAt
+          ? new Date(raw.createdAt as unknown as string).toISOString()
+          : new Date().toISOString(),
+    author: raw.author ?? fallback.author,
+  };
+}
+
 export default function TeamCommentsCard() {
   const { team } = useTeam();
   const { session } = useAuth();
@@ -15,9 +32,20 @@ export default function TeamCommentsCard() {
   const [error, setError] = useState("");
   const [comments, setComments] = useState<PortalComment[]>(team?.comments ?? []);
 
+  // Sync from team, but never drop comments we already showed locally
+  // (reload/cache updates used to wipe the optimistic post when busy flipped false).
   useEffect(() => {
-    if (!busy) setComments(team?.comments ?? []);
-  }, [team?.id, team?.comments, busy]);
+    const server = team?.comments ?? [];
+    setComments((prev) => {
+      if (prev.length === 0) return server;
+      const byId = new Map<string, PortalComment>();
+      for (const c of server) byId.set(c.id, c);
+      for (const c of prev) {
+        if (!byId.has(c.id)) byId.set(c.id, c);
+      }
+      return Array.from(byId.values());
+    });
+  }, [team?.id, team?.comments]);
 
   return (
     <section className="rounded-2xl border border-brand-softline bg-white p-5 sm:p-6">
@@ -40,27 +68,31 @@ export default function TeamCommentsCard() {
           e.preventDefault();
           if (!team || !message.trim() || busy) return;
           const text = message.trim();
+          const author = {
+            id: session?.userId ?? "",
+            fullName: session?.fullName ?? "You",
+            email: session?.email ?? "",
+          };
+          const optimisticId = `optimistic-${Date.now()}`;
           setBusy(true);
           setError("");
+          setMessage("");
+          setComments((prev) => [
+            ...prev,
+            { id: optimisticId, message: text, createdAt: new Date().toISOString(), author },
+          ]);
           try {
-            // Local-only update. Do NOT call team.reload() — it sets loading=true and
-            // blanks the whole dashboard for several seconds.
             const created = await apiPost<PortalComment>(`/teams/${team.id}/comments`, { message: text });
-            setComments((prev) => [
-              ...prev,
-              {
-                id: created.id,
-                message: created.message ?? text,
-                createdAt: created.createdAt ?? new Date().toISOString(),
-                author: created.author ?? {
-                  id: session?.userId ?? "",
-                  fullName: session?.fullName ?? "You",
-                  email: session?.email ?? "",
-                },
-              },
-            ]);
-            setMessage("");
+            const normalized = normalizeComment(created, { message: text, author });
+            setComments((prev) =>
+              prev.map((c) => (c.id === optimisticId ? normalized : c)).filter((c, i, arr) => {
+                // Deduplicate if server id already present somehow
+                return arr.findIndex((x) => x.id === c.id) === i;
+              }),
+            );
           } catch (err) {
+            setComments((prev) => prev.filter((c) => c.id !== optimisticId));
+            setMessage(text);
             setError(err instanceof Error ? err.message : "Could not post comment");
           } finally {
             setBusy(false);
@@ -71,7 +103,8 @@ export default function TeamCommentsCard() {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Write a comment"
-          className="flex-1 rounded-xl border border-brand-sand px-3 py-2 text-sm"
+          disabled={busy}
+          className="flex-1 rounded-xl border border-brand-sand px-3 py-2 text-sm disabled:opacity-60"
         />
         <button
           type="submit"
