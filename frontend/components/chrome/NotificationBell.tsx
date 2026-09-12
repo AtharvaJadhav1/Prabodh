@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, apiPatch } from "../../lib/api";
 import type { PortalNotification } from "../../lib/types";
 import { useAuth } from "../auth/AuthProvider";
+import { BellIcon } from "../dashboard/icons";
 
 export default function NotificationBell() {
   const { session } = useAuth();
@@ -31,15 +32,18 @@ export default function NotificationBell() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="relative inline-flex h-9 items-center rounded-full border border-brand-sand bg-white px-3 text-xs font-bold text-brand-deep"
+        aria-label={`Notifications${unread > 0 ? ` (${unread} unread)` : ""}`}
+        className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-brand-sand bg-white text-brand-deep transition-colors hover:bg-brand-lightOrange"
       >
-        Alerts
+        <BellIcon className="h-5 w-5" />
         {unread > 0 ? (
-          <span className="ml-1.5 rounded-full bg-brand-primary px-1.5 py-0.5 text-[10px] text-white">{unread}</span>
+          <span className="absolute -right-1 -top-1 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-brand-primary px-1 text-[10px] font-bold text-white">
+            {unread}
+          </span>
         ) : null}
       </button>
       {open ? (
-        <div className="absolute right-0 z-30 mt-2 w-80 overflow-hidden rounded-xl border border-brand-sand bg-white shadow-lg">
+        <div className="absolute right-0 z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-brand-sand bg-white shadow-lg sm:w-80">
           <p className="border-b border-brand-sand px-3 py-2 text-xs font-bold text-brand-deep">Notifications</p>
           <ul className="max-h-80 overflow-y-auto">
             {items.length === 0 ? (
