@@ -13,7 +13,6 @@ import {
   PersonIcon,
   LogoutIcon,
   LockIcon,
-  ShieldCheckIcon,
   XIcon,
 } from "./icons";
 
@@ -172,10 +171,6 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
             >
               <LogoutIcon className="h-5 w-5 text-brand-muted" />
               <span>Logout</span>
-              <span className="ml-auto flex items-center gap-1 text-[10px] font-medium text-brand-muted">
-                <ShieldCheckIcon className="h-3.5 w-3.5 text-brand-approved" />
-                SIH Verified
-              </span>
             </button>
           </div>
         </div>

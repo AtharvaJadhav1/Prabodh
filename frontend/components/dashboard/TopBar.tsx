@@ -3,7 +3,7 @@
 import { type ReactNode } from "react";
 import NotificationBell from "../chrome/NotificationBell";
 import { useTeam } from "./TeamProvider";
-import { ClockIcon, ShieldCheckIcon, MenuIcon } from "./icons";
+import { ClockIcon, MenuIcon } from "./icons";
 
 type TopBarProps = {
   onMenuClick: () => void;
@@ -31,13 +31,7 @@ export default function TopBar({ onMenuClick, title = "Student Team Workspace", 
             {title}
           </h1>
           <p className="mt-0.5 hidden items-center gap-1.5 text-xs font-medium text-brand-muted sm:flex">
-            {subtitle ?? (
-              <>
-                <ShieldCheckIcon className="h-3.5 w-3.5 text-brand-approved" />
-                SIH Internal Qualifier •
-                <span className="text-brand-charcoal">{team?.institute ?? "Institute"}</span>
-              </>
-            )}
+            {subtitle ?? <span className="text-brand-charcoal">{team?.institute ?? "Institute"}</span>}
           </p>
         </div>
 
