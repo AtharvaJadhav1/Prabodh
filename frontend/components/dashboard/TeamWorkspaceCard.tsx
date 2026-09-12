@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { type Member } from "../../data/studentDashboard";
 import { useTeam } from "./TeamProvider";
-import { UsersIcon, CheckIcon, UserPlusIcon, LockIcon, ArrowRightIcon } from "./icons";
+import { UsersIcon, CheckIcon, UserPlusIcon, LockIcon } from "./icons";
 
 function MemberRow({
   member,
@@ -39,9 +39,9 @@ function MemberRow({
           <button
             type="button"
             onClick={onInviteNow}
-            className="flex shrink-0 items-center gap-1 text-xs font-bold text-brand-primary transition-colors hover:underline"
+            className="shrink-0 rounded-lg border border-brand-primary/40 bg-brand-primary/10 px-2.5 py-1 text-[11px] font-bold text-brand-primary transition-colors hover:bg-brand-primary/20"
           >
-            Invite Now <ArrowRightIcon className="h-3.5 w-3.5" />
+            Invite
           </button>
         ) : (
           <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-brand-muted">

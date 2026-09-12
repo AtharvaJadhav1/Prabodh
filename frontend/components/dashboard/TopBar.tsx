@@ -4,7 +4,7 @@ import { type ReactNode } from "react";
 import NotificationBell from "../chrome/NotificationBell";
 import RefreshButton from "../chrome/RefreshButton";
 import { useTeam } from "./TeamProvider";
-import { ClockIcon, MenuIcon } from "./icons";
+import { MenuIcon } from "./icons";
 
 type TopBarProps = {
   onMenuClick: () => void;
@@ -43,10 +43,6 @@ export default function TopBar({ onMenuClick, title = "Student Team Workspace", 
               <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-approved" />
             </span>
             {stage?.name ?? "No stage"}
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-warmBorder bg-brand-lightOrange px-3 py-1.5 text-xs font-bold text-brand-primary">
-            <ClockIcon className="h-3.5 w-3.5" />
-            Lock: {stage ? new Date(stage.deadline).toLocaleDateString() : "—"}
           </span>
           <RefreshButton />
           <NotificationBell />

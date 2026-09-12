@@ -45,6 +45,8 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
   const { session, logout } = useAuth();
   const { filledCount, pendingRequestCount, role, teamName, capacity, team } = useTeam();
+  const fullName = session?.fullName ?? "Student";
+  const displayName = fullName.length > 16 ? fullName.split(" ")[0] : fullName;
 
   return (
     <>
@@ -155,10 +157,10 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 {initialsFrom(session?.fullName ?? "S")}
               </div>
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-brand-deep">{session?.fullName ?? "Student"}</p>
-                <p className="text-xs font-medium text-brand-muted">
-                  {role} • {session?.email ?? ""}
+                <p title={fullName} className="truncate max-w-full text-sm font-bold text-brand-deep">
+                  {displayName}
                 </p>
+                <p className="text-xs font-medium text-brand-muted">{role}</p>
               </div>
             </div>
             <button
