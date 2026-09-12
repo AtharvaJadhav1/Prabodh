@@ -116,6 +116,8 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   >([]);
   const [error, setError] = useState<string | null>(null);
   const stagesLoaded = useRef(false);
+  const teamRef = useRef<PortalTeam | null>(null);
+  teamRef.current = team;
 
   const applyTeamDetail = useCallback((detail: PortalTeam) => {
     setTeam(detail);
@@ -151,15 +153,20 @@ export function TeamProvider({ children }: { children: ReactNode }) {
 
   const reload = useCallback(async () => {
     if (!userId) return;
-    setLoading(true);
+    // Soft refresh: keep showing existing team UI instead of blanking the whole dashboard.
+    const soft = teamRef.current != null;
+    if (!soft) setLoading(true);
     setError(null);
     try {
+      const stagesPromise = stagesLoaded.current
+        ? Promise.resolve(null)
+        : api<PortalStage[]>("/stages").then((stageRows) => {
+            setStages(stageRows);
+            stagesLoaded.current = true;
+            return stageRows;
+          });
       const list = await api<{ items?: PortalTeam[] } | PortalTeam[]>("/teams");
-      if (!stagesLoaded.current) {
-        const stageRows = await api<PortalStage[]>("/stages");
-        setStages(stageRows);
-        stagesLoaded.current = true;
-      }
+      await stagesPromise;
       const items = Array.isArray(list) ? list : list.items ?? [];
       const mine = items[0];
       if (!mine) {
@@ -172,8 +179,10 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       const detail = await api<PortalTeam>(`/teams/${mine.id}`);
       applyTeamDetail(detail);
     } catch (err) {
-      setTeam(null);
-      setMembers([]);
+      if (!soft) {
+        setTeam(null);
+        setMembers([]);
+      }
       setError(err instanceof Error ? err.message : "Could not load team");
     } finally {
       setLoading(false);

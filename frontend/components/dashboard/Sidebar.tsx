@@ -119,6 +119,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
               <Link
                 key={item.label}
                 href={item.href}
+                prefetch
                 onClick={onCloseMobile}
                 className={`group flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-150 ${
                   active

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import DashboardShell from "../../../../components/dashboard/DashboardShell";
 import HeaderZone from "../../../../components/dashboard/HeaderZone";
 import {
   MultidisciplinaryCard,
@@ -16,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function GroupRequestsPage() {
   return (
-    <DashboardShell title="Team Formation & Group Requests">
+    <>
       <HeaderZone />
 
       <div className="mt-6 grid grid-cols-1 gap-8 xl:grid-cols-12">
@@ -30,6 +29,6 @@ export default function GroupRequestsPage() {
           <RequestsTabs />
         </div>
       </div>
-    </DashboardShell>
+    </>
   );
 }

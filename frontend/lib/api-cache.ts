@@ -61,3 +61,24 @@ export function clearApiCache() {
     /* no-op */
   }
 }
+
+/** Drop only matching GET entries so page switches can still use other cached data. */
+export function invalidateApiCache(match: string | RegExp) {
+  const test =
+    typeof match === "string" ? (key: string) => key.includes(match) : (key: string) => match.test(key);
+
+  for (const key of [...memory.keys()]) {
+    if (test(key)) memory.delete(key);
+  }
+  if (typeof window === "undefined") return;
+  try {
+    const doomed: string[] = [];
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i);
+      if (k?.startsWith(PREFIX) && test(k.slice(PREFIX.length))) doomed.push(k);
+    }
+    doomed.forEach((k) => window.localStorage.removeItem(k));
+  } catch {
+    /* no-op */
+  }
+}

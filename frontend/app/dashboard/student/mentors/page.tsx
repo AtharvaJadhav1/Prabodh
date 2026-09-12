@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import DashboardShell from "../../../../components/dashboard/DashboardShell";
 import MentorInvitePanel from "../../../../components/dashboard/MentorInvitePanel";
 
 export const metadata: Metadata = {
@@ -9,10 +8,8 @@ export const metadata: Metadata = {
 
 export default function MentorsPage() {
   return (
-<DashboardShell title="Assigned Mentors">
-      <div className="mx-auto max-w-4xl">
-        <MentorInvitePanel />
-      </div>
-    </DashboardShell>
+    <div className="mx-auto max-w-4xl">
+      <MentorInvitePanel />
+    </div>
   );
 }

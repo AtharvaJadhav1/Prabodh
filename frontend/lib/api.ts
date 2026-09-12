@@ -1,7 +1,7 @@
 import { API_BASE } from "./config";
 import { getAccessToken } from "./auth-token";
 import { readSession } from "./session";
-import { cacheKey, getCached, isFresh, setCached, shouldCache, clearApiCache } from "./api-cache";
+import { cacheKey, getCached, isFresh, setCached, shouldCache, invalidateApiCache } from "./api-cache";
 
 export class ApiError extends Error {
   status: number;
@@ -72,7 +72,19 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (cacheable) {
       setCached(key, data);
     } else if (method !== "GET") {
-      clearApiCache();
+      // Targeted invalidation — wiping the entire cache on every POST made page
+      // switches wait on cold network fetches again.
+      if (path.includes("/comments")) {
+        invalidateApiCache(/\/teams(\/|$)/);
+      } else if (path.includes("/mentors")) {
+        invalidateApiCache(/\/(teams|mentors)(\/|$)/);
+      } else if (path.includes("/teams")) {
+        invalidateApiCache(/\/teams(\/|$)/);
+      } else if (path.includes("/idea-submissions") || path.includes("/problem-statements")) {
+        invalidateApiCache(/\/(teams|problem-statements|idea-submissions)(\/|$)/);
+      } else {
+        invalidateApiCache(/\/teams(\/|$)/);
+      }
     }
     return data as T;
   };

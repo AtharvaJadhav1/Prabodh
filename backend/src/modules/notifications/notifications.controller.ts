@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Param, Patch, Post, Query, RawBodyRequest, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, RawBodyRequest, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { PlatformRole } from '@prisma/client';
 import { Webhook } from 'svix';
 import { AuthUser } from '../../common/auth.types';
@@ -47,6 +47,16 @@ export class NotificationsController {
   @UseGuards(ClerkAuthGuard)
   listComments(@CurrentUser() user: AuthUser, @Param('teamId') teamId: string) {
     return this.notifications.listComments(user, teamId);
+  }
+
+  @Delete('teams/:teamId/comments/:commentId')
+  @UseGuards(ClerkAuthGuard)
+  deleteComment(
+    @CurrentUser() user: AuthUser,
+    @Param('teamId') teamId: string,
+    @Param('commentId') commentId: string,
+  ) {
+    return this.notifications.deleteComment(user, teamId, commentId);
   }
 
   @Post('webhooks/resend')

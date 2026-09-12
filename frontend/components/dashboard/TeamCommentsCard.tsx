@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiPost } from "../../lib/api";
+import { apiDelete, apiPost } from "../../lib/api";
 import type { PortalComment } from "../../lib/types";
 import { useAuth } from "../auth/AuthProvider";
 import { useTeam } from "./TeamProvider";
-import { MessageIcon } from "./icons";
+import { MessageIcon, TrashIcon } from "./icons";
 
 function normalizeComment(
   raw: Partial<PortalComment> & { id?: string; message?: string },
@@ -25,15 +25,14 @@ function normalizeComment(
 }
 
 export default function TeamCommentsCard() {
-  const { team } = useTeam();
+  const { team, isLead } = useTeam();
   const { session } = useAuth();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [comments, setComments] = useState<PortalComment[]>(team?.comments ?? []);
 
-  // Sync from team, but never drop comments we already showed locally
-  // (reload/cache updates used to wipe the optimistic post when busy flipped false).
   useEffect(() => {
     const server = team?.comments ?? [];
     setComments((prev) => {
@@ -47,6 +46,12 @@ export default function TeamCommentsCard() {
     });
   }, [team?.id, team?.comments]);
 
+  const canDelete = (c: PortalComment) => {
+    if (!session?.userId) return false;
+    if (isLead) return true;
+    return c.author?.id === session.userId;
+  };
+
   return (
     <section className="rounded-2xl border border-brand-softline bg-white p-5 sm:p-6">
       <h2 className="flex items-center gap-2 text-base font-bold text-brand-deep">
@@ -56,8 +61,38 @@ export default function TeamCommentsCard() {
       <ul className="mt-3 max-h-56 space-y-2 overflow-y-auto">
         {comments.length === 0 ? <li className="text-xs text-brand-muted">No comments yet.</li> : null}
         {comments.map((c) => (
-          <li key={c.id} className="rounded-xl bg-brand-cream px-3 py-2">
-            <p className="text-[11px] font-bold text-brand-deep">{c.author?.fullName ?? "Member"}</p>
+          <li key={c.id} className="group rounded-xl bg-brand-cream px-3 py-2">
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-[11px] font-bold text-brand-deep">{c.author?.fullName ?? "Member"}</p>
+              {canDelete(c) ? (
+                <button
+                  type="button"
+                  disabled={deletingId === c.id || busy}
+                  aria-label="Delete comment"
+                  title="Delete comment"
+                  onClick={async () => {
+                    if (!team || deletingId) return;
+                    setDeletingId(c.id);
+                    setError("");
+                    const previous = comments;
+                    setComments((prev) => prev.filter((x) => x.id !== c.id));
+                    try {
+                      if (!c.id.startsWith("optimistic-") && !c.id.startsWith("local-")) {
+                        await apiDelete(`/teams/${team.id}/comments/${c.id}`);
+                      }
+                    } catch (err) {
+                      setComments(previous);
+                      setError(err instanceof Error ? err.message : "Could not delete comment");
+                    } finally {
+                      setDeletingId(null);
+                    }
+                  }}
+                  className="shrink-0 rounded p-1 text-brand-muted opacity-70 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-40 sm:opacity-0 sm:group-hover:opacity-100"
+                >
+                  <TrashIcon className="h-3.5 w-3.5" />
+                </button>
+              ) : null}
+            </div>
             <p className="text-sm text-brand-charcoal">{c.message}</p>
           </li>
         ))}
@@ -85,10 +120,9 @@ export default function TeamCommentsCard() {
             const created = await apiPost<PortalComment>(`/teams/${team.id}/comments`, { message: text });
             const normalized = normalizeComment(created, { message: text, author });
             setComments((prev) =>
-              prev.map((c) => (c.id === optimisticId ? normalized : c)).filter((c, i, arr) => {
-                // Deduplicate if server id already present somehow
-                return arr.findIndex((x) => x.id === c.id) === i;
-              }),
+              prev
+                .map((c) => (c.id === optimisticId ? normalized : c))
+                .filter((c, i, arr) => arr.findIndex((x) => x.id === c.id) === i),
             );
           } catch (err) {
             setComments((prev) => prev.filter((c) => c.id !== optimisticId));

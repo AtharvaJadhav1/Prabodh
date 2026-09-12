@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import DashboardShell from "../../../../components/dashboard/DashboardShell";
 import LockedBanner from "../../../../components/dashboard/ps/LockedBanner";
 import FinalizedPSDetail from "../../../../components/dashboard/ps/FinalizedPSDetail";
 import ProblemStatementTabs from "../../../../components/dashboard/ps/ProblemStatementTabs";
@@ -12,12 +11,10 @@ export const metadata: Metadata = {
 
 export default function ProblemStatementsPage() {
   return (
-    <DashboardShell title="Problem Statement Selection">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <LockedBanner />
-        <FinalizedPSDetail />
-        <ProblemStatementTabs />
-      </div>
-    </DashboardShell>
+    <div className="mx-auto flex max-w-7xl flex-col gap-6">
+      <LockedBanner />
+      <FinalizedPSDetail />
+      <ProblemStatementTabs />
+    </div>
   );
 }
