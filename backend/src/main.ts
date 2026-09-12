@@ -3,10 +3,19 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+    bodyParser: false,
+  });
   // Allow PPTX/PDF uploads sent through the API (default Nest limit is ~100kb).
-  app.useBodyParser('json', { limit: '30mb' });
-  app.useBodyParser('urlencoded', { limit: '30mb', extended: true });
+  // Use require() so Nest 10 + production installs (no @types/express) still typecheck.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const express = require('express') as {
+    json: (opts: { limit: string }) => unknown;
+    urlencoded: (opts: { limit: string; extended: boolean }) => unknown;
+  };
+  app.use(express.json({ limit: '30mb' }));
+  app.use(express.urlencoded({ limit: '30mb', extended: true }));
   app.setGlobalPrefix('api');
   const origins = [
     ...(process.env.APP_ORIGIN ?? 'http://localhost:3000').split(','),
