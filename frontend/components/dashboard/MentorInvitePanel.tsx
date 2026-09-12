@@ -58,32 +58,29 @@ export default function MentorInvitePanel() {
             {assignments.map((a) => (
               <li key={a.id} className="rounded-xl border border-brand-softline p-4">
                 <p className="text-sm font-bold text-brand-deep">{a.mentor.fullName}</p>
-                <p className="text-xs text-brand-muted">
-                  {a.mentorType} · {a.mentor.email}
-                </p>
+                <p className="text-xs text-brand-muted">{a.mentorType}</p>
                 <span className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-brand-approved">
                   <CheckIcon className="h-3.5 w-3.5" /> Active assignment
                 </span>
               </li>
             ))}
             {pending.map((i) => (
-              <li key={i.id} className="rounded-xl border border-brand-softline p-4">
-                <p className="text-sm font-bold text-brand-deep">{i.mentor?.fullName ?? i.invitedEmail}</p>
-                <p className="text-xs text-brand-muted">
-                  {i.mentorType} · {i.invitedEmail}
-                </p>
-                <span className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-brand-primary">
-                  <ClockIcon className="h-3.5 w-3.5" /> Invite sent — awaiting acceptance
-                </span>
-                {isLead ? (
-                  <button
-                    type="button"
-                    onClick={() => revokeFacultyInvite(i.id)}
-                    className="mt-2 text-xs font-semibold text-danger hover:underline"
-                  >
-                    Revoke invite
-                  </button>
-                ) : null}
+              <li key={i.id} className="rounded-xl border border-brand-softline p-3.5">
+                <p className="truncate text-sm font-bold text-brand-deep">{i.mentor?.fullName ?? i.invitedEmail}</p>
+                <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-brand-softline pt-2.5">
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-primary">
+                    <ClockIcon className="h-3.5 w-3.5" /> Invite sent — awaiting acceptance
+                  </span>
+                  {isLead ? (
+                    <button
+                      type="button"
+                      onClick={() => revokeFacultyInvite(i.id)}
+                      className="shrink-0 rounded-lg border border-red-500/30 bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-600 transition-colors hover:border-red-500/50 hover:bg-red-100"
+                    >
+                      Revoke Invite
+                    </button>
+                  ) : null}
+                </div>
               </li>
             ))}
           </ul>
