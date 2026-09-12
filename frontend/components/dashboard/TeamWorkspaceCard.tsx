@@ -3,9 +3,19 @@
 import Link from "next/link";
 import { type Member } from "../../data/studentDashboard";
 import { useTeam } from "./TeamProvider";
-import { UsersIcon, CheckIcon, UserPlusIcon, LockIcon } from "./icons";
+import { UsersIcon, CheckIcon, UserPlusIcon, LockIcon, ArrowRightIcon } from "./icons";
 
-function MemberRow({ member, index }: { member: Member; index: number }) {
+function MemberRow({
+  member,
+  index,
+  isLead,
+  onInviteNow,
+}: {
+  member: Member;
+  index: number;
+  isLead: boolean;
+  onInviteNow: () => void;
+}) {
   if (member.status === "Empty") {
     return (
       <li className="flex items-center justify-between gap-3 rounded-xl border-2 border-dashed border-[#E2D8CC] bg-brand-canvas/60 p-3.5">
@@ -14,12 +24,30 @@ function MemberRow({ member, index }: { member: Member; index: number }) {
             {member.initials}
           </div>
           <div className="flex min-w-0 flex-1 flex-col justify-center">
-            <p className="truncate text-sm font-semibold text-[#786C65]">Open Slot — awaiting invite</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="truncate text-sm font-bold text-brand-deep">Open Slot — Awaiting Member</p>
+              <span className="rounded-md bg-brand-softline px-2 py-0.5 text-[10px] font-bold text-brand-charcoal/60">
+                Unfilled
+              </span>
+            </div>
+            <p className="mt-0.5 text-[11px] text-brand-muted">
+              Required to achieve official SIH 6-person squad quota lock.
+            </p>
           </div>
         </div>
-        <span className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-[#EBE3D7] bg-white px-3 py-1 text-xs font-semibold text-[#786C65]">
-          Free
-        </span>
+        {isLead ? (
+          <button
+            type="button"
+            onClick={onInviteNow}
+            className="flex shrink-0 items-center gap-1 text-xs font-bold text-brand-primary transition-colors hover:underline"
+          >
+            Invite Now <ArrowRightIcon className="h-3.5 w-3.5" />
+          </button>
+        ) : (
+          <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-brand-muted">
+            <LockIcon className="h-3 w-3" /> Lead Only
+          </span>
+        )}
       </li>
     );
   }
@@ -165,7 +193,7 @@ export default function TeamWorkspaceCard() {
         </div>
         <ul className="space-y-2">
           {members.map((member, i) => (
-            <MemberRow key={i} member={member} index={i} />
+            <MemberRow key={i} member={member} index={i} isLead={isLead} onInviteNow={openDrawer} />
           ))}
         </ul>
       </div>
