@@ -122,9 +122,11 @@ function ActiveRosterTab() {
           <div>
             <h3 className="flex flex-wrap items-center gap-2 text-sm font-bold text-brand-deep">
               Faculty Mentor &amp; Guide Track
-              <span className="text-xs font-normal text-brand-muted">(1 Designated Mentor)</span>
+              <span className="text-xs font-normal text-brand-muted">(First-to-Accept Locks In)</span>
             </h3>
-            <p className="text-xs text-brand-muted">Institute and industry mentors invited by the team leader.</p>
+            <p className="text-xs text-brand-muted">
+              Institute faculty mentors invited by the team leader.
+            </p>
           </div>
           <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand-softline bg-brand-cream px-2.5 py-1 text-xs font-semibold text-brand-deep">
             <BadgeCheckIcon className="h-3.5 w-3.5 text-brand-primary" />
@@ -155,7 +157,7 @@ function ActiveRosterTab() {
                   <div>
                     <p className="text-sm font-bold text-brand-deep">{a.mentor.fullName}</p>
                     <p className="text-[11px] text-brand-muted">
-                      {a.mentorType} · {a.mentor.email}
+                      Institute Mentor · {a.mentor.email}
                     </p>
                   </div>
                 </div>

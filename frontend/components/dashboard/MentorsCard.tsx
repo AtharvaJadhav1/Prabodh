@@ -24,7 +24,7 @@ export default function MentorsCard() {
             <li key={a.id} className="rounded-xl border border-brand-softline bg-brand-cream p-3">
               <p className="text-sm font-bold text-brand-deep">{a.mentor.fullName}</p>
               <p className="text-xs text-brand-muted">
-                {a.mentorType === "institute" ? "Institute mentor" : "Industry mentor"} · {a.mentor.email}
+                Institute Mentor · {a.mentor.email}
               </p>
               <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-brand-approved">
                 <CheckIcon className="h-3 w-3" /> Assigned

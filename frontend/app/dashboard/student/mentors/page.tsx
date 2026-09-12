@@ -14,7 +14,7 @@ export default function MentorsPage() {
       title="Assigned Mentors"
       subtitle={
         <>
-          Dual mentorship track • <LiveTeamName />
+          Faculty mentor track • <LiveTeamName />
         </>
       }
     >
