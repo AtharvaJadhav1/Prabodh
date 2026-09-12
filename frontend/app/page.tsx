@@ -1,8 +1,7 @@
 import Header from "../components/landing/Header";
 import Hero from "../components/landing/Hero";
 import Stages from "../components/landing/Stages";
-import Accreditations from "../components/landing/Accreditations";
-import Awards from "../components/landing/Awards";
+import TrlLevels from "../components/landing/TrlLevels";
 import Campus from "../components/landing/Campus";
 import Leadership from "../components/landing/Leadership";
 import CtaBanner from "../components/landing/CtaBanner";
@@ -15,8 +14,7 @@ export default function HomePage() {
       <main>
         <Hero />
         <Stages />
-        <Accreditations />
-        <Awards />
+        <TrlLevels />
         <Campus />
         <Leadership />
         <CtaBanner />

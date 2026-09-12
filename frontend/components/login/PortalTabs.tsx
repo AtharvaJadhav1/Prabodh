@@ -15,7 +15,7 @@ export default function PortalTabs() {
     <>
       <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-amber/30 bg-brand-amber/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-deep">
         <span className="h-2 w-2 animate-pulse rounded-full bg-brand-primary"></span>
-        Smart India Hackathon 2026 • Portal
+        Prabodh Incubation Portal 2026
       </div>
 
       <div className="mb-8 flex items-center gap-1 rounded-xl border border-brand-sand bg-[#EFE9E0] p-1.5 shadow-inner">

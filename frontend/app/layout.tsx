@@ -4,10 +4,10 @@ import PwaRegister from "../components/PwaRegister";
 import AuthProviders from "../components/auth/AuthProviders";
 
 export const metadata: Metadata = {
-  title: "Smart India Hackathon (SIH) Portal | MIT-ADT University",
+  title: "PRABODH",
   description:
-    "Project Based Learning Portal - MIT-ADT University. Centralized SIH team management, dual-mentor tracking, and milestone-based evaluation.",
-  applicationName: "SIH Portal - MIT-ADT",
+    "Prabodh — Project Based Learning Portal. Centralized SIH team management, dual-mentor tracking, and milestone-based evaluation.",
+  applicationName: "Prabodh",
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [{ url: "/icon.ico", type: "image/x-icon" }],
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "SIH Portal",
+    title: "Prabodh",
     statusBarStyle: "default",
   },
 };

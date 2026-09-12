@@ -11,23 +11,23 @@ export default function CtaBanner() {
               Registration Deadline Approaching
             </span>
             <h3 className="mt-1 text-2xl font-extrabold text-white sm:text-3xl">
-              Ready to represent MIT-ADT at SIH 2026?
+              Ready to lead a project through the Prabodh lifecycle?
             </h3>
             <p className="mt-2 text-sm text-white/80">
-              Register with your college email, form a team, invite members and faculty mentors, and lock a problem
-              statement.
+              Sign in through your verified college Clerk credentials to form your team or submit problem
+              statements.
             </p>
           </div>
           <div className="flex flex-wrap gap-4">
             <Link
-              href="/register"
+              href="/login/student"
               className="group inline-flex items-center gap-2 rounded-xl bg-brand-primary px-7 py-3.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-brand-hover"
             >
-              Register now
+              Access Prabodh Portal
               <ArrowRightIcon className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
             </Link>
             <a
-              href="#hackathon-stages"
+              href="#prabodh-stages"
               className="rounded-xl border border-white/20 bg-white/10 px-7 py-3.5 text-sm font-bold text-white transition-colors hover:bg-white/20"
             >
               Download Guidelines

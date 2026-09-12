@@ -12,8 +12,8 @@ type Stage = {
 const stages: Stage[] = [
   {
     num: "01",
-    title: "Team Formation & Ideation",
-    desc: "6-member multidisciplinary teams with mandatory female representation. Problem selection from MoE SIH themes.",
+    title: "Idea Submission & Team Formation",
+    desc: "Multidisciplinary teams form and submit problem statements from curated themes — hackathons, research, or industry challenges.",
   },
   {
     num: "02",
@@ -23,28 +23,24 @@ const stages: Stage[] = [
   },
   {
     num: "03",
-    label: "Upcoming Gate",
-    labelClass: "bg-brand-cream border border-brand-sand text-brand-charcoal/60",
-    title: "Internal Institute Hackathon",
-    desc: "Campus-wide live pitching and evaluation. Top qualifying teams shortlisted for national portal upload.",
+    title: "Prototype & Milestone Evaluation",
+    desc: "Stage-gate reviews with measurable milestones and TRL-based rubrics as teams build working prototypes.",
   },
   {
     num: "04",
-    label: "Final Milestone",
-    labelClass: "bg-brand-cream border border-brand-sand text-brand-charcoal/60",
-    title: "National Grand Finale",
-    desc: "36-hour non-stop digital hackathon at designated nodal centers across India for cash prizes & grants.",
+    title: "Incubation & Showcase",
+    desc: "Shortlisted teams advance into pre-incubation support, investor pitches, and institutional demo days.",
   },
 ];
 
 export default function Stages() {
   return (
-    <section id="hackathon-stages" className="border-b border-brand-sand bg-white py-20">
+    <section id="prabodh-stages" className="border-b border-brand-sand bg-white py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeading
           eyebrow="Structured Execution"
-          title="End-to-End SIH Lifecycle"
-          subtitle="Four rigorous phases ensuring the best engineering talent reaches the National Grand Finale."
+          title="End-to-End Prabodh Lifecycle"
+          subtitle="A proven phase-driven framework guiding any event or incubation — from ideation to showcase."
         />
         <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
           {stages.map((stage) => (

@@ -38,7 +38,7 @@ export default function Campus() {
               <div className="group relative overflow-hidden rounded-2xl border border-brand-sand shadow-lg">
                 <Image
                   src="/images/campus/campus_image.png"
-                  alt="MIT-ADT University Rajbaug Campus"
+                  alt="MIT-ADT University Campus, Pune — Prabodh pilot partner"
                   width={1241}
                   height={866}
                   priority
@@ -67,15 +67,15 @@ export default function Campus() {
 
             <div className="flex flex-col justify-center lg:col-span-6">
               <div className="mb-4 inline-flex w-max items-center gap-2 rounded-full border border-brand-primary/20 bg-brand-lightOrange px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-primary">
-                Holistic Education Framework
+                Our Partner
               </div>
               <h2 className="mb-4 text-2xl font-extrabold tracking-tight text-brand-deep sm:text-3xl lg:text-4xl">
-                Empowering Innovators with Value-Based Engineering
+                Our Pilot Partner: MIT-ADT University
               </h2>
               <p className="mb-8 text-base leading-relaxed text-brand-charcoal/80">
-                MIT Art, Design and Technology University, Pune has crafted a unique project-centric curriculum
-                where engineering fundamentals merge with human values, physical vitality, and incubation
-                leadership.
+                Prabodh is running a one-semester Project-Based Learning pilot with MIT Art, Design and
+                Technology University, Pune — staffing weekly, hands-on mentorship across 60 problem
+                statements, 180 project teams, and 900 students on the university&apos;s Rajbaug campus.
               </p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {features.map((feature) => (
