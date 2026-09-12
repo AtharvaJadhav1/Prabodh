@@ -30,3 +30,11 @@ export const presignSchema = z.object({
 export const statusPatchSchema = z.object({
   status: z.enum(['not_started', 'in_progress', 'submitted', 'reviewed', 'qualified', 'rejected']),
 });
+
+/** Direct PPTX/PDF upload through the API (avoids browser→S3 CORS hangs). */
+export const directUploadSchema = z.object({
+  teamId: z.string().uuid(),
+  filename: z.string().min(1),
+  contentType: z.string().min(3).optional(),
+  dataBase64: z.string().min(1),
+});

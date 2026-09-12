@@ -100,5 +100,9 @@ export async function putObjectBuffer(key: string, body: Buffer, contentType: st
       ContentType: contentType,
     }),
   );
-  return key;
+  return { key, publicUrl: publicObjectUrl(key) };
+}
+
+export function isS3Configured() {
+  return Boolean(process.env.S3_BUCKET);
 }

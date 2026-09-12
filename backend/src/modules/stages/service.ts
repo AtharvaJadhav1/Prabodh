@@ -12,10 +12,17 @@ import { nextVersion } from '../../domain/rules';
 import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { consumeToken } from '../../lib/rate-limit';
-import { createPresignedPutUrl, normalizeUploadMime } from '../../lib/s3';
+import { createPresignedPutUrl, isS3Configured, normalizeUploadMime, putObjectBuffer } from '../../lib/s3';
 import { requestVirusScan } from '../../lib/scan';
 import { TeamsService } from '../teams/service';
-import { createRubricSchema, createStageSchema, deliverableSchema, presignSchema, statusPatchSchema } from './schema';
+import {
+  createRubricSchema,
+  createStageSchema,
+  deliverableSchema,
+  directUploadSchema,
+  presignSchema,
+  statusPatchSchema,
+} from './schema';
 
 @Injectable()
 export class StagesService {
@@ -81,6 +88,54 @@ export class StagesService {
     } catch (err) {
       throw new BadRequestException(err instanceof Error ? err.message : 'Could not create upload URL');
     }
+  }
+
+  /** Upload PPTX/PDF through the API so the browser never talks to S3 directly (avoids CORS hangs). */
+  async uploadDirect(user: AuthUser, stageId: string, body: z.infer<typeof directUploadSchema>) {
+    await consumeToken(`upload:${body.teamId}`, Number(process.env.UPLOAD_RATE_LIMIT_PER_MIN ?? 20));
+    await this.teams.assertTeamAccess(user, body.teamId);
+    const stage = await this.prisma.stage.findUnique({ where: { id: stageId } });
+    if (!stage) throw new NotFoundException('Stage not found');
+    if (stage.deadline.getTime() < Date.now()) {
+      throw new HttpException('Stage is locked after deadline', 423);
+    }
+
+    const filename = body.filename.trim();
+    const ext = filename.includes('.') ? filename.slice(filename.lastIndexOf('.')).toLowerCase() : '';
+    if (!['.pdf', '.ppt', '.pptx'].includes(ext)) {
+      throw new BadRequestException('Only PDF or PPTX files are allowed');
+    }
+
+    const contentType = normalizeUploadMime(filename, body.contentType);
+    let buffer: Buffer;
+    try {
+      const raw = body.dataBase64.includes(',') ? body.dataBase64.split(',').pop()! : body.dataBase64;
+      buffer = Buffer.from(raw, 'base64');
+    } catch {
+      throw new BadRequestException('Invalid file payload');
+    }
+    if (!buffer.length) throw new BadRequestException('Empty file');
+    if (buffer.length > 20 * 1024 * 1024) {
+      throw new BadRequestException('File exceeds the 20MB upload limit');
+    }
+
+    const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const key = `deliverables/${body.teamId}/${stageId}/ppt/${Date.now()}-${safeName}`;
+    let fileUrl: string;
+    if (isS3Configured()) {
+      const stored = await putObjectBuffer(key, buffer, contentType);
+      fileUrl = stored.publicUrl;
+    } else if (buffer.length <= 5 * 1024 * 1024) {
+      // Local/dev fallback when object storage is not configured.
+      fileUrl = `data:${contentType};base64,${buffer.toString('base64')}`;
+    } else {
+      throw new BadRequestException('File storage is not configured (set S3_BUCKET) for files over 5MB');
+    }
+
+    return this.submitDeliverable(user, stageId, {
+      teamId: body.teamId,
+      pptUrl: fileUrl,
+    });
   }
 
   async submitDeliverable(user: AuthUser, stageId: string, body: z.infer<typeof deliverableSchema>) {

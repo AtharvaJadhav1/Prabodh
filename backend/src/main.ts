@@ -4,6 +4,9 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
+  // Allow PPTX/PDF uploads sent through the API (default Nest limit is ~100kb).
+  app.useBodyParser('json', { limit: '30mb' });
+  app.useBodyParser('urlencoded', { limit: '30mb', extended: true });
   app.setGlobalPrefix('api');
   const origins = [
     ...(process.env.APP_ORIGIN ?? 'http://localhost:3000').split(','),

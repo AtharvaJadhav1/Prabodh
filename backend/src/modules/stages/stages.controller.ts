@@ -6,7 +6,7 @@ import { CurrentUser } from '../../common/current-user.decorator';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
 import { ZodPipe } from '../../common/zod.pipe';
-import { createRubricSchema, createStageSchema, deliverableSchema, presignSchema, statusPatchSchema } from './schema';
+import { createRubricSchema, createStageSchema, deliverableSchema, directUploadSchema, presignSchema, statusPatchSchema } from './schema';
 import { StagesService } from './service';
 
 @Controller()
@@ -50,6 +50,15 @@ export class StagesController {
     @Body(new ZodPipe(presignSchema)) body: unknown,
   ) {
     return this.stages.presign(user, stageId, body as never);
+  }
+
+  @Post('stages/:stageId/deliverables/upload')
+  uploadDirect(
+    @CurrentUser() user: AuthUser,
+    @Param('stageId') stageId: string,
+    @Body(new ZodPipe(directUploadSchema)) body: unknown,
+  ) {
+    return this.stages.uploadDirect(user, stageId, body as never);
   }
 
   @Post('stages/:stageId/deliverables')
