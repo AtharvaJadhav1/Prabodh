@@ -6,30 +6,37 @@ import { useTeam } from "./TeamProvider";
 import { FileCheckIcon, GithubIcon, UploadCloudIcon, XIcon } from "./icons";
 
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
-const ACCEPTED_EXT = /\.(pdf|ppt|pptx|doc|docx|mp4)$/i;
-const ACCEPTED_MIME = new Set([
-  "application/pdf",
-  "application/vnd.ms-powerpoint",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "video/mp4",
-]);
+
+const MIME_BY_EXT: Record<string, string> = {
+  ".pdf": "application/pdf",
+  ".ppt": "application/vnd.ms-powerpoint",
+  ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ".doc": "application/msword",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".mp4": "video/mp4",
+};
 
 type UploadKind = "ppt" | "report" | "video";
 
+function fileExt(name: string) {
+  const i = name.lastIndexOf(".");
+  return i >= 0 ? name.slice(i).toLowerCase() : "";
+}
+
+function mimeForFile(file: File): string {
+  return MIME_BY_EXT[fileExt(file.name)] || (file.type && file.type !== "application/octet-stream" ? file.type : "application/pdf");
+}
+
 function validateFile(file: File): string | null {
   if (file.size > MAX_UPLOAD_BYTES) return "File exceeds the 50MB limit.";
-  if (!ACCEPTED_EXT.test(file.name) && !ACCEPTED_MIME.has(file.type)) {
-    return "Only PPTX, PDF, DOCX, or MP4 files are supported.";
-  }
+  if (!MIME_BY_EXT[fileExt(file.name)]) return "Only PPTX, PDF, DOCX, or MP4 files are supported.";
   return null;
 }
 
 function detectKind(file: File): UploadKind {
-  const lower = file.name.toLowerCase();
-  if (lower.endsWith(".ppt") || lower.endsWith(".pptx")) return "ppt";
-  if (lower.endsWith(".mp4")) return "video";
+  const ext = fileExt(file.name);
+  if (ext === ".ppt" || ext === ".pptx") return "ppt";
+  if (ext === ".mp4") return "video";
   return "report";
 }
 
@@ -37,15 +44,6 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(new Error("Could not read file"));
-    reader.readAsDataURL(file);
-  });
 }
 
 export default function DeliverablesCard() {
@@ -62,84 +60,90 @@ export default function DeliverablesCard() {
   const deliverables = team?.deliverables ?? [];
 
   const submitGithub = async () => {
-    if (!team || !stage || !githubUrl) return;
+    if (!team || !stage || !githubUrl.trim()) return;
     setBusy(true);
     setMessage("");
     try {
-      await apiPost(`/stages/${stage.id}/deliverables`, { teamId: team.id, githubUrl });
+      await apiPost(`/stages/${stage.id}/deliverables`, { teamId: team.id, githubUrl: githubUrl.trim() });
       setGithubUrl("");
-      setMessage("Deliverable saved.");
+      setMessage("GitHub link saved.");
       void reload();
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Upload failed");
+      setMessage(err instanceof Error ? err.message : "Could not save GitHub link");
     } finally {
       setBusy(false);
     }
   };
 
-  const putWithProgress = (url: string, fileToPut: File): Promise<void> => {
-    return new Promise((resolve, reject) => {
+  const putWithProgress = (url: string, fileToPut: File, contentType: string): Promise<void> =>
+    new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("PUT", url);
-      xhr.setRequestHeader("content-type", fileToPut.type || "application/pdf");
+      xhr.setRequestHeader("Content-Type", contentType);
       xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          setUploadProgress(Math.round((e.loaded / e.total) * 100));
-        }
+        if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
       };
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) resolve();
-        else reject(new Error(`Storage upload failed (${xhr.status})`));
+        else reject(new Error(`Storage upload failed (${xhr.status}). Check S3 CORS settings.`));
       };
-      xhr.onerror = () => reject(new Error("Storage upload failed"));
+      xhr.onerror = () => reject(new Error("Storage upload failed. Check network/S3 CORS."));
       xhr.send(fileToPut);
     });
-  };
 
   const uploadFile = async () => {
-    if (!team || !stage || !file) return;
+    if (!team) {
+      setMessage("Create or join a team before uploading.");
+      return;
+    }
+    if (!stage) {
+      setMessage("No active stage is configured yet. Ask an admin to create stages.");
+      return;
+    }
+    if (!file) return;
     const invalid = validateFile(file);
     if (invalid) {
       setMessage(invalid);
       return;
     }
+
     const kind = detectKind(file);
+    const contentType = mimeForFile(file);
     setIsUploading(true);
     setBusy(true);
     setUploadProgress(0);
     setMessage("");
+
     try {
-      const presign = await apiPost<{ url: string; key: string }>(`/stages/${stage.id}/deliverables/presign`, {
-        teamId: team.id,
-        filename: file.name,
-        contentType: file.type || "application/pdf",
-        contentLength: file.size,
-        kind,
-      });
-      await putWithProgress(presign.url, file);
-      const storedUrl = presign.url.split("?")[0];
+      const presign = await apiPost<{ url: string; key: string; publicUrl?: string }>(
+        `/stages/${stage.id}/deliverables/presign`,
+        {
+          teamId: team.id,
+          filename: file.name,
+          contentType,
+          contentLength: file.size,
+          kind,
+        },
+      );
+      await putWithProgress(presign.url, file, contentType);
+      const storedUrl = presign.publicUrl || presign.url.split("?")[0];
       await apiPost(`/stages/${stage.id}/deliverables`, {
         teamId: team.id,
-        ...(kind === "ppt" ? { pptUrl: storedUrl } : kind === "report" ? { reportUrl: storedUrl } : { videoUrl: storedUrl }),
+        ...(kind === "ppt"
+          ? { pptUrl: storedUrl }
+          : kind === "report"
+            ? { reportUrl: storedUrl }
+            : { videoUrl: storedUrl }),
       });
-      setMessage("File submitted.");
+      setMessage(`${kind === "ppt" ? "PPT" : kind === "video" ? "Video" : "Report"} uploaded successfully.`);
+      setFile(null);
+      void reload();
     } catch (err) {
-      try {
-        const dataUrl = await readAsDataURL(file);
-        await apiPost(`/stages/${stage.id}/deliverables`, {
-          teamId: team.id,
-          ...(kind === "ppt" ? { pptUrl: dataUrl } : kind === "report" ? { reportUrl: dataUrl } : { videoUrl: dataUrl }),
-        });
-        setMessage("File submitted.");
-      } catch (fallbackErr) {
-        setMessage(fallbackErr instanceof Error ? fallbackErr.message : "Upload failed");
-      }
+      setMessage(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setIsUploading(false);
       setBusy(false);
       setUploadProgress(0);
-      setFile(null);
-      void reload();
     }
   };
 
@@ -147,15 +151,14 @@ export default function DeliverablesCard() {
     e.preventDefault();
     setDragActive(false);
     const dropped = e.dataTransfer.files?.[0];
-    if (dropped) {
-      const invalid = validateFile(dropped);
-      if (invalid) {
-        setMessage(invalid);
-        return;
-      }
-      setMessage("");
-      setFile(dropped);
+    if (!dropped) return;
+    const invalid = validateFile(dropped);
+    if (invalid) {
+      setMessage(invalid);
+      return;
     }
+    setMessage("");
+    setFile(dropped);
   };
 
   const removeDeliverable = async (deliverableId: string) => {
@@ -184,7 +187,7 @@ export default function DeliverablesCard() {
         </span>
       </div>
       <p className="mt-1.5 text-sm text-brand-muted">
-        Upload your presentation, reports, and supplementary deliverables for the current stage.
+        Upload your presentation (PPT/PPTX), reports, and supplementary deliverables for the current stage.
       </p>
 
       {isLead ? (
@@ -198,7 +201,9 @@ export default function DeliverablesCard() {
                   </span>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-brand-deep">{file.name}</p>
-                    <p className="text-xs text-brand-muted">{formatBytes(file.size)}</p>
+                    <p className="text-xs text-brand-muted">
+                      {formatBytes(file.size)} · {detectKind(file).toUpperCase()}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -254,15 +259,14 @@ export default function DeliverablesCard() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.ppt,.pptx,.doc,.docx,.mp4"
+                accept=".pdf,.ppt,.pptx,.doc,.docx,.mp4,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
                 className="hidden"
                 onChange={(e) => {
                   const selected = e.target.files?.[0];
                   if (selected) {
                     const invalid = validateFile(selected);
-                    if (invalid) {
-                      setMessage(invalid);
-                    } else {
+                    if (invalid) setMessage(invalid);
+                    else {
                       setMessage("");
                       setFile(selected);
                     }
@@ -273,16 +277,27 @@ export default function DeliverablesCard() {
             </div>
           )}
         </div>
-      ) : null}
+      ) : (
+        <p className="mt-4 text-xs text-brand-muted">Only the team lead can upload deliverables.</p>
+      )}
 
       {deliverables.length > 0 ? (
         <div className="mt-4 space-y-2">
           <p className="text-xs font-bold uppercase tracking-wider text-brand-muted">Submitted versions</p>
           {deliverables.map((d) => (
-            <div key={d.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-softline p-3 text-xs">
+            <div
+              key={d.id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-softline p-3 text-xs"
+            >
               <div className="space-y-1">
-                <p className="font-semibold text-brand-deep">v{d.version} · {new Date(d.submittedAt).toLocaleString()}</p>
-                {d.githubUrl ? <a href={d.githubUrl} className="text-brand-primary" target="_blank" rel="noreferrer">GitHub</a> : null}
+                <p className="font-semibold text-brand-deep">
+                  v{d.version} · {new Date(d.submittedAt).toLocaleString()}
+                </p>
+                {d.githubUrl ? (
+                  <a href={d.githubUrl} className="text-brand-primary" target="_blank" rel="noreferrer">
+                    GitHub
+                  </a>
+                ) : null}
                 {d.pptUrl ? <p className="text-brand-muted">PPT uploaded</p> : null}
                 {d.reportUrl ? <p className="text-brand-muted">Report uploaded</p> : null}
                 {d.videoUrl ? <p className="text-brand-muted">Video uploaded</p> : null}
@@ -315,7 +330,7 @@ export default function DeliverablesCard() {
         </div>
         <button
           type="button"
-          disabled={!isLead || busy || !githubUrl}
+          disabled={!isLead || busy || !githubUrl.trim()}
           onClick={() => void submitGithub()}
           className="rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
         >

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   HttpException,
   Injectable,
@@ -11,7 +12,7 @@ import { nextVersion } from '../../domain/rules';
 import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { consumeToken } from '../../lib/rate-limit';
-import { createPresignedPutUrl } from '../../lib/s3';
+import { createPresignedPutUrl, normalizeUploadMime } from '../../lib/s3';
 import { requestVirusScan } from '../../lib/scan';
 import { TeamsService } from '../teams/service';
 import { createRubricSchema, createStageSchema, deliverableSchema, presignSchema, statusPatchSchema } from './schema';
@@ -72,8 +73,14 @@ export class StagesService {
     if (stage.deadline.getTime() < Date.now()) {
       throw new HttpException('Stage is locked after deadline', 423);
     }
-    const key = `deliverables/${body.teamId}/${stageId}/${body.kind}/${Date.now()}-${body.filename}`;
-    return createPresignedPutUrl(key, body.contentType, body.contentLength);
+    const contentType = normalizeUploadMime(body.filename, body.contentType);
+    const safeName = body.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const key = `deliverables/${body.teamId}/${stageId}/${body.kind}/${Date.now()}-${safeName}`;
+    try {
+      return await createPresignedPutUrl(key, contentType, body.contentLength);
+    } catch (err) {
+      throw new BadRequestException(err instanceof Error ? err.message : 'Could not create upload URL');
+    }
   }
 
   async submitDeliverable(user: AuthUser, stageId: string, body: z.infer<typeof deliverableSchema>) {

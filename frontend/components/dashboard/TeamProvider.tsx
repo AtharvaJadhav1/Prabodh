@@ -48,6 +48,8 @@ type TeamContextValue = {
   reload: () => Promise<void>;
   createTeam: (name: string) => Promise<void>;
   renameTeam: (name: string) => Promise<void>;
+  removeCommentLocally: (commentId: string) => void;
+  addCommentLocally: (comment: import("../../lib/types").PortalComment) => void;
 };
 
 const TeamContext = createContext<TeamContextValue | null>(null);
@@ -304,6 +306,27 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           }
         },
         reload,
+        removeCommentLocally: (commentId: string) => {
+          setTeam((prev) => {
+            if (!prev) return prev;
+            const next = {
+              ...prev,
+              comments: (prev.comments ?? []).filter((c) => c.id !== commentId),
+            };
+            teamRef.current = next;
+            return next;
+          });
+        },
+        addCommentLocally: (comment) => {
+          setTeam((prev) => {
+            if (!prev) return prev;
+            const existing = prev.comments ?? [];
+            if (existing.some((c) => c.id === comment.id)) return prev;
+            const next = { ...prev, comments: [...existing, comment] };
+            teamRef.current = next;
+            return next;
+          });
+        },
         createTeam: async (name: string) => {
           const institute = session?.institute?.trim() || "Institute";
           await apiPost("/teams", { name, institute });

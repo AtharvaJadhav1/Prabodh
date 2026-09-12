@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiDelete, apiPost } from "../../lib/api";
 import type { PortalComment } from "../../lib/types";
 import { useAuth } from "../auth/AuthProvider";
@@ -25,24 +25,25 @@ function normalizeComment(
 }
 
 export default function TeamCommentsCard() {
-  const { team, isLead } = useTeam();
+  const { team, isLead, removeCommentLocally, addCommentLocally } = useTeam();
   const { session } = useAuth();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [comments, setComments] = useState<PortalComment[]>(team?.comments ?? []);
+  const removedIds = useRef(new Set<string>());
 
   useEffect(() => {
-    const server = team?.comments ?? [];
+    const server = (team?.comments ?? []).filter((c) => !removedIds.current.has(c.id));
     setComments((prev) => {
-      if (prev.length === 0) return server;
       const byId = new Map<string, PortalComment>();
       for (const c of server) byId.set(c.id, c);
       for (const c of prev) {
+        if (removedIds.current.has(c.id)) continue;
         if (!byId.has(c.id)) byId.set(c.id, c);
       }
-      return Array.from(byId.values());
+      return Array.from(byId.values()).filter((c) => !removedIds.current.has(c.id));
     });
   }, [team?.id, team?.comments]);
 
@@ -50,6 +51,40 @@ export default function TeamCommentsCard() {
     if (!session?.userId) return false;
     if (isLead) return true;
     return c.author?.id === session.userId;
+  };
+
+  const deleteComment = (c: PortalComment) => {
+    if (!team || deletingIds.has(c.id)) return;
+    setError("");
+    removedIds.current.add(c.id);
+    setComments((prev) => prev.filter((x) => x.id !== c.id));
+    removeCommentLocally?.(c.id);
+    // Allow deleting other comments immediately — don't block the whole list.
+    setDeletingIds((prev) => new Set(prev).add(c.id));
+
+    if (c.id.startsWith("optimistic-") || c.id.startsWith("local-")) {
+      setDeletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(c.id);
+        return next;
+      });
+      return;
+    }
+
+    void apiDelete(`/teams/${team.id}/comments/${c.id}`)
+      .catch((err) => {
+        removedIds.current.delete(c.id);
+        setComments((prev) => [...prev, c]);
+        addCommentLocally?.(c);
+        setError(err instanceof Error ? err.message : "Could not delete comment");
+      })
+      .finally(() => {
+        setDeletingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(c.id);
+          return next;
+        });
+      });
   };
 
   return (
@@ -67,26 +102,10 @@ export default function TeamCommentsCard() {
               {canDelete(c) ? (
                 <button
                   type="button"
-                  disabled={deletingId === c.id || busy}
+                  disabled={deletingIds.has(c.id)}
                   aria-label="Delete comment"
                   title="Delete comment"
-                  onClick={async () => {
-                    if (!team || deletingId) return;
-                    setDeletingId(c.id);
-                    setError("");
-                    const previous = comments;
-                    setComments((prev) => prev.filter((x) => x.id !== c.id));
-                    try {
-                      if (!c.id.startsWith("optimistic-") && !c.id.startsWith("local-")) {
-                        await apiDelete(`/teams/${team.id}/comments/${c.id}`);
-                      }
-                    } catch (err) {
-                      setComments(previous);
-                      setError(err instanceof Error ? err.message : "Could not delete comment");
-                    } finally {
-                      setDeletingId(null);
-                    }
-                  }}
+                  onClick={() => deleteComment(c)}
                   className="shrink-0 rounded p-1 text-brand-muted opacity-70 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-40 sm:opacity-0 sm:group-hover:opacity-100"
                 >
                   <TrashIcon className="h-3.5 w-3.5" />
@@ -112,10 +131,13 @@ export default function TeamCommentsCard() {
           setBusy(true);
           setError("");
           setMessage("");
-          setComments((prev) => [
-            ...prev,
-            { id: optimisticId, message: text, createdAt: new Date().toISOString(), author },
-          ]);
+          const optimistic = {
+            id: optimisticId,
+            message: text,
+            createdAt: new Date().toISOString(),
+            author,
+          };
+          setComments((prev) => [...prev, optimistic]);
           try {
             const created = await apiPost<PortalComment>(`/teams/${team.id}/comments`, { message: text });
             const normalized = normalizeComment(created, { message: text, author });
@@ -124,6 +146,7 @@ export default function TeamCommentsCard() {
                 .map((c) => (c.id === optimisticId ? normalized : c))
                 .filter((c, i, arr) => arr.findIndex((x) => x.id === c.id) === i),
             );
+            addCommentLocally?.(normalized);
           } catch (err) {
             setComments((prev) => prev.filter((c) => c.id !== optimisticId));
             setMessage(text);
