@@ -142,6 +142,7 @@ model Team {
   status        TeamStatus @default(forming)
   memberCap     Int        @default(6) @map("member_cap")
   detailsLockAt DateTime?  @map("details_lock_at")
+  mentorLockedAt DateTime? @map("mentor_locked_at")
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
 

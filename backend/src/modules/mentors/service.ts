@@ -154,7 +154,7 @@ export class MentorsService {
     return this.prisma.user.findMany({
       where: {
         isActive: true,
-        platformRole: { in: [PlatformRole.institute_mentor, PlatformRole.industry_mentor] },
+        platformRole: PlatformRole.institute_mentor,
       },
       select: {
         id: true,
@@ -178,33 +178,17 @@ export class MentorsService {
 
     const email = body.email.toLowerCase();
     const mentor = await this.prisma.user.findUnique({ where: { email } });
-    if (
-      !mentor ||
-      !mentor.isActive ||
-      (mentor.platformRole !== PlatformRole.institute_mentor &&
-        mentor.platformRole !== PlatformRole.industry_mentor)
-    ) {
-      throw new BadRequestException('No faculty or industry mentor account exists for this email');
+    if (!mentor || !mentor.isActive || mentor.platformRole !== PlatformRole.institute_mentor) {
+      throw new BadRequestException('No faculty account exists for this email');
     }
+    const mentorType: MentorType = 'institute';
 
-    const mentorType: MentorType =
-      body.mentorType ?? (mentor.platformRole === PlatformRole.industry_mentor ? 'industry' : 'institute');
-    if (
-      (mentorType === 'institute' && mentor.platformRole !== PlatformRole.institute_mentor) ||
-      (mentorType === 'industry' && mentor.platformRole !== PlatformRole.industry_mentor)
-    ) {
-      throw new BadRequestException('This faculty email does not match the requested mentor type');
+    if (team.mentorLockedAt) {
+      throw new BadRequestException('This team already has a locked faculty mentor');
     }
-
     const active = await this.repo.activeForTeam(team.id, mentorType);
     if (active) {
-      throw new BadRequestException(`This team already has an active ${mentorType} mentor`);
-    }
-    const pending = await this.prisma.mentorInvite.findFirst({
-      where: { teamId: team.id, mentorType, inviteStatus: InviteStatus.pending },
-    });
-    if (pending) {
-      throw new BadRequestException(`A ${mentorType} mentor invite is already pending`);
+      throw new BadRequestException('This team already has a locked faculty mentor');
     }
 
     const existing = await this.prisma.mentorInvite.findUnique({
@@ -313,34 +297,66 @@ export class MentorsService {
       });
     }
 
-    const mentorType = invite.mentorType;
-    const existing = await this.repo.activeForTeam(invite.teamId, mentorType);
-    if (existing) {
-      throw new BadRequestException(`This team already has an active ${mentorType} mentor`);
-    }
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "teams" WHERE id = ${invite.teamId} FOR UPDATE`;
 
-    const assignment = await this.repo.create({
-      team: { connect: { id: invite.teamId } },
-      mentor: { connect: { id: user.id } },
-      assignedBy: { connect: { id: invite.invitedById } },
-      mentorType,
-      assignmentMethod: 'manual',
-    });
-    await this.prisma.mentorInvite.update({
-      where: { id: inviteId },
-      data: { inviteStatus: InviteStatus.accepted, mentorUserId: user.id },
-    });
-    try {
-      await notifyUsers(this.prisma, [invite.invitedById], {
-        type: 'allocation',
-        template: 'mentor_allocation',
-        title: 'Mentor invitation accepted',
-        body: `${user.fullName} accepted the mentor invitation for ${invite.team.name}.`,
-        relatedEntity: `team:${invite.teamId}`,
+      const fresh = await tx.mentorInvite.findUnique({
+        where: { id: inviteId },
+        include: { team: true },
       });
-    } catch {
-      /* notifications are best-effort */
+      if (!fresh || fresh.inviteStatus !== InviteStatus.pending) {
+        throw new BadRequestException('This invitation is no longer pending');
+      }
+      const team = fresh.team;
+
+      const active = await tx.mentorAssignment.findFirst({
+        where: { teamId: team.id, mentorType: fresh.mentorType, active: true },
+      });
+      if (team.mentorLockedAt || active) {
+        await tx.mentorInvite.update({
+          where: { id: fresh.id },
+          data: { inviteStatus: InviteStatus.expired },
+        });
+        return { accepted: false };
+      }
+
+      const assignment = await tx.mentorAssignment.create({
+        data: {
+          team: { connect: { id: team.id } },
+          mentor: { connect: { id: user.id } },
+          assignedBy: { connect: { id: fresh.invitedById } },
+          mentorType: fresh.mentorType,
+          assignmentMethod: 'manual',
+        },
+      });
+      await tx.team.update({
+        where: { id: team.id },
+        data: { mentorLockedAt: new Date() },
+      });
+      await tx.mentorInvite.update({
+        where: { id: fresh.id },
+        data: { inviteStatus: InviteStatus.accepted, mentorUserId: user.id },
+      });
+      await tx.mentorInvite.updateMany({
+        where: { teamId: team.id, inviteStatus: InviteStatus.pending, id: { not: fresh.id } },
+        data: { inviteStatus: InviteStatus.expired },
+      });
+      return { accepted: true, assignment };
+    });
+
+    if (result.accepted) {
+      try {
+        await notifyUsers(this.prisma, [invite.invitedById], {
+          type: 'allocation',
+          template: 'mentor_allocation',
+          title: 'Mentor invitation accepted',
+          body: `${user.fullName} accepted the mentor invitation for ${invite.team.name}.`,
+          relatedEntity: `team:${invite.teamId}`,
+        });
+      } catch {
+        /* notifications are best-effort */
+      }
     }
-    return assignment;
+    return result;
   }
 }
