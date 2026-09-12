@@ -38,7 +38,7 @@ export default function ProfileHeaderCard() {
           {/* Avatar + Name */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <div className="relative">
-              <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-brand-deep text-2xl font-bold tracking-wider text-white shadow-md">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-brand-deep text-lg font-bold tracking-wider text-white shadow-md sm:h-24 sm:w-24 sm:text-2xl">
                 {initials}
               </div>
               <button
@@ -52,7 +52,7 @@ export default function ProfileHeaderCard() {
 
             <div className="space-y-0.5 pt-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-2xl font-bold tracking-tight text-brand-deep">{fullName}</h2>
+                <h2 className="text-xl font-bold tracking-tight text-brand-deep sm:text-2xl">{fullName}</h2>
                 {verified && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-brand-approved/20 bg-brand-approved/10 px-2.5 py-0.5 text-xs font-semibold text-brand-approved">
                     <BadgeCheckIcon className="h-3.5 w-3.5" />
@@ -79,7 +79,7 @@ export default function ProfileHeaderCard() {
 
         {/* Metadata Badges */}
         <div className="flex flex-wrap items-center gap-2.5 border-b border-brand-softline pb-4 pt-2">
-          <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand-softline bg-brand-cream px-3 py-1 text-xs font-medium text-brand-deep">
+          <span className="inline-flex items-center gap-1.5 break-all rounded-lg border border-brand-softline bg-brand-cream px-3 py-1 text-xs font-medium text-brand-deep">
             <svg
               className="h-3.5 w-3.5 text-brand-muted"
               fill="none"
@@ -92,7 +92,7 @@ export default function ProfileHeaderCard() {
             </svg>
             {school}
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand-softline bg-brand-cream px-3 py-1 font-mono text-xs text-brand-deep">
+          <span className="inline-flex items-center gap-1.5 break-all rounded-lg border border-brand-softline bg-brand-cream px-3 py-1 font-mono text-xs text-brand-deep">
             <svg
               className="h-3.5 w-3.5 text-brand-muted"
               fill="none"
@@ -105,7 +105,7 @@ export default function ProfileHeaderCard() {
             </svg>
             PRN: {prn}
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand-warmBorder bg-brand-lightOrange px-3 py-1 text-xs font-semibold text-brand-primary">
+          <span className="inline-flex items-center gap-1.5 break-all rounded-lg border border-brand-warmBorder bg-brand-lightOrange px-3 py-1 text-xs font-semibold text-brand-primary">
             <svg
               className="h-3.5 w-3.5"
               fill="currentColor"
@@ -123,7 +123,7 @@ export default function ProfileHeaderCard() {
           {contacts.phone && (
             <a
               href={`tel:${contacts.phone.replace(/\s/g, "")}`}
-              className="inline-flex items-center gap-1.5 transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+              className="inline-flex items-center gap-1.5 break-all transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
             >
               <PhoneIcon className="h-4 w-4 text-brand-muted" />
               <span>{contacts.phone}</span>
@@ -131,7 +131,7 @@ export default function ProfileHeaderCard() {
           )}
           <a
             href={`mailto:${contacts.email}`}
-            className="inline-flex items-center gap-1.5 transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+            className="inline-flex items-center gap-1.5 break-all transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
           >
             <MailIcon className="h-4 w-4 text-brand-muted" />
             <span>{contacts.email}</span>
@@ -140,7 +140,7 @@ export default function ProfileHeaderCard() {
             href={contacts.github}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+            className="inline-flex items-center gap-1.5 break-all transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
           >
             <GithubIcon className="h-4 w-4 text-brand-muted" />
             <span>{linkLabel(contacts.github)}</span>
@@ -149,7 +149,7 @@ export default function ProfileHeaderCard() {
             href={contacts.linkedin}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+            className="inline-flex items-center gap-1.5 break-all transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
           >
             <ExternalLinkIcon className="h-4 w-4 text-brand-muted" />
             <span>{linkLabel(contacts.linkedin)}</span>
@@ -158,7 +158,7 @@ export default function ProfileHeaderCard() {
             href={contacts.website}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+            className="inline-flex items-center gap-1.5 break-all transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
           >
             <GlobeIcon className="h-4 w-4 text-brand-muted" />
             <span>{linkLabel(contacts.website)}</span>

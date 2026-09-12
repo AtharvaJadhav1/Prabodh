@@ -116,7 +116,7 @@ export default function RepositoryBrowser() {
                 key={folder.id}
                 type="button"
                 onClick={() => setActiveFolder(isActive ? null : folder.id)}
-                className={`group rounded-2xl p-5 text-left shadow-[0_2px_8px_rgba(91,46,16,0.04)] transition-all ${
+                className={`group rounded-2xl p-3.5 text-left shadow-[0_2px_8px_rgba(91,46,16,0.04)] transition-all sm:p-5 ${
                   isActive
                     ? "border-2 border-brand-primary bg-white shadow-[0_6px_18px_rgba(91,46,16,0.10)]"
                     : "border border-brand-softline bg-white hover:shadow-[0_6px_18px_rgba(91,46,16,0.08)]"
@@ -216,7 +216,7 @@ export default function RepositoryBrowser() {
           filtered.map((stmt) => (
             <div
               key={stmt.code}
-              className="flex flex-col gap-4 rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)] transition-all hover:border-brand-primary/40 hover:shadow-[0_6px_18px_rgba(91,46,16,0.08)] sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-4 rounded-2xl border border-brand-softline bg-white p-4 shadow-[0_2px_8px_rgba(91,46,16,0.04)] transition-all hover:border-brand-primary/40 hover:shadow-[0_6px_18px_rgba(91,46,16,0.08)] sm:p-5 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="max-w-3xl flex-1">
                 <div className="flex flex-wrap items-center gap-2">

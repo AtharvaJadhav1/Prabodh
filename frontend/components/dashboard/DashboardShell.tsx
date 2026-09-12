@@ -20,7 +20,7 @@ export default function DashboardShell({ children, title, subtitle }: DashboardS
       <Sidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
       <div className="lg:pl-64">
         <TopBar onMenuClick={() => setMobileOpen((v) => !v)} title={title} subtitle={subtitle} />
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6 sm:pb-12 lg:px-8">{children}</main>
       </div>
       <GroupDrawer />
       <ProfileEditDrawer />

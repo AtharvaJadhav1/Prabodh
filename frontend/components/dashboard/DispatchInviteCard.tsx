@@ -82,13 +82,13 @@ export default function DispatchInviteCard() {
                 }
               }}
               placeholder="member.email@mituniversity.edu.in"
-              className="w-full text-xs py-2 px-3 rounded-xl border border-brand-softline bg-brand-cream font-medium text-brand-charcoal transition-all placeholder:text-brand-charcoal/45 focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20 outline-none"
+              className="h-10 w-full px-3 py-2 text-xs rounded-xl border border-brand-softline bg-brand-cream font-medium text-brand-charcoal transition-all placeholder:text-brand-charcoal/45 focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20 outline-none sm:h-11"
             />
             <button
               type="button"
               onClick={handleSend}
               disabled={sending}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white shadow-md shadow-brand-primary/25 transition-all duration-150 hover:bg-brand-hover active:scale-[0.99] disabled:opacity-60"
+              className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white shadow-md shadow-brand-primary/25 transition-all duration-150 hover:bg-brand-hover active:scale-[0.99] disabled:opacity-60 sm:h-11"
             >
               <SendIcon className="h-4 w-4" /> {sending ? "Sending…" : "Send"}
             </button>

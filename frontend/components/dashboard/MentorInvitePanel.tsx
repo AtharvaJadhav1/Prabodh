@@ -110,13 +110,13 @@ export default function MentorInvitePanel() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="faculty.email@mituniversity.edu.in"
-              className="w-full rounded-xl border border-brand-softline bg-brand-cream px-3 py-2 text-sm text-brand-deep outline-none focus:border-brand-primary focus:bg-white"
+              className="h-10 w-full rounded-xl border border-brand-softline bg-brand-cream px-3 py-2 text-sm text-brand-deep outline-none focus:border-brand-primary focus:bg-white sm:h-11"
             />
             <button
               type="button"
               disabled={busy}
               onClick={() => void handleSend()}
-              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-60 sm:h-11"
             >
               <SendIcon className="h-4 w-4" /> Send
             </button>
@@ -132,9 +132,9 @@ export default function MentorInvitePanel() {
               )
               .map((f) => (
                 <li key={f.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                  <div>
-                    <p className="text-sm font-bold text-brand-deep">{f.fullName}</p>
-                    <p className="text-[11px] text-brand-muted">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-brand-deep">{f.fullName}</p>
+                    <p className="truncate text-[11px] text-brand-muted">
                       {f.email}
                       {f.department ? ` · ${f.department}` : ""}
                     </p>
@@ -143,7 +143,7 @@ export default function MentorInvitePanel() {
                     type="button"
                     disabled={busy}
                     onClick={() => void handleSend(f.email)}
-                    className="rounded-lg border border-brand-primary/40 bg-brand-primary/10 px-2.5 py-1 text-[11px] font-bold text-brand-primary"
+                    className="shrink-0 rounded-lg border border-brand-primary/40 bg-brand-primary/10 px-2.5 py-1 text-[11px] font-bold text-brand-primary"
                   >
                     Invite
                   </button>

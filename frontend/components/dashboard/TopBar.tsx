@@ -27,7 +27,7 @@ export default function TopBar({ onMenuClick, title = "Student Team Workspace", 
         </button>
 
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-2xl font-bold tracking-tight text-brand-deep">
+          <h1 className="truncate text-base font-bold tracking-tight text-brand-deep sm:text-xl">
             {title}
           </h1>
           <p className="mt-0.5 hidden items-center gap-1.5 text-xs font-medium text-brand-muted sm:flex">

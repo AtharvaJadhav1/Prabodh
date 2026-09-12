@@ -94,7 +94,7 @@ export default function DeliverablesCard() {
             <FileTextIcon className="h-4 w-4" /> Upload PPT / Report / Video
           </span>
           {isLead ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <input type="file" accept=".ppt,.pptx,.pdf" disabled={busy} onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) void uploadFile("ppt", file);

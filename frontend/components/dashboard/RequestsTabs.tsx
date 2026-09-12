@@ -83,8 +83,8 @@ function TabButton({
       }`}
     >
       {icon}
-      <span className="hidden sm:inline">{label}</span>
-      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${chipStyle}`}>{chip}</span>
+      <span className="hidden truncate sm:inline">{label}</span>
+      <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${chipStyle}`}>{chip}</span>
     </button>
   );
 }
