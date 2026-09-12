@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  UsersIcon,
-  ClockIcon,
-  CalendarClockIcon,
-  ShieldCheckIcon,
-  CheckIcon,
-} from "../dashboard/icons";
+import { UsersIcon, ClockIcon, GradCapIcon } from "../dashboard/icons";
 
 export default function MetricCards({
   assignedTeams = 0,
@@ -21,66 +15,48 @@ export default function MetricCards({
     {
       label: "Assigned Teams",
       value: String(assignedTeams),
-      sub: `${totalStudents} Students`,
+      desc: "Active teams under your guidance",
       icon: UsersIcon,
-      iconBg: "bg-brand-cream border-brand-sand",
-      iconColor: "text-brand-deep",
-      valueColor: "text-brand-deep",
+      stripe: "bg-brand-primary",
+      iconBg: "bg-brand-primary/10 text-brand-primary",
     },
     {
       label: "Pending Reviews",
       value: String(pendingReviews),
-      sub: "Require Grading",
+      desc: "Submissions awaiting your rubric score",
       icon: ClockIcon,
-      iconBg: "bg-amber-warm/10 border-amber-warm/30",
-      iconColor: "text-brand-primary",
-      valueColor: "text-brand-primary",
+      stripe: "bg-brand-amber",
+      iconBg: "bg-brand-amber/10 text-brand-amber",
     },
     {
-      label: "Milestone Lock",
-      value: "—",
-      sub: "Set by active stage",
-      icon: CalendarClockIcon,
-      iconBg: "bg-brand-cream border-brand-sand",
-      iconColor: "text-brand-deep",
-      valueColor: "text-brand-deep",
-    },
-    {
-      label: "Guide Role",
-      value: "",
-      sub: "",
-      icon: CheckIcon,
-      iconBg: "bg-brand-approved/10 border-brand-approved/20",
-      iconColor: "text-brand-approved",
-      custom: (
-        <div className="flex items-center gap-1.5 mt-1">
-          <span className="text-xs font-bold text-brand-deep">Institute Evaluator</span>
-          <ShieldCheckIcon className="h-3.5 w-3.5 text-brand-approved" />
-        </div>
-      ),
+      label: "Students Guided",
+      value: String(totalStudents),
+      desc: "Students under your mentorship",
+      icon: GradCapIcon,
+      stripe: "bg-brand-approved",
+      iconBg: "bg-brand-approved/10 text-brand-approved",
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {cards.map((card) => (
         <div
           key={card.label}
-          className="flex items-center justify-between p-4 rounded-xl bg-white border border-brand-sand min-h-[84px]"
+          className="group relative overflow-hidden rounded-2xl border border-brand-softline/80 bg-white p-5 shadow-sm transition-all duration-200 hover:border-brand-primary/30 hover:shadow-md"
         >
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-brand-muted mb-1">{card.label}</p>
-            {card.custom ? (
-              card.custom
-            ) : (
-              <div className="flex items-baseline gap-2">
-                <span className={`text-2xl font-bold ${card.valueColor}`}>{card.value}</span>
-                <span className="text-[11px] text-brand-muted">{card.sub}</span>
-              </div>
-            )}
-          </div>
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border ${card.iconBg}`}>
-            <card.icon className={`h-4 w-4 ${card.iconColor}`} />
+          <span className={`absolute inset-x-0 top-0 h-1 ${card.stripe}`} aria-hidden="true" />
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-brand-muted/90">{card.label}</p>
+              <p className="mt-1 text-3xl font-extrabold tracking-tight text-brand-deep sm:text-4xl">{card.value}</p>
+              <p className="mt-1 text-xs font-semibold text-brand-muted">{card.desc}</p>
+            </div>
+            <div
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105 ${card.iconBg}`}
+            >
+              <card.icon className="h-5 w-5" />
+            </div>
           </div>
         </div>
       ))}
