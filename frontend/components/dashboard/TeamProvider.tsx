@@ -21,6 +21,7 @@ type TeamContextValue = {
   pendingRequestCount: number;
   facultyInviteStatus: "none" | "sent" | "verified";
   facultyInviteEmail: string;
+  mentorLocked: boolean;
   role: StudentRole;
   isLead: boolean;
   drawerOpen: boolean;
@@ -33,7 +34,7 @@ type TeamContextValue = {
   removeMember: (index: number) => void;
   sendInvite: (email: string) => Promise<{ ok: boolean; emailSent: boolean; emailError?: string | null }>;
   revokeInvite: (email: string) => void;
-  sendFacultyInvite: (email: string, mentorType?: "institute" | "industry") => Promise<boolean>;
+  sendFacultyInvite: (email: string) => Promise<boolean>;
   revokeFacultyInvite: (inviteId?: string) => void;
   facultyDirectory: Array<{
     id: string;
@@ -97,6 +98,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const [requestResults, setRequestResults] = useState<Record<number, "approved" | "rejected">>({});
   const [facultyInviteStatus, setFacultyInviteStatus] = useState<"none" | "sent" | "verified">("none");
   const [facultyInviteEmail, setFacultyInviteEmail] = useState("");
+  const [mentorLocked, setMentorLocked] = useState(false);
   const [role, setRole] = useState<StudentRole>("Team Lead");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [memberIds, setMemberIds] = useState<Record<string, string>>({});
@@ -133,6 +135,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     }
     const inst = detail.mentorAssignments?.find((a) => a.mentorType === "institute");
     const pendingMentor = detail.mentorInvites?.find((i) => i.inviteStatus === "pending");
+    setMentorLocked(Boolean(inst) || Boolean(detail.mentorLockedAt));
     if (inst) {
       setFacultyInviteStatus("verified");
       setFacultyInviteEmail(inst.mentor.fullName);
@@ -249,6 +252,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         pendingRequestCount,
         facultyInviteStatus,
         facultyInviteEmail,
+        mentorLocked,
         role,
         isLead,
         drawerOpen,
@@ -268,12 +272,11 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         revokeInvite,
         facultyDirectory,
         loadFacultyDirectory,
-        sendFacultyInvite: async (email, mentorType) => {
+        sendFacultyInvite: async (email) => {
           if (!team?.id || !email.includes("@")) return false;
           const result = await apiPost<{ emailSent?: boolean; emailError?: string | null }>("/mentors/invite", {
             teamId: team.id,
             email,
-            mentorType,
           });
           await reload();
           if (result.emailError) {

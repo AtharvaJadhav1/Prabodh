@@ -45,6 +45,7 @@ export type PortalTeam = {
   memberCap: number;
   leaderUserId: string;
   status: string;
+  mentorLockedAt?: string | null;
   members: Array<{
     id: string;
     invitedEmail: string;

@@ -58,7 +58,7 @@ function mapInvite(row: MentorInviteRow): GroupRequest {
     teamName: row.team.name,
     leaderName: row.team.leader?.fullName ?? "Team lead",
     memberCount: row.team.members?.length ?? 0,
-    allocatedRole: row.mentorType === "industry" ? "Industry Mentor" : "Institute Mentor",
+    allocatedRole: "Institute Mentor",
     allocatedAt: new Date(row.createdAt).toLocaleDateString(),
     domains: [row.team.problemStatement?.theme ?? row.team.theme ?? "Unassigned"].filter(Boolean) as string[],
   };
@@ -118,9 +118,11 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
           }
           setPendingRequests((prev) => prev.filter((r) => r.id !== id));
         })
-        .catch(() => undefined);
+        .catch(() => {
+          void reload();
+        });
     },
-    [pendingRequests],
+    [pendingRequests, reload],
   );
 
   const declineRequest = useCallback(
@@ -145,9 +147,11 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
           }
           setPendingRequests((prev) => prev.filter((r) => r.id !== id));
         })
-        .catch(() => undefined);
+        .catch(() => {
+          void reload();
+        });
     },
-    [pendingRequests],
+    [pendingRequests, reload],
   );
 
   return (
