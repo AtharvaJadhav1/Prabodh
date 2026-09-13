@@ -145,7 +145,7 @@ export default function MentorPsApprovalsPage() {
   const loading = awaiting === null;
 
   return (
-    <MentorShell title="PS Approvals" subtitle="Review and lock your teams' problem statement preferences">
+    <MentorShell title="PS Approvals">
       <div className="flex flex-col gap-8">
         {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
 

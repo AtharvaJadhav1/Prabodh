@@ -91,7 +91,7 @@ export default function MentorTeamDetailPage() {
   }));
 
   return (
-    <MentorShell title={team.name} subtitle={`Team ${team.teamCode}`}>
+    <MentorShell title={team.name}>
       <div className="flex flex-col gap-6">
         {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
 

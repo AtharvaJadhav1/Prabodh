@@ -9,10 +9,7 @@ import MentorProfileEditDrawer from "../../../../components/mentor/MentorProfile
 export default function MentorProfilePage() {
   return (
     <MentorProfileProvider>
-      <MentorShell
-        title="Faculty Mentor Profile"
-        subtitle="View and manage your institutional mentoring profile, domain expertise, and track record."
-      >
+      <MentorShell title="Faculty Mentor Profile">
         <div className="mx-auto max-w-7xl space-y-6">
           <MentorProfileHeaderCard />
           <MentorProfileTabs />

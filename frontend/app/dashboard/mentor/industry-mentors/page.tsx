@@ -93,10 +93,7 @@ export default function IndustryMentorsPage() {
   }, [groups, mentors]);
 
   return (
-    <MentorShell
-      title="Industry Mentors"
-      subtitle="Industry experts allocated to your teams by a nodal admin. Mapping is managed in the admin console."
-    >
+    <MentorShell title="Industry Mentors">
       <IndustryMentorMetricCards mentors={mentors} totalTeams={groups.length} />
 
       <section className="mb-10">
