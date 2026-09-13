@@ -7,6 +7,10 @@ import { avatarUrlFrom } from "../../lib/avatar";
 import type { PortalStage, PortalTeam } from "../../lib/types";
 import { useAuth } from "../auth/AuthProvider";
 
+export type PsPreferenceInput =
+  | { rank: number; psId: string }
+  | { rank: number; title: string; theme: string; category: "software" | "hardware"; organisation: string; description: string };
+
 type TeamContextValue = {
   team: PortalTeam | null;
   stages: PortalStage[];
@@ -35,6 +39,7 @@ type TeamContextValue = {
   removeMember: (index: number) => void;
   sendInvite: (email: string) => Promise<{ ok: boolean; emailSent: boolean; emailError?: string | null }>;
   revokeInvite: (inviteId: string) => Promise<void>;
+  submitPreferences: (preferences: PsPreferenceInput[]) => Promise<void>;
   sendFacultyInvite: (email: string, mentorType?: "institute" | "industry") => Promise<boolean>;
   revokeFacultyInvite: (inviteId?: string) => void;
   facultyDirectory: Array<{
@@ -261,6 +266,12 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     await reload();
   };
 
+  const submitPreferences = async (preferences: PsPreferenceInput[]) => {
+    if (!team?.id) return;
+    await apiPost(`/teams/${team.id}/ps-preferences`, { preferences });
+    await reload();
+  };
+
   return (
     <TeamContext.Provider
       value={{
@@ -296,6 +307,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         },
         sendInvite,
         revokeInvite,
+        submitPreferences,
         facultyDirectory,
         loadFacultyDirectory,
         sendFacultyInvite: async (email, mentorType = "institute") => {

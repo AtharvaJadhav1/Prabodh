@@ -85,6 +85,25 @@ export type PortalTeam = {
     version: number;
     problemStatement?: { code: string; title: string; description: string; theme: string; organisation: string; category: string };
   }>;
+  psPreferences?: Array<{
+    id: string;
+    rank: number;
+    status: "submitted" | "approved" | "rejected";
+    problemStatement?: {
+      id: string;
+      code: string;
+      title: string;
+      theme: string;
+      category: string;
+      organisation: string;
+      description: string;
+    } | null;
+    title?: string | null;
+    theme?: string | null;
+    category?: string | null;
+    organisation?: string | null;
+    description?: string | null;
+  }>;
   deliverables?: PortalDeliverable[];
   stageStatuses?: Array<{ status: string; stage: { id: string; name: string; sequence: number; deadline: string } }>;
   comments?: PortalComment[];

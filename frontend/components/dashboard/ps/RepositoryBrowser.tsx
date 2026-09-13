@@ -2,10 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { siFolders, type SiStatement } from "../../../data/studentDashboard";
-import { SearchIcon, LockIcon, ExternalLinkIcon, CheckIcon, ShieldCheckIcon } from "../icons";
+import { SearchIcon, LockIcon, ExternalLinkIcon, CheckIcon } from "../icons";
 import { useTeam } from "../TeamProvider";
 import PlaceholderLink from "../PlaceholderLink";
-import { api, apiPost } from "../../../lib/api";
+import { api } from "../../../lib/api";
+import type { CatalogPreference } from "./PreferenceSlotsPanel";
+
+type Props = {
+  targetRank: number;
+  usedPsIds: string[];
+  onPick: (pref: CatalogPreference) => void;
+};
 
 type FilterCategory = "All" | "Software" | "Hardware" | "Hybrid" | "FinTech" | "AgriTech";
 
@@ -35,15 +42,13 @@ function matchesFilter(s: SiStatement, f: FilterCategory): boolean {
   return true;
 }
 
-export default function RepositoryBrowser() {
+export default function RepositoryBrowser({ targetRank, usedPsIds, onPick }: Props) {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("All");
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [remote, setRemote] = useState<SiStatement[] | null>(null);
   const [ids, setIds] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState<string | null>(null);
-  const [selectError, setSelectError] = useState("");
-  const { isLead, teamId, reload } = useTeam();
+  const { isLead } = useTeam();
 
   useEffect(() => {
     const q = search.trim();
@@ -202,8 +207,6 @@ export default function RepositoryBrowser() {
         </div>
       </div>
 
-      {selectError ? <p className="text-sm font-medium text-red-700">{selectError}</p> : null}
-
       {/* PS Card List */}
       <div className="flex flex-col gap-4">
         {filtered.length === 0 ? (
@@ -244,38 +247,25 @@ export default function RepositoryBrowser() {
                 {isLead ? (
                   <button
                     type="button"
-                    disabled={busy === stmt.code || !teamId}
-                    onClick={async () => {
+                    disabled={!ids[stmt.code] || usedPsIds.includes(ids[stmt.code])}
+                    onClick={() => {
                       const psId = ids[stmt.code];
-                      if (!teamId) {
-                        setSelectError("Create or join a team before selecting a problem statement.");
-                        return;
-                      }
-                      if (!psId) {
-                        setSelectError("Problem statement ID missing. Refresh and try again.");
-                        return;
-                      }
-                      setBusy(stmt.code);
-                      try {
-                        setSelectError("");
-                        await apiPost("/idea-submissions/select", {
-                          teamId,
-                          psId,
-                          abstract: (stmt.description + " Selected via SIH portal.").slice(0, 400).padEnd(20, "."),
-                          techStack: "To be confirmed",
-                          feasibilityNotes: "Draft feasibility captured at PS selection.",
-                        });
-                        await reload();
-                      } catch (err) {
-                        setSelectError(err instanceof Error ? err.message : "Could not select this problem statement");
-                      } finally {
-                        setBusy(null);
-                      }
+                      if (!psId) return;
+                      onPick({
+                        kind: "catalog",
+                        psId,
+                        code: stmt.code,
+                        title: stmt.title,
+                        theme: stmt.domain,
+                        category: stmt.category.toLowerCase().includes("hardware") ? "hardware" : "software",
+                        organisation: stmt.ministry,
+                        description: stmt.description,
+                      });
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-brand-primary px-3 py-2 text-xs font-bold text-white shadow-md shadow-brand-primary/25 transition-all duration-150 hover:bg-brand-hover active:scale-[0.99] disabled:opacity-60"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-brand-primary px-3 py-2 text-xs font-bold text-white shadow-md shadow-brand-primary/25 transition-all duration-150 hover:bg-brand-hover active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <CheckIcon className="h-4 w-4" />
-                    {busy === stmt.code ? "Selecting…" : "Select This PS"}
+                    {usedPsIds.includes(ids[stmt.code] ?? "") ? "Already added" : `Add to Preference #${targetRank}`}
                   </button>
                 ) : (
                   <button
