@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -32,6 +33,18 @@ export class TeamsService {
   async create(user: AuthUser, body: z.infer<typeof createTeamSchema>) {
     if (user.platformRole !== 'student') {
       throw new ForbiddenException('Only students can create teams');
+    }
+
+    const existing = await this.prisma.team.findFirst({
+      where: {
+        OR: [
+          { leaderUserId: user.id },
+          { members: { some: { userId: user.id } } },
+        ],
+      },
+    });
+    if (existing) {
+      throw new ConflictException('You are already part of a team');
     }
 
     try {

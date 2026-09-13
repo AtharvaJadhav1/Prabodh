@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { type Member } from "../../data/studentDashboard";
 import { useTeam } from "./TeamProvider";
@@ -108,10 +109,24 @@ function MemberRow({
 }
 
 export default function TeamWorkspaceCard() {
-  const { members, filledCount, openDrawer, invites, isLead, teamCode, teamName, capacity, teamId, createTeam } = useTeam();
+  const { members, filledCount, openDrawer, invites, isLead, teamCode, teamName, capacity, teamId, createTeam, loading } = useTeam();
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const percent = Math.round((filledCount / Math.max(capacity, 1)) * 100);
   const pendingInvites = invites.length;
   const availableSlots = capacity - filledCount;
+
+  if (loading) {
+    return (
+      <section className="rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)] sm:p-6">
+        <h2 className="text-base font-bold text-brand-deep">Team workspace</h2>
+        <div className="mt-3 flex items-center gap-2 text-sm text-brand-muted">
+          <span className="h-4 w-4 animate-pulse rounded-full border-2 border-brand-primary border-t-transparent" />
+          Loading your team…
+        </div>
+      </section>
+    );
+  }
 
   if (!teamId) {
     return (
@@ -121,26 +136,42 @@ export default function TeamWorkspaceCard() {
           You are not on a team yet. Create one to invite members and lock a problem statement.
         </p>
         <form
-          className="mt-4 flex flex-col gap-3 sm:flex-row"
+          className="mt-4 flex flex-col gap-3"
           onSubmit={async (e) => {
             e.preventDefault();
-            const name = String(new FormData(e.currentTarget).get("team-name") ?? "").trim();
-            if (!name) return;
-            await createTeam(name);
+            const form = e.currentTarget;
+            const name = String(new FormData(form).get("team-name") ?? "").trim();
+            if (!name || creating) return;
+            setCreateError(null);
+            setCreating(true);
+            try {
+              await createTeam(name);
+            } catch (err) {
+              setCreateError(
+                err instanceof Error ? err.message : "Unable to create team. Please try again.",
+              );
+            } finally {
+              setCreating(false);
+            }
           }}
         >
-          <input
-            name="team-name"
-            required
-            placeholder="Team name"
-            className="w-full rounded-xl border border-brand-softline px-3 py-2.5 text-sm text-brand-deep outline-none focus:border-brand-primary"
-          />
-          <button
-            type="submit"
-            className="shrink-0 rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-hover"
-          >
-            Create team
-          </button>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <input
+              name="team-name"
+              required
+              disabled={creating}
+              placeholder="Team name"
+              className="w-full rounded-xl border border-brand-softline px-3 py-2.5 text-sm text-brand-deep outline-none focus:border-brand-primary disabled:opacity-60"
+            />
+            <button
+              type="submit"
+              disabled={creating}
+              className="shrink-0 rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-hover disabled:opacity-60"
+            >
+              {creating ? "Creating…" : "Create team"}
+            </button>
+          </div>
+          {createError ? <p className="text-sm font-medium text-red-700">{createError}</p> : null}
         </form>
       </section>
     );

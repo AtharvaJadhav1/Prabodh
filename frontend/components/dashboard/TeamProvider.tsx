@@ -102,7 +102,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<StudentRole>("Team Lead");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [memberIds, setMemberIds] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [facultyDirectory, setFacultyDirectory] = useState<
     Array<{
       id: string;
@@ -294,7 +294,8 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         },
         reload,
         createTeam: async (name: string) => {
-          await apiPost("/teams", { name, institute: session?.institute ?? "Institute" });
+          const institute = session?.institute?.trim() || "Institute";
+          await apiPost("/teams", { name, institute });
           await reload();
         },
       }}
