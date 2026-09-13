@@ -9,10 +9,8 @@ export default function IndustryMentorsPage() {
 
   return (
     <IndustryShell
-      breadcrumb={[{ label: "SIH 2026 Portal" }, { label: "Industry Mentorship" }, { label: "My Mentors" }]}
       title="My Institute Mentors"
       subtitle="Select one or more mentors to filter the teams they've shared with you."
-      showActions={false}
     >
       <div className="mx-auto max-w-7xl space-y-4">
         {acceptedMentors.length === 0 ? (

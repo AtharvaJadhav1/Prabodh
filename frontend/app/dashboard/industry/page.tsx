@@ -9,10 +9,7 @@ export default function IndustryOverviewPage() {
   const { pendingInvites, acceptedMentors, visibleTeams } = useIndustryMentor();
 
   return (
-    <IndustryShell
-      breadcrumb={[{ label: "SIH 2026 Portal" }, { label: "Industry Mentorship" }, { label: "Overview" }]}
-      title="Industry Mentor Overview"
-    >
+    <IndustryShell title="Industry Mentor Workspace">
       <MetricCards
         pendingCount={pendingInvites.length}
         acceptedMentorCount={acceptedMentors.length}

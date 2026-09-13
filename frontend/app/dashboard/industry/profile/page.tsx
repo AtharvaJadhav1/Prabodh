@@ -25,10 +25,8 @@ export default function IndustryProfilePage() {
 
   return (
     <IndustryShell
-      breadcrumb={[{ label: "SIH 2026 Portal" }, { label: "Industry Mentorship" }, { label: "My Profile" }]}
       title="Industry Mentor Profile"
       subtitle="View and manage your industry mentor identity."
-      showActions={false}
     >
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center gap-4 rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">

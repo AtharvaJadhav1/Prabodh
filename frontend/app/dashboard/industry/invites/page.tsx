@@ -10,10 +10,8 @@ export default function IndustryInvitesPage() {
 
   return (
     <IndustryShell
-      breadcrumb={[{ label: "SIH 2026 Portal" }, { label: "Industry Mentorship" }, { label: "Pending Invites" }]}
       title="Mentorship Invites"
       subtitle="Review invitations from Institute Mentors and accept or decline them."
-      showActions={false}
     >
       <div className="mx-auto max-w-7xl space-y-8">
         <div className="space-y-4">

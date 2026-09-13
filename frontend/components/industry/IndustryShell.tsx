@@ -2,27 +2,23 @@
 
 import { useState } from "react";
 import IndustrySidebar from "./IndustrySidebar";
-import IndustryTopBar, { type IndustryTopBarProps } from "./IndustryTopBar";
+import IndustryTopBar from "./IndustryTopBar";
 
 type Props = {
   children: React.ReactNode;
-} & Pick<IndustryTopBarProps, "breadcrumb" | "title" | "subtitle" | "showActions">;
+  title?: string;
+  subtitle?: string;
+};
 
-export default function IndustryShell({ children, breadcrumb, title, subtitle, showActions }: Props) {
+export default function IndustryShell({ children, title, subtitle }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-brand-cream">
+    <div className="min-h-screen bg-brand-canvas">
       <IndustrySidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
-      <div className="lg:pl-72">
-        <IndustryTopBar
-          onMenuClick={() => setMobileOpen((v) => !v)}
-          breadcrumb={breadcrumb}
-          title={title}
-          subtitle={subtitle}
-          showActions={showActions}
-        />
-        <main className="mx-auto max-w-[1400px] px-4 pb-16 pt-6 sm:px-6 lg:px-8">
+      <div className="lg:pl-64">
+        <IndustryTopBar onMenuClick={() => setMobileOpen((v) => !v)} title={title} subtitle={subtitle} />
+        <main className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6 sm:pb-12 lg:px-8">
           {children}
         </main>
       </div>
