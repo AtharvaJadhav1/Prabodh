@@ -189,6 +189,7 @@ model TeamMember {
   user User? @relation(fields: [userId], references: [id])
 
   @@unique([teamId, invitedEmail])
+  @@index([invitedEmail, inviteStatus])
   @@map("team_members")
 }
 

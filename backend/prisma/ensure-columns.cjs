@@ -9,6 +9,7 @@ const prisma = new PrismaClient();
 async function main() {
   const statements = [
     `ALTER TABLE "teams" ADD COLUMN IF NOT EXISTS "mentor_locked_at" TIMESTAMP(3)`,
+    `CREATE INDEX IF NOT EXISTS "team_members_invited_email_invite_status_idx" ON "team_members" ("invited_email", "invite_status")`,
   ];
 
   for (const sql of statements) {

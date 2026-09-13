@@ -115,7 +115,7 @@ export class IdentityController {
   @Get('me')
   @UseGuards(ClerkAuthGuard)
   async me(@CurrentUser() user: AuthUser) {
-    await this.identity.acceptPendingTeamInvites(user.id, user.email);
+    void this.identity.acceptPendingTeamInvites(user.id, user.email).catch(() => {});
     const row = await this.prisma.user.findUnique({ where: { id: user.id } });
     if (!row) return null;
     const { passwordHash: _ph, ...safe } = row;
