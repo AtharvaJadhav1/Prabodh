@@ -128,10 +128,6 @@ function ActiveRosterTab() {
               Institute faculty mentors invited by the team leader.
             </p>
           </div>
-          <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand-softline bg-brand-cream px-2.5 py-1 text-xs font-semibold text-brand-deep">
-            <BadgeCheckIcon className="h-3.5 w-3.5 text-brand-primary" />
-            SIH Internal Guide Quota Met
-          </span>
         </div>
 
         <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-[#EBE3D7] bg-[#FAF8F5]">
