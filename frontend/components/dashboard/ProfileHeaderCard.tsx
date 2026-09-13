@@ -62,8 +62,8 @@ export default function ProfileHeaderCard() {
 
       {/* Identity */}
       <div className="relative px-6 pb-6 pt-0">
-        <div className="-mt-14 flex flex-col gap-4 sm:-mt-16 md:flex-row md:items-end md:justify-between">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-5">
+        <div className="-mt-14 pointer-events-none flex flex-col gap-4 sm:-mt-16 md:flex-row md:items-end md:justify-between">
+          <div className="pointer-events-auto flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-5">
             <div className="relative ml-6 sm:ml-0">
               <Avatar
                 src={avatarUrl || null}
