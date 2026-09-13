@@ -111,10 +111,19 @@ export default function GroupRequestHistoryTable({ history }: Props) {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-muted/60 cursor-not-allowed">
-                    View Profile
-                    <span className="rounded bg-brand-sand px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider text-brand-muted/70">Soon</span>
-                  </span>
+                  {h.status === "ACCEPTED" ? (
+                    <a
+                      href={`/dashboard/mentor/teams/${h.teamId}`}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-brand-primary hover:underline"
+                    >
+                      View Team
+                    </a>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-muted/60 cursor-not-allowed">
+                      View Profile
+                      <span className="rounded bg-brand-sand px-1 py-0.5 text-[9px] font-bold uppercase tracking-wider text-brand-muted/70">Soon</span>
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}

@@ -143,6 +143,7 @@ export const mentorMaxCap = 5;
 
 export type GroupRequest = {
   id: string;
+  teamId: string;
   groupId: string;
   teamName: string;
   leaderName: string;
@@ -154,6 +155,7 @@ export type GroupRequest = {
 };
 
 export type GroupRequestHistoryEntry = {
+  teamId: string;
   groupId: string;
   teamName: string;
   leaderName: string;

@@ -16,12 +16,12 @@ type MentorInviteRow = {
   mentorType: string;
   createdAt: string;
   team: {
+    id: string;
     teamCode: string;
     name: string;
     theme?: string | null;
     leader?: { fullName: string; profileJson?: Record<string, unknown> };
     members?: unknown[];
-    problemStatement?: { theme?: string; title?: string } | null;
   };
 };
 
@@ -55,6 +55,7 @@ function computeDomainMatchPercent(pending: GroupRequest[], expertiseAreas: stri
 function mapInvite(row: MentorInviteRow): GroupRequest {
   return {
     id: row.id,
+    teamId: row.team.id,
     groupId: row.team.teamCode,
     teamName: row.team.name,
     leaderName: row.team.leader?.fullName ?? "Team lead",
@@ -62,7 +63,7 @@ function mapInvite(row: MentorInviteRow): GroupRequest {
     memberCount: row.team.members?.length ?? 0,
     allocatedRole: "Institute Mentor",
     allocatedAt: new Date(row.createdAt).toLocaleDateString(),
-    domains: [row.team.problemStatement?.theme ?? row.team.theme ?? "Unassigned"].filter(Boolean) as string[],
+    domains: [row.team.theme ?? "Unassigned"].filter(Boolean) as string[],
   };
 }
 
@@ -106,6 +107,7 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
           if (target) {
             setRequestHistory((h) => [
               {
+                teamId: target.teamId,
                 groupId: target.groupId,
                 teamName: target.teamName,
                 leaderName: target.leaderName,
@@ -136,6 +138,7 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
           if (target) {
             setRequestHistory((h) => [
               {
+                teamId: target.teamId,
                 groupId: target.groupId,
                 teamName: target.teamName,
                 leaderName: target.leaderName,
