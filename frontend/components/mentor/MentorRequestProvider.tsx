@@ -1,12 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import {
-  mentorMaxCap,
-  mentorProfile,
-  type GroupRequest,
-  type GroupRequestHistoryEntry,
-} from "../../data/mentorDashboard";
+import { mentorMaxCap, type GroupRequest, type GroupRequestHistoryEntry } from "../../data/mentorDashboard";
 import { api, apiPost } from "../../lib/api";
 import { avatarUrlFrom } from "../../lib/avatar";
 import { useAuth } from "../auth/AuthProvider";
@@ -31,26 +26,11 @@ type MentorRequestContextValue = {
   pendingCount: number;
   acceptedCount: number;
   atCapacity: boolean;
-  domainMatchPercent: number;
   acceptRequest: (id: string) => void;
   declineRequest: (id: string) => void;
 };
 
 const MentorRequestContext = createContext<MentorRequestContextValue | null>(null);
-
-function computeDomainMatchPercent(pending: GroupRequest[], expertiseAreas: string[]): number {
-  if (pending.length === 0) return 0;
-  const expertiseText = expertiseAreas.map((a) => a.toLowerCase()).join(" ");
-  let matched = 0;
-  for (const req of pending) {
-    const hasMatch = req.domains.some((d) => {
-      const dl = d.toLowerCase();
-      return expertiseText.includes(dl) || dl.split(/\s+/).some((w) => w.length > 2 && expertiseText.includes(w));
-    });
-    if (hasMatch) matched++;
-  }
-  return Math.round((matched / pending.length) * 100);
-}
 
 function mapInvite(row: MentorInviteRow): GroupRequest {
   return {
@@ -92,12 +72,6 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
     [requestHistory],
   );
   const atCapacity = acceptedCount >= mentorMaxCap;
-
-  const expertiseAreas = mentorProfile.domainExpertise.map((e) => e.area);
-  const domainMatchPercent = useMemo(
-    () => computeDomainMatchPercent(pendingRequests, expertiseAreas),
-    [pendingRequests, expertiseAreas],
-  );
 
   const acceptRequest = useCallback(
     (id: string) => {
@@ -169,7 +143,6 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
         pendingCount,
         acceptedCount,
         atCapacity,
-        domainMatchPercent,
         acceptRequest,
         declineRequest,
       }}
