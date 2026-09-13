@@ -30,10 +30,10 @@ export default function ProfileHeaderCard() {
 
   return (
     <section className="overflow-hidden rounded-2xl border border-brand-softline bg-white shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
-      {/* LinkedIn-style Cover Banner */}
+      {/* Banner */}
       <div className="relative h-36 w-full overflow-hidden bg-gradient-to-r from-[#4A2810] via-[#8C3E14] to-[#C25E26] sm:h-48">
         <svg
-          className="absolute inset-0 h-full w-full opacity-20"
+          className="pointer-events-none absolute inset-0 h-full w-full opacity-20"
           xmlns="http://www.w3.org/2000/svg"
           aria-hidden="true"
         >
@@ -45,61 +45,61 @@ export default function ProfileHeaderCard() {
           <rect width="100%" height="100%" fill="url(#pbl-banner-dots)" />
         </svg>
 
-        <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/25 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur-sm">
+        <span className="pointer-events-none absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/25 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur-sm">
           <FlagIcon className="h-3.5 w-3.5" />
           PRABODH
         </span>
-
-        <button
-          type="button"
-          onClick={() => openDrawer("basic")}
-          className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2 text-xs font-bold text-brand-deep shadow-md backdrop-blur-sm transition-colors hover:bg-white"
-        >
-          <PencilIcon className="h-3.5 w-3.5" />
-          Edit Profile
-        </button>
       </div>
 
       {/* Identity */}
       <div className="relative px-6 pb-6 pt-0">
-        <div className="-mt-14 pointer-events-none flex flex-col gap-4 sm:-mt-16 md:flex-row md:items-end md:justify-between">
-          <div className="pointer-events-auto flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-5">
-            <div className="relative ml-6 sm:ml-0">
-              <Avatar
-                src={avatarUrl || null}
-                seed={fullName || contacts.email || "innovator"}
-                alt={fullName}
-                className="h-24 w-24 border-4 border-white bg-[#FAF7F2] shadow-lg sm:h-28 sm:w-28"
-              />
-              <button
-                type="button"
-                onClick={() => setPickerOpen(true)}
-                className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-[#C25E26] text-white shadow-md transition-colors hover:bg-[#A84E1D] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C25E26] sm:h-10 sm:w-10"
-                aria-label="Change profile photo"
-              >
-                <CameraIcon className="h-4 w-4 sm:h-5 sm:w-5" />
-              </button>
-            </div>
+        {/* Top row: overlapping avatar on the left, actions on the right */}
+        <div className="-mt-14 flex flex-col gap-4 sm:-mt-16 sm:flex-row sm:items-end sm:justify-between">
+          <div className="relative z-10 shrink-0 self-start sm:self-end">
+            <Avatar
+              src={avatarUrl || null}
+              seed={fullName || contacts.email || "innovator"}
+              alt={fullName}
+              className="h-24 w-24 border-4 border-white bg-[#FAF7F2] shadow-lg sm:h-28 sm:w-28"
+            />
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="absolute bottom-0 right-0 z-20 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-white bg-[#C25E26] text-white shadow-md transition-colors hover:bg-[#A84E1D] sm:h-10 sm:w-10"
+              aria-label="Change profile photo"
+            >
+              <CameraIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+            </button>
+          </div>
 
-            <div className="space-y-1 pt-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-xl font-extrabold tracking-tight text-brand-deep sm:text-2xl">{fullName}</h2>
-                {verified && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-brand-approved/20 bg-brand-approved/10 px-2.5 py-0.5 text-xs font-semibold text-brand-approved">
-                    <BadgeCheckIcon className="h-3.5 w-3.5" />
-                    Verified
-                  </span>
-                )}
-              </div>
-              <p className="max-w-2xl text-sm font-medium leading-relaxed text-brand-muted">
-                {bio}
-              </p>
-            </div>
+          <div className="z-10 flex items-center gap-2 self-end sm:mb-1 sm:self-center">
+            <button
+              type="button"
+              onClick={() => openDrawer("basic")}
+              className="inline-flex cursor-pointer select-none items-center gap-2 rounded-xl bg-[#C25E26] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#A84E1D] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C25E26]"
+            >
+              <PencilIcon className="h-4 w-4" />
+              Edit Profile
+            </button>
           </div>
         </div>
 
+        {/* Details */}
+        <div className="mt-4 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-extrabold tracking-tight text-brand-deep sm:text-2xl">{fullName}</h2>
+            {verified && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-brand-approved/20 bg-brand-approved/10 px-2.5 py-0.5 text-xs font-semibold text-brand-approved">
+                <BadgeCheckIcon className="h-3.5 w-3.5" />
+                Verified
+              </span>
+            )}
+          </div>
+          <p className="max-w-2xl text-sm font-medium leading-relaxed text-brand-muted">{bio}</p>
+        </div>
+
         {/* Metadata Badges */}
-        <div className="flex flex-wrap items-center gap-2.5 border-b border-brand-softline pb-4 pt-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2.5 border-b border-brand-softline pb-4">
           <span className="inline-flex items-center gap-1.5 break-all rounded-lg border border-brand-softline bg-brand-cream px-3 py-1 text-xs font-medium text-brand-deep">
             <svg
               className="h-3.5 w-3.5 text-brand-muted"
