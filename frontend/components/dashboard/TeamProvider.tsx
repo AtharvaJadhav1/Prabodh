@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { type Member, type JoinRequest, type OutgoingInvite, type StudentRole } from "../../data/studentDashboard";
-import { api, apiDelete, apiPost } from "../../lib/api";
+import { api, apiDelete, apiPatch, apiPost } from "../../lib/api";
 import type { PortalStage, PortalTeam } from "../../lib/types";
 import { useAuth } from "../auth/AuthProvider";
 
@@ -47,6 +47,7 @@ type TeamContextValue = {
   loadFacultyDirectory: () => Promise<void>;
   reload: () => Promise<void>;
   createTeam: (name: string) => Promise<void>;
+  renameTeam: (name: string) => Promise<void>;
 };
 
 const TeamContext = createContext<TeamContextValue | null>(null);
@@ -296,6 +297,12 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         createTeam: async (name: string) => {
           const institute = session?.institute?.trim() || "Institute";
           await apiPost("/teams", { name, institute });
+          await reload();
+        },
+        renameTeam: async (name: string) => {
+          if (!team?.id) return;
+          if (team.status === "locked") throw new Error("Team details are locked");
+          await apiPatch(`/teams/${team.id}`, { name });
           await reload();
         },
       }}

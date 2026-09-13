@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { type Member } from "../../data/studentDashboard";
 import { useTeam } from "./TeamProvider";
-import { UsersIcon, CheckIcon, UserPlusIcon, LockIcon } from "./icons";
+import { UsersIcon, CheckIcon, UserPlusIcon, LockIcon, PencilIcon, XIcon } from "./icons";
 
 function MemberRow({
   member,
@@ -109,12 +109,17 @@ function MemberRow({
 }
 
 export default function TeamWorkspaceCard() {
-  const { members, filledCount, openDrawer, invites, isLead, teamCode, teamName, capacity, teamId, createTeam, loading } = useTeam();
+  const { members, filledCount, openDrawer, invites, isLead, teamCode, teamName, capacity, teamId, createTeam, renameTeam, loading, team } = useTeam();
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState(teamName);
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
   const percent = Math.round((filledCount / Math.max(capacity, 1)) * 100);
   const pendingInvites = invites.length;
   const availableSlots = capacity - filledCount;
+  const canRename = isLead && team?.status !== "locked";
 
   if (loading) {
     return (
@@ -184,11 +189,84 @@ export default function TeamWorkspaceCard() {
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-deep text-white shadow-sm">
             <UsersIcon className="h-5 w-5 text-white" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h2 className="truncate text-base font-bold text-brand-deep">Team Workspace</h2>
-            <p className="truncate text-xs font-medium text-brand-muted">
-              Team ID: <span className="font-bold text-brand-charcoal">{teamCode}</span> • {teamName}
-            </p>
+            {editingName ? (
+              <form
+                className="mt-1 flex flex-col gap-2"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const name = draftName.trim();
+                  if (!name || savingName) return;
+                  setNameError(null);
+                  setSavingName(true);
+                  try {
+                    await renameTeam(name);
+                    setEditingName(false);
+                    setDraftName(name);
+                  } catch (err) {
+                    setNameError(err instanceof Error ? err.message : "Unable to rename team.");
+                  } finally {
+                    setSavingName(false);
+                  }
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    value={draftName}
+                    onChange={(e) => setDraftName(e.target.value)}
+                    required
+                    minLength={2}
+                    maxLength={120}
+                    disabled={savingName}
+                    className="w-full max-w-56 rounded-lg border border-brand-softline px-2.5 py-1 text-xs font-medium text-brand-deep outline-none focus:border-brand-primary disabled:opacity-60"
+                    autoFocus
+                  />
+                  <button
+                    type="submit"
+                    disabled={savingName}
+                    className="rounded-lg bg-brand-primary px-2.5 py-1 text-xs font-bold text-white hover:bg-brand-hover disabled:opacity-60"
+                  >
+                    {savingName ? "Saving…" : "Save"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingName(false);
+                      setDraftName(teamName);
+                      setNameError(null);
+                    }}
+                    disabled={savingName}
+                    className="rounded-lg border border-brand-softline px-2 py-1 text-xs font-semibold text-brand-muted hover:text-brand-deep disabled:opacity-60"
+                    aria-label="Cancel rename"
+                  >
+                    <XIcon className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {nameError ? <p className="text-xs font-medium text-red-700">{nameError}</p> : null}
+              </form>
+            ) : (
+              <p className="flex items-center gap-1.5 text-xs font-medium text-brand-muted">
+                <span>
+                  Team ID: <span className="font-bold text-brand-charcoal">{teamCode}</span> • {teamName}
+                </span>
+                {canRename && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraftName(teamName);
+                      setNameError(null);
+                      setEditingName(true);
+                    }}
+                    className="rounded-md p-1 text-brand-muted transition-colors hover:bg-brand-softline hover:text-brand-primary"
+                    aria-label="Rename team"
+                    title="Rename team"
+                  >
+                    <PencilIcon className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </p>
+            )}
           </div>
         </div>
         <span
