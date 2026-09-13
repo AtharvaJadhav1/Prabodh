@@ -330,7 +330,7 @@ function MemberRow({
             {isPending
               ? `Dispatched to ${member.prn}`
               : isEmpty
-                ? "Required to achieve official SIH 6-person squad quota lock."
+                ? "Required to complete team formation and lock the official roster."
                 : `${member.prn} • ${member.branch}`}
           </p>
         </div>

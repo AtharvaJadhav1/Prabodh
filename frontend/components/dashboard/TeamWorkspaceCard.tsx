@@ -32,7 +32,7 @@ function MemberRow({
               </span>
             </div>
             <p className="mt-0.5 text-[11px] text-brand-muted">
-              Required to achieve official SIH 6-person squad quota lock.
+              Required to complete team formation and lock the official roster.
             </p>
           </div>
         </div>
