@@ -58,7 +58,7 @@ export default function DispatchInviteCard() {
     <div className="rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
       <div className="flex items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-muted">
-          <MailIcon className="h-4 w-4 text-brand-primary" /> Dispatch Team Invitation
+          <MailIcon className="h-4 w-4 text-brand-primary" /> Invite Team Member
         </h3>
         <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2.5 py-0.5 text-[10px] font-bold text-brand-primary">
           {seatsLeft} slot{seatsLeft !== 1 ? "s" : ""} left
@@ -81,7 +81,7 @@ export default function DispatchInviteCard() {
                   handleSend();
                 }
               }}
-              placeholder="member.email@mituniversity.edu.in"
+              placeholder="teammate@mituniversity.edu.in"
               className="h-10 w-full px-3 py-2 text-xs rounded-xl border border-brand-softline bg-brand-cream font-medium text-brand-charcoal transition-all placeholder:text-brand-charcoal/45 focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20 outline-none sm:h-11"
             />
             <button
@@ -100,18 +100,16 @@ export default function DispatchInviteCard() {
             </p>
           )}
           <div className="mt-3 flex items-center gap-3 p-3 bg-white rounded-lg border border-[#EBE3D7]">
-            <span className="w-8 h-8 shrink-0 rounded-md bg-[#FBECE0] text-[#D96B27] font-bold flex items-center justify-center">
-              {invites.length}
-            </span>
             <p className="text-xs leading-relaxed text-brand-muted">
               <span className="block">
                 <span className="font-bold text-brand-deep">
                   {invites.length} pending invite{invites.length !== 1 ? "s" : ""}
                 </span>{" "}
-                awaiting acceptance.
+                sent.
               </span>
               <span className="block">
-                An email is sent with a link to register. They must sign up using the same invited email.
+                We'll email them an invite link. Teammates must join using their invited institutional email
+                address.
               </span>
             </p>
           </div>
