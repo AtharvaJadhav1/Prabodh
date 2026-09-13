@@ -2,7 +2,10 @@ import DashboardRoleGuard from "../../../components/auth/DashboardRoleGuard";
 import { MentorRequestProvider } from "../../../components/mentor/MentorRequestProvider";
 
 export const metadata = {
-  title: "Prabodh | Mentor Dashboard",
+  title: {
+    default: "Mentor Dashboard",
+    template: "Prabodh | %s",
+  },
   description:
     "Mentor Evaluation Hub — monitor assigned student cohorts, review submissions, and record official rubric scores.",
 };

@@ -9,7 +9,7 @@ import DispatchInviteCard from "../../../../components/dashboard/DispatchInviteC
 import RequestsTabs from "../../../../components/dashboard/RequestsTabs";
 
 export const metadata: Metadata = {
-  title: "Prabodh | Team Formation & Group Requests",
+  title: "Team Formation & Group Requests",
   description: "Manage team roster, review incoming join requests, and maintain SIH compliance.",
 };
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import MentorInvitePanel from "../../../../components/dashboard/MentorInvitePanel";
 
 export const metadata: Metadata = {
-  title: "Prabodh | Assigned Mentors",
+  title: "Assigned Mentors",
   description: "Review your institute mentor and industry mentor assignment.",
 };
 

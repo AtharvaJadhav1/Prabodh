@@ -4,7 +4,10 @@ import PwaRegister from "../components/PwaRegister";
 import AuthProviders from "../components/auth/AuthProviders";
 
 export const metadata: Metadata = {
-  title: "PRABODH",
+  title: {
+    default: "Prabodh",
+    template: "Prabodh | %s",
+  },
   description:
     "Prabodh — Project Based Learning Portal. Centralized SIH team management, dual-mentor tracking, and milestone-based evaluation.",
   applicationName: "Prabodh",

@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Prabodh | Faculty Mentor Profile",
+  title: "Faculty Mentor Profile",
   description:
     "View and manage your institutional mentoring profile, domain expertise, and evaluation track record.",
 };
