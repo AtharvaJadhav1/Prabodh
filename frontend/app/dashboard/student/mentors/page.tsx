@@ -4,7 +4,7 @@ import MentorInvitePanel from "../../../../components/dashboard/MentorInvitePane
 import LiveTeamName from "../../../../components/dashboard/LiveTeamName";
 
 export const metadata: Metadata = {
-  title: "Assigned Mentors | SIH 2026",
+  title: "Prabodh | Assigned Mentors",
   description: "Review your institute mentor and industry mentor assignment.",
 };
 

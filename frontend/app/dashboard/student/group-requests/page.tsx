@@ -11,7 +11,7 @@ import RequestsTabs from "../../../../components/dashboard/RequestsTabs";
 import LiveTeamName from "../../../../components/dashboard/LiveTeamName";
 
 export const metadata: Metadata = {
-  title: "Team Formation & Group Requests | SIH 2026",
+  title: "Prabodh | Team Formation & Group Requests",
   description: "Manage team roster, review incoming join requests, and maintain SIH compliance.",
 };
 

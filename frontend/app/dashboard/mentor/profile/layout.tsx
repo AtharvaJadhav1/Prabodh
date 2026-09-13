@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Faculty Mentor Profile | SIH 2026 Portal | MIT-ADT University",
+  title: "Prabodh | Faculty Mentor Profile",
   description:
     "View and manage your institutional mentoring profile, domain expertise, and evaluation track record.",
 };

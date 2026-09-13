@@ -8,7 +8,7 @@ import QualifierCard from "../../../components/dashboard/QualifierCard";
 import TeamCommentsCard from "../../../components/dashboard/TeamCommentsCard";
 
 export const metadata: Metadata = {
-  title: "Student Team Dashboard | SIH 2026",
+  title: "Prabodh | Student Team Dashboard",
   description:
     "Team workspace, deliverables, problem statement, mentors, and group requests for SIH 2026 internal qualifier.",
 };

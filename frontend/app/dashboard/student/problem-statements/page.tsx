@@ -5,7 +5,7 @@ import FinalizedPSDetail from "../../../../components/dashboard/ps/FinalizedPSDe
 import ProblemStatementTabs from "../../../../components/dashboard/ps/ProblemStatementTabs";
 
 export const metadata: Metadata = {
-  title: "Problem Statement Selection | SIH 2026",
+  title: "Prabodh | Problem Statement Selection",
   description:
     "Browse official SIH 2026 problem statements or submit a student innovation idea. After PS finalization this page is read-only per SIH data-integrity policy.",
 };
