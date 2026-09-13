@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Prabodh — SIH 2026 Portal",
+    name: "Prabodh Portal",
     short_name: "Prabodh",
     description:
       "Smart India Hackathon 2026 internal qualifier portal by Prabodh — team formation, milestone gates, dual-mentor tracking, and deliverable submission.",

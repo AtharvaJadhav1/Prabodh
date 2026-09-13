@@ -21,7 +21,7 @@ export default function AdminProfilePage() {
 
   return (
     <AdminShell
-      breadcrumb={[{ label: "SIH 2026 Portal" }, { label: "Admin Console" }, { label: "My Profile" }]}
+      breadcrumb={[{ label: "Prabodh Portal" }, { label: "Admin Console" }, { label: "My Profile" }]}
       title="Admin Profile"
       subtitle="View and manage your administrator identity."
       showActions={false}

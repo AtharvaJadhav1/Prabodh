@@ -44,7 +44,7 @@ export default function HeaderZone() {
 
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <div className="flex flex-wrap items-center gap-1 text-xs text-brand-muted">
-            <span className="transition-colors hover:text-brand-primary">SIH 2026 Student Portal</span>
+            <span className="transition-colors hover:text-brand-primary">Prabodh Student Portal</span>
             <ChevronRightIcon className="h-3.5 w-3.5" />
             <span className="font-semibold text-brand-deep">Team <span className="font-mono">{teamCode}</span></span>
             <ChevronRightIcon className="h-3.5 w-3.5" />

@@ -29,7 +29,7 @@ export default function AdminReportsPage() {
 
   return (
     <AdminShell
-      breadcrumb={[{ label: "SIH 2026 Portal" }, { label: "Admin Console" }, { label: "Reports" }]}
+      breadcrumb={[{ label: "Prabodh Portal" }, { label: "Admin Console" }, { label: "Reports" }]}
       title="Platform Reports"
       subtitle="Aggregated read-only views across teams, mentors, and scoring."
       showActions={false}

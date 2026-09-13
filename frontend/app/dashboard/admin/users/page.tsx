@@ -29,7 +29,7 @@ export default function AdminUsersPage() {
 
   return (
     <AdminShell
-      breadcrumb={[{ label: "SIH Portal" }, { label: "Admin Console" }, { label: "Manage Users" }]}
+      breadcrumb={[{ label: "Prabodh Portal" }, { label: "Admin Console" }, { label: "Manage Users" }]}
       title="Manage Users"
       subtitle="Live directory plus CSV import (review, then activate)."
       showActions={false}

@@ -9,7 +9,7 @@ export default function AdminMentorAllocationPage() {
 
   return (
     <AdminShell
-      breadcrumb={[{ label: "SIH 2026 Portal" }, { label: "Admin Console" }, { label: "Mentor Allocation" }]}
+      breadcrumb={[{ label: "Prabodh Portal" }, { label: "Admin Console" }, { label: "Mentor Allocation" }]}
       title="Mentor Allocation"
       subtitle="Assign or reassign Institute Mentors to every registered team."
       showActions={false}

@@ -7,7 +7,7 @@ export function ComplianceCard() {
   return (
     <div className="space-y-3 rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
       <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-muted">
-        <CheckIcon className="h-4 w-4 text-brand-approved" /> SIH Mandatory Compliance Rules
+        <CheckIcon className="h-4 w-4 text-brand-approved" /> Mandatory Compliance Rules
       </h3>
       <ul className="space-y-2 text-xs text-brand-charcoal/75">
         <li className="flex items-start gap-2.5 text-xs">

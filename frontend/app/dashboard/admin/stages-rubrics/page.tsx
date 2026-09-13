@@ -9,7 +9,7 @@ export default function AdminStagesRubricsPage() {
 
   return (
     <AdminShell
-      breadcrumb={[{ label: "SIH 2026 Portal" }, { label: "Admin Console" }, { label: "Stages & Rubrics" }]}
+      breadcrumb={[{ label: "Prabodh Portal" }, { label: "Admin Console" }, { label: "Stages & Rubrics" }]}
       title="Stages & Rubrics"
       subtitle="Configure hackathon stages, deadlines, and scoring rubric criteria."
       showActions={false}

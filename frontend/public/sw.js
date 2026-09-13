@@ -1,4 +1,4 @@
-/* Prabodh — SIH 2026 Portal Service Worker
+/* Prabodh Portal Service Worker
  * App-shell PWA:
  *  - Auth routes (/sign-in /sign-up /login /register /auth): NETWORK ONLY (never cached) — prevents auth loops.
  *  - All other navigations (landing, dashboard, etc.): NETWORK-FIRST (4s) -> shell cache -> offline.html

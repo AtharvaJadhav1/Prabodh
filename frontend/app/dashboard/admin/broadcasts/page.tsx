@@ -10,7 +10,7 @@ export default function AdminBroadcastsPage() {
 
   return (
     <AdminShell
-      breadcrumb={[{ label: "SIH 2026 Portal" }, { label: "Admin Console" }, { label: "Broadcasts" }]}
+      breadcrumb={[{ label: "Prabodh Portal" }, { label: "Admin Console" }, { label: "Broadcasts" }]}
       title="Broadcasts"
       subtitle="Send announcements to students, institute mentors, or industry mentors."
       showActions={false}

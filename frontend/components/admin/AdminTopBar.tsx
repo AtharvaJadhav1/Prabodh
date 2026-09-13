@@ -24,7 +24,7 @@ export default function AdminTopBar({
 }: AdminTopBarProps) {
   const { session } = useAuth();
   const crumbs: BreadcrumbSegment[] = breadcrumb ?? [
-    { label: "SIH 2026 Portal" },
+    { label: "Prabodh Portal" },
     { label: "Admin Console" },
     { label: "Overview" },
   ];

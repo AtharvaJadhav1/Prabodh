@@ -8,7 +8,7 @@ export default function GuidelinesBanner() {
           <InfoIcon className="h-4 w-4 text-brand-primary" />
         </div>
         <div>
-          <p className="text-xs font-bold text-brand-deep">SIH 2026 Evaluation Rubric (AICTE &amp; MoE Innovation Cell)</p>
+          <p className="text-xs font-bold text-brand-deep">Prabodh Evaluation Rubric (AICTE &amp; MoE Innovation Cell)</p>
           <p className="text-brand-muted">
             Grading criteria: Innovation (25%), Technical Feasibility (30%), Market Viability (20%), and Presentation (25%).
           </p>

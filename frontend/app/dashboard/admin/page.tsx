@@ -11,7 +11,7 @@ export default function AdminOverviewPage() {
   const unassigned = allocations.filter((a) => a.status === "unassigned");
 
   return (
-    <AdminShell breadcrumb={[{ label: "SIH 2026 Portal" }, { label: "Admin Console" }, { label: "Overview" }]} title="Admin Overview">
+    <AdminShell breadcrumb={[{ label: "Prabodh Portal" }, { label: "Admin Console" }, { label: "Overview" }]} title="Admin Overview">
       <MetricCards metrics={metrics} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
