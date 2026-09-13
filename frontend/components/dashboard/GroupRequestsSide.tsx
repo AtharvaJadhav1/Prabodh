@@ -66,7 +66,7 @@ export function MentorInvitePointer() {
       <div>
         <p className="text-xs font-bold text-brand-deep">Mentor Invitations</p>
         <p className="mt-0.5 text-[11px] leading-relaxed text-brand-muted">
-          Institute and industry mentor invitations now live on the dedicated{" "}
+          Institute faculty mentor invitations live on the dedicated{" "}
           <a href="/dashboard/student/mentors" className="font-bold text-brand-primary underline underline-offset-2">
             Mentors
           </a>{" "}

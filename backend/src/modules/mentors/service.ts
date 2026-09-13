@@ -177,28 +177,24 @@ export class MentorsService {
     }
 
     const email = body.email.toLowerCase();
-    const mentorType: MentorType = body.mentorType ?? 'institute';
-    const expectedRole =
-      mentorType === 'industry' ? PlatformRole.industry_mentor : PlatformRole.institute_mentor;
+    if (body.mentorType === 'industry') {
+      throw new BadRequestException('Industry mentors are centrally allocated by the platform.');
+    }
+    const mentorType: MentorType = 'institute';
+    const expectedRole = PlatformRole.institute_mentor;
     const mentor = await this.prisma.user.findUnique({ where: { email } });
     if (!mentor || !mentor.isActive || mentor.platformRole !== expectedRole) {
       throw new BadRequestException(
-        mentorType === 'industry'
-          ? 'No industry mentor account exists for this email. Ask them to register as an industry mentor first.'
-          : 'No faculty account exists for this email. Ask them to register as faculty first.',
+        'No faculty account exists for this email. Ask them to register as faculty first.',
       );
     }
 
-    if (mentorType === 'institute' && team.mentorLockedAt) {
+    if (team.mentorLockedAt) {
       throw new BadRequestException('This team already has a locked faculty mentor');
     }
     const active = await this.repo.activeForTeam(team.id, mentorType);
     if (active) {
-      throw new BadRequestException(
-        mentorType === 'industry'
-          ? 'This team already has an industry mentor'
-          : 'This team already has a locked faculty mentor',
-      );
+      throw new BadRequestException('This team already has a locked faculty mentor');
     }
 
     const existing = await this.prisma.mentorInvite.findUnique({

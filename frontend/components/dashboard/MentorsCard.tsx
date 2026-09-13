@@ -20,7 +20,7 @@ export default function MentorsCard() {
       </h2>
       {assignments.length === 0 ? (
         <p className="mt-3 text-sm text-brand-muted">
-          No mentors assigned yet. Team leaders can invite faculty and industry mentors by email.
+          No mentors assigned yet. Team leaders can invite an institute faculty mentor by email.
         </p>
       ) : (
         <ul className="mt-3 space-y-2">
