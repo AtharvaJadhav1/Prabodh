@@ -12,7 +12,7 @@ type TopBarProps = {
   subtitle?: ReactNode;
 };
 
-export default function TopBar({ onMenuClick, title = "Student Team Workspace", subtitle }: TopBarProps) {
+export default function TopBar({ onMenuClick, title = "Team Workspace", subtitle }: TopBarProps) {
   const { stages, team } = useTeam();
   const stage = stages.find((s) => s.isActive) ?? stages[0];
   return (
