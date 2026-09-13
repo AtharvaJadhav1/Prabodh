@@ -8,6 +8,6 @@ import { ProblemStatementsService } from './service';
   imports: [TeamsModule],
   controllers: [ProblemStatementsController],
   providers: [ProblemStatementsService, ProblemStatementsRepository],
-  exports: [ProblemStatementsService],
+  exports: [ProblemStatementsService, ProblemStatementsRepository],
 })
 export class ProblemStatementsModule {}

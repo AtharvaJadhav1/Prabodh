@@ -107,23 +107,33 @@ export class ProblemStatementsRepository {
   }
 
   lockIdea(id: string, teamId: string, psId: string) {
-    return this.prisma.$transaction(async (tx) => {
-      const ps = await tx.problemStatement.findUnique({ where: { id: psId } });
-      const idea = await tx.ideaSubmission.update({
-        where: { id },
-        data: { status: IdeaStatus.locked, lockedAt: new Date() },
-      });
-      await tx.team.update({
-        where: { id: teamId },
-        data: {
-          psId,
-          status: 'locked',
-          detailsLockAt: new Date(),
-          ...(ps?.theme ? { theme: ps.theme } : {}),
-        },
-      });
-      return idea;
+    return this.prisma.$transaction(async (tx) => this.applyLock(tx, { ideaId: id, teamId, psId }));
+  }
+
+  /**
+   * Single source of truth for finalizing a team's problem statement. Called both by the
+   * standalone student self-lock flow (lockIdea, above) and by mentor preference approval —
+   * so there is only ever one code path that sets Team.psId/status/detailsLockAt.
+   */
+  async applyLock(
+    tx: Prisma.TransactionClient,
+    { ideaId, teamId, psId }: { ideaId: string; teamId: string; psId: string },
+  ) {
+    const ps = await tx.problemStatement.findUnique({ where: { id: psId } });
+    const idea = await tx.ideaSubmission.update({
+      where: { id: ideaId },
+      data: { status: IdeaStatus.locked, lockedAt: new Date() },
     });
+    await tx.team.update({
+      where: { id: teamId },
+      data: {
+        psId,
+        status: 'locked',
+        detailsLockAt: new Date(),
+        ...(ps?.theme ? { theme: ps.theme } : {}),
+      },
+    });
+    return idea;
   }
 
   async abandonDraft(id: string) {

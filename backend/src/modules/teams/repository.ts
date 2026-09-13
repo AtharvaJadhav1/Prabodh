@@ -46,6 +46,7 @@ export class TeamsRepository {
         mentorInvites: { include: { mentor: true } },
         mentorAssignments: { where: { active: true }, include: { mentor: true } },
         ideaSubmissions: { orderBy: { version: 'desc' }, take: 3, include: { problemStatement: true } },
+        psPreferences: { orderBy: { rank: 'asc' }, include: { problemStatement: true } },
         deliverables: { orderBy: { submittedAt: 'desc' }, take: 12 },
         stageStatuses: { include: { stage: true } },
         comments: { orderBy: { createdAt: 'asc' }, include: { author: true }, take: 50 },

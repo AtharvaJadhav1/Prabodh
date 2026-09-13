@@ -39,6 +39,12 @@ enum IdeaStatus {
   abandoned
 }
 
+enum PsPreferenceStatus {
+  submitted
+  approved
+  rejected
+}
+
 enum ImportBatchStatus {
   pending_review
   activated
@@ -126,6 +132,8 @@ model User {
   createdIdea          IdeaSubmission[]     @relation("IdeaAuthor")
   mentorInvitesReceived MentorInvite[]      @relation("MentorInvitee")
   mentorInvitesSent    MentorInvite[]       @relation("MentorInviter")
+  psPreferencesSubmitted TeamPsPreference[] @relation("PsPreferenceSubmitter")
+  psPreferencesDecided   TeamPsPreference[] @relation("PsPreferenceDecider")
 
   @@map("users")
 }
@@ -157,6 +165,7 @@ model Team {
   stageResults     StageResult[]
   comments         Comment[]
   mentorInvites    MentorInvite[]
+  psPreferences    TeamPsPreference[]
 
   @@index([status])
   @@index([theme])
@@ -197,6 +206,7 @@ model ProblemStatement {
 
   teams            Team[]
   ideaSubmissions  IdeaSubmission[]
+  teamPreferences  TeamPsPreference[]
 
   @@index([theme])
   @@index([category])
@@ -269,6 +279,33 @@ model MentorInvite {
   @@index([invitedEmail, inviteStatus])
   @@index([mentorUserId, inviteStatus])
   @@map("mentor_invites")
+}
+
+model TeamPsPreference {
+  id            String             @id @default(uuid())
+  teamId        String             @map("team_id")
+  rank          Int
+  psId          String?            @map("ps_id")
+  title         String?
+  theme         String?
+  category      PsCategory?
+  organisation  String?
+  description   String?
+  status        PsPreferenceStatus @default(submitted)
+  submittedById String             @map("submitted_by_id")
+  decidedById   String?            @map("decided_by_id")
+  decidedAt     DateTime?          @map("decided_at")
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  team             Team              @relation(fields: [teamId], references: [id])
+  problemStatement  ProblemStatement? @relation(fields: [psId], references: [id])
+  submittedBy       User              @relation("PsPreferenceSubmitter", fields: [submittedById], references: [id])
+  decidedBy         User?             @relation("PsPreferenceDecider", fields: [decidedById], references: [id])
+
+  @@unique([teamId, rank])
+  @@index([teamId, status])
+  @@map("team_ps_preferences")
 }
 
 model Stage {
