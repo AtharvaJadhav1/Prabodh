@@ -3,6 +3,7 @@ import { IdeaStatus, PsPreferenceStatus } from '@prisma/client';
 import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
 import { isPsCapReached } from '../../domain/rules';
+import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { ProblemStatementsRepository } from '../problem-statements/repository';
 import { TeamsService } from '../teams/service';
@@ -23,11 +24,53 @@ export class PsPreferencesService {
     return this.repo.listForTeam(teamId);
   }
 
+  async save(user: AuthUser, teamId: string, body: z.infer<typeof submitPreferencesSchema>) {
+    const team = await this.teams.assertTeamAccess(user, teamId);
+    if (!this.teams.isLeader(user, team)) {
+      throw new ForbiddenException('Only the team leader can save problem statement preferences');
+    }
+    await this.ensureNotFinalized(teamId);
+    return this.repo.replaceAll(teamId, user.id, body.preferences, PsPreferenceStatus.saved);
+  }
+
   async submit(user: AuthUser, teamId: string, body: z.infer<typeof submitPreferencesSchema>) {
     const team = await this.teams.assertTeamAccess(user, teamId);
     if (!this.teams.isLeader(user, team)) {
       throw new ForbiddenException('Only the team leader can submit problem statement preferences');
     }
+    await this.ensureNotFinalized(teamId);
+
+    const preferences = await this.repo.replaceAll(teamId, user.id, body.preferences, PsPreferenceStatus.saved);
+
+    const mentors = await this.prisma.mentorAssignment.findMany({
+      where: { teamId, active: true },
+      include: { mentor: true },
+    });
+    if (!mentors.length) {
+      return { sent: false, code: 'PS_NO_ACTIVE_MENTOR', preferences };
+    }
+
+    await this.repo.setSubmitted(teamId);
+    try {
+      await notifyUsers(
+        this.prisma,
+        mentors.map((m) => m.mentorUserId),
+        {
+          type: 'status_change',
+          template: 'ps_review',
+          title: 'PS preferences submitted for review',
+          body: `${team.name} (${team.teamCode}) submitted ${body.preferences.length} ranked problem statement preference(s). Review and lock one.`,
+          relatedEntity: `team:${teamId}`,
+        },
+      );
+    } catch {
+      /* notifications are best-effort */
+    }
+
+    return { sent: true, preferences: await this.repo.listForTeam(teamId) };
+  }
+
+  private async ensureNotFinalized(teamId: string) {
     const lockedIdea = await this.prisma.ideaSubmission.findFirst({
       where: { teamId, status: IdeaStatus.locked },
     });
@@ -38,7 +81,6 @@ export class PsPreferencesService {
     if (approved) {
       throw new ForbiddenException('Problem statement already locked for this team');
     }
-    return this.repo.replaceAll(teamId, user.id, body.preferences);
   }
 
   async approve(user: AuthUser, teamId: string, preferenceId: string) {

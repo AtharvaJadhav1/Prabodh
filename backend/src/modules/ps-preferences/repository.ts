@@ -32,16 +32,22 @@ export class PsPreferencesRepository {
       | { rank: number; psId: string }
       | { rank: number; title: string; theme: string; category: 'software' | 'hardware'; organisation: string; description: string }
     >,
+    status: PsPreferenceStatus,
   ) {
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "teams" WHERE id = ${teamId} FOR UPDATE`;
-      await tx.teamPsPreference.deleteMany({ where: { teamId, status: PsPreferenceStatus.submitted } });
+      await tx.teamPsPreference.deleteMany({
+        where: {
+          teamId,
+          status: { in: [PsPreferenceStatus.saved, PsPreferenceStatus.submitted] },
+        },
+      });
       await tx.teamPsPreference.createMany({
         data: entries.map((entry) => ({
           teamId,
           rank: entry.rank,
           submittedById,
-          status: PsPreferenceStatus.submitted,
+          status,
           ...('psId' in entry
             ? { psId: entry.psId }
             : {
@@ -58,6 +64,13 @@ export class PsPreferencesRepository {
         orderBy: { rank: 'asc' },
         include: { problemStatement: true },
       });
+    });
+  }
+
+  setSubmitted(teamId: string) {
+    return this.prisma.teamPsPreference.updateMany({
+      where: { teamId, status: PsPreferenceStatus.saved },
+      data: { status: PsPreferenceStatus.submitted },
     });
   }
 }

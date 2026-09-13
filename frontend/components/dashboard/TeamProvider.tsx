@@ -39,7 +39,8 @@ type TeamContextValue = {
   removeMember: (index: number) => void;
   sendInvite: (email: string) => Promise<{ ok: boolean; emailSent: boolean; emailError?: string | null }>;
   revokeInvite: (inviteId: string) => Promise<void>;
-  submitPreferences: (preferences: PsPreferenceInput[]) => Promise<void>;
+  savePreferences: (preferences: PsPreferenceInput[]) => Promise<void>;
+  submitPreferences: (preferences: PsPreferenceInput[]) => Promise<{ sent: boolean; code?: string }>;
   sendFacultyInvite: (email: string, mentorType?: "institute" | "industry") => Promise<boolean>;
   revokeFacultyInvite: (inviteId?: string) => void;
   facultyDirectory: Array<{
@@ -266,10 +267,19 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     await reload();
   };
 
-  const submitPreferences = async (preferences: PsPreferenceInput[]) => {
+  const savePreferences = async (preferences: PsPreferenceInput[]) => {
     if (!team?.id) return;
     await apiPost(`/teams/${team.id}/ps-preferences`, { preferences });
     await reload();
+  };
+
+  const submitPreferences = async (preferences: PsPreferenceInput[]) => {
+    if (!team?.id) return { sent: false };
+    const result = await apiPost<{ sent: boolean; code?: string }>(`/teams/${team.id}/ps-preferences/submit`, {
+      preferences,
+    });
+    await reload();
+    return result;
   };
 
   return (
@@ -307,6 +317,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         },
         sendInvite,
         revokeInvite,
+        savePreferences,
         submitPreferences,
         facultyDirectory,
         loadFacultyDirectory,

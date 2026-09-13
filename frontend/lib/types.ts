@@ -88,7 +88,7 @@ export type PortalTeam = {
   psPreferences?: Array<{
     id: string;
     rank: number;
-    status: "submitted" | "approved" | "rejected";
+    status: "saved" | "submitted" | "approved" | "rejected";
     problemStatement?: {
       id: string;
       code: string;

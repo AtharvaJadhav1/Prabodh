@@ -37,6 +37,7 @@ export class MentorsRepository {
             leader: true,
             members: { include: { user: true } },
             mentorAssignments: { where: { active: true }, include: { mentor: true } },
+            psPreferences: { orderBy: { rank: 'asc' }, include: { problemStatement: true } },
             stageResults: { include: { stage: true } },
             ideaSubmissions: {
               orderBy: { version: 'desc' },

@@ -34,7 +34,7 @@ export function aggregateQueue() {
 }
 
 export type NotificationJob = {
-  template: 'mentor_allocation' | 'team_invite' | 'deadline_reminder' | 'evaluation_published' | 'admin_broadcast' | 'status_change';
+  template: 'mentor_allocation' | 'team_invite' | 'deadline_reminder' | 'evaluation_published' | 'admin_broadcast' | 'status_change' | 'ps_review';
   recipientUserId: string;
   recipientEmail: string;
   title: string;

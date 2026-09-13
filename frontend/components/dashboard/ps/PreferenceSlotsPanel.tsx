@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTeam, type PsPreferenceInput } from "../TeamProvider";
-import { XIcon, LockIcon, ClockIcon } from "../icons";
+import { XIcon, LockIcon, ClockIcon, CheckIcon } from "../icons";
 import ProblemStatementTabs from "./ProblemStatementTabs";
+import ConfirmDialog from "../ConfirmDialog";
 
 export type CatalogPreference = {
   kind: "catalog";
@@ -28,7 +29,7 @@ export type ManualPreference = {
 type Slot = CatalogPreference | ManualPreference;
 
 export default function PreferenceSlotsPanel() {
-  const { team, isLead, submitPreferences } = useTeam();
+  const { team, isLead, savePreferences, submitPreferences } = useTeam();
   const idea = team?.ideaSubmissions?.[0];
   const locked = Boolean(team?.problemStatement) || idea?.status === "locked";
 
@@ -37,6 +38,7 @@ export default function PreferenceSlotsPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [showNoMentor, setShowNoMentor] = useState(false);
   const initializedRef = useRef(false);
 
   useEffect(() => {
@@ -74,8 +76,22 @@ export default function PreferenceSlotsPanel() {
   if (locked) return null;
 
   const usedPsIds = slots.filter((s): s is CatalogPreference => s?.kind === "catalog").map((s) => s.psId);
-  const hasSubmittedBefore = (team?.psPreferences?.length ?? 0) > 0;
+  const prefs = team?.psPreferences ?? [];
+  const hasSubmitted = prefs.some((p) => p.status === "submitted");
+  const hasApproved = prefs.some((p) => p.status === "approved");
+  const hasDraft = prefs.some((p) => p.status === "saved");
   const filledCount = slots.filter(Boolean).length;
+
+  const preferencesPayload = (): PsPreferenceInput[] =>
+    slots
+      .map((slot, i) => {
+        if (!slot) return null;
+        const rank = i + 1;
+        return slot.kind === "catalog"
+          ? { rank, psId: slot.psId }
+          : { rank, title: slot.title, theme: slot.theme, category: slot.category, organisation: slot.organisation, description: slot.description };
+      })
+      .filter((p): p is PsPreferenceInput => p !== null);
 
   const handlePick = (rank: number, slot: Slot) => {
     setSlots((prev) => {
@@ -96,23 +112,34 @@ export default function PreferenceSlotsPanel() {
     });
   };
 
+  const handleSave = async () => {
+    if (!isLead || filledCount === 0) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await savePreferences(preferencesPayload());
+      setMessage("Preferences saved. Send them to your mentor for review whenever you're ready.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save preferences");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!isLead || filledCount === 0) return;
     setBusy(true);
     setError("");
     setMessage("");
     try {
-      const preferences: PsPreferenceInput[] = slots
-        .map((slot, i) => {
-          if (!slot) return null;
-          const rank = i + 1;
-          return slot.kind === "catalog"
-            ? { rank, psId: slot.psId }
-            : { rank, title: slot.title, theme: slot.theme, category: slot.category, organisation: slot.organisation, description: slot.description };
-        })
-        .filter((p): p is PsPreferenceInput => p !== null);
-      await submitPreferences(preferences);
-      setMessage("Preferences submitted for mentor review.");
+      const result = await submitPreferences(preferencesPayload());
+      if (result.sent) {
+        setMessage("Preferences submitted for mentor review.");
+      } else {
+        setShowNoMentor(true);
+        setMessage("");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit preferences");
     } finally {
@@ -130,10 +157,17 @@ export default function PreferenceSlotsPanel() {
         </p>
       </div>
 
-      {hasSubmittedBefore ? (
+      {hasApproved || hasSubmitted ? (
         <div className="flex items-center gap-2 rounded-xl border border-brand-amber/30 bg-brand-amber/20 px-4 py-2.5 text-sm font-semibold text-brand-deep">
           <ClockIcon className="h-4 w-4 text-brand-primary" />
-          Preferences submitted — awaiting mentor review. You can update them below until your mentor decides.
+          {hasApproved
+            ? "Your problem statement is locked. This page is now read-only."
+            : "Preferences submitted — awaiting mentor review. You can update them below until your mentor decides."}
+        </div>
+      ) : hasDraft ? (
+        <div className="flex items-center gap-2 rounded-xl border border-brand-softline bg-brand-cream px-4 py-2.5 text-sm font-semibold text-brand-deep">
+          <CheckIcon className="h-4 w-4 text-brand-approved" />
+          Preferences saved as a draft. Send them to your mentor once your team has an active mentor.
         </div>
       ) : null}
 
@@ -207,17 +241,34 @@ export default function PreferenceSlotsPanel() {
       {message ? <p className="text-sm font-medium text-green-700">{message}</p> : null}
 
       {isLead ? (
-        <div className="flex items-center justify-end pt-2">
+        <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            disabled={filledCount === 0 || busy}
+            onClick={() => void handleSave()}
+            className="inline-flex items-center gap-2 rounded-xl border border-brand-softline bg-white px-4 py-2.5 text-sm font-bold text-brand-deep transition-colors hover:bg-brand-cream disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {busy ? "Saving…" : "Save Preferences"}
+          </button>
           <button
             type="button"
             disabled={filledCount === 0 || busy}
             onClick={() => void handleSubmit()}
             className="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {busy ? "Submitting…" : hasSubmittedBefore ? "Update Preferences" : "Submit Preferences for Mentor Review"}
+            {busy ? "Submitting…" : hasSubmitted ? "Update & Submit Preferences" : "Submit for Mentor Review"}
           </button>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={showNoMentor}
+        title="No active mentor yet"
+        message="You don't have a mentor to send this to right now. Your preferences are saved in your dashboard and will be sent to your mentor as soon as one accepts your team."
+        confirmLabel="Got it"
+        onConfirm={() => setShowNoMentor(false)}
+        onCancel={() => setShowNoMentor(false)}
+      />
     </div>
   );
 }

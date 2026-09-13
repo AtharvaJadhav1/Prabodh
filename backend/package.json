@@ -7,7 +7,7 @@
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "start:worker": "tsx watch src/worker.ts",
-    "build": "npx prisma db push && node prisma/ensure-columns.cjs && tsc -p tsconfig.json",
+    "build": "node prisma/ensure-columns.cjs && npx prisma db push && tsc -p tsconfig.json",
     "render:build": "npm install --include=dev && npx prisma generate && npm run build && npx tsx prisma/seed.ts",
     "prisma:ensure": "node prisma/ensure-columns.cjs",
     "prisma:generate": "prisma generate",

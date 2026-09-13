@@ -49,7 +49,7 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
     },
     { label: "Industry Mentors", href: "/dashboard/mentor/industry-mentors", match: "start", icon: BriefcaseIcon },
     { label: "Review & Rubrics", href: "/dashboard/mentor#reviews", match: "never", icon: FileCheckIcon },
-    { label: "PS Approvals", href: "/dashboard/mentor#approvals", match: "never", icon: CompassIcon },
+    { label: "PS Approvals", href: "/dashboard/mentor/ps-approvals", match: "start", icon: CompassIcon },
     { label: "Team Queries", href: "/dashboard/mentor#queries", match: "never", icon: MessageIcon },
     { label: "Profile", href: "/dashboard/mentor/profile", match: "start", icon: PersonIcon },
   ];

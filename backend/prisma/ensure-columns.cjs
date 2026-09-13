@@ -21,17 +21,19 @@ async function main() {
     }
   }
 
-  // Prefer submitted over legacy draft if any rows were written with that enum value.
+  // Rename legacy enum value draft → saved (runs before prisma db push).
   try {
-    const updated = await prisma.$executeRawUnsafe(`
-      UPDATE "team_ps_preferences"
-      SET "status" = 'submitted'
-      WHERE "status"::text = 'draft'
-    `);
-    console.log('[ensure-columns] remapped draft preferences:', updated);
-  } catch (err) {
-    // Table or enum may not exist yet on first boot — db push handles creation.
-    console.warn('[ensure-columns] preference remap skipped:', err && err.message ? err.message : err);
+    await prisma.$executeRawUnsafe(`ALTER TYPE "PsPreferenceStatus" RENAME VALUE 'draft' TO 'saved'`);
+    console.log('[ensure-columns] ok: renamed draft → saved');
+  } catch {
+    // Value may not exist if already renamed or first boot — saved below.
+  }
+
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TYPE "PsPreferenceStatus" ADD VALUE IF NOT EXISTS 'saved'`);
+    console.log('[ensure-columns] ok: saved enum value ensured');
+  } catch {
+    // Fresh DB handled by prisma db push — safe to skip.
   }
 }
 

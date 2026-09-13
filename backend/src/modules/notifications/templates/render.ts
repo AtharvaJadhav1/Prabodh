@@ -4,7 +4,8 @@ export type EmailTemplate =
   | 'deadline_reminder'
   | 'evaluation_published'
   | 'admin_broadcast'
-  | 'status_change';
+  | 'status_change'
+  | 'ps_review';
 
 function layout(title: string, bodyHtml: string, ctaLabel = 'Open SIH Portal', ctaUrl?: string) {
   const raw = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_ORIGIN ?? 'http://localhost:3000';
@@ -61,6 +62,13 @@ export function renderEmail(
       return layout(title, safe, 'Read announcement');
     case 'status_change':
       return layout(title, `${safe}<p>Check the status tracker for the latest stage outcome.</p>`);
+    case 'ps_review':
+      return layout(
+        title,
+        `${safe}<p>Open your PS Approvals page to review the ranked preferences and lock one problem statement for this team.</p>`,
+        ctaLabel ?? 'Open PS Approvals',
+        ctaUrl,
+      );
     default:
       return layout(title, safe);
   }

@@ -22,6 +22,16 @@ export class PsPreferencesController {
 
   @Post()
   @Roles(PlatformRole.student)
+  save(
+    @CurrentUser() user: AuthUser,
+    @Param('teamId') teamId: string,
+    @Body(new ZodPipe(submitPreferencesSchema)) body: unknown,
+  ) {
+    return this.service.save(user, teamId, body as never);
+  }
+
+  @Post('submit')
+  @Roles(PlatformRole.student)
   submit(
     @CurrentUser() user: AuthUser,
     @Param('teamId') teamId: string,
