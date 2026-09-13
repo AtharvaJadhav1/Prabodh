@@ -20,6 +20,19 @@ async function main() {
       throw err;
     }
   }
+
+  // Prefer submitted over legacy draft if any rows were written with that enum value.
+  try {
+    const updated = await prisma.$executeRawUnsafe(`
+      UPDATE "team_ps_preferences"
+      SET "status" = 'submitted'
+      WHERE "status"::text = 'draft'
+    `);
+    console.log('[ensure-columns] remapped draft preferences:', updated);
+  } catch (err) {
+    // Table or enum may not exist yet on first boot — db push handles creation.
+    console.warn('[ensure-columns] preference remap skipped:', err && err.message ? err.message : err);
+  }
 }
 
 main()

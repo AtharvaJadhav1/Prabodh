@@ -43,6 +43,8 @@ enum PsPreferenceStatus {
   submitted
   approved
   rejected
+  /// Legacy value present on some deployed DBs; unused by app logic.
+  draft
 }
 
 enum ImportBatchStatus {
