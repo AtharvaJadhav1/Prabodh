@@ -1,27 +1,57 @@
 import {
   GradCapIcon,
-  CheckIcon,
+  CodeIcon,
+  BriefcaseIcon,
+  SparklesIcon,
+  UsersRoundIcon,
 } from "./icons";
 
-export function ComplianceCard() {
+export function MultidisciplinaryCard() {
+  const roles = [
+    {
+      label: "The Hacker",
+      descriptor: "(Builder)",
+      accent: "bg-brand-deep text-white",
+      icon: CodeIcon,
+      line: "Turns ideas into reality. Owns the code, architecture, and prototypes.",
+    },
+    {
+      label: "The Hustler",
+      descriptor: "(Driver)",
+      accent: "bg-brand-amber text-brand-deep",
+      icon: BriefcaseIcon,
+      line: "Frames the story. Owns the pitch, business model, and strategy.",
+    },
+    {
+      label: "The Hipster",
+      descriptor: "(Designer)",
+      accent: "bg-brand-lightOrange text-brand-primary",
+      icon: SparklesIcon,
+      line: "Makes it unforgettable. Owns the UX/UI, visual identity, and polish.",
+    },
+  ];
+
   return (
-    <div className="space-y-3 rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
+    <div className="rounded-2xl border border-brand-softline bg-white p-5 shadow-sm">
       <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-muted">
-        <CheckIcon className="h-4 w-4 text-brand-approved" /> Mandatory Compliance Rules
+        <UsersRoundIcon className="h-4 w-4 text-brand-primary" /> Team Composition: The 3H&rsquo;s
       </h3>
-      <ul className="space-y-2 text-xs text-brand-charcoal/75">
-        <li className="flex items-start gap-2.5 text-xs">
-          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand-approved/10 text-[10px] font-bold text-brand-approved">✓</span>
-          <span><strong>Exactly 6 members:</strong> Roster must have exactly 6 verified students. No more, no less.</span>
-        </li>
-        <li className="flex items-start gap-2.5 text-xs">
-          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand-approved/10 text-[10px] font-bold text-brand-approved">✓</span>
-          <span><strong>Gender Diversity:</strong> Minimum 1 female participant is mandatory.</span>
-        </li>
-        <li className="flex items-start gap-2.5 text-xs">
-          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand-approved/10 text-[10px] font-bold text-brand-approved">✓</span>
-          <span><strong>Single Team Lock:</strong> A student cannot join or be invited by multiple active teams.</span>
-        </li>
+      <ul className="mt-2 flex flex-col gap-4">
+        {roles.map((role) => (
+          <li key={role.label} className="flex items-start gap-3">
+            <span
+              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg shadow-sm ${role.accent}`}
+            >
+              <role.icon className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <span className="text-sm font-bold text-brand-deep">
+                {role.label} <span className="ml-1 font-medium text-brand-muted">{role.descriptor}</span>
+              </span>
+              <p className="mt-0.5 text-xs leading-relaxed text-brand-muted">{role.line}</p>
+            </div>
+          </li>
+        ))}
       </ul>
     </div>
   );

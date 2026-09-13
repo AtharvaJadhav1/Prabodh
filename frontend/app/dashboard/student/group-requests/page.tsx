@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import DashboardShell from "../../../../components/dashboard/DashboardShell";
 import HeaderZone from "../../../../components/dashboard/HeaderZone";
 import {
-  ComplianceCard,
+  MultidisciplinaryCard,
   MentorInvitePointer,
 } from "../../../../components/dashboard/GroupRequestsSide";
 import LeaderNote from "../../../../components/dashboard/LeaderNote";
@@ -23,7 +23,7 @@ export default function GroupRequestsPage() {
         <div className="space-y-6 xl:col-span-4">
           <DispatchInviteCard />
           <MentorInvitePointer />
-          <ComplianceCard />
+          <MultidisciplinaryCard />
           <LeaderNote />
         </div>
         <div className="xl:col-span-8">
