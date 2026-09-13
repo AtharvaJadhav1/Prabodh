@@ -56,51 +56,53 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const load = useCallback(async () => {
     if (!session || session.platformRole !== "admin") return;
     try {
-      const [dash, teamPage, mentorRows, stageRows, userRows] = await Promise.all([
-        api<{
+      const res = await api<{
+        dashboard: {
           totalTeams: number;
           teamsMissingMentor: number;
-          activeMentorAssignments: number;
           stageFunnel: Array<{ name: string }>;
-        }>("/admin/dashboard"),
-        api<{
-          items: Array<{
-            id: string;
-            name: string;
-            teamCode: string;
-            theme?: string | null;
-            mentorAssignments: Array<{ mentorUserId: string; mentor: { fullName: string }; mentorType: string }>;
-          }>;
-        }>("/admin/teams?limit=50"),
-        api<Array<{ id: string; fullName: string; platformRole: string; email: string }>>("/admin/mentors"),
-        api<Array<{ id: string; name: string; sequence: number; deadline: string; isActive: boolean; rubrics: Array<{ id: string; criteria: string; weightage: string }> }>>(
-          "/stages",
-        ),
-        api<PortalUser[]>("/admin/users"),
-      ]);
+        };
+        teams: Array<{
+          id: string;
+          name: string;
+          teamCode: string;
+          theme?: string | null;
+          mentorAssignments: Array<{ mentorUserId: string; mentor: { fullName: string }; mentorType: string }>;
+        }>;
+        mentors: Array<{ id: string; fullName: string; platformRole: string; email: string }>;
+        stages: Array<{
+          id: string;
+          name: string;
+          sequence: number;
+          deadline: string;
+          isActive: boolean;
+          rubrics: Array<{ id: string; criteria: string; weightage: string }>;
+        }>;
+        users: PortalUser[];
+      }>("/admin/bootstrap");
 
       setMetricsLive({
-        totalTeams: dash.totalTeams,
-        totalStudents: userRows.filter((u) => u.platformRole === "student").length,
-        totalInstituteMentors: mentorRows.filter((m) => m.platformRole === "institute_mentor").length,
-        totalIndustryMentors: mentorRows.filter((m) => m.platformRole === "industry_mentor").length,
-        pendingAllocations: dash.teamsMissingMentor,
-        activeStage: dash.stageFunnel[0]?.name ?? "—",
+        totalTeams: res.dashboard.totalTeams,
+        totalStudents: res.users.filter((u) => u.platformRole === "student").length,
+        totalInstituteMentors: res.mentors.filter((m) => m.platformRole === "institute_mentor").length,
+        totalIndustryMentors: res.mentors.filter((m) => m.platformRole === "industry_mentor").length,
+        pendingAllocations: res.dashboard.teamsMissingMentor,
+        activeStage: res.dashboard.stageFunnel[0]?.name ?? "—",
       });
-      setUsers(userRows);
+      setUsers(res.users);
       setTeams(
-        teamPage.items.map((t) => ({
+        res.teams.map((t) => ({
           teamId: t.id,
           teamName: t.name,
           track: t.theme ?? "Unassigned",
         })),
       );
 
-      const instMentors = mentorRows.filter((m) => m.platformRole === "institute_mentor");
+      const instMentors = res.mentors.filter((m) => m.platformRole === "institute_mentor");
       setMentors(instMentors.map((m) => ({ id: m.id, name: m.fullName, title: m.email })));
 
       setAllocations(
-        teamPage.items.map((t) => {
+        res.teams.map((t) => {
           const inst = t.mentorAssignments.find((a) => a.mentorType === "institute");
           return {
             teamId: t.id,
@@ -114,7 +116,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       );
 
       setStages(
-        stageRows.map((s) => ({
+        res.stages.map((s) => ({
           id: s.id,
           name: s.name,
           order: s.sequence,

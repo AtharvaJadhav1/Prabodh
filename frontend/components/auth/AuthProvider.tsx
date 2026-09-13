@@ -13,6 +13,7 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "../../lib/api";
 import { setAccessToken } from "../../lib/auth-token";
+import { clearApiCache } from "../../lib/api-cache";
 import {
   clearSession,
   dashboardForRole,
@@ -145,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profileJson?: Record<string, unknown> | null;
     }) => {
       const next = toSession(payload);
+      clearApiCache();
       writeSession(next);
       setAccessToken(payload.accessToken);
       setSession(next);
@@ -158,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ready,
       establishSession,
       logout: () => {
+        clearApiCache();
         clearSession();
         setAccessToken(null);
         setSession(null);

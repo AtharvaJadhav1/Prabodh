@@ -1,6 +1,7 @@
 import { API_BASE } from "./config";
 import { getAccessToken } from "./auth-token";
 import { readSession } from "./session";
+import { cacheKey, getCached, isFresh, setCached, shouldCache, clearApiCache } from "./api-cache";
 
 export class ApiError extends Error {
   status: number;
@@ -13,11 +14,17 @@ export class ApiError extends Error {
 }
 
 const REQUEST_TIMEOUT_MS = 12_000;
+const NETWORK_CAP_MS = 1_500;
+const STALE_SENTINEL = Symbol("stale");
 
 function withTimeoutSignal(init: RequestInit = {}): RequestInit {
   const timeoutSignal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
   if (init.signal) return { ...init, signal: AbortSignal.any([init.signal, timeoutSignal]) };
   return { ...init, signal: timeoutSignal };
+}
+
+function sleep(ms: number) {
+  return new Promise<typeof STALE_SENTINEL>((resolve) => setTimeout(() => resolve(STALE_SENTINEL), ms));
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -33,30 +40,55 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set("x-dev-user-id", session.userId);
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...withTimeoutSignal(init),
-    headers,
-    cache: "no-store",
-  });
+  const method = (init.method ?? "GET").toUpperCase();
+  const key = cacheKey(session?.userId, method, path);
+  const cacheable = shouldCache(method, path);
 
-  const text = await res.text();
-  let data: unknown = null;
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = text;
+  const fetchIt = async (): Promise<T> => {
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...withTimeoutSignal(init),
+      headers,
+      cache: "no-store",
+    });
+
+    const text = await res.text();
+    let data: unknown = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+    }
+
+    if (!res.ok) {
+      const message =
+        typeof data === "object" && data && "message" in data
+          ? String((data as { message: unknown }).message)
+          : res.statusText;
+      throw new ApiError(res.status, message, data);
+    }
+
+    if (cacheable) {
+      setCached(key, data);
+    } else if (method !== "GET") {
+      clearApiCache();
+    }
+    return data as T;
+  };
+
+  if (cacheable && typeof window !== "undefined") {
+    const entry = getCached<T>(key);
+    if (entry) {
+      if (isFresh(entry)) return entry.data;
+      const background = fetchIt().catch(() => undefined);
+      const winner = await Promise.race([background, sleep(NETWORK_CAP_MS)]);
+      if (winner !== undefined && winner !== STALE_SENTINEL) return winner as T;
+      return entry.data;
     }
   }
 
-  if (!res.ok) {
-    const message =
-      typeof data === "object" && data && "message" in data
-        ? String((data as { message: unknown }).message)
-        : res.statusText;
-    throw new ApiError(res.status, message, data);
-  }
-  return data as T;
+  return fetchIt();
 }
 
 export function apiPost<T>(path: string, body: unknown) {

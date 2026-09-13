@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { clearApiCache } from "../../lib/api-cache";
 import { RefreshIcon } from "../icons-pwa";
 
 export default function RefreshButton() {
@@ -10,11 +11,12 @@ export default function RefreshButton() {
     if (refreshing) return;
     setRefreshing(true);
     try {
+      clearApiCache();
       if (navigator.onLine) {
         // Clear the cached app shell so the reload pulls fresh HTML.
         if ("caches" in window) {
           try {
-            await caches.delete("sih-portal-shell-v1");
+            await caches.delete("sih-portal-shell-v2");
           } catch {
             /* no-op */
           }

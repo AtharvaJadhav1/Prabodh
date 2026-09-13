@@ -8,12 +8,28 @@ import { RolesGuard } from '../../common/roles.guard';
 import { ZodPipe } from '../../common/zod.pipe';
 import { exportSchema, settingsSchema } from './schema';
 import { AdminService } from './service';
+import { StagesService } from '../stages/service';
 
 @Controller('admin')
 @UseGuards(ClerkAuthGuard, RolesGuard)
 @Roles(PlatformRole.admin)
 export class AdminController {
-  constructor(private readonly admin: AdminService) {}
+  constructor(
+    private readonly admin: AdminService,
+    private readonly stages: StagesService,
+  ) {}
+
+  @Get('bootstrap')
+  async bootstrap() {
+    const [dashboard, teams, mentors, stages, users] = await Promise.all([
+      this.admin.dashboard(),
+      this.admin.listTeams({ page: '1', limit: '50' }),
+      this.admin.listMentors(),
+      this.stages.list(),
+      this.admin.listUsers(),
+    ]);
+    return { dashboard, teams, mentors, stages, users };
+  }
 
   @Get('dashboard')
   dashboard() {

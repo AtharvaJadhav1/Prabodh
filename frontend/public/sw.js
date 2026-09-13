@@ -1,14 +1,15 @@
 /* Prabodh Portal Service Worker
  * App-shell PWA:
  *  - Auth routes (/sign-in /sign-up /login /register /auth): NETWORK ONLY (never cached) — prevents auth loops.
- *  - All other navigations (landing, dashboard, etc.): NETWORK-FIRST (4s) -> shell cache -> offline.html
+ *  - All other navigations (landing, dashboard, etc.): STALE-WHILE-REVALIDATE — cached shell paints instantly,
+ *    network refreshes it in the background. Offline falls back to offline.html.
  *  - Hashed static bundles (_next/static): stale-while-revalidate
  *  - Static assets (images/icons): cache-first with background fill
  *  - API + RSC/prefetch requests: pass-through (never cached)
  */
-const SHELL_CACHE = "sih-portal-shell-v1";
-const STATIC_CACHE = "sih-portal-static-v1";
-const FONT_CACHE = "sih-portal-fonts-v1";
+const SHELL_CACHE = "sih-portal-shell-v2";
+const STATIC_CACHE = "sih-portal-static-v2";
+const FONT_CACHE = "sih-portal-fonts-v2";
 const ACTIVE_CACHES = [SHELL_CACHE, STATIC_CACHE, FONT_CACHE];
 
 const PRECACHE_URLS = [
@@ -76,6 +77,26 @@ async function networkFirst(request, cacheName, timeoutMs) {
   }
 }
 
+async function staleWhileRevalidateNavigation(request) {
+  try {
+    const cache = await caches.open(SHELL_CACHE);
+    const cached = await cache.match(request, { ignoreSearch: true });
+    const network = fetch(request)
+      .then((res) => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          cache.put(request, copy);
+        }
+        return res;
+      })
+      .catch(() => undefined);
+    if (cached) return cached;
+    return (await network) || (await cache.match("/offline.html")) || Response.error();
+  } catch (err) {
+    return Response.error();
+  }
+}
+
 async function staleWhileRevalidate(request) {
   try {
     const cached = await caches.match(request, { cacheName: STATIC_CACHE });
@@ -129,13 +150,13 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navigations: auth routes stay network-only; everything else is network-first with offline fallback.
+  // Navigations: auth routes stay network-only; everything else paints from the cached shell instantly (SWR).
   if (request.mode === "navigate") {
     if (isAuthRoute(url.pathname)) {
       event.respondWith(fetch(request));
       return;
     }
-    event.respondWith(networkFirst(request, SHELL_CACHE, 4000));
+    event.respondWith(staleWhileRevalidateNavigation(request));
     return;
   }
 
