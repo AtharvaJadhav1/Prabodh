@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import MentorShell from "../../../../components/mentor/MentorShell";
 import { useMentorRequests } from "../../../../components/mentor/MentorRequestProvider";
 import GroupRequestMetricCards from "../../../../components/mentor/GroupRequestMetricCards";
@@ -7,30 +8,48 @@ import GroupRequestCard from "../../../../components/mentor/GroupRequestCard";
 import GroupRequestEmptyState from "../../../../components/mentor/GroupRequestEmptyState";
 import GroupRequestHistoryTable from "../../../../components/mentor/GroupRequestHistoryTable";
 import { mentorMaxCap } from "../../../../data/mentorDashboard";
+import { api } from "../../../../lib/api";
+import { useAuth } from "../../../../components/auth/AuthProvider";
+
+type MentorTeamRow = {
+  pendingInvite?: boolean;
+  team: {
+    problemStatement?: unknown;
+    psPreferences?: Array<{ status: string }>;
+  };
+};
 
 export default function GroupRequestsPage() {
+  const { session } = useAuth();
   const {
     pendingRequests,
     requestHistory,
     pendingCount,
-    acceptedCount,
     atCapacity,
-    domainMatchPercent,
     acceptRequest,
     declineRequest,
   } = useMentorRequests();
+  const [psApprovalsCount, setPsApprovalsCount] = useState(0);
+
+  useEffect(() => {
+    if (!session) return;
+    api<MentorTeamRow[]>("/mentors/me/teams")
+      .then((rows) => {
+        const count = rows.filter(
+          (row) =>
+            !row.pendingInvite &&
+            !row.team.problemStatement &&
+            (row.team.psPreferences ?? []).some((p) => p.status === "submitted"),
+        ).length;
+        setPsApprovalsCount(count);
+      })
+      .catch(() => setPsApprovalsCount(0));
+  }, [session]);
 
   return (
-    <MentorShell
-      title="Group Assignment Requests"
-      subtitle="Review and accept or decline group mentorship invitations from student team leaders."
-    >
+    <MentorShell title="Group Assignment Requests">
       <div className="mx-auto max-w-7xl space-y-6">
-        <GroupRequestMetricCards
-          pendingCount={pendingCount}
-          acceptedCount={acceptedCount}
-          domainMatchPercent={domainMatchPercent}
-        />
+        <GroupRequestMetricCards pendingCount={pendingCount} psApprovalsCount={psApprovalsCount} />
 
         {/* Pending Requests */}
         <div className="space-y-4">

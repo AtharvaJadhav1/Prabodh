@@ -1,108 +1,62 @@
-import { mentorMaxCap } from "../../data/mentorDashboard";
+import Link from "next/link";
+import { ClockIcon, CompassIcon } from "../dashboard/icons";
 
 type Props = {
   pendingCount: number;
-  acceptedCount: number;
-  domainMatchPercent: number;
+  psApprovalsCount: number;
 };
 
-const metrics = [
-  {
-    key: "pending",
-    label: "Awaiting Decision",
-    border: "border-brand-deep/80",
-    iconBg: "bg-brand-lightOrange",
-    icon: (
-      <svg className="h-4 w-4 text-brand-primary" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 8v4l3 2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="12" cy="12" r="10" />
-      </svg>
-    ),
-    value: (p: Props) => p.pendingCount,
-    chip: (p: Props) =>
-      p.pendingCount > 0 ? (
-        <span className="inline-flex items-center gap-1 rounded-full bg-brand-amber/10 px-2 py-0.5 text-[10px] font-bold text-brand-primary">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand-amber" />
-          Needs review
-        </span>
-      ) : null,
-  },
-  {
-    key: "mentored",
-    label: "Total Mentored",
-    border: "border-brand-deep/80",
-    iconBg: "bg-brand-approved/10",
-    icon: (
-      <svg className="h-4 w-4 text-brand-approved" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M22 11.08V12a10 10 0 11-5.93-9.14" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M22 4L12 14.01l-3-3" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-    value: (p: Props) => p.acceptedCount,
-    chip: (p: Props) => (
-      <span className="inline-flex items-center gap-1 rounded-full bg-brand-deep px-2 py-0.5 text-[10px] font-bold text-white">
-        Max Cap: {mentorMaxCap}
-      </span>
-    ),
-  },
-  {
-    key: "response",
-    label: "Avg. Response Time",
-    border: "border-brand-deep/80",
-    iconBg: "bg-brand-lightOrange",
-    icon: (
-      <svg className="h-4 w-4 text-brand-primary" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 8v4l3 2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="12" cy="12" r="10" />
-      </svg>
-    ),
-    value: () => "4.2 Hours",
-    chip: () => null,
-  },
-  {
-    key: "domain",
-    label: "Domain Match %",
-    border: "border-brand-deep/80",
-    iconBg: "bg-brand-approved/10",
-    icon: (
-      <svg className="h-4 w-4 text-brand-approved" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M22 11.08V12a10 10 0 11-5.93-9.14" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M22 4L12 14.01l-3-3" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-    value: (p: Props) => `${p.domainMatchPercent}%`,
-    chip: (p: Props) => (
-      <span className="inline-flex items-center gap-1 rounded-full bg-brand-approved/10 px-2 py-0.5 text-[10px] font-bold text-brand-approved">
-        {p.domainMatchPercent >= 50 ? "Strong" : "Moderate"} match
-      </span>
-    ),
-  },
-];
-
-export default function GroupRequestMetricCards({ pendingCount, acceptedCount, domainMatchPercent }: Props) {
-  const props: Props = { pendingCount, acceptedCount, domainMatchPercent };
+export default function GroupRequestMetricCards({ pendingCount, psApprovalsCount }: Props) {
+  const metrics = [
+    {
+      key: "pending",
+      label: "Awaiting Decision",
+      desc: "Pending group invitations",
+      stripe: "bg-[#C25E26]",
+      iconBg: "bg-orange-50 text-[#C25E26]",
+      icon: <ClockIcon className="h-5 w-5" />,
+      value: String(pendingCount),
+      href: null,
+    },
+    {
+      key: "ps-approvals",
+      label: "PS Approvals",
+      desc: "Teams awaiting your PS decision",
+      stripe: "bg-[#059669]",
+      iconBg: "bg-emerald-50 text-emerald-700",
+      icon: <CompassIcon className="h-5 w-5" />,
+      value: String(psApprovalsCount),
+      href: "/dashboard/mentor/ps-approvals",
+    },
+  ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {metrics.map((m) => (
-        <div
-          key={m.key}
-          className={`rounded-xl border ${m.border} bg-white p-4 shadow-sm transition-all hover:shadow-md`}
-        >
-          <div className="mb-3 flex items-center gap-2.5">
-            <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${m.iconBg}`}>
-              {m.icon}
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {metrics.map((m) => {
+        const card = (
+          <div className="relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-brand-softline/80 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+            <span className={`absolute inset-x-0 top-0 h-1 ${m.stripe}`} aria-hidden="true" />
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-brand-muted/90">{m.label}</p>
+              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${m.iconBg}`}>
+                {m.icon}
+              </div>
             </div>
-            <span className="text-xs font-semibold text-brand-muted">{m.label}</span>
+            <p className="mt-2 text-3xl font-extrabold leading-none tracking-tight text-brand-deep sm:text-4xl">
+              {m.value}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-brand-muted">{m.desc}</p>
           </div>
-          <div className="flex items-end justify-between">
-            <span className="text-2xl font-extrabold tracking-tight text-brand-deep">
-              {m.value(props)}
-            </span>
-            {m.chip(props)}
-          </div>
-        </div>
-      ))}
+        );
+
+        return m.href ? (
+          <Link key={m.key} href={m.href} className="block">
+            {card}
+          </Link>
+        ) : (
+          <div key={m.key}>{card}</div>
+        );
+      })}
     </div>
   );
 }
