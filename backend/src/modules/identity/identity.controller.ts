@@ -7,7 +7,7 @@ import { consumeToken } from '../../lib/rate-limit';
 import { PrismaService } from '../../lib/prisma.service';
 import { ZodPipe } from '../../common/zod.pipe';
 import { IdentityService } from './service';
-import { facultyRegisterSchema, loginSchema, otpSendSchema, otpVerifySchema, patchMeSchema, registerSchema } from './schema';
+import { avatarUploadSchema, facultyRegisterSchema, loginSchema, otpSendSchema, otpVerifySchema, patchMeSchema, registerSchema } from './schema';
 
 @Controller()
 export class IdentityController {
@@ -101,6 +101,15 @@ export class IdentityController {
     @Body(new ZodPipe(patchMeSchema)) body: unknown,
   ) {
     return this.identity.updateProfile(user.id, body as never);
+  }
+
+  @Post('me/avatar')
+  @UseGuards(ClerkAuthGuard)
+  uploadAvatar(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodPipe(avatarUploadSchema)) body: unknown,
+  ) {
+    return this.identity.uploadAvatar(user.id, body as never);
   }
 
   @Get('me')

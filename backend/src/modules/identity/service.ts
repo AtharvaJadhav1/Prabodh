@@ -4,6 +4,7 @@ import { signAccessToken } from '../../lib/jwt';
 import { sendOtp, verifyOtp } from '../../lib/otp';
 import { hashPassword, verifyPassword } from '../../lib/password';
 import { PrismaService } from '../../lib/prisma.service';
+import { isS3Configured, normalizeUploadMime, putObjectBuffer } from '../../lib/s3';
 import { IdentityRepository } from './repository';
 
 @Injectable()
@@ -357,6 +358,44 @@ export class IdentityService {
     return safe;
   }
 
+  async uploadAvatar(
+    userId: string,
+    body: { filename: string; contentType: string; dataBase64: string },
+  ) {
+    const mime = normalizeUploadMime(body.filename, body.contentType);
+    if (!isAvatarMime(mime)) {
+      throw new BadRequestException('Only PNG, JPEG, WebP or GIF images are supported.');
+    }
+    const data = Buffer.from(body.dataBase64, 'base64');
+    if (data.length === 0) {
+      throw new BadRequestException('Image data is empty.');
+    }
+    if (data.length > AVATAR_MAX_BYTES) {
+      throw new BadRequestException('Image exceeds the 5MB limit.');
+    }
+
+    let avatarUrl: string;
+    if (isS3Configured()) {
+      const key = `avatars/${userId}/avatar-${Date.now()}${extensionForMime(mime)}`;
+      const result = await putObjectBuffer(key, data, mime);
+      avatarUrl = result.publicUrl;
+    } else {
+      avatarUrl = `data:${mime};base64,${body.dataBase64}`;
+    }
+
+    const existing = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!existing) throw new NotFoundException('User not found');
+    const profileJson = ((existing.profileJson as Record<string, unknown> | null) ?? {}) as Record<
+      string,
+      unknown
+    >;
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { profileJson: { ...profileJson, avatarUrl } as Prisma.InputJsonValue },
+    });
+    return { avatarUrl };
+  }
+
   async handleClerkEvent(eventType: string, data: Record<string, unknown>) {
     if (eventType.startsWith('user.')) {
       return this.syncClerkUser(eventType, data);
@@ -508,6 +547,23 @@ export class IdentityService {
     }
     return results;
   }
+}
+
+const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+
+const AVATAR_MIME_EXT: Record<string, string> = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+};
+
+function isAvatarMime(mime: string) {
+  return mime in AVATAR_MIME_EXT;
+}
+
+function extensionForMime(mime: string) {
+  return AVATAR_MIME_EXT[mime] ?? '.png';
 }
 
 function parseRole(role: unknown): PlatformRole {

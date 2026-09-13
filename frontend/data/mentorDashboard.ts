@@ -146,6 +146,7 @@ export type GroupRequest = {
   groupId: string;
   teamName: string;
   leaderName: string;
+  leaderAvatarUrl?: string | null;
   memberCount: number;
   allocatedRole: string;
   allocatedAt: string;
@@ -156,6 +157,7 @@ export type GroupRequestHistoryEntry = {
   groupId: string;
   teamName: string;
   leaderName: string;
+  leaderAvatarUrl?: string | null;
   memberCount: number;
   allocatedRole: string;
   status: "ACCEPTED" | "DECLINED";

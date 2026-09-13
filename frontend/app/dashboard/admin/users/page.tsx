@@ -3,6 +3,7 @@
 import { useState } from "react";
 import AdminShell from "../../../../components/admin/AdminShell";
 import UserTable from "../../../../components/admin/UserTable";
+import Avatar from "../../../../components/Avatar";
 import { useAdmin } from "../../../../components/admin/AdminProvider";
 import { apiPost } from "../../../../lib/api";
 import type { PortalUser } from "../../../../lib/types";
@@ -80,7 +81,12 @@ export default function AdminUsersPage() {
           searchFn={(u, q) => u.fullName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)}
           emptyLabel="No users match your search."
           columns={[
-            { label: "Name", render: (u) => <span className="font-bold text-brand-deep">{u.fullName}</span> },
+            { label: "Name", render: (u) => (
+              <span className="flex items-center gap-2.5">
+                <Avatar src={u.avatarUrl || null} seed={u.fullName || u.email || "user"} className="h-8 w-8" />
+                <span className="font-bold text-brand-deep">{u.fullName}</span>
+              </span>
+            ) },
             { label: "Email", render: (u) => <span className="font-mono text-brand-muted">{u.email}</span> },
             { label: "Role", render: (u) => u.platformRole },
             { label: "Institute", render: (u) => u.institute ?? "—" },

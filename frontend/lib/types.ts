@@ -6,6 +6,7 @@ export type PortalUser = {
   institute?: string | null;
   department?: string | null;
   phone?: string | null;
+  avatarUrl?: string | null;
 };
 
 export type PortalComment = {
@@ -50,7 +51,7 @@ export type PortalTeam = {
     id: string;
     invitedEmail: string;
     inviteStatus: string;
-    user?: { id?: string; fullName?: string; email?: string; department?: string } | null;
+    user?: { id?: string; fullName?: string; email?: string; department?: string; profileJson?: Record<string, unknown> } | null;
   }>;
   leader?: { fullName: string; email: string };
   problemStatement?: {

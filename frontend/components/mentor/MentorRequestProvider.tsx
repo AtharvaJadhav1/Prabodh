@@ -8,6 +8,7 @@ import {
   type GroupRequestHistoryEntry,
 } from "../../data/mentorDashboard";
 import { api, apiPost } from "../../lib/api";
+import { avatarUrlFrom } from "../../lib/avatar";
 import { useAuth } from "../auth/AuthProvider";
 
 type MentorInviteRow = {
@@ -18,7 +19,7 @@ type MentorInviteRow = {
     teamCode: string;
     name: string;
     theme?: string | null;
-    leader?: { fullName: string };
+    leader?: { fullName: string; profileJson?: Record<string, unknown> };
     members?: unknown[];
     problemStatement?: { theme?: string; title?: string } | null;
   };
@@ -57,6 +58,7 @@ function mapInvite(row: MentorInviteRow): GroupRequest {
     groupId: row.team.teamCode,
     teamName: row.team.name,
     leaderName: row.team.leader?.fullName ?? "Team lead",
+    leaderAvatarUrl: avatarUrlFrom(row.team.leader?.profileJson) ?? null,
     memberCount: row.team.members?.length ?? 0,
     allocatedRole: "Institute Mentor",
     allocatedAt: new Date(row.createdAt).toLocaleDateString(),
@@ -107,6 +109,7 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
                 groupId: target.groupId,
                 teamName: target.teamName,
                 leaderName: target.leaderName,
+                leaderAvatarUrl: target.leaderAvatarUrl,
                 memberCount: target.memberCount,
                 allocatedRole: target.allocatedRole,
                 status: "ACCEPTED",
@@ -136,6 +139,7 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
                 groupId: target.groupId,
                 teamName: target.teamName,
                 leaderName: target.leaderName,
+                leaderAvatarUrl: target.leaderAvatarUrl,
                 memberCount: target.memberCount,
                 allocatedRole: target.allocatedRole,
                 status: "DECLINED",

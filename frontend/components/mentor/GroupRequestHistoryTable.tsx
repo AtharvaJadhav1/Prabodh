@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { GroupRequestHistoryEntry } from "../../data/mentorDashboard";
 import { SearchIcon, InboxIcon } from "../dashboard/icons";
+import Avatar from "../Avatar";
 
 type StatusFilter = "ALL" | "ACCEPTED" | "DECLINED";
 
@@ -87,7 +88,12 @@ export default function GroupRequestHistoryTable({ history }: Props) {
               <tr key={h.groupId} className="transition-colors hover:bg-brand-cream/40">
                 <td className="px-4 py-3 font-bold text-brand-deep">{h.teamName}</td>
                 <td className="px-4 py-3 font-mono text-brand-muted">{h.groupId}</td>
-                <td className="px-4 py-3 text-brand-deep">{h.leaderName}</td>
+                <td className="px-4 py-3 text-brand-deep">
+                  <span className="flex items-center gap-2">
+                    <Avatar src={h.leaderAvatarUrl || null} seed={h.leaderName || "leader"} className="h-6 w-6" />
+                    {h.leaderName}
+                  </span>
+                </td>
                 <td className="px-4 py-3 text-center text-brand-deep">{h.memberCount}</td>
                 <td className="px-4 py-3 text-brand-deep">{h.allocatedRole}</td>
                 <td className="px-4 py-3 text-brand-muted">{h.receivedDate}</td>

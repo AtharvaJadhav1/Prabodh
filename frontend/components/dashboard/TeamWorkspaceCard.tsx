@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { type Member } from "../../data/studentDashboard";
 import { useTeam } from "./TeamProvider";
+import Avatar from "../Avatar";
 import { UsersIcon, CheckIcon, UserPlusIcon, LockIcon, PencilIcon, XIcon } from "./icons";
 
 function MemberRow({
@@ -64,19 +65,23 @@ function MemberRow({
       }`}
     >
       <div className="flex min-w-0 flex-1 items-center gap-3.5">
-        <div
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-            member.role === "Leader"
-              ? "bg-brand-primary text-white"
-              : isPending
-                ? "border border-dashed border-[#E59850] bg-[#FAF8F5] text-[#E59850]"
-                : index % 2 === 0
-                  ? "bg-brand-deep text-white"
-                  : "bg-brand-primary text-white"
-          }`}
-        >
-          {member.initials}
-        </div>
+        {member.status === "Verified" ? (
+          <Avatar src={member.avatarUrl || null} seed={member.name || member.prn || "member"} className="h-11 w-11" />
+        ) : (
+          <div
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+              member.role === "Leader"
+                ? "bg-brand-primary text-white"
+                : isPending
+                  ? "border border-dashed border-[#E59850] bg-[#FAF8F5] text-[#E59850]"
+                  : index % 2 === 0
+                    ? "bg-brand-deep text-white"
+                    : "bg-brand-primary text-white"
+            }`}
+          >
+            {member.initials}
+          </div>
+        )}
         <div className="flex min-w-0 flex-1 flex-col justify-center">
           <div className="flex flex-wrap items-center gap-2">
             <p className="truncate text-sm font-bold text-[#5B2E10]">

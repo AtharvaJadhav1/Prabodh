@@ -15,6 +15,7 @@ import {
   UserPlusIcon,
   LockIcon,
 } from "./icons";
+import Avatar from "../Avatar";
 
 export default function RequestsTabs() {
   const [tab, setTab] = useState<1 | 2>(1);
@@ -268,7 +269,7 @@ function MemberRow({
   onInviteNow,
 }: {
   index: number;
-  member: { name: string; initials: string; prn: string; branch: string; role: string | null; status: string };
+  member: { name: string; initials: string; prn: string; branch: string; role: string | null; status: string; avatarUrl?: string | null };
   isLead: boolean;
   onRemove: () => void;
   onInviteNow: () => void;
@@ -284,25 +285,29 @@ function MemberRow({
       }`}
     >
       <div className="flex items-center gap-3.5 min-w-0 flex-1">
-        <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-sm ${
-            isLeader
-              ? "bg-brand-deep text-brand-cream"
-              : isPending
-                ? "border border-dashed border-brand-primary/50 bg-brand-lightOrange/50 text-brand-primary"
-                : isEmpty
-                  ? "border border-dashed border-brand-charcoal/20 text-brand-muted"
-                  : member.initials === "PS"
-                    ? "bg-brand-amber text-brand-deep"
-                    : member.initials === "RK"
-                      ? "bg-brand-cream border border-brand-softline text-brand-deep"
-                      : member.initials === "SN"
-                        ? "bg-brand-lightOrange text-brand-primary"
-                        : "bg-brand-deep/90 text-brand-cream"
-          }`}
-        >
-          {member.initials}
-        </div>
+        {member.status === "Verified" ? (
+          <Avatar src={member.avatarUrl || null} seed={member.name || member.prn || "member"} className="h-10 w-10" />
+        ) : (
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-sm ${
+              isLeader
+                ? "bg-brand-deep text-brand-cream"
+                : isPending
+                  ? "border border-dashed border-brand-primary/50 bg-brand-lightOrange/50 text-brand-primary"
+                  : isEmpty
+                    ? "border border-dashed border-brand-charcoal/20 text-brand-muted"
+                    : member.initials === "PS"
+                      ? "bg-brand-amber text-brand-deep"
+                      : member.initials === "RK"
+                        ? "bg-brand-cream border border-brand-softline text-brand-deep"
+                        : member.initials === "SN"
+                          ? "bg-brand-lightOrange text-brand-primary"
+                          : "bg-brand-deep/90 text-brand-cream"
+            }`}
+          >
+            {member.initials}
+          </div>
+        )}
         <div className="min-w-0 leading-tight">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-bold text-brand-deep">

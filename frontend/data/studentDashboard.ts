@@ -9,6 +9,7 @@ export type Member = {
   status: "Verified" | "Invite Pending" | "Empty";
   female?: boolean;
   inviteEmail?: string;
+  avatarUrl?: string | null;
 };
 
 export type OutgoingInvite = {

@@ -125,10 +125,21 @@ export class AdminService {
         platformRole: true,
         institute: true,
         department: true,
+        profileJson: true,
       },
       orderBy: { fullName: 'asc' },
       take: 500,
-    });
+    }).then((rows) =>
+      rows.map((u) => ({
+        id: u.id,
+        fullName: u.fullName,
+        email: u.email,
+        platformRole: u.platformRole,
+        institute: u.institute,
+        department: u.department,
+        avatarUrl: avatarUrlOf(u.profileJson),
+      })),
+    );
   }
 
   async enqueueExport(admin: AuthUser, body: z.infer<typeof exportSchema>) {
@@ -286,4 +297,12 @@ export class AdminService {
       include: { rows: true },
     });
   }
+}
+
+function avatarUrlOf(profileJson: Prisma.JsonValue | null): string | null {
+  const value =
+    profileJson && typeof profileJson === 'object' && !Array.isArray(profileJson)
+      ? (profileJson as Record<string, unknown>).avatarUrl
+      : undefined;
+  return typeof value === 'string' && value ? value : null;
 }

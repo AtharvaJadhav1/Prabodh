@@ -28,6 +28,8 @@ export const ALLOWED_UPLOAD_MIME = new Set([
   'video/webm',
   'image/png',
   'image/jpeg',
+  'image/webp',
+  'image/gif',
 ]);
 
 export const MAX_UPLOAD_BYTES = 200 * 1024 * 1024;
@@ -44,6 +46,8 @@ const MIME_BY_EXT: Record<string, string> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
 };
 
 export function normalizeUploadMime(filename: string, contentType?: string) {

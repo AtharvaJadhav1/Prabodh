@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { type Member, type JoinRequest, type OutgoingInvite, type StudentRole } from "../../data/studentDashboard";
 import { api, apiDelete, apiPatch, apiPost } from "../../lib/api";
+import { avatarUrlFrom } from "../../lib/avatar";
 import type { PortalStage, PortalTeam } from "../../lib/types";
 import { useAuth } from "../auth/AuthProvider";
 
@@ -66,6 +67,7 @@ function mapMembers(team: PortalTeam, cap: number): Member[] {
       role: accepted ? (m.user?.id === team.leaderUserId ? "Leader" : "Member") : null,
       status: accepted ? "Verified" : "Invite Pending",
       inviteEmail: m.invitedEmail,
+      avatarUrl: accepted ? avatarUrlFrom(m.user?.profileJson) : null,
     };
   });
   while (mapped.length < cap) {

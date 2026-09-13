@@ -55,3 +55,9 @@ export const patchMeSchema = z.object({
   institute: z.string().max(200).optional(),
   profileJson: z.record(z.unknown()).optional(),
 });
+
+export const avatarUploadSchema = z.object({
+  filename: z.string().min(1).max(240),
+  contentType: z.string().min(1).max(120),
+  dataBase64: z.string().min(1, 'Image data is required'),
+});

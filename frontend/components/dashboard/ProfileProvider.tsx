@@ -35,6 +35,7 @@ type ProfileContextValue = {
   setExperience: (experience: Experience[]) => void;
   setAchievements: (achievements: Achievement[]) => void;
   saveProfileJson: (profile: Profile) => Promise<void>;
+  setAvatarUrl: (url: string) => Promise<void>;
 };
 
 const ProfileContext = createContext<ProfileContextValue | null>(null);
@@ -50,6 +51,7 @@ function mergeProfileFromApi(base: Profile, session: { fullName: string; email: 
     prn: session.email,
     team: teamName,
     role,
+    avatarUrl: typeof saved.avatarUrl === "string" ? saved.avatarUrl : "",
     contacts: {
       ...base.contacts,
       ...(saved.contacts ?? {}),
@@ -107,10 +109,23 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         certifications: next.certifications,
         experience: next.experience,
         achievements: next.achievements,
+        avatarUrl: next.avatarUrl,
       },
     });
     setProfile(next);
     await refreshMe();
+  };
+
+  const setAvatarUrl = async (url: string) => {
+    setProfile((prev) => ({ ...prev, avatarUrl: url }));
+    try {
+      const { apiPatch } = await import("../../lib/api");
+      await apiPatch("/me", {
+        profileJson: { avatarUrl: url },
+      });
+    } finally {
+      await refreshMe();
+    }
   };
 
   return (
@@ -129,6 +144,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         setExperience: (experience) => setProfile((prev) => ({ ...prev, experience })),
         setAchievements: (achievements) => setProfile((prev) => ({ ...prev, achievements })),
         saveProfileJson,
+        setAvatarUrl,
       }}
     >
       {children}

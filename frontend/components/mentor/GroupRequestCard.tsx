@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { GroupRequest } from "../../data/mentorDashboard";
 import { mentorMaxCap } from "../../data/mentorDashboard";
 import { UsersIcon, BriefcaseIcon, ExternalLinkIcon, FileTextIcon } from "../dashboard/icons";
+import Avatar from "../Avatar";
 import ConfirmDialog from "./ConfirmDialog";
 
 type Props = {
@@ -59,10 +60,7 @@ export default function GroupRequestCard({ request, atCap, onAccept, onDecline }
             <span className="font-medium text-brand-deep">{request.allocatedRole}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <svg className="h-3.5 w-3.5 text-brand-primary" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="7" r="4" />
-              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <Avatar src={request.leaderAvatarUrl || null} seed={request.leaderName || "leader"} className="h-5 w-5" />
             <span className="font-bold text-brand-deep">{request.leaderName}</span>
           </div>
           <span className="text-brand-muted">Allocated: {request.allocatedAt}</span>

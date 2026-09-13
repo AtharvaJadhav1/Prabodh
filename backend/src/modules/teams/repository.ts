@@ -18,8 +18,30 @@ export class TeamsRepository {
     return this.prisma.team.findUnique({
       where: { id },
       include: {
-        members: { include: { user: true } },
-        leader: true,
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                fullName: true,
+                email: true,
+                department: true,
+                institute: true,
+                profileJson: true,
+              },
+            },
+          },
+        },
+        leader: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            department: true,
+            institute: true,
+            profileJson: true,
+          },
+        },
         problemStatement: true,
         mentorInvites: { include: { mentor: true } },
         mentorAssignments: { where: { active: true }, include: { mentor: true } },

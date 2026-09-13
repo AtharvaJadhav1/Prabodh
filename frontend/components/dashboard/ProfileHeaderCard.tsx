@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { useProfile } from "./ProfileProvider";
 import ExpandableContactItem from "./ExpandableContactItem";
+import AvatarPickerModal from "./AvatarPickerModal";
+import Avatar from "../Avatar";
 import {
   CameraIcon,
   BadgeCheckIcon,
@@ -22,39 +25,65 @@ function handleFromUrl(url: string, domain: string) {
 
 export default function ProfileHeaderCard() {
   const { profile, openDrawer } = useProfile();
-  const { initials, fullName, verified, bio, school, team, role, contacts } = profile;
+  const { fullName, verified, bio, school, team, role, contacts, avatarUrl } = profile;
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-brand-softline bg-white shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
-      {/* Cover Banner */}
-      <div className="custom-pattern relative flex h-40 w-full items-end justify-end bg-gradient-to-r from-brand-deep via-[#6d3412] to-[#7E3B14] p-4 sm:h-44">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur-sm">
+      {/* LinkedIn-style Cover Banner */}
+      <div className="relative h-36 w-full overflow-hidden bg-gradient-to-r from-[#4A2810] via-[#8C3E14] to-[#C25E26] sm:h-48">
+        <svg
+          className="absolute inset-0 h-full w-full opacity-20"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+        >
+          <defs>
+            <pattern id="pbl-banner-dots" width="26" height="26" patternUnits="userSpaceOnUse">
+              <circle cx="2" cy="2" r="2" fill="white" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#pbl-banner-dots)" />
+        </svg>
+
+        <span className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/25 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur-sm">
           <FlagIcon className="h-3.5 w-3.5" />
           PRABODH
         </span>
+
+        <button
+          type="button"
+          onClick={() => openDrawer("basic")}
+          className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2 text-xs font-bold text-brand-deep shadow-md backdrop-blur-sm transition-colors hover:bg-white"
+        >
+          <PencilIcon className="h-3.5 w-3.5" />
+          Edit Profile
+        </button>
       </div>
 
-      {/* Bio & Identity */}
+      {/* Identity */}
       <div className="relative px-6 pb-6 pt-0">
-        <div className="-mt-12 mb-4 flex flex-col gap-4 sm:-mt-14 md:flex-row md:items-end md:justify-between">
-          {/* Avatar + Name */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-            <div className="relative">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-brand-deep text-lg font-bold tracking-wider text-white shadow-md sm:h-24 sm:w-24 sm:text-2xl">
-                {initials}
-              </div>
+        <div className="-mt-14 flex flex-col gap-4 sm:-mt-16 md:flex-row md:items-end md:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-5">
+            <div className="relative ml-6 sm:ml-0">
+              <Avatar
+                src={avatarUrl || null}
+                seed={fullName || contacts.email || "innovator"}
+                alt={fullName}
+                className="h-24 w-24 border-4 border-white bg-[#FAF7F2] shadow-lg sm:h-28 sm:w-28"
+              />
               <button
                 type="button"
-                className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-brand-primary text-white shadow transition-colors hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+                onClick={() => setPickerOpen(true)}
+                className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-[#C25E26] text-white shadow-md transition-colors hover:bg-[#A84E1D] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C25E26] sm:h-10 sm:w-10"
                 aria-label="Change profile photo"
               >
-                <CameraIcon className="h-4 w-4" />
+                <CameraIcon className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             </div>
 
-            <div className="space-y-0.5 pt-1">
+            <div className="space-y-1 pt-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-xl font-bold tracking-tight text-brand-deep sm:text-2xl">{fullName}</h2>
+                <h2 className="text-xl font-extrabold tracking-tight text-brand-deep sm:text-2xl">{fullName}</h2>
                 {verified && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-brand-approved/20 bg-brand-approved/10 px-2.5 py-0.5 text-xs font-semibold text-brand-approved">
                     <BadgeCheckIcon className="h-3.5 w-3.5" />
@@ -67,16 +96,6 @@ export default function ProfileHeaderCard() {
               </p>
             </div>
           </div>
-
-          {/* Edit Profile Button */}
-          <button
-            type="button"
-            onClick={() => openDrawer("basic")}
-            className="inline-flex items-center justify-center gap-2 self-start rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary md:self-end"
-          >
-            <PencilIcon className="h-4 w-4" />
-            Edit Profile
-          </button>
         </div>
 
         {/* Metadata Badges */}
@@ -133,6 +152,8 @@ export default function ProfileHeaderCard() {
           />
         </div>
       </div>
+
+      <AvatarPickerModal open={pickerOpen} onClose={() => setPickerOpen(false)} />
     </section>
   );
 }

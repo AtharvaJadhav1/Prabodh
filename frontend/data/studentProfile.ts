@@ -42,6 +42,7 @@ export const profile = {
   team: "",
   role: "",
   hackathonBadge: "Smart India Hackathon",
+  avatarUrl: "",
   contacts: {
     phone: "",
     email: "",
