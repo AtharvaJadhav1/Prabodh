@@ -28,12 +28,7 @@ export default function AdminReportsPage() {
   }, [industryMentors, teams]);
 
   return (
-    <AdminShell
-      breadcrumb={[{ label: "Prabodh Portal" }, { label: "Admin Console" }, { label: "Reports" }]}
-      title="Platform Reports"
-      subtitle="Aggregated read-only views across teams, mentors, and scoring."
-      showActions={false}
-    >
+    <AdminShell title="Platform Reports">
       <div className="mx-auto max-w-6xl space-y-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-brand-sand bg-white p-5 shadow-xs">

@@ -8,12 +8,7 @@ export default function AdminMentorAllocationPage() {
   const { allocations, assignTeam } = useAdmin();
 
   return (
-    <AdminShell
-      breadcrumb={[{ label: "Prabodh Portal" }, { label: "Admin Console" }, { label: "Mentor Allocation" }]}
-      title="Mentor Allocation"
-      subtitle="Assign or reassign Institute Mentors to every registered team."
-      showActions={false}
-    >
+    <AdminShell title="Mentor Allocation">
       <div className="mx-auto max-w-7xl">
         <AllocationTable allocations={allocations} onAssign={assignTeam} />
       </div>

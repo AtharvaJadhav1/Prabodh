@@ -20,12 +20,7 @@ export default function AdminProfilePage() {
   }, [session]);
 
   return (
-    <AdminShell
-      breadcrumb={[{ label: "Prabodh Portal" }, { label: "Admin Console" }, { label: "My Profile" }]}
-      title="Admin Profile"
-      subtitle="View and manage your administrator identity."
-      showActions={false}
-    >
+    <AdminShell title="Admin Profile">
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center gap-4 rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
           <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand-deep text-lg font-bold tracking-wider text-white shadow-xs">

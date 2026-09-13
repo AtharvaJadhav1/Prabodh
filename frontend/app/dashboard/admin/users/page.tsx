@@ -28,12 +28,7 @@ export default function AdminUsersPage() {
   const rowsFor = tab === "students" ? students : tab === "institute-mentors" ? institute : industry;
 
   return (
-    <AdminShell
-      breadcrumb={[{ label: "Prabodh Portal" }, { label: "Admin Console" }, { label: "Manage Users" }]}
-      title="Manage Users"
-      subtitle="Live directory plus CSV import (review, then activate)."
-      showActions={false}
-    >
+    <AdminShell title="Manage Users">
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="rounded-2xl border border-brand-sand bg-white p-4">
           <p className="text-xs font-bold uppercase text-brand-deep">CSV import</p>

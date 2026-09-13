@@ -8,12 +8,7 @@ export default function AdminStagesRubricsPage() {
   const { stages, updateStage, updateStageRubric } = useAdmin();
 
   return (
-    <AdminShell
-      breadcrumb={[{ label: "Prabodh Portal" }, { label: "Admin Console" }, { label: "Stages & Rubrics" }]}
-      title="Stages & Rubrics"
-      subtitle="Configure hackathon stages, deadlines, and scoring rubric criteria."
-      showActions={false}
-    >
+    <AdminShell title="Stages & Rubrics">
       <div className="mx-auto max-w-4xl space-y-6">
         {stages.map((stage) => (
           <StageRubricEditor
