@@ -1,13 +1,9 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import {
-  initialInviteHistory,
-  mentorsForGroup,
-  type MentorInvite,
-} from "../../data/industryDashboard";
+import { mentorsForGroup, type MentorInvite } from "../../data/industryDashboard";
 import { type MentorGroup } from "../../data/mentorDashboard";
-import { api } from "../../lib/api";
+import { api, apiPost } from "../../lib/api";
 import { useAuth } from "../auth/AuthProvider";
 
 export type AcceptedMentor = {
@@ -48,45 +44,86 @@ function initials(name: string) {
     .join("");
 }
 
+type TeamApiRow = {
+  team: {
+    id: string;
+    name: string;
+    teamCode: string;
+    theme?: string | null;
+    leader?: { fullName: string; email: string } | null;
+    problemStatement?: { code: string; title: string } | null;
+    members?: unknown[];
+    memberCap?: number;
+    mentorAssignments?: Array<{ mentorType: string; mentor: { id: string; fullName: string; email: string } }>;
+  };
+  pendingInvite?: boolean;
+};
+
+type InviteApiRow = {
+  id: string;
+  teamId: string;
+  invitedEmail: string;
+  mentorUserId: string | null;
+  mentorType: string;
+  inviteStatus: string;
+  invitedById: string;
+  createdAt: string;
+  team: {
+    id: string;
+    name: string;
+    teamCode: string;
+    leader?: { fullName: string; email: string } | null;
+    problemStatement?: { code: string; title: string } | null;
+  };
+};
+
+function toInvite(row: InviteApiRow): MentorInvite {
+  const team = row.team;
+  return {
+    id: row.id,
+    instituteMentorId: row.id,
+    instituteMentorName: team.name,
+    instituteMentorInitials: initials(team.name),
+    instituteMentorTitle: team.leader?.fullName ?? team.teamCode,
+    status: "pending",
+    invitedAt: new Date(row.createdAt).toLocaleDateString(),
+    respondedAt: null,
+    groupIds: [team.teamCode ?? team.id],
+  };
+}
+
 export function IndustryMentorProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   const [pendingInvites, setPendingInvites] = useState<MentorInvite[]>([]);
-  const [inviteHistory, setInviteHistory] = useState<MentorInvite[]>(initialInviteHistory);
+  const [inviteHistory, setInviteHistory] = useState<MentorInvite[]>([]);
   const [selectedMentorIds, setSelectedMentorIds] = useState<string[]>([]);
   const [visibleTeams, setVisibleTeams] = useState<MentorGroup[]>([]);
   const [acceptedMentors, setAcceptedMentors] = useState<AcceptedMentor[]>([]);
 
-  useEffect(() => {
+  const loadTeams = useCallback(async () => {
     if (!session) return;
-    void api<
-      Array<{
-        team: {
-          id: string;
-          name: string;
-          teamCode: string;
-          theme?: string | null;
-          leader?: { fullName: string; email: string };
-          problemStatement?: { code: string; title: string } | null;
-          members?: unknown[];
-          memberCap?: number;
-          mentorAssignments?: Array<{ mentorType: string; mentor: { id: string; fullName: string; email: string } }>;
-        };
-      }>
-    >("/mentors/me/teams")
-      .then((rows) => {
-        const mentors: AcceptedMentor[] = [];
-        setVisibleTeams(
-          rows.map((row) => {
+    try {
+      const rows = await api<TeamApiRow[]>("/mentors/me/teams");
+      const mentorsById = new Map<string, AcceptedMentor>();
+      setVisibleTeams(
+        rows
+          .filter((row) => !row.pendingInvite)
+          .map((row) => {
             for (const a of row.team.mentorAssignments ?? []) {
               if (a.mentorType !== "institute") continue;
-              if (!mentors.some((m) => m.instituteMentorId === a.mentor.id)) {
-                mentors.push({
+              let m = mentorsById.get(a.mentor.id);
+              if (!m) {
+                m = {
                   instituteMentorId: a.mentor.id,
                   instituteMentorName: a.mentor.fullName,
                   instituteMentorInitials: initials(a.mentor.fullName),
                   instituteMentorTitle: a.mentor.email,
-                  groupIds: [row.team.teamCode],
-                });
+                  groupIds: [],
+                };
+                mentorsById.set(a.mentor.id, m);
+              }
+              if (!m.groupIds.includes(row.team.teamCode)) {
+                m.groupIds.push(row.team.teamCode);
               }
             }
             return {
@@ -103,16 +140,28 @@ export function IndustryMentorProvider({ children }: { children: ReactNode }) {
               domains: row.team.theme ? [row.team.theme] : [],
             };
           }),
-        );
-        setAcceptedMentors(mentors);
-        setPendingInvites([]);
-      })
-      .catch(() => {
-        setVisibleTeams([]);
-        setPendingInvites([]);
-        setAcceptedMentors([]);
-      });
+      );
+      setAcceptedMentors([...mentorsById.values()]);
+    } catch {
+      setVisibleTeams([]);
+      setAcceptedMentors([]);
+    }
   }, [session]);
+
+  const loadInvites = useCallback(async () => {
+    if (!session) return;
+    try {
+      const rows = await api<InviteApiRow[]>("/mentors/invites");
+      setPendingInvites(rows.filter((row) => row.inviteStatus === "pending").map(toInvite));
+    } catch {
+      setPendingInvites([]);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    void loadTeams();
+    void loadInvites();
+  }, [loadTeams, loadInvites]);
 
   const pendingCount = pendingInvites.length;
 
@@ -143,27 +192,40 @@ export function IndustryMentorProvider({ children }: { children: ReactNode }) {
   );
 
   const acceptInvite = useCallback(
-    (id: string) => {
+    async (id: string) => {
       const target = pendingInvites.find((inv) => inv.id === id);
-      if (!target) return;
+      try {
+        await apiPost(`/mentors/invites/${id}/accept`, {});
+      } catch {
+        return;
+      }
       setPendingInvites((prev) => prev.filter((inv) => inv.id !== id));
-      setInviteHistory((h) => [
-        ...h.filter((inv) => inv.id !== target.id),
-        { ...target, status: "accepted", respondedAt: formatDate() },
-      ]);
+      if (target) {
+        setInviteHistory((h) => [
+          ...h.filter((inv) => inv.id !== target.id),
+          { ...target, status: "accepted", respondedAt: formatDate() },
+        ]);
+      }
+      await loadTeams();
     },
-    [pendingInvites],
+    [pendingInvites, loadTeams],
   );
 
   const declineInvite = useCallback(
-    (id: string) => {
+    async (id: string) => {
       const target = pendingInvites.find((inv) => inv.id === id);
-      if (!target) return;
+      try {
+        await apiPost(`/mentors/invites/${id}/decline`, {});
+      } catch {
+        return;
+      }
       setPendingInvites((prev) => prev.filter((inv) => inv.id !== id));
-      setInviteHistory((h) => [
-        ...h.filter((inv) => inv.id !== target.id),
-        { ...target, status: "declined", respondedAt: formatDate() },
-      ]);
+      if (target) {
+        setInviteHistory((h) => [
+          ...h.filter((inv) => inv.id !== target.id),
+          { ...target, status: "revoked", respondedAt: formatDate() },
+        ]);
+      }
     },
     [pendingInvites],
   );
