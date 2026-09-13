@@ -13,6 +13,7 @@ export type Member = {
 };
 
 export type OutgoingInvite = {
+  id: string;
   email: string;
   sentAt: string;
   status: string;

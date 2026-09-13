@@ -7,7 +7,6 @@ import AvatarPickerModal from "./AvatarPickerModal";
 import Avatar from "../Avatar";
 import {
   CameraIcon,
-  BadgeCheckIcon,
   FlagIcon,
   MailIcon,
   GithubIcon,
@@ -25,7 +24,7 @@ function handleFromUrl(url: string, domain: string) {
 
 export default function ProfileHeaderCard() {
   const { profile, openDrawer } = useProfile();
-  const { fullName, verified, bio, school, team, role, contacts, avatarUrl } = profile;
+  const { fullName, bio, school, team, role, contacts, avatarUrl } = profile;
   const [pickerOpen, setPickerOpen] = useState(false);
 
   return (
@@ -88,12 +87,6 @@ export default function ProfileHeaderCard() {
         <div className="mt-4 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-extrabold tracking-tight text-brand-deep sm:text-2xl">{fullName}</h2>
-            {verified && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-brand-approved/20 bg-brand-approved/10 px-2.5 py-0.5 text-xs font-semibold text-brand-approved">
-                <BadgeCheckIcon className="h-3.5 w-3.5" />
-                Verified
-              </span>
-            )}
           </div>
           <p className="max-w-2xl text-sm font-medium leading-relaxed text-brand-muted">{bio}</p>
         </div>

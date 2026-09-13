@@ -92,6 +92,20 @@ function TabButton({
 function ActiveRosterTab() {
   const { members, invites, filledCount, facultyInviteStatus, facultyInviteEmail, revokeInvite, openDrawer, removeMember, isLead, capacity, team } = useTeam();
   const assignments = team?.mentorAssignments ?? [];
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [revokeError, setRevokeError] = useState<string | null>(null);
+
+  const handleRevoke = async (inviteId: string) => {
+    setRevokeError(null);
+    setRevokingId(inviteId);
+    try {
+      await revokeInvite(inviteId);
+    } catch (err) {
+      setRevokeError(err instanceof Error ? err.message : "Could not revoke invitation");
+    } finally {
+      setRevokingId(null);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -211,38 +225,42 @@ function ActiveRosterTab() {
           <div className="overflow-x-auto rounded-xl border border-brand-softline">
             <table className="w-full border-collapse text-left text-xs">
               <thead>
-                <tr className="border-b border-brand-softline bg-brand-cream text-[11px] font-bold uppercase tracking-wider text-brand-deep">
-                  <th className="w-2/5 px-4 py-3">Recipient Email</th>
-                  <th className="w-1/5 px-4 py-3">Sent Timestamp</th>
-                  <th className="w-1/4 px-4 py-3">Delivery &amp; Status</th>
-                  <th className="w-auto px-4 py-3 text-right">Action</th>
+                <tr className="border-b border-brand-softline bg-brand-cream">
+                  <th className="w-2/5 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-brand-muted">Recipient Email</th>
+                  <th className="w-1/5 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-brand-muted">Sent Timestamp</th>
+                  <th className="w-1/4 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-brand-muted">Delivery &amp; Status</th>
+                  <th className="w-auto px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-brand-muted">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-brand-softline">
+              <tbody>
                 {invites.map((inv) => (
-                  <tr key={inv.email} className="transition-colors hover:bg-brand-cream/50">
+                  <tr key={inv.id} className="border-b border-brand-softline/60 transition-colors last:border-b-0 hover:bg-[#FAF7F2]/60">
                     <td className="w-2/5 px-4 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-lightOrange text-brand-primary">
-                          <MailIcon className="h-3 w-3" />
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-brand-warmBorder bg-brand-lightOrange text-brand-primary">
+                          <MailIcon className="h-4 w-4" />
                         </div>
-                        <span className="truncate font-mono font-medium text-brand-deep">{inv.email}</span>
+                        <span className="truncate font-mono text-xs font-semibold text-brand-deep">{inv.email}</span>
                       </div>
                     </td>
-                    <td className="w-1/5 px-4 py-3.5 text-brand-charcoal/70">{inv.sentAt}</td>
+                    <td className="w-1/5 px-4 py-3.5">
+                      <span className="text-xs font-medium text-brand-muted">{inv.sentAt || "Just now"}</span>
+                    </td>
                     <td className="w-1/4 px-4 py-3.5">
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-amber/30 bg-brand-amber/20 px-2.5 py-1 text-[11px] font-semibold text-brand-deep">
-                        <ClockIcon className="h-3 w-3 text-brand-primary" /> {inv.status}
+                      <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-brand-amber/30 bg-brand-amber/20 px-3 py-1 text-xs font-medium text-brand-deep">
+                        <ClockIcon className="h-3.5 w-3.5 animate-pulse text-brand-primary" /> Pending Acceptance
                       </span>
                     </td>
                     <td className="w-auto px-4 py-3.5 text-right">
                       {isLead ? (
                         <button
                           type="button"
-                          onClick={() => revokeInvite(inv.email)}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-danger transition-colors hover:text-red-800 hover:underline"
+                          disabled={revokingId === inv.id}
+                          onClick={() => handleRevoke(inv.id)}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:border-red-500/50 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          <XIcon className="h-3 w-3" /> Revoke Invite
+                          <XIcon className="h-3.5 w-3.5" />
+                          <span>{revokingId === inv.id ? "Revoking…" : "Revoke"}</span>
                         </button>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-muted">
@@ -256,6 +274,7 @@ function ActiveRosterTab() {
             </table>
           </div>
         )}
+        {revokeError ? <p className="mt-2 text-xs font-medium text-danger">{revokeError}</p> : null}
       </section>
     </div>
   );
