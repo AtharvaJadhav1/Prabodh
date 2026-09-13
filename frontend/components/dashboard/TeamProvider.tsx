@@ -34,7 +34,7 @@ type TeamContextValue = {
   rejectRequest: (index: number) => void;
   removeMember: (index: number) => void;
   sendInvite: (email: string) => Promise<{ ok: boolean; emailSent: boolean; emailError?: string | null }>;
-  revokeInvite: (email: string) => void;
+  revokeInvite: (inviteId: string) => Promise<void>;
   sendFacultyInvite: (email: string, mentorType?: "institute" | "industry") => Promise<boolean>;
   revokeFacultyInvite: (inviteId?: string) => void;
   facultyDirectory: Array<{
@@ -56,7 +56,8 @@ type TeamContextValue = {
 const TeamContext = createContext<TeamContextValue | null>(null);
 
 function mapMembers(team: PortalTeam, cap: number): Member[] {
-  const mapped: Member[] = team.members.map((m) => {
+  const live = team.members.filter((m) => m.inviteStatus === "pending" || m.inviteStatus === "accepted");
+  const mapped: Member[] = live.map((m) => {
     const name = m.user?.fullName ?? m.invitedEmail;
     const accepted = m.inviteStatus === "accepted";
     return {
@@ -129,6 +130,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     const pending = detail.members.filter((m) => m.inviteStatus === "pending");
     setInvites(
       pending.map((m) => ({
+        id: m.id,
         email: m.invitedEmail,
         sentAt: "Pending",
         status: "Invitation Sent — Awaiting Student Accept",
@@ -226,27 +228,37 @@ export function TeamProvider({ children }: { children: ReactNode }) {
 
   const sendInvite = async (email: string) => {
     if (!email || !email.includes("@") || !team?.id) return { ok: false, emailSent: false };
+    const optimisticId = `optimistic-${email}`;
     setInvites((prev) => [
       ...prev.filter((i) => i.email !== email),
-      { email, sentAt: "Just now", status: "Invitation Sent — Awaiting Student Accept" },
+      { id: optimisticId, email, sentAt: "Just now", status: "Invitation Sent — Awaiting Student Accept" },
     ]);
-    const result = await apiPost<{ emailSent?: boolean; emailError?: string | null }>(
-      `/teams/${team.id}/invite`,
-      { email },
-    );
-    void reload();
-    return {
-      ok: true,
-      emailSent: Boolean(result.emailSent ?? true),
-      emailError: result.emailError ?? null,
-    };
+    try {
+      const result = await apiPost<{ id: string; emailSent?: boolean; emailError?: string | null }>(
+        `/teams/${team.id}/invite`,
+        { email },
+      );
+      setInvites((prev) => prev.map((i) => (i.id === optimisticId ? { ...i, id: result.id } : i)));
+      void reload();
+      return {
+        ok: true,
+        emailSent: Boolean(result.emailSent ?? true),
+        emailError: result.emailError ?? null,
+      };
+    } catch (err) {
+      setInvites((prev) => prev.filter((i) => i.id !== optimisticId));
+      throw err;
+    }
   };
 
-  const revokeInvite = (email: string) => {
-    const id = memberIds[email];
-    if (team?.id && id) {
-      void apiPost(`/teams/${team.id}/invite/${id}/revoke`, {}).then(() => reload());
+  const revokeInvite = async (inviteId: string) => {
+    if (!team?.id) return;
+    if (inviteId.startsWith("optimistic-")) {
+      await reload();
+      return;
     }
+    await apiPost(`/teams/${team.id}/invite/${inviteId}/revoke`, {});
+    await reload();
   };
 
   return (

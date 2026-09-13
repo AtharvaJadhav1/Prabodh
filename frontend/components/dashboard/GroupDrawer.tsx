@@ -34,6 +34,8 @@ export default function GroupDrawer() {
   const [email, setEmail] = useState("");
   const [inviteError, setInviteError] = useState("");
   const [inviteSuccess, setInviteSuccess] = useState("");
+  const [revokeError, setRevokeError] = useState("");
+  const [revokingId, setRevokingId] = useState<string | null>(null);
   const [resultFlash, setResultFlash] = useState<{ text: string; tone: "approved" | "rejected" } | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -41,9 +43,23 @@ export default function GroupDrawer() {
   useEffect(() => {
     if (!drawerOpen) {
       setInviteSuccess("");
+      setRevokeError("");
+      setRevokingId(null);
       setResultFlash(null);
     }
   }, [drawerOpen]);
+
+  const handleRevokeInvite = async (inviteId: string) => {
+    setRevokeError("");
+    setRevokingId(inviteId);
+    try {
+      await revokeInvite(inviteId);
+    } catch (err) {
+      setRevokeError(err instanceof Error ? err.message : "Could not revoke invitation");
+    } finally {
+      setRevokingId(null);
+    }
+  };
 
   const [sending, setSending] = useState(false);
 
@@ -212,7 +228,7 @@ export default function GroupDrawer() {
               )}
               {invites.map((invite) => (
                 <div
-                  key={invite.email}
+                  key={invite.id}
                   className="flex items-center gap-3 rounded-xl border border-brand-softline bg-white p-3"
                 >
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-amber/15 text-xs font-bold text-brand-primary">
@@ -227,10 +243,11 @@ export default function GroupDrawer() {
                   {isLead ? (
                     <button
                       type="button"
-                      onClick={() => revokeInvite(invite.email)}
-                      className="shrink-0 rounded-lg border border-brand-softline px-3 py-1.5 text-xs font-bold text-brand-charcoal/70 transition-colors hover:border-brand-primary/40 hover:text-brand-primary"
+                      disabled={revokingId === invite.id}
+                      onClick={() => void handleRevokeInvite(invite.id)}
+                      className="shrink-0 rounded-lg border border-brand-softline px-3 py-1.5 text-xs font-bold text-brand-charcoal/70 transition-colors hover:border-brand-primary/40 hover:text-brand-primary disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      Revoke
+                      {revokingId === invite.id ? "Revoking…" : "Revoke"}
                     </button>
                   ) : (
                     <LockIcon className="h-4 w-4 shrink-0 text-brand-muted" />
@@ -238,6 +255,9 @@ export default function GroupDrawer() {
                 </div>
               ))}
             </div>
+            {revokeError ? (
+              <p className="mt-2 text-xs font-medium text-danger">{revokeError}</p>
+            ) : null}
           </section>
 
           <section className="mt-6">
