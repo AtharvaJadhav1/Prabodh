@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import DashboardShell from "../../../../components/dashboard/DashboardShell";
 import MentorInvitePanel from "../../../../components/dashboard/MentorInvitePanel";
-import LiveTeamName from "../../../../components/dashboard/LiveTeamName";
 
 export const metadata: Metadata = {
   title: "Prabodh | Assigned Mentors",
@@ -10,14 +9,7 @@ export const metadata: Metadata = {
 
 export default function MentorsPage() {
   return (
-    <DashboardShell
-      title="Assigned Mentors"
-      subtitle={
-        <>
-          Faculty mentor track • <LiveTeamName />
-        </>
-      }
-    >
+<DashboardShell title="Assigned Mentors">
       <div className="mx-auto max-w-4xl">
         <MentorInvitePanel />
       </div>

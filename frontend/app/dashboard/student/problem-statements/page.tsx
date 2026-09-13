@@ -12,10 +12,7 @@ export const metadata: Metadata = {
 
 export default function ProblemStatementsPage() {
   return (
-    <DashboardShell
-      title="Problem Statement Selection"
-      subtitle="Locked post-finalization — SIH data-integrity policy prohibits silent overwrite"
-    >
+    <DashboardShell title="Problem Statement Selection">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <LockedBanner />
         <FinalizedPSDetail />

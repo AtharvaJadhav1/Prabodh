@@ -63,7 +63,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between gap-2 border-b border-brand-softline px-5 py-4">
+        <div className="flex h-16 min-h-[64px] max-h-16 shrink-0 box-border items-center justify-between gap-2 border-b border-brand-softline px-5">
           <div className="flex min-w-0 items-center gap-2.5">
             <Image
               src="/images/logo/Prabodh_Horizontal_Logo_Web_1000px.png"

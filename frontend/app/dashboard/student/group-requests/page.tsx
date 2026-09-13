@@ -8,7 +8,6 @@ import {
 import LeaderNote from "../../../../components/dashboard/LeaderNote";
 import DispatchInviteCard from "../../../../components/dashboard/DispatchInviteCard";
 import RequestsTabs from "../../../../components/dashboard/RequestsTabs";
-import LiveTeamName from "../../../../components/dashboard/LiveTeamName";
 
 export const metadata: Metadata = {
   title: "Prabodh | Team Formation & Group Requests",
@@ -17,14 +16,7 @@ export const metadata: Metadata = {
 
 export default function GroupRequestsPage() {
   return (
-    <DashboardShell
-      title="Team Formation & Group Requests"
-      subtitle={
-        <>
-          College SPOC Verified Track • <LiveTeamName />
-        </>
-      }
-    >
+    <DashboardShell title="Team Formation & Group Requests">
       <HeaderZone />
 
       <div className="mt-6 grid grid-cols-1 gap-8 xl:grid-cols-12">
