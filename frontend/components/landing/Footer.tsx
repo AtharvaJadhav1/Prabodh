@@ -34,7 +34,6 @@ export default function Footer() {
               </div>
             </div>
             <p className="mb-4 text-xs leading-relaxed text-brand-cream/80">
-              Smart India Hackathon Nodal Operational Cell,
               Centre of Research and Innovation for Young Aspirants.
             </p>
             <div className="space-y-2 text-xs text-brand-cream/90">

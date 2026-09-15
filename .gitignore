@@ -15,3 +15,4 @@ storage
 *.pem
 next-env.d.ts
 backend/storage
+.claude/
