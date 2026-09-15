@@ -22,6 +22,9 @@ const students: Array<{ email: string; fullName: string; department: string }> =
   { email: 'vivek.sawant@mituniversity.edu.in', fullName: 'Vivek Sawant', department: 'CSE' },
   { email: 'tanya.mehta@mituniversity.edu.in', fullName: 'Tanya Mehta', department: 'AI & DS' },
   { email: 'leader@institute.edu', fullName: 'Team Leader', department: 'CSE' },
+  { email: 'newlead@institute.edu', fullName: 'New Team Lead', department: 'CSE' },
+  { email: 'newlead2@institute.edu', fullName: 'New Team Lead 2', department: 'CSE' },
+  { email: 'newstudent@institute.edu', fullName: 'New Demo Student', department: 'CSE' },
 ];
 
 const faculty: Array<{
@@ -34,6 +37,13 @@ const faculty: Array<{
   {
     email: 'faculty@institute.edu',
     fullName: 'Institute Mentor',
+    department: 'CSE',
+    role: PlatformRole.institute_mentor,
+    domainTags: ['HealthTech', 'AgriTech'],
+  },
+  {
+    email: 'newmentor@institute.edu',
+    fullName: 'New Institute Mentor',
     department: 'CSE',
     role: PlatformRole.institute_mentor,
     domainTags: ['HealthTech', 'AgriTech'],
@@ -312,6 +322,51 @@ async function upsertUser(data: {
   });
 }
 
+async function ensureDemoTeam(opts: {
+  teamCode: string;
+  teamName: string;
+  adminId: string;
+  leader: { id: string; email: string };
+  mentor?: { id: string } | undefined;
+}) {
+  const team = await prisma.team.upsert({
+    where: { teamCode: opts.teamCode },
+    update: { name: opts.teamName, institute: INSTITUTE, leaderUserId: opts.leader.id },
+    create: {
+      clerkOrgId: `local-org-${opts.teamCode}`,
+      teamCode: opts.teamCode,
+      name: opts.teamName,
+      institute: INSTITUTE,
+      leaderUserId: opts.leader.id,
+      members: {
+        create: {
+          userId: opts.leader.id,
+          invitedEmail: opts.leader.email,
+          inviteStatus: 'accepted',
+          joinedAt: new Date(),
+        },
+      },
+    },
+  });
+  if (opts.mentor) {
+    const existing = await prisma.mentorAssignment.findFirst({
+      where: { teamId: team.id, mentorUserId: opts.mentor.id, active: true },
+    });
+    if (!existing) {
+      await prisma.mentorAssignment.create({
+        data: {
+          teamId: team.id,
+          mentorUserId: opts.mentor.id,
+          mentorType: 'institute',
+          assignedById: opts.adminId,
+          assignmentMethod: 'manual',
+        },
+      });
+    }
+  }
+  return team;
+}
+
 async function main() {
   const admin = await upsertUser({
     clerkUserId: 'dev_admin',
@@ -441,6 +496,28 @@ async function main() {
         });
       }
     }
+  }
+
+  const newLeadA = studentRows.find((u) => u.email === 'newlead@institute.edu');
+  const newLeadB = studentRows.find((u) => u.email === 'newlead2@institute.edu');
+  const newMentor = facultyRows.find((u) => u.email === 'newmentor@institute.edu');
+  if (newLeadA) {
+    await ensureDemoTeam({
+      teamCode: 'DEMO02',
+      teamName: 'New Demo Team',
+      adminId: admin.id,
+      leader: { id: newLeadA.id, email: newLeadA.email },
+      mentor: newMentor,
+    });
+  }
+  if (newLeadB) {
+    await ensureDemoTeam({
+      teamCode: 'DEMO03',
+      teamName: 'New Demo Team 2',
+      adminId: admin.id,
+      leader: { id: newLeadB.id, email: newLeadB.email },
+      mentor: newMentor,
+    });
   }
 
   console.log('Seed complete', {
