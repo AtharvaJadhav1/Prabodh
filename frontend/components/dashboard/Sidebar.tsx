@@ -3,7 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuth, initialsFrom } from "../auth/AuthProvider";
+import { useAuth } from "../auth/AuthProvider";
+import { avatarUrlFrom, diceBearUrl } from "../../lib/avatar";
 import { useTeam } from "./TeamProvider";
 import {
   DashboardIcon,
@@ -47,6 +48,9 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const { filledCount, pendingRequestCount, role, teamName, capacity, team } = useTeam();
   const fullName = session?.fullName ?? "Student";
   const displayName = fullName.length > 16 ? fullName.split(" ")[0] : fullName;
+  const profileAvatar =
+    avatarUrlFrom(session?.profileJson) ??
+    diceBearUrl(session?.fullName || session?.email || "leader");
 
   return (
     <>
@@ -154,8 +158,12 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
         <div className="border-t border-brand-softline px-4 py-4">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3 rounded-xl border border-brand-softline bg-white p-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold text-white">
-                {initialsFrom(session?.fullName ?? "S")}
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#FAF7F2] shadow-sm">
+                <img
+                  src={profileAvatar}
+                  alt={session?.fullName || "Profile"}
+                  className="h-full w-full object-cover select-none"
+                />
               </div>
               <div className="min-w-0">
                 <p title={fullName} className="truncate max-w-full text-sm font-bold text-brand-deep">
