@@ -3,28 +3,28 @@ import { CheckIcon } from "./icons";
 
 const features = [
   {
-    title: "Yoga & Meditation",
-    desc: "Daily mindfulness modules for cognitive focus and clarity.",
-    accent: "text-brand-approved",
-    bg: "bg-brand-approved/10",
+    title: "Project-Based Learning",
+    desc: "Curriculum-integrated innovation solving live real-world challenges.",
+    accent: "text-[#059669]",
+    bg: "bg-[#059669]/10",
   },
   {
-    title: "Physical Training",
-    desc: "World-class Olympic sized sports and fitness complex.",
-    accent: "text-brand-approved",
-    bg: "bg-brand-approved/10",
+    title: "Faculty Mentorship Track",
+    desc: "Direct guidance from institutional professors throughout the cycle.",
+    accent: "text-[#059669]",
+    bg: "bg-[#059669]/10",
   },
   {
-    title: "Communication Skills",
-    desc: "Specialized pitching, investor demo, and jury training.",
-    accent: "text-brand-primary",
-    bg: "bg-brand-primary/10",
+    title: "Incubation Pipeline",
+    desc: "Fast-tracking top team prototypes toward patents and seed funding.",
+    accent: "text-[#C25E26]",
+    bg: "bg-[#C25E26]/10",
   },
   {
-    title: "Personality Development",
-    desc: "Leadership coaching for teamwork in national hackathons.",
-    accent: "text-brand-primary",
-    bg: "bg-brand-primary/10",
+    title: "Campus-Wide Evaluation",
+    desc: "Standardized rubrics and milestone reviews across all engineering cohorts.",
+    accent: "text-[#C25E26]",
+    bg: "bg-[#C25E26]/10",
   },
 ];
 
@@ -70,7 +70,7 @@ export default function Campus() {
                 Our Partner
               </div>
               <h2 className="mb-4 text-2xl font-extrabold tracking-tight text-brand-deep sm:text-3xl lg:text-4xl">
-                Our Pilot Partner: MIT-ADT University
+                Our Partner: MIT-ADT University
               </h2>
               <p className="mb-8 text-base leading-relaxed text-brand-charcoal/80">
                 Prabodh is running a one-semester Project-Based Learning pilot with MIT Art, Design and

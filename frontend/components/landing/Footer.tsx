@@ -9,9 +9,8 @@ const portalLinks = [
 ];
 
 const resourceLinks = [
-  { label: "Official SIH Portal (sih.gov.in)", href: "https://sih.gov.in" },
-  { label: "Ministry of Education's Innovation Cell (MIC)", href: "https://mic.gov.in" },
-  { label: "SIH Student Grievance & Help Desk", href: "#helpdesk" },
+  
+  { label: "Ministry of Education's Innovation Cell (MIC)", href: "https://mic.gov.in" }
 ];
 
 export default function Footer() {
