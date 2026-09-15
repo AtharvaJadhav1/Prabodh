@@ -383,7 +383,7 @@ function IncomingRequestsTab() {
 
       {requests.length === 0 ? (
         <p className="rounded-xl border border-dashed border-brand-softline bg-brand-cream p-4 text-sm text-brand-muted">
-          No join requests yet.
+          Team formation uses email invites. Join requests are not available in this release.
         </p>
       ) : (
         requests.map((req, i) => (
@@ -393,7 +393,7 @@ function IncomingRequestsTab() {
 
       <div className="flex items-center gap-2 rounded-xl border border-brand-softline bg-brand-cream p-3 text-xs text-brand-muted">
         <AlertCircleIcon className="h-4 w-4 shrink-0 text-brand-primary" />
-        Approving a request registers the candidate on this team roster when the join-request API is enabled.
+        To add members, send email invites from the Team workspace. Students accept by signing in with the invited email.
       </div>
     </div>
   );

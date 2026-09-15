@@ -46,6 +46,7 @@ export const otpVerifySchema = z.object({
   email: z.string().email(),
   purpose: z.enum(['login', 'register']),
   code: z.string().regex(/^\d{6}$/),
+  portal: z.enum(['student', 'faculty']).optional(),
 });
 
 export const patchMeSchema = z.object({

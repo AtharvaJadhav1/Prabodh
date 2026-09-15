@@ -36,7 +36,7 @@ export default function EvaluateDrawer({ group, open, onClose }: Props) {
         problemStatement?: { code: string; title: string } | null;
         ideaSubmissions?: Array<{ abstract: string; techStack: string; status: string }>;
         deliverables?: Array<{ version: number; githubUrl?: string | null; pptUrl?: string | null; reportUrl?: string | null; submittedAt: string }>;
-      }>(`/teams/${group.id}`).then(setActivity).catch(() => setActivity(null));
+      }>(`/teams/${group.id}?view=full`).then(setActivity).catch(() => setActivity(null));
     }
   }, [open, group.id]);
 

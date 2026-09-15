@@ -161,11 +161,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ready,
       establishSession,
       logout: () => {
+        const role = session?.platformRole;
         clearApiCache();
         clearSession();
         setAccessToken(null);
         setSession(null);
-        window.location.assign("/login/student");
+        window.location.assign(role && role !== "student" ? "/login/faculty" : "/login/student");
       },
       refreshMe,
     }),

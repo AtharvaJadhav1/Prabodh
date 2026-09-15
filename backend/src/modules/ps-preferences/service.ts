@@ -71,6 +71,52 @@ export class PsPreferencesService {
     return { sent: true, preferences: await this.repo.listForTeam(teamId) };
   }
 
+  /** Promote saved preferences to submitted when a mentor is assigned (e.g. after invite acceptance). */
+  async promoteSavedOnMentorAssigned(teamId: string) {
+    const lockedIdea = await this.prisma.ideaSubmission.findFirst({
+      where: { teamId, status: IdeaStatus.locked },
+    });
+    if (lockedIdea) return { promoted: false };
+
+    const approved = await this.repo.hasApprovedOrLocked(teamId);
+    if (approved) return { promoted: false };
+
+    const savedCount = await this.prisma.teamPsPreference.count({
+      where: { teamId, status: PsPreferenceStatus.saved },
+    });
+    if (!savedCount) return { promoted: false };
+
+    const submittedCount = await this.prisma.teamPsPreference.count({
+      where: { teamId, status: PsPreferenceStatus.submitted },
+    });
+    if (submittedCount > 0) return { promoted: false };
+
+    await this.repo.setSubmitted(teamId);
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+      select: { name: true, teamCode: true, leaderUserId: true },
+    });
+    const mentors = await this.prisma.mentorAssignment.findMany({
+      where: { teamId, active: true },
+      select: { mentorUserId: true },
+    });
+    const notifyIds = [...new Set([...mentors.map((m) => m.mentorUserId), team?.leaderUserId].filter(Boolean))] as string[];
+    if (notifyIds.length) {
+      try {
+        await notifyUsers(this.prisma, notifyIds, {
+          type: 'status_change',
+          template: 'ps_review',
+          title: 'PS preferences submitted for review',
+          body: `${team?.name ?? 'A team'} (${team?.teamCode ?? teamId}) submitted ranked problem statement preference(s) for your review.`,
+          relatedEntity: `team:${teamId}`,
+        });
+      } catch {
+        /* notifications are best-effort */
+      }
+    }
+    return { promoted: true };
+  }
+
   private async ensureNotFinalized(teamId: string) {
     const lockedIdea = await this.prisma.ideaSubmission.findFirst({
       where: { teamId, status: IdeaStatus.locked },

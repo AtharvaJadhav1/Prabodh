@@ -40,26 +40,27 @@ export class ProblemStatementsController {
     return this.service.deletePs(id);
   }
 
+  /** Legacy idea-submission API — retained for admin tooling; students use ps-preferences flow. */
   @Post('idea-submissions')
-  @Roles(PlatformRole.student)
+  @Roles(PlatformRole.admin)
   createIdea(@CurrentUser() user: AuthUser, @Body(new ZodPipe(createIdeaSchema)) body: unknown) {
     return this.service.createIdea(user, body as never);
   }
 
   @Post('idea-submissions/select')
-  @Roles(PlatformRole.student)
+  @Roles(PlatformRole.admin)
   selectAndLock(@CurrentUser() user: AuthUser, @Body(new ZodPipe(createIdeaSchema)) body: unknown) {
     return this.service.selectAndLock(user, body as never);
   }
 
   @Post('idea-submissions/manual')
-  @Roles(PlatformRole.student)
+  @Roles(PlatformRole.admin)
   createManualIdea(@CurrentUser() user: AuthUser, @Body(new ZodPipe(manualIdeaSchema)) body: unknown) {
     return this.service.submitManualIdea(user, body as never);
   }
 
   @Patch('idea-submissions/:id')
-  @Roles(PlatformRole.student)
+  @Roles(PlatformRole.admin)
   patchIdea(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
@@ -69,13 +70,13 @@ export class ProblemStatementsController {
   }
 
   @Post('idea-submissions/:id/lock')
-  @Roles(PlatformRole.student)
+  @Roles(PlatformRole.admin)
   lockIdea(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.lockIdea(user, id);
   }
 
   @Delete('idea-submissions/:id')
-  @Roles(PlatformRole.student, PlatformRole.admin)
+  @Roles(PlatformRole.admin)
   abandonIdea(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.service.abandonIdea(user, id);
   }

@@ -13,12 +13,12 @@ export default function LeaderNote() {
       {isLead ? (
         <p className="text-xs text-brand-muted">
           <span className="font-bold text-brand-deep">Leader Privilege:</span> Only the team lead can
-          dispatch email invites or accept incoming join requests.
+          send email invites to add teammates.
         </p>
       ) : (
         <p className="text-xs text-brand-muted">
           <span className="font-bold text-brand-deep">Read-Only Access:</span> You are viewing the group
-          as a Team Member. The Team Lead manages invites and join requests.
+          as a Team Member. The Team Lead manages email invites.
         </p>
       )}
     </div>

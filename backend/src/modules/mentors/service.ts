@@ -8,6 +8,7 @@ import { sendMentorInviteEmail } from '../../lib/invite-email';
 import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { getSettingNumber } from '../../lib/settings';
+import { PsPreferencesService } from '../ps-preferences/service';
 import { MentorsRepository } from './repository';
 import { allocateSchema, mentorInviteSchema } from './schema';
 
@@ -16,6 +17,7 @@ export class MentorsService {
   constructor(
     private readonly repo: MentorsRepository,
     private readonly prisma: PrismaService,
+    private readonly psPreferences: PsPreferencesService,
   ) {}
 
   async allocate(admin: AuthUser, body: z.infer<typeof allocateSchema>) {
@@ -52,6 +54,11 @@ export class MentorsService {
       body: `You have been allocated as mentor to ${assignment.team.name}.`,
       relatedEntity: `team:${assignment.teamId}`,
     });
+    try {
+      await this.psPreferences.promoteSavedOnMentorAssigned(body.teamId);
+    } catch {
+      /* PS auto-submit is best-effort */
+    }
     return assignment;
   }
 
@@ -360,6 +367,11 @@ export class MentorsService {
         });
       } catch {
         /* notifications are best-effort */
+      }
+      try {
+        await this.psPreferences.promoteSavedOnMentorAssigned(invite.teamId);
+      } catch {
+        /* PS auto-submit is best-effort */
       }
     }
     return result;

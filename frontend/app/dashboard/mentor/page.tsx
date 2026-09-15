@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import MentorShell from "../../../components/mentor/MentorShell";
 import MetricCards from "../../../components/mentor/MetricCards";
 import FilterBar from "../../../components/mentor/FilterBar";
@@ -8,62 +8,39 @@ import GroupCard from "../../../components/mentor/GroupCard";
 import EmptyState from "../../../components/mentor/EmptyState";
 import GuidelinesBanner from "../../../components/mentor/GuidelinesBanner";
 import EvaluateDrawer from "../../../components/mentor/EvaluateDrawer";
+import { useMentorTeams } from "../../../components/mentor/MentorTeamsProvider";
 import { type MentorGroup } from "../../../data/mentorDashboard";
 import { DashboardIcon } from "../../../components/dashboard/icons";
-import { api } from "../../../lib/api";
-import { useAuth } from "../../../components/auth/AuthProvider";
 
 export default function MentorDashboardPage() {
-  const { session } = useAuth();
+  const { teams } = useMentorTeams();
   const [filter, setFilter] = useState<"all" | "pending" | "evaluated">("all");
   const [search, setSearch] = useState("");
   const [track, setTrack] = useState("All Tracks");
-  const [groups, setGroups] = useState<MentorGroup[]>([]);
   const [reviewing, setReviewing] = useState<MentorGroup | null>(null);
 
-  useEffect(() => {
-    if (!session) return;
-    void api<
-      Array<{
-        pendingInvite?: boolean;
-        inviteId?: string;
-        team: {
-          id: string;
-          name: string;
-          teamCode: string;
-          theme?: string | null;
-          leader?: { fullName: string; email: string };
-          problemStatement?: { code: string; title: string } | null;
-          members?: unknown[];
-          memberCap?: number;
-          stageResults?: Array<{ published: boolean; weightedScore: string }>;
+  const groups = useMemo(
+    () =>
+      teams.map((row) => {
+        const published = row.team.stageResults?.find((r) => r.published);
+        return {
+          id: row.team.id,
+          teamName: row.team.name,
+          teamId: row.team.teamCode,
+          capacity: `${row.team.members?.length ?? "?"}/${row.team.memberCap ?? 6}`,
+          track: row.team.theme ?? "Unassigned",
+          problemCode: row.team.problemStatement?.code ?? "—",
+          problemTitle: row.team.problemStatement?.title ?? "No PS locked yet",
+          leader: row.team.leader?.fullName ?? "—",
+          leaderPrn: row.team.leader?.email ?? "",
+          milestone: row.pendingInvite ? "Invite pending — accept in Group Requests" : "Assigned",
+          domains: row.team.theme ? [row.team.theme] : [],
+          score: published ? Number(published.weightedScore) : undefined,
+          publishStatus: published ? ("published" as const) : undefined,
         };
-      }>
-    >("/mentors/me/teams")
-      .then((rows) => {
-        setGroups(
-          rows.map((row) => {
-            const published = row.team.stageResults?.find((r) => r.published);
-            return {
-              id: row.team.id,
-              teamName: row.team.name,
-              teamId: row.team.teamCode,
-              capacity: `${row.team.members?.length ?? "?"}/${row.team.memberCap ?? 6}`,
-              track: row.team.theme ?? "Unassigned",
-              problemCode: row.team.problemStatement?.code ?? "—",
-              problemTitle: row.team.problemStatement?.title ?? "No PS locked yet",
-              leader: row.team.leader?.fullName ?? "—",
-              leaderPrn: row.team.leader?.email ?? "",
-              milestone: row.pendingInvite ? "Invite pending — accept in Group Requests" : "Assigned",
-              domains: row.team.theme ? [row.team.theme] : [],
-              score: published ? Number(published.weightedScore) : undefined,
-              publishStatus: published ? "published" : undefined,
-            };
-          }),
-        );
-      })
-      .catch(() => setGroups([]));
-  }, [session]);
+      }),
+    [teams],
+  );
 
   const filtered = useMemo(() => {
     let list = groups;

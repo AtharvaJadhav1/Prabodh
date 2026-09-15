@@ -1,6 +1,8 @@
 # SIH 2026 Portal — Frontend README
 
-This document describes **only the frontend** (`frontend/`) of the PBL/SIH Portal system, in enough detail for a backend engineer to design a database schema, API contract, and auth system that the frontend can be wired into. **There is currently no backend in this repository.** Every page you see today runs entirely on hardcoded, in-memory mock data — nothing persists across a page reload, and there are no real network calls anywhere in the codebase. This document exists to translate "what the frontend already assumes" into "what the backend needs to provide."
+This document describes the **frontend** (`frontend/`) of the Prabodh / SIH Portal. The app is a **Next.js client** wired to the **NestJS backend** in `backend/` via `frontend/lib/api.ts` (`NEXT_PUBLIC_API_URL`, default `http://localhost:3001/api`).
+
+Some UI seeds and types still live under `frontend/data/` for fallbacks and layout prototypes, but **dashboard flows persist through the API** (teams, mentors, problem-statement preferences, deliverables, admin bootstrap, etc.).
 
 ---
 
@@ -9,27 +11,27 @@ This document describes **only the frontend** (`frontend/`) of the PBL/SIH Porta
 | Layer | Technology |
 |---|---|
 | Framework | Next.js 16.3.4 (App Router, Turbopack) |
-| UI Library | React 19.1 / React DOM 19.1 |
+| UI Library | React 19 / React DOM 19 |
 | Language | TypeScript 5.9 |
-| Styling | Tailwind CSS 3.4 (custom `brand.*` design tokens, no component library) |
-| State | Plain React Context (`createContext` / `useState` / `useCallback`) — no Redux/Zustand/Jotai |
-| Data fetching | **None.** All "data" is imported from static `.ts` files under `frontend/data/` |
-| Auth | **None.** Login forms exist but do not call any API or store any session |
-| Routing | Next.js App Router only (`usePathname`, `useRouter` from `next/navigation`) |
-
-There is no `axios`, `fetch` wrapper, `services/`, or `lib/api.ts` anywhere. Every interactive feature (accept/decline, assign mentor, edit profile, send broadcast, etc.) mutates local component/Context state only.
+| Styling | Tailwind CSS 3.4 (custom `brand.*` design tokens) |
+| State | React Context providers (`TeamProvider`, `AuthProvider`, role dashboards) |
+| Data fetching | `lib/api.ts` — `fetch` + JWT bearer + GET response cache |
+| Auth | Email/password login + OTP registration; JWT in `localStorage` (`sih-session`) |
+| Routing | Next.js App Router; dashboard role guards client-side |
 
 ## 2. Getting Started
 
 ```bash
+# Terminal 1 — backend (see backend/README.md)
+cd backend && npm install && npm run dev
+
+# Terminal 2 — frontend
 cd frontend
 npm install
-npm run dev       # http://localhost:3000
-npm run build     # production build
-npx tsc --noEmit  # typecheck only
+cp .env.example .env.local   # set NEXT_PUBLIC_API_URL
+npm run dev                    # http://localhost:3000
+npm run build
 ```
-
-There is no `.env` file needed today because there are no external services configured yet.
 
 ## 3. Project Structure
 

@@ -263,7 +263,7 @@ export default function GroupDrawer() {
             <div className="mt-2 space-y-2">
               {requests.length === 0 && (
                 <p className="rounded-xl border border-dashed border-brand-softline bg-brand-cream p-3 text-center text-xs font-medium text-brand-muted">
-                  No incoming requests right now.
+                  Team formation uses email invites. Join requests are not available in this release.
                 </p>
               )}
               {requests.map((req, i) => {

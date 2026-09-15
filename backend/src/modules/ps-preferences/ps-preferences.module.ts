@@ -9,5 +9,6 @@ import { PsPreferencesService } from './service';
   imports: [TeamsModule, ProblemStatementsModule],
   controllers: [PsPreferencesController],
   providers: [PsPreferencesService, PsPreferencesRepository],
+  exports: [PsPreferencesService],
 })
 export class PsPreferencesModule {}

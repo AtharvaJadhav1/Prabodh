@@ -129,6 +129,7 @@ export class IdentityService {
     email: string;
     purpose: 'login' | 'register';
     code: string;
+    portal?: 'student' | 'faculty';
   }) {
     const email = body.email.toLowerCase();
     const check = await verifyOtp({ email, purpose: body.purpose, code: body.code });
@@ -143,6 +144,19 @@ export class IdentityService {
       throw new UnauthorizedException('Account not found or disabled.');
     }
 
+    if (body.purpose === 'login' && body.portal) {
+      this.assertPortal(user.platformRole, body.portal);
+    }
+
+    await this.acceptPendingTeamInvites(user.id, user.email);
+    return this.issueToken(user);
+  }
+
+  async devLoginIssueToken(email: string) {
+    const user = await this.repo.findByEmail(email);
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Unknown or inactive account');
+    }
     await this.acceptPendingTeamInvites(user.id, user.email);
     return this.issueToken(user);
   }
@@ -489,8 +503,25 @@ export class IdentityService {
   }
 
   async acceptPendingTeamInvites(userId: string, email: string) {
-    await this.prisma.teamMember.updateMany({
+    const existingTeam = await this.prisma.team.findFirst({
+      where: {
+        OR: [
+          { leaderUserId: userId },
+          { members: { some: { userId, inviteStatus: InviteStatus.accepted } } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (existingTeam) return;
+
+    const pending = await this.prisma.teamMember.findFirst({
       where: { invitedEmail: email, inviteStatus: InviteStatus.pending },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!pending) return;
+
+    await this.prisma.teamMember.update({
+      where: { id: pending.id },
       data: { inviteStatus: InviteStatus.accepted, userId, joinedAt: new Date() },
     });
   }

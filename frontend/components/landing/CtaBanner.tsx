@@ -14,8 +14,8 @@ export default function CtaBanner() {
               Ready to lead a project through the Prabodh lifecycle?
             </h3>
             <p className="mt-2 text-sm text-white/80">
-              Sign in through your verified college Clerk credentials to form your team or submit problem
-              statements.
+              Sign in with your institute email and password to form your team and submit problem statement
+              preferences for mentor review.
             </p>
           </div>
           <div className="flex w-full items-center justify-center lg:w-auto lg:justify-end">

@@ -29,15 +29,7 @@ export class IdentityController {
     }
     const email = String(body.email ?? '').trim().toLowerCase();
     if (!email) throw new UnauthorizedException('Email is required');
-    const user = await this.identity.loginByEmail(email);
-    if (!user || !user.isActive) throw new UnauthorizedException('Unknown or inactive account');
-    return {
-      userId: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      platformRole: user.platformRole,
-      institute: user.institute,
-    };
+    return this.identity.devLoginIssueToken(email);
   }
 
   @Post('auth/login')

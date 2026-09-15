@@ -33,9 +33,9 @@ function toPreference(p: NonNullable<MentorTeamRow["team"]["psPreferences"]>[num
   };
 }
 
-function makeBucket(row: MentorTeamRow): Bucket {
+function makeBucket(row: MentorTeamRow, status: "submitted" | "saved" = "submitted"): Bucket {
   const preferences = (row.team.psPreferences ?? [])
-    .filter((p) => p.status === "submitted")
+    .filter((p) => p.status === status)
     .slice()
     .sort((a, b) => a.rank - b.rank)
     .map((p) => ({ id: p.id, preference: toPreference(p) }));
@@ -55,22 +55,30 @@ export default function MentorPsApprovalsPage() {
   const [error, setError] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
 
-  const { awaiting, locked, notStarted } = useMemo(() => {
+  const { awaiting, locked, draft, notStarted } = useMemo(() => {
     const awaitingList: Bucket[] = [];
     const lockedList: Bucket[] = [];
+    const draftList: Bucket[] = [];
     const notStartedList: Bucket[] = [];
     for (const row of teams) {
       if (row.pendingInvite) continue;
-      const bucket = makeBucket(row);
       if (row.team.problemStatement) {
-        lockedList.push(bucket);
-      } else if (bucket.preferences.length > 0) {
-        awaitingList.push(bucket);
-      } else {
-        notStartedList.push(bucket);
+        lockedList.push(makeBucket(row));
+        continue;
       }
+      const submitted = makeBucket(row, "submitted");
+      if (submitted.preferences.length > 0) {
+        awaitingList.push(submitted);
+        continue;
+      }
+      const saved = makeBucket(row, "saved");
+      if (saved.preferences.length > 0) {
+        draftList.push(saved);
+        continue;
+      }
+      notStartedList.push(makeBucket(row));
     }
-    return { awaiting: awaitingList, locked: lockedList, notStarted: notStartedList };
+    return { awaiting: awaitingList, locked: lockedList, draft: draftList, notStarted: notStartedList };
   }, [teams]);
 
   const handleApprove = async (teamId: string, preferenceId: string) => {
@@ -195,6 +203,49 @@ export default function MentorPsApprovalsPage() {
           ) : (
             <p className="rounded-xl border border-brand-softline bg-white px-4 py-3 text-sm text-brand-muted">
               No problem statements locked yet.
+            </p>
+          )}
+        </section>
+
+        <section className="flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <ClockIcon className="h-5 w-5 text-brand-muted" />
+            <h2 className="text-base font-bold text-brand-deep">Draft Saved (Not Submitted)</h2>
+            {draft.length > 0 ? (
+              <span className="rounded-full bg-brand-muted/10 px-2 py-0.5 text-[10px] font-bold text-brand-muted">
+                {draft.length}
+              </span>
+            ) : null}
+          </div>
+
+          {loading ? (
+            <p className="text-sm text-brand-muted">Loading…</p>
+          ) : draft.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {draft.map((team) => (
+                <div key={team.id} className="flex flex-col gap-2 rounded-xl border border-brand-softline bg-white p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-bold text-brand-deep">{team.teamName}</p>
+                    <span className="rounded-lg border border-brand-warmBorder bg-brand-lightOrange px-2 py-0.5 font-mono text-[11px] font-bold text-brand-deep">
+                      {team.teamCode}
+                    </span>
+                  </div>
+                  <p className="text-xs text-brand-muted">
+                    The team leader saved {team.preferences.length} preference(s) but has not submitted them for review
+                    yet.
+                  </p>
+                  <Link
+                    href={`/dashboard/mentor/teams/${team.id}`}
+                    className="text-xs font-bold text-brand-primary hover:underline"
+                  >
+                    View Team
+                  </Link>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-brand-softline bg-white px-4 py-3 text-sm text-brand-muted">
+              No teams with saved-but-unsubmitted preferences.
             </p>
           )}
         </section>

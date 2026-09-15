@@ -11,7 +11,7 @@ export default function LockedBanner() {
   if (!locked) {
     return (
       <div className="rounded-2xl border border-brand-softline bg-white p-4 text-sm text-brand-muted">
-        No problem statement is locked yet. Browse the repository below and lock a draft when ready.
+        No problem statement is locked yet. Rank your preferences below and submit them for mentor review.
       </div>
     );
   }
