@@ -10,7 +10,7 @@ export default function QualifierCard() {
   const [resultsText, setResultsText] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!team) return;
+    if (!team?.id) return;
     void api<{ results: Array<{ weightedScore: string; rank?: number; stage: { name: string } }> }>(`/teams/${team.id}/my-results`)
       .then((data) => {
         if (!data.results?.length) setResultsText(null);
@@ -21,7 +21,7 @@ export default function QualifierCard() {
         }
       })
       .catch(() => setResultsText(null));
-  }, [team]);
+  }, [team?.id]);
 
   return (
     <section className="rounded-2xl bg-brand-deep p-5 text-white sm:p-6">

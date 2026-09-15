@@ -18,6 +18,8 @@ type TeamContextValue = {
   teamCode: string;
   teamName: string;
   capacity: number;
+  teamAvatarCount: number;
+  cycleTeamAvatar: () => void;
   members: Member[];
   invites: OutgoingInvite[];
   requests: JoinRequest[];
@@ -99,6 +101,8 @@ function initials(name: string) {
     .join("");
 }
 
+const AVATAR_KEY_PREFIX = "team-avatar:";
+
 export function TeamProvider({ children }: { children: ReactNode }) {
   const { session, ready } = useAuth();
   const userId = session?.userId;
@@ -126,9 +130,35 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     }>
   >([]);
   const [error, setError] = useState<string | null>(null);
+  const [teamAvatarCount, setTeamAvatarCount] = useState(0);
   const stagesLoaded = useRef(false);
   const teamRef = useRef<PortalTeam | null>(null);
+  const reloadPromiseRef = useRef<Promise<void> | null>(null);
   teamRef.current = team;
+
+  useEffect(() => {
+    if (!team?.id) return;
+    try {
+      const raw = window.localStorage.getItem(AVATAR_KEY_PREFIX + team.id);
+      const parsed = raw ? Number.parseInt(raw, 10) : NaN;
+      if (Number.isFinite(parsed) && parsed >= 0) setTeamAvatarCount(parsed);
+    } catch {
+      // storage unavailable — keep default avatar count
+    }
+  }, [team?.id]);
+
+  const cycleTeamAvatar = useCallback(() => {
+    if (!team?.id) return;
+    setTeamAvatarCount((prev) => {
+      const next = prev + 1;
+      try {
+        window.localStorage.setItem(AVATAR_KEY_PREFIX + team.id, String(next));
+      } catch {
+        // storage unavailable — still shuffle for this session
+      }
+      return next;
+    });
+  }, [team?.id]);
 
   const applyTeamDetail = useCallback((detail: PortalTeam) => {
     setTeam(detail);
@@ -165,40 +195,50 @@ export function TeamProvider({ children }: { children: ReactNode }) {
 
   const reload = useCallback(async () => {
     if (!userId) return;
-    // Soft refresh: keep showing existing team UI instead of blanking the whole dashboard.
-    const soft = teamRef.current != null;
-    if (!soft) setLoading(true);
-    setError(null);
-    try {
-      const stagesPromise = stagesLoaded.current
-        ? Promise.resolve(null)
-        : api<PortalStage[]>("/stages").then((stageRows) => {
-            setStages(stageRows);
-            stagesLoaded.current = true;
-            return stageRows;
-          });
-      const list = await api<{ items?: PortalTeam[] } | PortalTeam[]>("/teams");
-      await stagesPromise;
-      const items = Array.isArray(list) ? list : list.items ?? [];
-      const mine = items[0];
-      if (!mine) {
-        setTeam(null);
-        setMembers([]);
-        setInvites([]);
-        setMemberIds({});
-        return;
+    if (reloadPromiseRef.current) return reloadPromiseRef.current;
+
+    const run = (async () => {
+      // Soft refresh: keep showing existing team UI instead of blanking the whole dashboard.
+      const soft = teamRef.current != null;
+      if (!soft) setLoading(true);
+      setError(null);
+      try {
+        const stagesPromise = stagesLoaded.current
+          ? Promise.resolve(null)
+          : api<PortalStage[]>("/stages").then((stageRows) => {
+              setStages(stageRows);
+              stagesLoaded.current = true;
+              return stageRows;
+            });
+        const list = await api<{ items?: PortalTeam[] } | PortalTeam[]>("/teams");
+        await stagesPromise;
+        const items = Array.isArray(list) ? list : list.items ?? [];
+        const mine = items[0];
+        if (!mine) {
+          setTeam(null);
+          setMembers([]);
+          setInvites([]);
+          setMemberIds({});
+          return;
+        }
+        const detail = await api<PortalTeam>(`/teams/${mine.id}`);
+        applyTeamDetail(detail);
+      } catch (err) {
+        if (!soft) {
+          setTeam(null);
+          setMembers([]);
+        }
+        setError(err instanceof Error ? err.message : "Could not load team");
+      } finally {
+        setLoading(false);
       }
-      const detail = await api<PortalTeam>(`/teams/${mine.id}`);
-      applyTeamDetail(detail);
-    } catch (err) {
-      if (!soft) {
-        setTeam(null);
-        setMembers([]);
-      }
-      setError(err instanceof Error ? err.message : "Could not load team");
-    } finally {
-      setLoading(false);
-    }
+    })();
+
+    reloadPromiseRef.current = run;
+    run.finally(() => {
+      if (reloadPromiseRef.current === run) reloadPromiseRef.current = null;
+    }).catch(() => undefined);
+    return run;
   }, [userId, applyTeamDetail]);
 
   const loadFacultyDirectory = useCallback(async () => {
@@ -291,6 +331,8 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         teamCode: team?.teamCode ?? "—",
         teamName: team?.name ?? "Your team",
         capacity: team?.memberCap ?? 6,
+        teamAvatarCount,
+        cycleTeamAvatar,
         members,
         invites,
         requests,

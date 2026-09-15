@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { diceBearUrl, type AvatarStyle } from "../../lib/avatar";
+import { useTeam } from "./TeamProvider";
 
 const AVATAR_STYLES: AvatarStyle[] = ["adventurer", "bottts-neutral", "fun-emoji"];
 
@@ -12,17 +13,17 @@ export default function InteractiveTeamAvatar({
   teamName: string;
   teamId?: string;
 }) {
-  const [avatarIndex, setAvatarIndex] = useState(0);
+  const { teamAvatarCount, cycleTeamAvatar } = useTeam();
   const [isSpinning, setIsSpinning] = useState(false);
 
   const handleShuffle = () => {
     setIsSpinning(true);
-    setAvatarIndex((prev) => prev + 1);
+    cycleTeamAvatar();
     setTimeout(() => setIsSpinning(false), 300);
   };
 
-  const currentStyle = AVATAR_STYLES[avatarIndex % AVATAR_STYLES.length];
-  const seed = `${teamName || "team"}-${teamId || ""}-${avatarIndex}`;
+  const currentStyle = AVATAR_STYLES[teamAvatarCount % AVATAR_STYLES.length];
+  const seed = `${teamName || "team"}-${teamId || ""}-${teamAvatarCount}`;
   const avatarUrl = diceBearUrl(seed, currentStyle);
 
   return (

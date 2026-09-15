@@ -17,6 +17,19 @@ const REQUEST_TIMEOUT_MS = 12_000;
 const NETWORK_CAP_MS = 1_500;
 const STALE_SENTINEL = Symbol("stale");
 
+const inFlightGets = new Map<string, Promise<unknown>>();
+
+function runDeduped<T>(key: string, run: () => Promise<T>): Promise<T> {
+  const existing = inFlightGets.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+  const p = run();
+  inFlightGets.set(key, p);
+  p.finally(() => {
+    if (inFlightGets.get(key) === p) inFlightGets.delete(key);
+  }).catch(() => undefined);
+  return p;
+}
+
 function withTimeoutSignal(init: RequestInit = {}): RequestInit {
   const timeoutSignal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
   if (init.signal) return { ...init, signal: AbortSignal.any([init.signal, timeoutSignal]) };
@@ -43,6 +56,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const method = (init.method ?? "GET").toUpperCase();
   const key = cacheKey(session?.userId, method, path);
   const cacheable = shouldCache(method, path);
+  const dedupe = method === "GET";
 
   const fetchIt = async (): Promise<T> => {
     const res = await fetch(`${API_BASE}${path}`, {
@@ -93,14 +107,14 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     const entry = getCached<T>(key);
     if (entry) {
       if (isFresh(entry)) return entry.data;
-      const background = fetchIt().catch(() => undefined);
+      const background = dedupe ? runDeduped(key, fetchIt).catch(() => undefined) : fetchIt().catch(() => undefined);
       const winner = await Promise.race([background, sleep(NETWORK_CAP_MS)]);
       if (winner !== undefined && winner !== STALE_SENTINEL) return winner as T;
       return entry.data;
     }
   }
 
-  return fetchIt();
+  return dedupe ? runDeduped(key, fetchIt) : fetchIt();
 }
 
 export function apiPost<T>(path: string, body: unknown) {
