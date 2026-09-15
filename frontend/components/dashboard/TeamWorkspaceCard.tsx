@@ -5,7 +5,8 @@ import Link from "next/link";
 import { type Member } from "../../data/studentDashboard";
 import { useTeam } from "./TeamProvider";
 import Avatar from "../Avatar";
-import { UsersIcon, CheckIcon, UserPlusIcon, LockIcon, PencilIcon, XIcon } from "./icons";
+import InteractiveTeamAvatar from "./InteractiveTeamAvatar";
+import { CheckIcon, UserPlusIcon, LockIcon, PencilIcon, XIcon } from "./icons";
 
 function MemberRow({
   member,
@@ -191,9 +192,7 @@ export default function TeamWorkspaceCard() {
     <section className="rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)] sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3.5">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-deep text-white shadow-sm">
-            <UsersIcon className="h-5 w-5 text-white" />
-          </div>
+          <InteractiveTeamAvatar teamName={teamName} teamId={teamId} />
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-base font-bold text-brand-deep">Team Workspace</h2>
             {editingName ? (
@@ -253,7 +252,7 @@ export default function TeamWorkspaceCard() {
             ) : (
               <p className="flex items-center gap-1.5 text-xs font-medium text-brand-muted">
                 <span>
-                  Team ID: <span className="font-bold text-brand-charcoal">{teamCode}</span> • {teamName}
+                  Team ID: <span className="font-bold text-brand-charcoal">{teamCode}</span>
                 </span>
                 {canRename && (
                   <button

@@ -1,8 +1,9 @@
-export type AvatarStyle = "adventurer" | "bottts-neutral";
+export type AvatarStyle = "adventurer" | "bottts-neutral" | "fun-emoji";
 
 const STYLE_BACKGROUNDS: Record<AvatarStyle, string> = {
   adventurer: "f8ede2,fed7aa,fde68a",
   "bottts-neutral": "b6e3f4,c0aede,d1d4f9,ffd5dc",
+  "fun-emoji": "f8ede2,fed7aa,fde68a",
 };
 
 export function diceBearUrl(seed: string, style: AvatarStyle = "adventurer"): string {
