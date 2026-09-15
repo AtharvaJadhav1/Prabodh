@@ -28,7 +28,6 @@ export default function GroupDrawer() {
     rejectRequest,
     isLead,
     capacity,
-    teamName,
   } = useTeam();
 
   const [email, setEmail] = useState("");
@@ -141,9 +140,6 @@ export default function GroupDrawer() {
               <MailIcon className="h-5 w-5 text-brand-primary" />
               Group Requests
             </h2>
-            <p className="mt-0.5 text-xs font-medium text-brand-muted">
-              {seatsLeft > 0 ? `${seatsLeft} slot${seatsLeft > 1 ? "s" : ""} left in ${teamName}` : "Team roster is full."}
-            </p>
           </div>
           <button
             type="button"

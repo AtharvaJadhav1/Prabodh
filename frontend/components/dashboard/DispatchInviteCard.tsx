@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useTeam } from "./TeamProvider";
-import { MailIcon, SendIcon, CheckIcon, LockIcon, UsersRoundIcon } from "./icons";
+import { MailIcon, SendIcon, CheckIcon, LockIcon } from "./icons";
 
 export default function DispatchInviteCard() {
   const { isLead, sendInvite, filledCount, invites, capacity } = useTeam();
@@ -60,9 +60,6 @@ export default function DispatchInviteCard() {
         <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-muted">
           <MailIcon className="h-4 w-4 text-brand-primary" /> Invite Team Member
         </h3>
-        <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2.5 py-0.5 text-[10px] font-bold text-brand-primary">
-          {seatsLeft} slot{seatsLeft !== 1 ? "s" : ""} left
-        </span>
       </div>
 
       {isLead ? (
@@ -120,11 +117,6 @@ export default function DispatchInviteCard() {
             <LockIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" />
             Only the Team Lead can dispatch invitations to team members.
           </p>
-          <div className="mt-3 flex items-center gap-2 rounded-xl border border-brand-softline bg-brand-cream p-3 text-xs font-semibold text-brand-muted">
-            <UsersRoundIcon className="h-4 w-4 shrink-0 text-brand-primary" />
-            {filledCount}/{capacity} members finalized • {invites.length} pending invite
-            {invites.length !== 1 ? "s" : ""}
-          </div>
         </div>
       )}
     </div>

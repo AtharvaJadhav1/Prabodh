@@ -44,9 +44,6 @@ export default function RequestsTabs() {
               chipStyle="bg-brand-primary text-white"
             />
           </div>
-          <div className="flex items-center gap-1.5 pb-3 text-xs text-[#786C65]">
-            <ClockIcon className="h-3.5 w-3.5" /> Synchronized with Clerk Auth
-          </div>
         </div>
       </div>
 
@@ -90,7 +87,7 @@ function TabButton({
 }
 
 function ActiveRosterTab() {
-  const { members, invites, filledCount, facultyInviteStatus, facultyInviteEmail, revokeInvite, openDrawer, removeMember, isLead, capacity, team } = useTeam();
+  const { members, invites, facultyInviteStatus, facultyInviteEmail, revokeInvite, removeMember, isLead, team } = useTeam();
   const assignments = team?.mentorAssignments ?? [];
   const [revokingId, setRevokingId] = useState<string | null>(null);
   const [revokeError, setRevokeError] = useState<string | null>(null);
@@ -113,22 +110,23 @@ function ActiveRosterTab() {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-brand-deep">
-              Confirmed Roster Members ({filledCount} of {capacity})
+              Confirmed Roster Members
             </h3>
             <p className="text-xs text-brand-muted">Verified members on this team.</p>
           </div>
         </div>
         <div className="space-y-2.5">
-          {members.map((m, i) => (
-            <MemberRow
-              key={`${m.name}-${i}`}
-              index={i}
-              member={m}
-              isLead={isLead}
-              onRemove={() => removeMember(i)}
-              onInviteNow={openDrawer}
-            />
-          ))}
+          {members.map((m, i) =>
+            m.status === "Verified" ? (
+              <MemberRow
+                key={`${m.name}-${i}`}
+                index={i}
+                member={m}
+                isLead={isLead}
+                onRemove={() => removeMember(i)}
+              />
+            ) : null,
+          )}
         </div>
       </section>
 
@@ -285,23 +283,18 @@ function MemberRow({
   member,
   isLead,
   onRemove,
-  onInviteNow,
 }: {
   index: number;
   member: { name: string; initials: string; prn: string; branch: string; role: string | null; status: string; avatarUrl?: string | null };
   isLead: boolean;
   onRemove: () => void;
-  onInviteNow: () => void;
 }) {
-  const isEmpty = member.status === "Empty";
-  const isPending = member.status === "Invite Pending";
   const isLeader = member.role === "Leader";
+  const isPending = member.status === "Invite Pending";
 
   return (
     <div
-      className={`flex items-center justify-between gap-4 p-3.5 rounded-xl border border-[#EBE3D7] bg-white transition-colors mb-2.5 ${
-        isEmpty ? "border-dashed hover:border-brand-primary" : "hover:border-brand-primary/40"
-      }`}
+      className={`flex items-center justify-between gap-4 p-3.5 rounded-xl border border-[#EBE3D7] bg-white transition-colors mb-2.5 hover:border-brand-primary/40`}
     >
       <div className="flex items-center gap-3.5 min-w-0 flex-1">
         {member.status === "Verified" ? (
@@ -313,15 +306,7 @@ function MemberRow({
                 ? "bg-brand-deep text-brand-cream"
                 : isPending
                   ? "border border-dashed border-brand-primary/50 bg-brand-lightOrange/50 text-brand-primary"
-                  : isEmpty
-                    ? "border border-dashed border-brand-charcoal/20 text-brand-muted"
-                    : member.initials === "PS"
-                      ? "bg-brand-amber text-brand-deep"
-                      : member.initials === "RK"
-                        ? "bg-brand-cream border border-brand-softline text-brand-deep"
-                        : member.initials === "SN"
-                          ? "bg-brand-lightOrange text-brand-primary"
-                          : "bg-brand-deep/90 text-brand-cream"
+                  : "bg-brand-deep/90 text-brand-cream"
             }`}
           >
             {member.initials}
@@ -329,54 +314,28 @@ function MemberRow({
         )}
         <div className="min-w-0 leading-tight">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-bold text-brand-deep">
-              {isPending ? "Open Slot — Invite Pending" : isEmpty ? "Open Slot — Awaiting Member" : member.name}
-            </span>
+            <span className="text-sm font-bold text-brand-deep">{member.name}</span>
             <span
               className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
                 isLeader
                   ? "bg-brand-deep text-brand-cream"
                   : isPending
                     ? "border border-brand-amber/40 bg-brand-amber/20 text-brand-deep"
-                    : isEmpty
-                      ? "bg-brand-softline text-brand-charcoal/60"
-                      : "border border-brand-softline bg-brand-cream text-brand-deep"
+                    : "border border-brand-softline bg-brand-cream text-brand-deep"
               }`}
             >
-              {isLeader ? "Team Leader" : isPending ? "Invite Outgoing" : isEmpty ? "Unfilled" : "Member"}
+              {isLeader ? "Team Leader" : isPending ? "Invite Outgoing" : "Member"}
             </span>
           </div>
           <p className="mt-0.5 text-[11px] text-brand-muted">
-            {isPending
-              ? `Dispatched to ${member.prn}`
-              : isEmpty
-                ? "Required to complete team formation and lock the official roster."
-                : `${member.prn} • ${member.branch}`}
+            {isPending ? `Dispatched to ${member.prn}` : `${member.prn} • ${member.branch}`}
           </p>
         </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        {isPending || isEmpty ? (
-          <>
-            {isEmpty && isLead && (
-              <button
-                type="button"
-                onClick={onInviteNow}
-                className="shrink-0 rounded-lg border border-brand-primary/40 bg-brand-primary/10 px-2.5 py-1 text-[11px] font-bold text-brand-primary transition-colors hover:bg-brand-primary/20"
-              >
-                Invite
-              </button>
-            )}
-            {isEmpty && !isLead && (
-              <span className="flex items-center gap-1 text-xs font-medium text-brand-muted">
-                <LockIcon className="h-3 w-3" /> Lead Only
-              </span>
-            )}
-            {isPending && (
-              <span className="text-xs font-semibold text-brand-primary">Awaiting Accept</span>
-            )}
-          </>
+        {isPending ? (
+          <span className="text-xs font-semibold text-brand-primary">Awaiting Accept</span>
         ) : (
           <>
             <span className="inline-flex items-center gap-1 rounded-full bg-brand-approved/10 px-2 py-0.5 text-[11px] font-semibold text-brand-approved">
