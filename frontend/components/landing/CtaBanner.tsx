@@ -18,7 +18,7 @@ export default function CtaBanner() {
               statements.
             </p>
           </div>
-          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:gap-4">
+          <div className="flex w-full items-center justify-center lg:w-auto lg:justify-end">
             <Link
               href="/login/student"
               className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-primary px-7 py-3.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-brand-hover sm:w-auto"
@@ -26,12 +26,6 @@ export default function CtaBanner() {
               Access Prabodh Portal
               <ArrowRightIcon className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:translate-x-1" />
             </Link>
-            <a
-              href="#prabodh-stages"
-              className="w-full rounded-xl border border-white/20 bg-white/10 px-7 py-3.5 text-center text-sm font-bold text-white transition-colors hover:bg-white/20 sm:w-auto"
-            >
-              Download Guidelines
-            </a>
           </div>
         </div>
       </div>
