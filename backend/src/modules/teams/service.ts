@@ -151,7 +151,7 @@ export class TeamsService {
   }
 
   async patch(user: AuthUser, teamId: string, body: z.infer<typeof patchTeamSchema>) {
-    const team = await this.repo.findById(teamId);
+    const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
     if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
       throw new ForbiddenException('Only the team leader can edit details');
@@ -164,7 +164,7 @@ export class TeamsService {
 
   async invite(user: AuthUser, teamId: string, body: z.infer<typeof inviteSchema>) {
     await consumeToken(`invite:${user.id}`, Number(process.env.INVITE_RATE_LIMIT_PER_MIN ?? 10));
-    const team = await this.repo.findById(teamId);
+    const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
     if (team.leaderUserId !== user.id) {
       throw new ForbiddenException('Only the team leader can invite members');
@@ -221,7 +221,7 @@ export class TeamsService {
   }
 
   async removeMember(user: AuthUser, teamId: string, memberId: string) {
-    const team = await this.repo.findById(teamId);
+    const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
     if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
       throw new ForbiddenException('Only the team leader can remove members');
@@ -241,7 +241,7 @@ export class TeamsService {
   }
 
   async revokeInvite(user: AuthUser, teamId: string, memberId: string) {
-    const team = await this.repo.findById(teamId);
+    const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
     if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
       throw new ForbiddenException('Only the team leader can revoke invites');
@@ -279,7 +279,7 @@ export class TeamsService {
   }
 
   async lock(user: AuthUser, teamId: string) {
-    const team = await this.repo.findById(teamId);
+    const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
     if (user.platformRole !== 'admin') {
       throw new ForbiddenException('Only admin or system lock can freeze a team');
@@ -298,7 +298,7 @@ export class TeamsService {
   }
 
   async disqualify(user: AuthUser, teamId: string) {
-    const team = await this.repo.findById(teamId);
+    const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
     const updated = await this.repo.update(teamId, { status: TeamStatus.disqualified });
     await writeAudit(this.prisma, {
@@ -328,7 +328,7 @@ export class TeamsService {
   }
 
   async assertTeamAccess(user: AuthUser, teamId: string) {
-    const team = await this.repo.findById(teamId);
+    const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
     await this.assertCanView(user, team);
     return team;

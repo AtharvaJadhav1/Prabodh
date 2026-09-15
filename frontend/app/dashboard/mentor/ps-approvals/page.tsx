@@ -1,51 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import MentorShell from "../../../../components/mentor/MentorShell";
 import EmptyState from "../../../../components/mentor/EmptyState";
 import PreferenceReviewCard, { type ReviewablePreference } from "../../../../components/mentor/PreferenceReviewCard";
 import PsDetailCard from "../../../../components/dashboard/ps/PsDetailCard";
 import { CheckIcon, ClockIcon, ShieldCheckIcon, UsersIcon } from "../../../../components/dashboard/icons";
-import { api, apiPost } from "../../../../lib/api";
-import { useAuth } from "../../../../components/auth/AuthProvider";
-
-type MentorTeamRow = {
-  pendingInvite?: boolean;
-  team: {
-    id: string;
-    name: string;
-    teamCode: string;
-    theme?: string | null;
-    leader?: { id: string; fullName: string; email: string } | null;
-    members?: Array<{ id: string }>;
-    problemStatement?: {
-      code: string;
-      title: string;
-      theme: string;
-      description: string;
-    } | null;
-    psPreferences?: Array<{
-      id: string;
-      rank: number;
-      status: "submitted" | "approved" | "rejected";
-      problemStatement?: {
-        id: string;
-        code: string;
-        title: string;
-        theme: string;
-        category: string;
-        organisation: string;
-        description: string;
-      } | null;
-      title?: string | null;
-      theme?: string | null;
-      category?: string | null;
-      organisation?: string | null;
-      description?: string | null;
-    }>;
-  };
-};
+import { apiPost } from "../../../../lib/api";
+import { useMentorTeams, type MentorTeamRow } from "../../../../components/mentor/MentorTeamsProvider";
 
 type Bucket = {
   id: string;
@@ -88,53 +51,34 @@ function makeBucket(row: MentorTeamRow): Bucket {
 }
 
 export default function MentorPsApprovalsPage() {
-  const { session } = useAuth();
-  const [awaiting, setAwaiting] = useState<Bucket[] | null>(null);
-  const [locked, setLocked] = useState<Bucket[]>([]);
-  const [notStarted, setNotStarted] = useState<Bucket[]>([]);
+  const { teams, loading, error: loadError, refresh } = useMentorTeams();
   const [error, setError] = useState<string | null>(null);
   const [approvingId, setApprovingId] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    if (!session) return;
-    api<MentorTeamRow[]>("/mentors/me/teams")
-      .then((rows) => {
-        const awaitingList: Bucket[] = [];
-        const lockedList: Bucket[] = [];
-        const notStartedList: Bucket[] = [];
-        for (const row of rows) {
-          if (row.pendingInvite) continue;
-          const bucket = makeBucket(row);
-          if (row.team.problemStatement) {
-            lockedList.push(bucket);
-          } else if (bucket.preferences.length > 0) {
-            awaitingList.push(bucket);
-          } else {
-            notStartedList.push(bucket);
-          }
-        }
-        setAwaiting(awaitingList);
-        setLocked(lockedList);
-        setNotStarted(notStartedList);
-        setError(null);
-      })
-      .catch((err) => {
-        setAwaiting([]);
-        setLocked([]);
-        setNotStarted([]);
-        setError(err instanceof Error ? err.message : "Could not load approvals");
-      });
-  }, [session]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  const { awaiting, locked, notStarted } = useMemo(() => {
+    const awaitingList: Bucket[] = [];
+    const lockedList: Bucket[] = [];
+    const notStartedList: Bucket[] = [];
+    for (const row of teams) {
+      if (row.pendingInvite) continue;
+      const bucket = makeBucket(row);
+      if (row.team.problemStatement) {
+        lockedList.push(bucket);
+      } else if (bucket.preferences.length > 0) {
+        awaitingList.push(bucket);
+      } else {
+        notStartedList.push(bucket);
+      }
+    }
+    return { awaiting: awaitingList, locked: lockedList, notStarted: notStartedList };
+  }, [teams]);
 
   const handleApprove = async (teamId: string, preferenceId: string) => {
     setApprovingId(preferenceId);
+    setError(null);
     try {
       await apiPost(`/teams/${teamId}/ps-preferences/${preferenceId}/approve`, {});
-      load();
+      await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not approve this preference");
     } finally {
@@ -142,18 +86,18 @@ export default function MentorPsApprovalsPage() {
     }
   };
 
-  const loading = awaiting === null;
+  const displayError = error ?? loadError;
 
   return (
     <MentorShell title="PS Approvals">
       <div className="flex flex-col gap-8">
-        {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+        {displayError ? <p className="text-sm font-medium text-red-700">{displayError}</p> : null}
 
         <section className="flex flex-col gap-4">
           <div className="flex items-center gap-2">
             <ClockIcon className="h-5 w-5 text-brand-primary" />
             <h2 className="text-base font-bold text-brand-deep">Awaiting Your Decision</h2>
-            {awaiting && awaiting.length > 0 ? (
+            {awaiting.length > 0 ? (
               <span className="rounded-full bg-brand-primary px-2 py-0.5 text-[10px] font-bold text-white">
                 {awaiting.length}
               </span>

@@ -10,12 +10,14 @@ import PsDetailCard from "../../../../../components/dashboard/ps/PsDetailCard";
 import { AlertCircleIcon, ClockIcon } from "../../../../../components/dashboard/icons";
 import { api, apiPost, ApiError } from "../../../../../lib/api";
 import { useAuth } from "../../../../../components/auth/AuthProvider";
+import { useMentorTeams } from "../../../../../components/mentor/MentorTeamsProvider";
 import type { PortalTeam } from "../../../../../lib/types";
 
 export default function MentorTeamDetailPage() {
   const params = useParams<{ teamId: string }>();
   const teamId = params.teamId;
   const { session } = useAuth();
+  const { refresh: refreshMentorTeams } = useMentorTeams();
   const [team, setTeam] = useState<PortalTeam | null>(null);
   const [denied, setDenied] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +49,7 @@ export default function MentorTeamDetailPage() {
     setApprovingId(preferenceId);
     try {
       await apiPost(`/teams/${teamId}/ps-preferences/${preferenceId}/approve`, {});
+      await refreshMentorTeams();
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not approve this preference");

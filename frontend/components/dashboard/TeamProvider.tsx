@@ -210,18 +210,21 @@ export function TeamProvider({ children }: { children: ReactNode }) {
               stagesLoaded.current = true;
               return stageRows;
             });
-        const list = await api<{ items?: PortalTeam[] } | PortalTeam[]>("/teams");
         await stagesPromise;
-        const items = Array.isArray(list) ? list : list.items ?? [];
-        const mine = items[0];
-        if (!mine) {
+        let teamId = teamRef.current?.id;
+        if (!teamId) {
+          const list = await api<{ items?: PortalTeam[] } | PortalTeam[]>("/teams");
+          const items = Array.isArray(list) ? list : list.items ?? [];
+          teamId = items[0]?.id;
+        }
+        if (!teamId) {
           setTeam(null);
           setMembers([]);
           setInvites([]);
           setMemberIds({});
           return;
         }
-        const detail = await api<PortalTeam>(`/teams/${mine.id}`);
+        const detail = await api<PortalTeam>(`/teams/${teamId}`);
         applyTeamDetail(detail);
       } catch (err) {
         if (!soft) {
@@ -307,18 +310,59 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     await reload();
   };
 
+  const mergePsPreferences = useCallback((preferences: PortalTeam["psPreferences"]) => {
+    if (!preferences) return;
+    setTeam((prev) => (prev ? { ...prev, psPreferences: preferences } : prev));
+  }, []);
+
+  const syncPsPreferences = useCallback(async () => {
+    const id = teamRef.current?.id;
+    if (!id) return;
+    try {
+      const preferences = await api<PortalTeam["psPreferences"]>(`/teams/${id}/ps-preferences`);
+      const approved = preferences?.some((p) => p.status === "approved");
+      if (approved && !teamRef.current?.problemStatement) {
+        await reload();
+        return;
+      }
+      mergePsPreferences(preferences);
+    } catch {
+      /* keep current UI on transient errors */
+    }
+  }, [mergePsPreferences, reload]);
+
+  useEffect(() => {
+    const id = team?.id;
+    const awaitingMentor =
+      Boolean(id) &&
+      !team?.problemStatement &&
+      (team?.psPreferences ?? []).some((p) => p.status === "submitted");
+    if (!awaitingMentor) return;
+    const timer = window.setInterval(() => {
+      void syncPsPreferences();
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, [team?.id, team?.problemStatement, team?.psPreferences, syncPsPreferences]);
+
   const savePreferences = async (preferences: PsPreferenceInput[]) => {
     if (!team?.id) return;
-    await apiPost(`/teams/${team.id}/ps-preferences`, { preferences });
-    await reload();
+    const result = await apiPost<{ preferences: PortalTeam["psPreferences"] }>(
+      `/teams/${team.id}/ps-preferences`,
+      { preferences },
+    );
+    mergePsPreferences(result.preferences);
   };
 
   const submitPreferences = async (preferences: PsPreferenceInput[]) => {
     if (!team?.id) return { sent: false };
-    const result = await apiPost<{ sent: boolean; code?: string }>(`/teams/${team.id}/ps-preferences/submit`, {
-      preferences,
-    });
-    await reload();
+    const result = await apiPost<{
+      sent: boolean;
+      code?: string;
+      preferences?: PortalTeam["psPreferences"];
+    }>(`/teams/${team.id}/ps-preferences/submit`, { preferences });
+    if (result.preferences) {
+      mergePsPreferences(result.preferences);
+    }
     return result;
   };
 

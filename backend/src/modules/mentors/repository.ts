@@ -32,20 +32,49 @@ export class MentorsRepository {
       where: { mentorUserId, active: true },
       include: {
         team: {
-          include: {
-            problemStatement: true,
-            leader: true,
-            members: { include: { user: true } },
-            mentorAssignments: { where: { active: true }, include: { mentor: true } },
-            psPreferences: { orderBy: { rank: 'asc' }, include: { problemStatement: true } },
-            stageResults: { include: { stage: true } },
-            ideaSubmissions: {
-              orderBy: { version: 'desc' },
-              take: 5,
-              include: { problemStatement: true },
+          select: {
+            id: true,
+            name: true,
+            teamCode: true,
+            theme: true,
+            institute: true,
+            memberCap: true,
+            status: true,
+            leader: { select: { id: true, fullName: true, email: true } },
+            members: {
+              where: { inviteStatus: 'accepted' },
+              select: { id: true },
             },
-            deliverables: { orderBy: { submittedAt: 'desc' }, take: 20, include: { stage: true } },
-            stageStatuses: { include: { stage: true } },
+            problemStatement: {
+              select: {
+                id: true,
+                code: true,
+                title: true,
+                theme: true,
+                category: true,
+                organisation: true,
+                description: true,
+              },
+            },
+            psPreferences: {
+              orderBy: { rank: 'asc' },
+              include: {
+                problemStatement: {
+                  select: {
+                    id: true,
+                    code: true,
+                    title: true,
+                    theme: true,
+                    category: true,
+                    organisation: true,
+                    description: true,
+                  },
+                },
+              },
+            },
+            stageResults: {
+              select: { published: true, weightedScore: true, stage: { select: { name: true } } },
+            },
           },
         },
       },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTeam, type PsPreferenceInput } from "../TeamProvider";
 import { XIcon, LockIcon, ClockIcon, CheckIcon } from "../icons";
 import ProblemStatementTabs from "./ProblemStatementTabs";
@@ -39,11 +39,10 @@ export default function PreferenceSlotsPanel() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [showNoMentor, setShowNoMentor] = useState(false);
-  const initializedRef = useRef(false);
+  const prefsKey = JSON.stringify(team?.psPreferences ?? []);
 
   useEffect(() => {
-    if (initializedRef.current || !team) return;
-    initializedRef.current = true;
+    if (!team) return;
     const fromServer: (Slot | null)[] = [null, null, null];
     for (const pref of team.psPreferences ?? []) {
       const idx = pref.rank - 1;
@@ -71,7 +70,7 @@ export default function PreferenceSlotsPanel() {
       }
     }
     setSlots(fromServer);
-  }, [team]);
+  }, [team?.id, prefsKey]);
 
   if (locked) return null;
 

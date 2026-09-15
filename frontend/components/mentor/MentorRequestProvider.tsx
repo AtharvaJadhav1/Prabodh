@@ -5,6 +5,7 @@ import { mentorMaxCap, type GroupRequest, type GroupRequestHistoryEntry } from "
 import { api, apiPost } from "../../lib/api";
 import { avatarUrlFrom } from "../../lib/avatar";
 import { useAuth } from "../auth/AuthProvider";
+import { useMentorTeams } from "./MentorTeamsProvider";
 
 type MentorInviteRow = {
   id: string;
@@ -49,6 +50,7 @@ function mapInvite(row: MentorInviteRow): GroupRequest {
 
 export function MentorRequestProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
+  const { refresh: refreshMentorTeams } = useMentorTeams();
   const [pendingRequests, setPendingRequests] = useState<GroupRequest[]>([]);
   const [requestHistory, setRequestHistory] = useState<GroupRequestHistoryEntry[]>([]);
 
@@ -78,6 +80,7 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
       const target = pendingRequests.find((r) => r.id === id);
       void apiPost(`/mentors/invites/${id}/accept`, {})
         .then(() => {
+          void refreshMentorTeams();
           if (target) {
             setRequestHistory((h) => [
               {
@@ -101,7 +104,7 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
           void reload();
         });
     },
-    [pendingRequests, reload],
+    [pendingRequests, reload, refreshMentorTeams],
   );
 
   const declineRequest = useCallback(

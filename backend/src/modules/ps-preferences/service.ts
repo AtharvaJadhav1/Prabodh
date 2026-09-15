@@ -30,7 +30,8 @@ export class PsPreferencesService {
       throw new ForbiddenException('Only the team leader can save problem statement preferences');
     }
     await this.ensureNotFinalized(teamId);
-    return this.repo.replaceAll(teamId, user.id, body.preferences, PsPreferenceStatus.saved);
+    const preferences = await this.repo.replaceAll(teamId, user.id, body.preferences, PsPreferenceStatus.saved);
+    return { preferences };
   }
 
   async submit(user: AuthUser, teamId: string, body: z.infer<typeof submitPreferencesSchema>) {
@@ -155,14 +156,41 @@ export class PsPreferencesService {
         data: { status: PsPreferenceStatus.rejected, decidedById: user.id, decidedAt },
       });
 
-      return {
+      const result = {
         idea: await tx.ideaSubmission.findUnique({ where: { id: idea.id }, include: { problemStatement: true } }),
         preferences: await tx.teamPsPreference.findMany({
           where: { teamId },
           orderBy: { rank: 'asc' },
           include: { problemStatement: true },
         }),
+        team: await tx.team.findUnique({
+          where: { id: teamId },
+          select: {
+            id: true,
+            leaderUserId: true,
+            name: true,
+            teamCode: true,
+            problemStatement: true,
+          },
+        }),
       };
+      return result;
+    }).then(async (result) => {
+      const leaderId = result.team?.leaderUserId;
+      if (leaderId) {
+        try {
+          await notifyUsers(this.prisma, [leaderId], {
+            type: 'status_change',
+            template: 'ps_review',
+            title: 'Problem statement locked',
+            body: `Your mentor approved preference #${result.preferences.find((p) => p.status === PsPreferenceStatus.approved)?.rank ?? ''} for ${result.team?.name ?? 'your team'}.`,
+            relatedEntity: `team:${teamId}`,
+          });
+        } catch {
+          /* notifications are best-effort */
+        }
+      }
+      return result;
     });
   }
 }

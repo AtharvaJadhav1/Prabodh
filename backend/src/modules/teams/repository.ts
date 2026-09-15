@@ -14,6 +14,25 @@ export class TeamsRepository {
     return this.prisma.team.create({ data, include: { members: true, leader: true } });
   }
 
+  /** Lightweight lookup for auth checks and mutations — avoids loading the full workspace graph. */
+  findForAccessCheck(id: string) {
+    return this.prisma.team.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        leaderUserId: true,
+        name: true,
+        teamCode: true,
+        status: true,
+        detailsLockAt: true,
+        memberCap: true,
+        clerkOrgId: true,
+        members: { select: { userId: true } },
+        mentorAssignments: { where: { active: true }, select: { mentorUserId: true } },
+      },
+    });
+  }
+
   findById(id: string) {
     return this.prisma.team.findUnique({
       where: { id },
