@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -15,6 +16,7 @@ import {
   LogoutIcon,
   LockIcon,
   XIcon,
+  PencilIcon,
 } from "./icons";
 
 type SidebarProps = {
@@ -45,7 +47,12 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { session, logout } = useAuth();
-  const { filledCount, pendingRequestCount, role, teamName, capacity, team } = useTeam();
+  const { filledCount, pendingRequestCount, role, teamName, capacity, team, isLead, renameTeam } = useTeam();
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState(teamName);
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const canRename = isLead && team?.status !== "locked";
   const fullName = session?.fullName ?? "Student";
   const displayName = fullName.length > 16 ? fullName.split(" ")[0] : fullName;
   const profileAvatar =
@@ -98,9 +105,84 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 <LockIcon className="h-3 w-3" /> {team?.status ?? "forming"}
               </span>
             </div>
-            <div className="mt-1.5 flex items-center justify-between text-sm">
-              <span className="font-extrabold text-brand-deep">{teamName}</span>
-              <span className="font-semibold text-brand-muted">
+            <div className="mt-1.5 flex items-center justify-between gap-2 text-sm">
+              {editingName ? (
+                <form
+                  className="min-w-0 flex-1"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const name = draftName.trim();
+                    if (!name || savingName) return;
+                    setNameError(null);
+                    setSavingName(true);
+                    try {
+                      await renameTeam(name);
+                      setEditingName(false);
+                      setDraftName(name);
+                    } catch (err) {
+                      setNameError(err instanceof Error ? err.message : "Unable to rename team.");
+                    } finally {
+                      setSavingName(false);
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      value={draftName}
+                      onChange={(e) => setDraftName(e.target.value)}
+                      required
+                      minLength={2}
+                      maxLength={120}
+                      disabled={savingName}
+                      autoFocus
+                      className="w-full min-w-0 rounded-lg border border-brand-softline px-2 py-1 text-xs font-bold text-brand-deep outline-none focus:border-brand-primary disabled:opacity-60"
+                    />
+                    <button
+                      type="submit"
+                      disabled={savingName}
+                      className="shrink-0 rounded-lg bg-brand-primary px-2 py-1 text-xs font-bold text-white hover:bg-brand-hover disabled:opacity-60"
+                    >
+                      {savingName ? "Saving…" : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingName(false);
+                        setDraftName(teamName);
+                        setNameError(null);
+                      }}
+                      disabled={savingName}
+                      className="shrink-0 rounded-lg border border-brand-softline px-1.5 py-1 text-brand-muted hover:text-brand-deep disabled:opacity-60"
+                      aria-label="Cancel rename"
+                    >
+                      <XIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  {nameError ? (
+                    <p className="mt-1.5 text-[11px] font-medium text-red-700">{nameError}</p>
+                  ) : null}
+                </form>
+              ) : (
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span className="truncate font-extrabold text-brand-deep">{teamName}</span>
+                  {canRename && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDraftName(teamName);
+                        setNameError(null);
+                        setEditingName(true);
+                      }}
+                      className="shrink-0 rounded-md p-1 text-brand-muted transition-colors hover:bg-white hover:text-brand-primary"
+                      aria-label="Rename team"
+                      title="Rename team"
+                    >
+                      <PencilIcon className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
+              <span className="shrink-0 font-semibold text-brand-muted">
                 {filledCount}/{capacity}
               </span>
             </div>

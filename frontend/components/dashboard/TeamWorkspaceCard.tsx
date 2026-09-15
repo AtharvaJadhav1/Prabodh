@@ -5,22 +5,17 @@ import Link from "next/link";
 import { useTeam } from "./TeamProvider";
 import Avatar from "../Avatar";
 import InteractiveTeamAvatar from "./InteractiveTeamAvatar";
-import { UserPlusIcon, LockIcon, PencilIcon, XIcon } from "./icons";
+import { UserPlusIcon, LockIcon } from "./icons";
 
 export default function TeamWorkspaceCard() {
-  const { members, filledCount, openDrawer, invites, isLead, teamCode, teamName, capacity, teamId, createTeam, renameTeam, loading, team, revokeInvite } = useTeam();
+  const { members, filledCount, openDrawer, invites, isLead, teamCode, teamName, capacity, teamId, createTeam, loading, revokeInvite } = useTeam();
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState(false);
-  const [draftName, setDraftName] = useState(teamName);
-  const [savingName, setSavingName] = useState(false);
-  const [nameError, setNameError] = useState<string | null>(null);
   const percent = Math.round((filledCount / Math.max(capacity, 1)) * 100);
   const confirmedMembers = members.filter((m) => m.status === "Verified");
   const pendingInvites = invites.length;
   const totalOccupied = confirmedMembers.length + invites.length;
   const slotsLeft = capacity - totalOccupied;
-  const canRename = isLead && team?.status !== "locked";
 
   if (loading) {
     return (
@@ -90,80 +85,9 @@ export default function TeamWorkspaceCard() {
           <InteractiveTeamAvatar teamName={teamName} teamId={teamId} />
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-base font-bold text-brand-deep">Team Workspace</h2>
-            {editingName ? (
-              <form
-                className="mt-1 flex flex-col gap-2"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  const name = draftName.trim();
-                  if (!name || savingName) return;
-                  setNameError(null);
-                  setSavingName(true);
-                  try {
-                    await renameTeam(name);
-                    setEditingName(false);
-                    setDraftName(name);
-                  } catch (err) {
-                    setNameError(err instanceof Error ? err.message : "Unable to rename team.");
-                  } finally {
-                    setSavingName(false);
-                  }
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <input
-                    value={draftName}
-                    onChange={(e) => setDraftName(e.target.value)}
-                    required
-                    minLength={2}
-                    maxLength={120}
-                    disabled={savingName}
-                    className="w-full max-w-56 rounded-lg border border-brand-softline px-2.5 py-1 text-xs font-medium text-brand-deep outline-none focus:border-brand-primary disabled:opacity-60"
-                    autoFocus
-                  />
-                  <button
-                    type="submit"
-                    disabled={savingName}
-                    className="rounded-lg bg-brand-primary px-2.5 py-1 text-xs font-bold text-white hover:bg-brand-hover disabled:opacity-60"
-                  >
-                    {savingName ? "Saving…" : "Save"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingName(false);
-                      setDraftName(teamName);
-                      setNameError(null);
-                    }}
-                    disabled={savingName}
-                    className="rounded-lg border border-brand-softline px-2 py-1 text-xs font-semibold text-brand-muted hover:text-brand-deep disabled:opacity-60"
-                    aria-label="Cancel rename"
-                  >
-                    <XIcon className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                {nameError ? <p className="text-xs font-medium text-red-700">{nameError}</p> : null}
-              </form>
-            ) : (
-              <p className="flex items-center gap-1.5 text-xs font-medium text-brand-muted">
-                <span>Team ID: {teamCode}</span>
-                {canRename && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDraftName(teamName);
-                      setNameError(null);
-                      setEditingName(true);
-                    }}
-                    className="rounded-md p-1 text-brand-muted transition-colors hover:bg-brand-softline hover:text-brand-primary"
-                    aria-label="Rename team"
-                    title="Rename team"
-                  >
-                    <PencilIcon className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </p>
-            )}
+            <p className="flex items-center gap-1.5 text-xs font-medium text-brand-muted">
+              <span>Team ID: {teamCode}</span>
+            </p>
           </div>
         </div>
       </div>
@@ -206,10 +130,6 @@ export default function TeamWorkspaceCard() {
                       </span>
                     )}
                   </div>
-                  <p className="mt-0.5 truncate text-xs text-[#786C65]">
-                    {member.prn}
-                    {member.branch ? ` • ${member.branch}` : ""}
-                  </p>
                 </div>
               </div>
             </div>
@@ -266,16 +186,12 @@ export default function TeamWorkspaceCard() {
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-brand-softline pt-4">
-        <p className="text-xs font-medium text-brand-muted">
-          {pendingInvites > 0 ? (
-            <>
-              <span className="font-bold text-brand-charcoal">{pendingInvites}</span> pending{" "}
-              {pendingInvites === 1 ? "invite" : "invites"} awaiting acceptance
-            </>
-          ) : (
-            "No pending invitations — send invites to fill remaining slots."
-          )}
-        </p>
+        {pendingInvites > 0 ? (
+          <p className="text-xs font-medium text-brand-muted">
+            <span className="font-bold text-brand-charcoal">{pendingInvites}</span> pending{" "}
+            {pendingInvites === 1 ? "invite" : "invites"} awaiting acceptance
+          </p>
+        ) : null}
         {isLead ? (
           <button
             type="button"
