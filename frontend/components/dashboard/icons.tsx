@@ -226,6 +226,14 @@ export function ChevronDownIcon({ className }: IconProps) {
   );
 }
 
+export function ChevronUpIcon({ className }: IconProps) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function CalendarIcon({ className }: IconProps) {
   return (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">

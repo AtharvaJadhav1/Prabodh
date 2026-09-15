@@ -146,9 +146,7 @@ export default function TeamWorkspaceCard() {
               </form>
             ) : (
               <p className="flex items-center gap-1.5 text-xs font-medium text-brand-muted">
-                <span>
-                  Team ID: <span className="font-bold text-brand-charcoal">{teamCode}</span>
-                </span>
+                <span>Team ID: {teamCode}</span>
                 {canRename && (
                   <button
                     type="button"
