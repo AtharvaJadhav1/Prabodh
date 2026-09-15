@@ -17,7 +17,7 @@ export default function TeamWorkspaceCard() {
   const totalOccupied = confirmedMembers.length + invites.length;
   const slotsLeft = capacity - totalOccupied;
 
-  if (loading) {
+  if (loading && !teamId) {
     return (
       <section className="rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)] sm:p-6">
         <h2 className="text-base font-bold text-brand-deep">Team workspace</h2>

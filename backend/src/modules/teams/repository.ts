@@ -33,49 +33,106 @@ export class TeamsRepository {
     });
   }
 
-  findById(id: string) {
-    return this.prisma.team.findUnique({
-      where: { id },
+  private readonly psSelect = {
+    id: true,
+    code: true,
+    title: true,
+    theme: true,
+    category: true,
+    organisation: true,
+    description: true,
+  };
+
+  private readonly dashboardInclude = {
+    members: {
       include: {
-        members: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                fullName: true,
-                email: true,
-                department: true,
-                institute: true,
-                profileJson: true,
-              },
-            },
-          },
-        },
-        leader: {
+        user: {
           select: {
             id: true,
             fullName: true,
             email: true,
             department: true,
             institute: true,
-            profileJson: true,
           },
         },
-        problemStatement: true,
-        mentorInvites: { include: { mentor: true } },
-        mentorAssignments: { where: { active: true }, include: { mentor: true } },
-        ideaSubmissions: { orderBy: { version: 'desc' }, take: 3, include: { problemStatement: true } },
-        psPreferences: { orderBy: { rank: 'asc' }, include: { problemStatement: true } },
+      },
+    },
+    leader: {
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        department: true,
+        institute: true,
+      },
+    },
+    problemStatement: { select: this.psSelect },
+    mentorInvites: {
+      where: { inviteStatus: InviteStatus.pending },
+      include: { mentor: { select: { id: true, fullName: true, email: true } } },
+    },
+    mentorAssignments: {
+      where: { active: true },
+      include: { mentor: { select: { id: true, fullName: true, email: true, platformRole: true } } },
+    },
+    ideaSubmissions: {
+      orderBy: { version: 'desc' as const },
+      take: 1,
+      select: {
+        id: true,
+        status: true,
+        abstract: true,
+        techStack: true,
+        feasibilityNotes: true,
+        version: true,
+        problemStatement: { select: this.psSelect },
+      },
+    },
+  };
+
+  /** Fast path for student dashboard — skips comments, evaluations, deliverables, and stage aggregates. */
+  findByIdDashboard(id: string) {
+    return this.prisma.team.findUnique({
+      where: { id },
+      include: this.dashboardInclude,
+    });
+  }
+
+  findCurrentForUser(userId: string) {
+    return this.prisma.team.findFirst({
+      where: {
+        OR: [{ leaderUserId: userId }, { members: { some: { userId } } }],
+      },
+      orderBy: { createdAt: 'desc' },
+      include: this.dashboardInclude,
+    });
+  }
+
+  findById(id: string) {
+    return this.prisma.team.findUnique({
+      where: { id },
+      include: {
+        ...this.dashboardInclude,
+        psPreferences: {
+          orderBy: { rank: 'asc' as const },
+          include: { problemStatement: { select: this.psSelect } },
+        },
         deliverables: { orderBy: { submittedAt: 'desc' }, take: 12 },
-        stageStatuses: { include: { stage: true } },
         comments: { orderBy: { createdAt: 'asc' }, include: { author: true }, take: 50 },
         evaluations: {
           where: { supersededById: null },
           include: { rubric: true, stage: true, evaluator: true },
           take: 80,
         },
-        stageResults: { include: { stage: true } },
       },
+    });
+  }
+
+  listDeliverables(teamId: string) {
+    return this.prisma.deliverable.findMany({
+      where: { teamId },
+      orderBy: { submittedAt: 'desc' },
+      take: 20,
     });
   }
 

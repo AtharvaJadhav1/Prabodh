@@ -119,11 +119,24 @@ export class TeamsService {
     }
   }
 
-  async get(user: AuthUser, teamId: string) {
-    const team = await this.repo.findById(teamId);
+  async getCurrentForUser(user: AuthUser) {
+    const team = await this.repo.findCurrentForUser(user.id);
+    if (!team) return null;
+    await this.assertCanView(user, team);
+    return team;
+  }
+
+  async get(user: AuthUser, teamId: string, view: 'dashboard' | 'full' = 'dashboard') {
+    const team =
+      view === 'full' ? await this.repo.findById(teamId) : await this.repo.findByIdDashboard(teamId);
     if (!team) throw new NotFoundException('Team not found');
     await this.assertCanView(user, team);
     return team;
+  }
+
+  async listDeliverables(user: AuthUser, teamId: string) {
+    await this.assertTeamAccess(user, teamId);
+    return this.repo.listDeliverables(teamId);
   }
 
   async listForUser(user: AuthUser, page: number, limit: number) {

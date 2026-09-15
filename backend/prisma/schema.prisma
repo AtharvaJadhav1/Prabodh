@@ -171,6 +171,7 @@ model Team {
   @@index([status])
   @@index([theme])
   @@index([institute])
+  @@index([leaderUserId])
   @@map("teams")
 }
 
@@ -190,6 +191,7 @@ model TeamMember {
 
   @@unique([teamId, invitedEmail])
   @@index([invitedEmail, inviteStatus])
+  @@index([userId])
   @@map("team_members")
 }
 

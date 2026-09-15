@@ -25,7 +25,7 @@ function normalizeComment(
 }
 
 export default function TeamCommentsCard() {
-  const { team, isLead, removeCommentLocally, addCommentLocally } = useTeam();
+  const { team, isLead, removeCommentLocally, addCommentLocally, refreshComments } = useTeam();
   const { session } = useAuth();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -33,6 +33,12 @@ export default function TeamCommentsCard() {
   const [error, setError] = useState("");
   const [comments, setComments] = useState<PortalComment[]>(team?.comments ?? []);
   const removedIds = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (team?.id && team.comments === undefined) {
+      void refreshComments();
+    }
+  }, [team?.id, team?.comments, refreshComments]);
 
   useEffect(() => {
     const server = (team?.comments ?? []).filter((c) => !removedIds.current.has(c.id));

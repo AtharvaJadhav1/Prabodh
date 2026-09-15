@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { API_BASE } from "../../lib/config";
 import { getAccessToken } from "../../lib/auth-token";
 import { readSession } from "../../lib/session";
@@ -91,7 +91,7 @@ function uploadViaApi<T>(path: string, body: unknown, onProgress: (pct: number) 
 }
 
 export default function DeliverablesCard() {
-  const { team, stages, isLead, reload } = useTeam();
+  const { team, stages, isLead, refreshDeliverables } = useTeam();
   const inputRef = useRef<HTMLInputElement>(null);
   const [githubUrl, setGithubUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -102,6 +102,12 @@ export default function DeliverablesCard() {
   const [dragOver, setDragOver] = useState(false);
   const stage = stages.find((s) => s.isActive) ?? stages[0];
   const deliverables = team?.deliverables ?? [];
+  const deliverablesLoading = Boolean(team?.id) && team?.deliverables === undefined;
+
+  useEffect(() => {
+    if (!team?.id || team.deliverables !== undefined) return;
+    void refreshDeliverables();
+  }, [team?.id, team?.deliverables, refreshDeliverables]);
 
   const pickFile = (next?: File | null) => {
     if (!next) return;
@@ -151,7 +157,7 @@ export default function DeliverablesCard() {
       );
       setMessage("File uploaded successfully.");
       setFile(null);
-      await reload();
+      await refreshDeliverables();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -172,7 +178,7 @@ export default function DeliverablesCard() {
       });
       setGithubUrl("");
       setMessage("GitHub link saved.");
-      await reload();
+      await refreshDeliverables();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Could not save GitHub link");
     } finally {
@@ -187,7 +193,7 @@ export default function DeliverablesCard() {
     try {
       await apiDelete(`/stages/${stage.id}/deliverables/${id}`);
       setMessage("Deliverable deleted.");
-      await reload();
+      await refreshDeliverables();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Could not delete file");
     } finally {

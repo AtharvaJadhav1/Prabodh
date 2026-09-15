@@ -1,10 +1,21 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { type Member, type JoinRequest, type OutgoingInvite, type StudentRole } from "../../data/studentDashboard";
+import { cacheKey, getCached } from "../../lib/api-cache";
 import { api, apiDelete, apiPatch, apiPost } from "../../lib/api";
 import { avatarUrlFrom } from "../../lib/avatar";
-import type { PortalStage, PortalTeam } from "../../lib/types";
+import type { PortalComment, PortalDeliverable, PortalStage, PortalTeam } from "../../lib/types";
 import { useAuth } from "../auth/AuthProvider";
 
 export type PsPreferenceInput =
@@ -59,6 +70,8 @@ type TeamContextValue = {
   renameTeam: (name: string) => Promise<void>;
   removeCommentLocally: (commentId: string) => void;
   addCommentLocally: (comment: import("../../lib/types").PortalComment) => void;
+  refreshDeliverables: () => Promise<void>;
+  refreshComments: () => Promise<void>;
 };
 
 const TeamContext = createContext<TeamContextValue | null>(null);
@@ -203,28 +216,25 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       if (!soft) setLoading(true);
       setError(null);
       try {
-        const stagesPromise = stagesLoaded.current
-          ? Promise.resolve(null)
-          : api<PortalStage[]>("/stages").then((stageRows) => {
+        if (!stagesLoaded.current) {
+          void api<PortalStage[]>("/stages")
+            .then((stageRows) => {
               setStages(stageRows);
               stagesLoaded.current = true;
-              return stageRows;
-            });
-        await stagesPromise;
-        let teamId = teamRef.current?.id;
-        if (!teamId) {
-          const list = await api<{ items?: PortalTeam[] } | PortalTeam[]>("/teams");
-          const items = Array.isArray(list) ? list : list.items ?? [];
-          teamId = items[0]?.id;
+            })
+            .catch(() => undefined);
         }
-        if (!teamId) {
+
+        const detail = await api<PortalTeam | null>("/teams/current");
+
+        if (!detail) {
           setTeam(null);
           setMembers([]);
           setInvites([]);
           setMemberIds({});
           return;
         }
-        const detail = await api<PortalTeam>(`/teams/${teamId}`);
+
         applyTeamDetail(detail);
       } catch (err) {
         if (!soft) {
@@ -242,6 +252,21 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       if (reloadPromiseRef.current === run) reloadPromiseRef.current = null;
     }).catch(() => undefined);
     return run;
+  }, [userId, applyTeamDetail]);
+
+  // Apply cached team before first paint so the workspace card does not flash a spinner.
+  useLayoutEffect(() => {
+    if (!userId) return;
+    const cached = getCached<PortalTeam | null>(cacheKey(userId, "GET", "/teams/current"));
+    if (!cached) return;
+    if (cached.data) applyTeamDetail(cached.data);
+    else {
+      setTeam(null);
+      setMembers([]);
+      setInvites([]);
+      setMemberIds({});
+    }
+    setLoading(false);
   }, [userId, applyTeamDetail]);
 
   const loadFacultyDirectory = useCallback(async () => {
@@ -332,6 +357,11 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   }, [mergePsPreferences, reload]);
 
   useEffect(() => {
+    if (!team?.id || team.problemStatement) return;
+    void syncPsPreferences();
+  }, [team?.id, team?.problemStatement, syncPsPreferences]);
+
+  useEffect(() => {
     const id = team?.id;
     const awaitingMentor =
       Boolean(id) &&
@@ -365,6 +395,38 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     }
     return result;
   };
+
+  const refreshDeliverables = useCallback(async () => {
+    const id = teamRef.current?.id;
+    if (!id) return;
+    try {
+      const deliverables = await api<PortalDeliverable[]>(`/teams/${id}/deliverables`);
+      setTeam((prev) => {
+        if (!prev || prev.id !== id) return prev;
+        const next = { ...prev, deliverables };
+        teamRef.current = next;
+        return next;
+      });
+    } catch {
+      /* non-blocking */
+    }
+  }, []);
+
+  const refreshComments = useCallback(async () => {
+    const id = teamRef.current?.id;
+    if (!id) return;
+    try {
+      const comments = await api<PortalComment[]>(`/teams/${id}/comments`);
+      setTeam((prev) => {
+        if (!prev || prev.id !== id) return prev;
+        const next = { ...prev, comments };
+        teamRef.current = next;
+        return next;
+      });
+    } catch {
+      /* non-blocking */
+    }
+  }, []);
 
   return (
     <TeamContext.Provider
@@ -450,6 +512,8 @@ export function TeamProvider({ children }: { children: ReactNode }) {
             return next;
           });
         },
+        refreshDeliverables,
+        refreshComments,
         createTeam: async (name: string) => {
           const institute = session?.institute?.trim() || "Institute";
           await apiPost("/teams", { name, institute });

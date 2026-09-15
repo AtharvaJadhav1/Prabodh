@@ -25,7 +25,7 @@ export default function MentorTeamDetailPage() {
 
   const load = useCallback(() => {
     if (!teamId || !session) return;
-    api<PortalTeam>(`/teams/${teamId}`)
+    api<PortalTeam>(`/teams/${teamId}?view=full`)
       .then((detail) => {
         setTeam(detail);
         setDenied(false);

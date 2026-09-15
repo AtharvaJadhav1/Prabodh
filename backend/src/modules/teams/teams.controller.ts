@@ -27,9 +27,25 @@ export class TeamsController {
     return this.teams.listForUser(user, page, limit);
   }
 
+  @Get('current')
+  @Roles(PlatformRole.student)
+  current(@CurrentUser() user: AuthUser) {
+    return this.teams.getCurrentForUser(user);
+  }
+
+  @Get(':teamId/deliverables')
+  deliverables(@CurrentUser() user: AuthUser, @Param('teamId') teamId: string) {
+    return this.teams.listDeliverables(user, teamId);
+  }
+
   @Get(':teamId')
-  get(@CurrentUser() user: AuthUser, @Param('teamId') teamId: string) {
-    return this.teams.get(user, teamId);
+  get(
+    @CurrentUser() user: AuthUser,
+    @Param('teamId') teamId: string,
+    @Query('view') view?: string,
+  ) {
+    const mode = view === 'full' ? 'full' : 'dashboard';
+    return this.teams.get(user, teamId, mode);
   }
 
   @Patch(':teamId')

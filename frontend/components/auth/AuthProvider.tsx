@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -78,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isDashboard = pathname.startsWith("/dashboard");
   const isAuthEntry = pathname.startsWith("/login") || pathname.startsWith("/register");
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const cached = readSession();
     if (cached?.userId) {
       setSession(cached);
