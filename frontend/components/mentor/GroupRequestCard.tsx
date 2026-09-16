@@ -10,21 +10,23 @@ import ConfirmDialog from "./ConfirmDialog";
 type Props = {
   request: GroupRequest;
   atCap: boolean;
+  busy?: boolean;
   onAccept: (id: string) => void;
   onDecline: (id: string) => void;
 };
 
-export default function GroupRequestCard({ request, atCap, onAccept, onDecline }: Props) {
+export default function GroupRequestCard({ request, atCap, busy = false, onAccept, onDecline }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMode, setConfirmMode] = useState<"accept" | "decline">("accept");
 
   const handleAccept = () => {
-    if (atCap) return;
+    if (atCap || busy) return;
     setConfirmMode("accept");
     setConfirmOpen(true);
   };
 
   const handleDecline = () => {
+    if (busy) return;
     setConfirmMode("decline");
     setConfirmOpen(true);
   };
@@ -120,7 +122,8 @@ export default function GroupRequestCard({ request, atCap, onAccept, onDecline }
             <button
               type="button"
               onClick={handleDecline}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-brand-overdue/30 bg-brand-overdue/10 px-4 py-2 text-xs font-bold text-brand-overdue transition-colors hover:bg-brand-overdue/20"
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-brand-overdue/30 bg-brand-overdue/10 px-4 py-2 text-xs font-bold text-brand-overdue transition-colors hover:bg-brand-overdue/20 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
@@ -130,9 +133,9 @@ export default function GroupRequestCard({ request, atCap, onAccept, onDecline }
             <button
               type="button"
               onClick={handleAccept}
-              disabled={atCap}
+              disabled={atCap || busy}
               className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white transition-colors ${
-                atCap
+                atCap || busy
                   ? "cursor-not-allowed bg-brand-muted/40"
                   : "bg-brand-deep shadow-xs hover:bg-brand-primary"
               }`}

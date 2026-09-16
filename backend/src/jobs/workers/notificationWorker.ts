@@ -1,6 +1,6 @@
 import { Job } from 'bullmq';
 import { PrismaClient } from '@prisma/client';
-import { sendTransactionalEmail } from '../../lib/resend';
+import { resolveFromForTemplate, sendTransactionalEmail } from '../../lib/resend';
 import { NotificationJob } from '../../lib/queue';
 import { renderEmail } from '../../modules/notifications/templates/render';
 
@@ -22,6 +22,7 @@ export async function handleNotificationJob(job: Job<NotificationJob>) {
       to: data.recipientEmail,
       subject: data.title,
       html,
+      from: resolveFromForTemplate(data.template),
     });
     await prisma.notificationLog.update({
       where: { id: log.id },

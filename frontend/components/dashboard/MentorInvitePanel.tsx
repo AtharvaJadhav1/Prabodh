@@ -17,6 +17,7 @@ export default function MentorInvitePanel() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
 
   const hasInstitute = assignments.some((a) => a.mentorType === "institute");
   const instituteLocked = mentorLocked || hasInstitute;
@@ -91,10 +92,16 @@ export default function MentorInvitePanel() {
                   {isLead ? (
                     <button
                       type="button"
-                      onClick={() => revokeFacultyInvite(i.id)}
-                      className="shrink-0 rounded-lg border border-red-500/30 bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-600 transition-colors hover:border-red-500/50 hover:bg-red-100"
+                      disabled={revokingId === i.id || busy}
+                      onClick={() => {
+                        setRevokingId(i.id);
+                        void revokeFacultyInvite(i.id)
+                          .catch((err) => setError(err instanceof Error ? err.message : "Could not revoke invite"))
+                          .finally(() => setRevokingId((id) => (id === i.id ? null : id)));
+                      }}
+                      className="shrink-0 rounded-lg border border-red-500/30 bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-600 transition-colors hover:border-red-500/50 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      Revoke Invite
+                      {revokingId === i.id ? "Revoking…" : "Revoke Invite"}
                     </button>
                   ) : null}
                 </div>

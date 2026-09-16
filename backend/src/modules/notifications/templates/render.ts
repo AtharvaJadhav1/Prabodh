@@ -7,7 +7,7 @@ export type EmailTemplate =
   | 'status_change'
   | 'ps_review';
 
-function layout(title: string, bodyHtml: string, ctaLabel = 'Open SIH Portal', ctaUrl?: string) {
+function layout(title: string, bodyHtml: string, ctaLabel = 'Open Prabodh', ctaUrl?: string) {
   const raw = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_ORIGIN ?? 'http://localhost:3000';
   const origin = raw.split(',')[0].trim();
   const href = ctaUrl ?? origin;
@@ -17,7 +17,7 @@ function layout(title: string, bodyHtml: string, ctaLabel = 'Open SIH Portal', c
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;padding:32px 0">
       <tr><td align="center">
         <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;padding:32px">
-          <tr><td style="font-size:13px;letter-spacing:.08em;color:#64748b;text-transform:uppercase">SIH Team Portal</td></tr>
+          <tr><td style="font-size:13px;letter-spacing:.08em;color:#64748b;text-transform:uppercase">Prabodh</td></tr>
           <tr><td style="padding-top:12px;font-size:22px;font-weight:700">${escapeHtml(title)}</td></tr>
           <tr><td style="padding-top:16px;font-size:15px;line-height:1.6;color:#334155">${bodyHtml}</td></tr>
           <tr><td style="padding-top:24px">

@@ -119,16 +119,19 @@ export default function GroupDrawer() {
   const seatsLeft = capacity - filledCount;
 
   return (
-    <div className={`fixed inset-0 z-50 ${drawerOpen ? "" : "pointer-events-none"}`} aria-hidden={!drawerOpen}>
+    <div
+      className={`fixed inset-0 z-50 ${drawerOpen ? "" : "pointer-events-none invisible"}`}
+      aria-hidden={!drawerOpen}
+    >
       <div
         className={`absolute inset-0 bg-brand-deep/50 backdrop-blur-sm transition-opacity duration-300 ${
-          drawerOpen ? "opacity-100" : "opacity-0"
+          drawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
         onClick={closeDrawer}
       />
       <aside
         className={`absolute inset-y-0 right-0 flex w-full max-w-md flex-col bg-white shadow-2xl transition-transform duration-300 ease-out ${
-          drawerOpen ? "translate-x-0" : "translate-x-full"
+          drawerOpen ? "translate-x-0" : "pointer-events-none translate-x-full"
         }`}
         role="dialog"
         aria-modal="true"

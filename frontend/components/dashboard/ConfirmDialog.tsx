@@ -21,8 +21,10 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }: Props) {
+  if (!open) return null;
+
   return (
-    <div className={`fixed inset-0 z-50 ${open ? "" : "pointer-events-none"}`} aria-hidden={!open}>
+    <div className="fixed inset-0 z-50" aria-hidden={false}>
       <div
         className={`absolute inset-0 bg-brand-deep/50 backdrop-blur-sm transition-opacity duration-300 ${
           open ? "opacity-100" : "opacity-0"

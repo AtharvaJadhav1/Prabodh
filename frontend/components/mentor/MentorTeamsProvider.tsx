@@ -52,7 +52,7 @@ type MentorTeamsContextValue = {
   loading: boolean;
   error: string | null;
   psApprovalsCount: number;
-  refresh: () => Promise<void>;
+  refresh: (soft?: boolean) => Promise<void>;
 };
 
 const MentorTeamsContext = createContext<MentorTeamsContextValue | null>(null);
@@ -63,20 +63,25 @@ export function MentorTeamsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    if (!session) return;
-    setLoading(true);
-    try {
-      const rows = await api<MentorTeamRow[]>("/mentors/me/teams");
-      setTeams(rows);
-      setError(null);
-    } catch (err) {
-      setTeams([]);
-      setError(err instanceof Error ? err.message : "Could not load mentor teams");
-    } finally {
-      setLoading(false);
-    }
-  }, [session]);
+  const refresh = useCallback(
+    async (soft = false) => {
+      if (!session) return;
+      if (!soft) setLoading(true);
+      try {
+        const rows = await api<MentorTeamRow[]>("/mentors/me/teams");
+        setTeams(rows);
+        setError(null);
+      } catch (err) {
+        if (!soft) {
+          setTeams([]);
+          setError(err instanceof Error ? err.message : "Could not load mentor teams");
+        }
+      } finally {
+        if (!soft) setLoading(false);
+      }
+    },
+    [session],
+  );
 
   useEffect(() => {
     void refresh();

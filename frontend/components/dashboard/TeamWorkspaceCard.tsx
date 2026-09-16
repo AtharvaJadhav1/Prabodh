@@ -39,6 +39,7 @@ export default function TeamWorkspaceCard() {
   const [inviteSending, setInviteSending] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteSuccess, setInviteSuccess] = useState("");
+  const [revokingInviteId, setRevokingInviteId] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const percent = Math.round((filledCount / Math.max(capacity, 1)) * 100);
   const confirmedMembers = members.filter((m) => m.status === "Verified");
@@ -240,10 +241,16 @@ export default function TeamWorkspaceCard() {
               {isLead && (
                 <button
                   type="button"
-                  onClick={() => void revokeInvite(invite.id)}
-                  className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100 hover:text-red-700"
+                  disabled={revokingInviteId === invite.id}
+                  onClick={() => {
+                    setRevokingInviteId(invite.id);
+                    void revokeInvite(invite.id)
+                      .catch(() => undefined)
+                      .finally(() => setRevokingInviteId((id) => (id === invite.id ? null : id)));
+                  }}
+                  className="shrink-0 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Revoke
+                  {revokingInviteId === invite.id ? "Revoking…" : "Revoke"}
                 </button>
               )}
             </div>

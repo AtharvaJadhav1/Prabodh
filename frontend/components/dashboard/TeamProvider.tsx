@@ -55,7 +55,7 @@ type TeamContextValue = {
   savePreferences: (preferences: PsPreferenceInput[]) => Promise<void>;
   submitPreferences: (preferences: PsPreferenceInput[]) => Promise<{ sent: boolean; code?: string }>;
   sendFacultyInvite: (email: string, mentorType?: "institute" | "industry") => Promise<boolean>;
-  revokeFacultyInvite: (inviteId?: string) => void;
+  revokeFacultyInvite: (inviteId?: string) => Promise<void>;
   facultyDirectory: Array<{
     id: string;
     fullName: string;
@@ -328,12 +328,26 @@ export function TeamProvider({ children }: { children: ReactNode }) {
 
   const revokeInvite = async (inviteId: string) => {
     if (!team?.id) return;
-    if (inviteId.startsWith("optimistic-")) {
-      await reload();
-      return;
+    const revokedEmail = invites.find((i) => i.id === inviteId)?.email;
+    setInvites((prev) => prev.filter((i) => i.id !== inviteId));
+    if (revokedEmail) {
+      setMemberIds((prev) => {
+        const next = { ...prev };
+        delete next[revokedEmail];
+        return next;
+      });
     }
-    await apiPost(`/teams/${team.id}/invite/${inviteId}/revoke`, {});
-    await reload();
+    try {
+      if (inviteId.startsWith("optimistic-")) {
+        await reload();
+        return;
+      }
+      await apiPost(`/teams/${team.id}/invite/${inviteId}/revoke`, {});
+      void reload();
+    } catch {
+      await reload();
+      throw new Error("Could not revoke invitation");
+    }
   };
 
   const mergePsPreferences = useCallback((preferences: PortalTeam["psPreferences"]) => {
@@ -483,12 +497,28 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           }
           return Boolean(result.emailSent ?? true);
         },
-        revokeFacultyInvite: (inviteId) => {
+        revokeFacultyInvite: async (inviteId) => {
           const pending = inviteId
             ? team?.mentorInvites?.find((i) => i.id === inviteId)
             : team?.mentorInvites?.find((i) => i.inviteStatus === "pending");
-          if (pending) {
-            void apiPost(`/mentors/invites/${pending.id}/revoke`, {}).then(() => reload());
+          if (!pending?.id) return;
+          setTeam((prev) => {
+            if (!prev) return prev;
+            const next = {
+              ...prev,
+              mentorInvites: (prev.mentorInvites ?? []).filter((i) => i.id !== pending.id),
+            };
+            teamRef.current = next;
+            return next;
+          });
+          setFacultyInviteStatus("none");
+          setFacultyInviteEmail("");
+          try {
+            await apiPost(`/mentors/invites/${pending.id}/revoke`, {});
+            void reload();
+          } catch {
+            await reload();
+            throw new Error("Could not revoke mentor invitation");
           }
         },
         reload,

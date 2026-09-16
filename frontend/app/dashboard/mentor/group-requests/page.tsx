@@ -17,6 +17,7 @@ export default function GroupRequestsPage() {
     atCapacity,
     acceptRequest,
     declineRequest,
+    processingId,
   } = useMentorRequests();
   const { psApprovalsCount } = useMentorTeams();
 
@@ -52,6 +53,7 @@ export default function GroupRequestsPage() {
                     key={req.id}
                     request={req}
                     atCap={atCapacity}
+                    busy={processingId === req.id}
                     onAccept={acceptRequest}
                     onDecline={declineRequest}
                   />

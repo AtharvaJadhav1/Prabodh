@@ -29,6 +29,7 @@ type MentorRequestContextValue = {
   atCapacity: boolean;
   acceptRequest: (id: string) => void;
   declineRequest: (id: string) => void;
+  processingId: string | null;
 };
 
 const MentorRequestContext = createContext<MentorRequestContextValue | null>(null);
@@ -53,6 +54,7 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
   const { refresh: refreshMentorTeams } = useMentorTeams();
   const [pendingRequests, setPendingRequests] = useState<GroupRequest[]>([]);
   const [requestHistory, setRequestHistory] = useState<GroupRequestHistoryEntry[]>([]);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     if (!session) return;
@@ -77,10 +79,13 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
 
   const acceptRequest = useCallback(
     (id: string) => {
+      if (processingId) return;
       const target = pendingRequests.find((r) => r.id === id);
+      setProcessingId(id);
+      setPendingRequests((prev) => prev.filter((r) => r.id !== id));
       void apiPost(`/mentors/invites/${id}/accept`, {})
         .then(() => {
-          void refreshMentorTeams();
+          void refreshMentorTeams(true);
           if (target) {
             setRequestHistory((h) => [
               {
@@ -98,18 +103,26 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
               ...h,
             ]);
           }
-          setPendingRequests((prev) => prev.filter((r) => r.id !== id));
         })
         .catch(() => {
+          if (target) {
+            setPendingRequests((prev) => (prev.some((r) => r.id === id) ? prev : [target, ...prev]));
+          }
           void reload();
+        })
+        .finally(() => {
+          setProcessingId((current) => (current === id ? null : current));
         });
     },
-    [pendingRequests, reload, refreshMentorTeams],
+    [pendingRequests, processingId, reload, refreshMentorTeams],
   );
 
   const declineRequest = useCallback(
     (id: string) => {
+      if (processingId) return;
       const target = pendingRequests.find((r) => r.id === id);
+      setProcessingId(id);
+      setPendingRequests((prev) => prev.filter((r) => r.id !== id));
       void apiPost(`/mentors/invites/${id}/decline`, {})
         .then(() => {
           if (target) {
@@ -129,13 +142,18 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
               ...h,
             ]);
           }
-          setPendingRequests((prev) => prev.filter((r) => r.id !== id));
         })
         .catch(() => {
+          if (target) {
+            setPendingRequests((prev) => (prev.some((r) => r.id === id) ? prev : [target, ...prev]));
+          }
           void reload();
+        })
+        .finally(() => {
+          setProcessingId((current) => (current === id ? null : current));
         });
     },
-    [pendingRequests, reload],
+    [pendingRequests, processingId, reload],
   );
 
   return (
@@ -148,6 +166,7 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
         atCapacity,
         acceptRequest,
         declineRequest,
+        processingId,
       }}
     >
       {children}
