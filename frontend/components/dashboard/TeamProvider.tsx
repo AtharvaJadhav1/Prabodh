@@ -82,6 +82,7 @@ function mapMembers(team: PortalTeam, cap: number): Member[] {
     const name = m.user?.fullName ?? m.invitedEmail;
     const accepted = m.inviteStatus === "accepted";
     return {
+      id: m.user?.id ?? m.user?.email ?? m.invitedEmail,
       name: accepted ? name : "Invite Pending",
       initials: accepted ? initials(name) : "?",
       prn: m.user?.email ?? m.invitedEmail,

@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../auth/AuthProvider";
-import { avatarUrlFrom, diceBearUrl } from "../../lib/avatar";
+import { getUserAvatarUrl } from "../../lib/avatar";
 import { useTeam } from "./TeamProvider";
 import {
   DashboardIcon,
@@ -55,9 +55,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const canRename = isLead && team?.status !== "locked";
   const fullName = session?.fullName ?? "Student";
   const displayName = fullName.length > 16 ? fullName.split(" ")[0] : fullName;
-  const profileAvatar =
-    avatarUrlFrom(session?.profileJson) ??
-    diceBearUrl(session?.fullName || session?.email || "leader");
+  const profileAvatar = getUserAvatarUrl(session);
 
   return (
     <>

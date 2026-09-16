@@ -1,6 +1,7 @@
 export type StudentRole = "Team Lead" | "Team Member";
 
 export type Member = {
+  id?: string;
   name: string;
   initials: string;
   prn: string;

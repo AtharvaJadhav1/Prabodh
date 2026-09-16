@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { diceBearUrl, type AvatarStyle } from "../../lib/avatar";
 import { useProfile } from "./ProfileProvider";
 import { CameraIcon, XIcon, UploadCloudIcon, SparklesIcon } from "./icons";
@@ -46,11 +46,15 @@ const PICK_SEEDS = [
 export default function AvatarPickerModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { setAvatarUrl } = useProfile();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [tab, setTab] = useState<Tab>("upload");
+  const [tab, setTab] = useState<Tab>("pick");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [seeds, setSeeds] = useState<string[]>(PICK_SEEDS);
   const [style, setStyle] = useState<AvatarStyle>("adventurer");
+
+  useEffect(() => {
+    if (open) setTab("pick");
+  }, [open]);
 
   if (!open) return null;
 
@@ -122,8 +126,8 @@ export default function AvatarPickerModal({ open, onClose }: { open: boolean; on
         <div className="flex items-center gap-1.5 border-b border-brand-softline px-5 py-3">
           {(
             [
-              { key: "upload", label: "Upload photo" },
               { key: "pick", label: "Pick an avatar" },
+              { key: "upload", label: "Upload photo" },
             ] as const
           ).map((t) => (
             <button

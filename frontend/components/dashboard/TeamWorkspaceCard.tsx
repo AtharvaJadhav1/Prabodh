@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useTeam } from "./TeamProvider";
 import Avatar from "../Avatar";
+import { getUserAvatarUrl } from "../../lib/avatar";
 import InteractiveTeamAvatar from "./InteractiveTeamAvatar";
 import { UserPlusIcon, LockIcon } from "./icons";
 
@@ -117,7 +118,7 @@ export default function TeamWorkspaceCard() {
             >
               <div className="flex min-w-0 flex-1 items-center gap-3.5">
                 <Avatar
-                  src={member.avatarUrl || null}
+                  src={getUserAvatarUrl(member)}
                   seed={member.name || member.prn || "member"}
                   className="h-10 w-10 border border-brand-softline"
                 />

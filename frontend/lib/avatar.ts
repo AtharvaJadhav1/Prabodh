@@ -16,3 +16,20 @@ export function avatarUrlFrom(profileJson?: unknown): string | null {
   const value = (profileJson as Record<string, unknown>).avatarUrl;
   return typeof value === "string" && value.trim() ? value : null;
 }
+
+type AvatarUser = {
+  id?: string | null;
+  userId?: string | null;
+  email?: string | null;
+  fullName?: string | null;
+  name?: string | null;
+  avatarUrl?: string | null;
+  profileJson?: unknown;
+};
+
+export function getUserAvatarUrl(user?: AvatarUser | null): string {
+  const src = user?.avatarUrl ?? avatarUrlFrom(user?.profileJson);
+  if (src) return src;
+  const seed = user?.id ?? user?.userId ?? user?.email ?? user?.fullName ?? user?.name ?? "default-user";
+  return diceBearUrl(seed);
+}

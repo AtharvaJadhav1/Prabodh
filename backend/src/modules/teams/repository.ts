@@ -53,6 +53,7 @@ export class TeamsRepository {
             email: true,
             department: true,
             institute: true,
+            profileJson: true,
           },
         },
       },

@@ -16,6 +16,7 @@ import {
   LockIcon,
 } from "./icons";
 import Avatar from "../Avatar";
+import { getUserAvatarUrl } from "../../lib/avatar";
 
 export default function RequestsTabs() {
   const [tab, setTab] = useState<1 | 2>(1);
@@ -285,7 +286,7 @@ function MemberRow({
   onRemove,
 }: {
   index: number;
-  member: { name: string; initials: string; prn: string; branch: string; role: string | null; status: string; avatarUrl?: string | null };
+  member: { id?: string; name: string; initials: string; prn: string; branch: string; role: string | null; status: string; avatarUrl?: string | null };
   isLead: boolean;
   onRemove: () => void;
 }) {
@@ -298,7 +299,7 @@ function MemberRow({
     >
       <div className="flex items-center gap-3.5 min-w-0 flex-1">
         {member.status === "Verified" ? (
-          <Avatar src={member.avatarUrl || null} seed={member.name || member.prn || "member"} className="h-10 w-10" />
+          <Avatar src={getUserAvatarUrl(member)} seed={member.name || member.prn || "member"} className="h-10 w-10" />
         ) : (
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold shadow-sm ${
