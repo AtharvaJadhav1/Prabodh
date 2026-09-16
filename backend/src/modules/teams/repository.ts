@@ -197,9 +197,17 @@ export class TeamsRepository {
 
 export async function generateTeamCode(prisma: PrismaService): Promise<string> {
   for (let i = 0; i < 20; i++) {
-    const code = `SIH-${String(Math.floor(1000 + Math.random() * 9000))}`;
+    const rows = await prisma.team.findMany({
+      where: { teamCode: { startsWith: 'INC-' } },
+      select: { teamCode: true },
+    });
+    const maxNum = rows.reduce((m, r) => {
+      const n = Number(r.teamCode.slice(4));
+      return Number.isFinite(n) && n > m ? n : m;
+    }, 0);
+    const code = `INC-${String(maxNum + 1).padStart(4, '0')}`;
     const exists = await prisma.team.findUnique({ where: { teamCode: code } });
     if (!exists) return code;
   }
-  return `SIH-${Date.now().toString().slice(-4)}`;
+  return `INC-${Date.now().toString().slice(-4)}`;
 }
