@@ -94,6 +94,8 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
         invalidateApiCache(/\/(teams|mentors)(\/|$)/);
       } else if (path.includes("/teams")) {
         invalidateApiCache(/\/teams(\/|$)/);
+      } else if (path.includes("/notifications")) {
+        invalidateApiCache(/\/notifications(\/|$)/);
       } else if (path.includes("/idea-submissions") || path.includes("/problem-statements")) {
         invalidateApiCache(/\/(teams|problem-statements|idea-submissions)(\/|$)/);
       } else {

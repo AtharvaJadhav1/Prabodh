@@ -33,6 +33,28 @@ module.exports = {
           warmBorder: "#F6D5BD",
         },
       },
+      keyframes: {
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.4)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        "pop-in": {
+          "0%": { opacity: "0", transform: "scale(0.95) translateY(-6px)" },
+          "100%": { opacity: "1", transform: "scale(1) translateY(0)" },
+        },
+        "bell-ring": {
+          "0%,100%": { transform: "rotate(0)" },
+          "20%": { transform: "rotate(12deg)" },
+          "40%": { transform: "rotate(-10deg)" },
+          "60%": { transform: "rotate(6deg)" },
+          "80%": { transform: "rotate(-4deg)" },
+        },
+      },
+      animation: {
+        "scale-in": "scale-in 0.2s ease-out",
+        "pop-in": "pop-in 0.18s ease-out",
+        "bell-ring": "bell-ring 0.5s ease-in-out",
+      },
     },
   },
   plugins: [],
