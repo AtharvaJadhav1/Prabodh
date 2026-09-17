@@ -50,6 +50,16 @@ export const otpVerifySchema = z.object({
   portal: z.enum(['student', 'faculty']).optional(),
 });
 
+export const passwordForgotSchema = z.object({
+  email: z.string().email(),
+});
+
+export const passwordResetSchema = z.object({
+  email: z.string().email(),
+  code: z.string().regex(/^\d{6}$/),
+  password: z.string().min(8).max(128),
+});
+
 export const patchMeSchema = z.object({
   fullName: z.string().min(2).max(120).optional(),
   phone: z.string().max(30).optional(),

@@ -77,7 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshed = useRef(false);
 
   const isDashboard = pathname.startsWith("/dashboard");
-  const isAuthEntry = pathname.startsWith("/login") || pathname.startsWith("/register");
+  const isAuthEntry =
+    (pathname.startsWith("/login") && !pathname.startsWith("/login/forgot")) ||
+    pathname.startsWith("/register");
 
   useLayoutEffect(() => {
     const cached = readSession();

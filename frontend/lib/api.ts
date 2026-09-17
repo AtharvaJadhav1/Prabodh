@@ -14,6 +14,7 @@ export class ApiError extends Error {
 }
 
 const REQUEST_TIMEOUT_MS = 12_000;
+const AUTH_REQUEST_TIMEOUT_MS = 60_000;
 const NETWORK_CAP_MS = 1_500;
 const STALE_SENTINEL = Symbol("stale");
 
@@ -30,17 +31,44 @@ function runDeduped<T>(key: string, run: () => Promise<T>): Promise<T> {
   return p;
 }
 
-function withTimeoutSignal(init: RequestInit = {}): RequestInit {
-  const timeoutSignal = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+function timeoutMsFor(path: string, method: string) {
+  if (method === "POST" && path.startsWith("/auth/")) return AUTH_REQUEST_TIMEOUT_MS;
+  return REQUEST_TIMEOUT_MS;
+}
+
+function withTimeoutSignal(ms: number, init: RequestInit = {}): RequestInit {
+  const timeoutSignal = AbortSignal.timeout(ms);
   if (init.signal) return { ...init, signal: AbortSignal.any([init.signal, timeoutSignal]) };
   return { ...init, signal: timeoutSignal };
+}
+
+export function messageFromApiBody(data: unknown, fallback: string): string {
+  if (typeof data === "object" && data) {
+    if ("message" in data) {
+      const m = (data as { message: unknown }).message;
+      if (typeof m === "string") return m;
+      if (Array.isArray(m)) return m.map(String).join(", ");
+    }
+    const fieldErrors = (data as { fieldErrors?: Record<string, string[]> }).fieldErrors;
+    if (fieldErrors) {
+      const parts = Object.entries(fieldErrors).flatMap(([field, msgs]) =>
+        (msgs ?? []).map((msg) => (field === "portal" ? msg : `${field}: ${msg}`)),
+      );
+      if (parts.length) return parts.join("; ");
+    }
+  }
+  return fallback;
 }
 
 function sleep(ms: number) {
   return new Promise<typeof STALE_SENTINEL>((resolve) => setTimeout(() => resolve(STALE_SENTINEL), ms));
 }
 
-export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+export type ApiOptions = {
+  timeoutMs?: number;
+};
+
+export async function api<T>(path: string, init: RequestInit = {}, options: ApiOptions = {}): Promise<T> {
   const session = readSession();
   const headers = new Headers(init.headers);
   if (!headers.has("content-type") && init.body && !(init.body instanceof FormData)) {
@@ -58,9 +86,11 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const cacheable = shouldCache(method, path);
   const dedupe = method === "GET";
 
+  const timeoutMs = options.timeoutMs ?? timeoutMsFor(path, method);
+
   const fetchIt = async (): Promise<T> => {
     const res = await fetch(`${API_BASE}${path}`, {
-      ...withTimeoutSignal(init),
+      ...withTimeoutSignal(timeoutMs, init),
       headers,
       cache: "no-store",
     });
@@ -76,11 +106,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     }
 
     if (!res.ok) {
-      const message =
-        typeof data === "object" && data && "message" in data
-          ? String((data as { message: unknown }).message)
-          : res.statusText;
-      throw new ApiError(res.status, message, data);
+      throw new ApiError(res.status, messageFromApiBody(data, res.statusText), data);
     }
 
     if (cacheable) {
@@ -117,8 +143,8 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return dedupe ? runDeduped(key, fetchIt) : fetchIt();
 }
 
-export function apiPost<T>(path: string, body: unknown) {
-  return api<T>(path, { method: "POST", body: JSON.stringify(body) });
+export function apiPost<T>(path: string, body: unknown, options?: ApiOptions) {
+  return api<T>(path, { method: "POST", body: JSON.stringify(body) }, options);
 }
 
 export function apiPatch<T>(path: string, body: unknown) {
@@ -136,7 +162,7 @@ export async function apiBlob(path: string) {
   if (bearer) headers.set("authorization", `Bearer ${bearer}`);
   else if (session?.userId) headers.set("x-dev-user-id", session.userId);
   const res = await fetch(`${API_BASE}${path}`, {
-    ...withTimeoutSignal(),
+    ...withTimeoutSignal(REQUEST_TIMEOUT_MS),
     headers,
     cache: "no-store",
   });

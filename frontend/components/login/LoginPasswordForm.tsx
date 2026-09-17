@@ -1,21 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { apiPost } from "../../lib/api";
-import type { PlatformRole } from "../../lib/session";
+import { friendlyAuthError, loginWithPassword, type AuthResponse } from "../../lib/auth-login";
 import TextField from "./TextField";
-
-type AuthResponse = {
-  accessToken: string;
-  userId: string;
-  email: string;
-  fullName: string;
-  platformRole: PlatformRole;
-  institute?: string | null;
-  department?: string | null;
-  phone?: string | null;
-  profileJson?: Record<string, unknown> | null;
-};
 
 type Props = {
   portal?: "student" | "faculty";
@@ -53,13 +41,13 @@ export default function LoginPasswordForm({
           setError("");
           setLoading(true);
           try {
-            const res = await apiPost<AuthResponse>(
-              "/auth/login",
-              portal ? { email, password, portal } : { email, password },
-            );
+            const res = await loginWithPassword(email, password, portal);
+            if (!res?.accessToken || !res?.platformRole) {
+              throw new Error("Sign-in succeeded but the server response was incomplete. Try again.");
+            }
             onSuccess(res);
           } catch (err) {
-            setError(err instanceof Error ? err.message : "Sign in failed");
+            setError(friendlyAuthError(err));
           } finally {
             setLoading(false);
           }
@@ -97,6 +85,11 @@ export default function LoginPasswordForm({
               {showPassword ? "Hide" : "Show"}
             </button>
           </div>
+          <p className="text-right">
+            <Link href="/login/forgot" className="text-xs font-semibold text-brand-primary hover:text-brand-hover">
+              Forgot password?
+            </Link>
+          </p>
         </div>
         {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
         <button
@@ -104,7 +97,7 @@ export default function LoginPasswordForm({
           disabled={loading}
           className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
         >
-          {loading ? "Signing in…" : submitLabel}
+          {loading ? "Signing in… (first request may take up to a minute)" : submitLabel}
         </button>
       </form>
       {footer}

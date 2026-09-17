@@ -7,7 +7,16 @@ import { consumeToken } from '../../lib/rate-limit';
 import { PrismaService } from '../../lib/prisma.service';
 import { ZodPipe } from '../../common/zod.pipe';
 import { IdentityService } from './service';
-import { avatarUploadSchema, loginSchema, otpSendSchema, otpVerifySchema, patchMeSchema, registerSchema } from './schema';
+import {
+  avatarUploadSchema,
+  loginSchema,
+  otpSendSchema,
+  otpVerifySchema,
+  passwordForgotSchema,
+  passwordResetSchema,
+  patchMeSchema,
+  registerSchema,
+} from './schema';
 
 @Controller()
 export class IdentityController {
@@ -58,6 +67,20 @@ export class IdentityController {
     const parsed = body as { email: string; purpose: 'login' | 'register'; code: string };
     await consumeToken(`otp-verify:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 10));
     return this.identity.verifyOtpAndIssueToken(parsed);
+  }
+
+  @Post('auth/password/forgot')
+  async forgotPassword(@Body(new ZodPipe(passwordForgotSchema)) body: unknown) {
+    const parsed = body as { email: string };
+    await consumeToken(`pwd-forgot:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 5));
+    return this.identity.requestPasswordReset(parsed.email);
+  }
+
+  @Post('auth/password/reset')
+  async resetPassword(@Body(new ZodPipe(passwordResetSchema)) body: unknown) {
+    const parsed = body as { email: string; code: string; password: string };
+    await consumeToken(`pwd-reset:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 10));
+    return this.identity.resetPasswordWithOtp(parsed);
   }
 
   @Post('auth/register')

@@ -69,13 +69,18 @@ export class IdentityService {
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid email or password.');
     }
-    if (!user.passwordHash || !verifyPassword(body.password, user.passwordHash)) {
+    if (!user.passwordHash) {
+      throw new UnauthorizedException(
+        'No password is set for this account. Use Forgot password or ask your administrator.',
+      );
+    }
+    if (!verifyPassword(body.password, user.passwordHash)) {
       throw new UnauthorizedException('Invalid email or password.');
     }
     if (body.portal) {
       this.assertPortal(user.platformRole, body.portal);
     }
-    await this.acceptPendingTeamInvites(user.id, user.email);
+    void this.acceptPendingTeamInvites(user.id, user.email).catch(() => undefined);
     return this.issueToken(user);
   }
 
@@ -163,7 +168,7 @@ export class IdentityService {
       this.assertPortal(user.platformRole, body.portal);
     }
 
-    await this.acceptPendingTeamInvites(user.id, user.email);
+    void this.acceptPendingTeamInvites(user.id, user.email).catch(() => undefined);
     return this.issueToken(user);
   }
 
@@ -172,8 +177,35 @@ export class IdentityService {
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Unknown or inactive account');
     }
-    await this.acceptPendingTeamInvites(user.id, user.email);
+    void this.acceptPendingTeamInvites(user.id, user.email).catch(() => undefined);
     return this.issueToken(user);
+  }
+
+  async requestPasswordReset(email: string) {
+    const normalized = email.trim().toLowerCase();
+    const user = await this.repo.findByEmail(normalized);
+    if (!user || !user.isActive) {
+      throw new NotFoundException('No account found for this email.');
+    }
+    const result = await sendOtp({ email: normalized, purpose: 'reset_password' });
+    return {
+      ok: true,
+      message: 'If an account exists for this email, a reset code has been sent.',
+      devCode: result.devCode,
+    };
+  }
+
+  async resetPasswordWithOtp(body: { email: string; code: string; password: string }) {
+    const email = body.email.trim().toLowerCase();
+    const check = await verifyOtp({ email, purpose: 'reset_password', code: body.code });
+    if (!check.ok) throw new UnauthorizedException(check.reason);
+
+    const user = await this.repo.findByEmail(email);
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Account not found or disabled.');
+    }
+    await this.repo.updatePasswordHash(user.id, hashPassword(body.password));
+    return { ok: true, message: 'Password updated. You can sign in now.' };
   }
 
   private registerFromOtpProfile(body: {

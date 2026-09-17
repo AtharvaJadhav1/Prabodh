@@ -85,4 +85,11 @@ export class IdentityRepository {
   createMany(users: Prisma.UserCreateManyInput[]) {
     return this.prisma.user.createMany({ data: users, skipDuplicates: true });
   }
+
+  updatePasswordHash(userId: string, passwordHash: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+  }
 }

@@ -5,7 +5,7 @@ import { resolveOtpFromAddress, sendTransactionalEmail } from './resend';
 const OTP_TTL_SEC = Number(process.env.OTP_TTL_SEC ?? 600);
 const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS ?? 5);
 
-export type OtpPurpose = 'login' | 'register';
+export type OtpPurpose = 'login' | 'register' | 'reset_password';
 
 export type PendingRegistration = {
   email: string;
@@ -57,8 +57,10 @@ export async function sendOtp(opts: {
   const minutes = Math.floor(OTP_TTL_SEC / 60);
   const subject =
     opts.purpose === 'register'
-      ? 'Verify your Incubation Portal registration'
-      : 'Your Incubation Portal sign-in code';
+      ? 'Verify your Prabodh registration'
+      : opts.purpose === 'reset_password'
+        ? 'Reset your Prabodh password'
+        : 'Your Prabodh sign-in code';
 
   const bodyCopy =
     opts.purpose === 'register'
@@ -67,14 +69,19 @@ export async function sendOtp(opts: {
       <p>Thank you for registering.</p>
       <p>Use the one-time verification code (OTP) below to activate your account:</p>
       `
-      : `
+      : opts.purpose === 'reset_password'
+        ? `
+      <p>Hi there,</p>
+      <p>Use the one-time verification code (OTP) below to choose a new password:</p>
+      `
+        : `
       <p>Hi there,</p>
       <p>Use the one-time verification code (OTP) below to sign in:</p>
       `;
 
   const html = `
     <div style="font-family:system-ui,sans-serif;line-height:1.5;color:#1a1a1a">
-      <h2 style="color:#5B2E10;margin:0 0 16px">Incubation Portal</h2>
+      <h2 style="color:#5B2E10;margin:0 0 16px">Prabodh</h2>
       ${bodyCopy}
       <p style="font-size:28px;font-weight:700;letter-spacing:4px;color:#D96B27;margin:20px 0">${code}</p>
       <p style="color:#666;margin:0 0 8px">This code expires in ${minutes} minutes. If you did not request this, you can safely ignore this email.</p>

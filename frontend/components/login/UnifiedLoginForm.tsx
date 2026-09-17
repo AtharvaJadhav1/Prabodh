@@ -1,12 +1,11 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useAuth } from "../auth/AuthProvider";
 import { dashboardForRole } from "../../lib/session";
 import LoginPasswordForm from "./LoginPasswordForm";
 
 export default function UnifiedLoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { establishSession } = useAuth();
   const notice = searchParams.get("notice");
@@ -34,7 +33,8 @@ export default function UnifiedLoginForm() {
       }
       onSuccess={(result) => {
         establishSession(result);
-        router.replace(dashboardForRole(result.platformRole));
+        const target = dashboardForRole(result.platformRole);
+        window.location.assign(target);
       }}
     />
   );
