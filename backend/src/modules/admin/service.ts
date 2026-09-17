@@ -130,8 +130,8 @@ export class AdminService {
         department: true,
         profileJson: true,
       },
-      orderBy: { fullName: 'asc' },
-      take: 500,
+      orderBy: [{ createdAt: 'desc' }, { fullName: 'asc' }],
+      take: 2000,
     }).then((rows) =>
       rows.map((u) => ({
         id: u.id,

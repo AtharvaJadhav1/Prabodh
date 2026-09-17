@@ -11,7 +11,7 @@ import type { PortalUser } from "../../../../lib/types";
 type Tab = "students" | "institute-mentors" | "industry-mentors";
 
 export default function AdminUsersPage() {
-  const { users, mentors, reload } = useAdmin();
+  const { users, reload } = useAdmin();
   const [tab, setTab] = useState<Tab>("students");
   const [csv, setCsv] = useState("email,fullName,platformRole,institute,department\n");
   const [importMsg, setImportMsg] = useState("");
@@ -31,7 +31,7 @@ export default function AdminUsersPage() {
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "students", label: "Students", count: students.length },
-    { key: "institute-mentors", label: "Institute Mentors", count: institute.length || mentors.length },
+    { key: "institute-mentors", label: "Institute Mentors", count: institute.length },
     { key: "industry-mentors", label: "Industry Mentors", count: industry.length },
   ];
 

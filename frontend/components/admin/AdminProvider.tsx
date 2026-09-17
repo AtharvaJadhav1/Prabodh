@@ -62,13 +62,23 @@ export function AdminProvider({ children }: { children: ReactNode }) {
           teamsMissingMentor: number;
           stageFunnel: Array<{ name: string }>;
         };
-        teams: Array<{
-          id: string;
-          name: string;
-          teamCode: string;
-          theme?: string | null;
-          mentorAssignments: Array<{ mentorUserId: string; mentor: { fullName: string }; mentorType: string }>;
-        }>;
+        teams:
+          | Array<{
+              id: string;
+              name: string;
+              teamCode: string;
+              theme?: string | null;
+              mentorAssignments: Array<{ mentorUserId: string; mentor: { fullName: string }; mentorType: string }>;
+            }>
+          | {
+              items: Array<{
+                id: string;
+                name: string;
+                teamCode: string;
+                theme?: string | null;
+                mentorAssignments: Array<{ mentorUserId: string; mentor: { fullName: string }; mentorType: string }>;
+              }>;
+            };
         mentors: Array<{ id: string; fullName: string; platformRole: string; email: string }>;
         stages: Array<{
           id: string;
@@ -81,6 +91,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         users: PortalUser[];
       }>("/admin/bootstrap");
 
+      const teamRows = Array.isArray(res.teams) ? res.teams : (res.teams?.items ?? []);
+
       setMetricsLive({
         totalTeams: res.dashboard.totalTeams,
         totalStudents: res.users.filter((u) => u.platformRole === "student").length,
@@ -89,9 +101,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         pendingAllocations: res.dashboard.teamsMissingMentor,
         activeStage: res.dashboard.stageFunnel[0]?.name ?? "—",
       });
-      setUsers(res.users);
+      setUsers(res.users ?? []);
       setTeams(
-        res.teams.map((t) => ({
+        teamRows.map((t) => ({
           teamId: t.id,
           teamName: t.name,
           track: t.theme ?? "Unassigned",
@@ -102,7 +114,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       setMentors(instMentors.map((m) => ({ id: m.id, name: m.fullName, title: m.email })));
 
       setAllocations(
-        res.teams.map((t) => {
+        teamRows.map((t) => {
           const inst = t.mentorAssignments.find((a) => a.mentorType === "institute");
           return {
             teamId: t.id,
@@ -116,7 +128,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       );
 
       setStages(
-        res.stages.map((s) => ({
+        (res.stages ?? []).map((s) => ({
           id: s.id,
           name: s.name,
           order: s.sequence,
@@ -129,10 +141,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
           status: s.isActive ? "active" : "closed",
         })),
       );
-    } catch {
-      setAllocations([]);
-      setMentors([]);
-      setUsers([]);
+    } catch (err) {
+      console.error("[admin.bootstrap]", err);
+      // Keep previously loaded users/mentors on transient failures so imports stay visible.
     }
   }, [session]);
 

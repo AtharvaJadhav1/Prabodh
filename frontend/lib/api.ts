@@ -116,8 +116,10 @@ export async function api<T>(path: string, init: RequestInit = {}, options: ApiO
       // switches wait on cold network fetches again.
       if (path.includes("/comments")) {
         invalidateApiCache(/\/teams(\/|$)/);
+      } else if (path.includes("/admin")) {
+        invalidateApiCache(/\/admin(\/|$)/);
       } else if (path.includes("/mentors")) {
-        invalidateApiCache(/\/(teams|mentors)(\/|$)/);
+        invalidateApiCache(/\/(teams|mentors|admin)(\/|$)/);
       } else if (path.includes("/teams")) {
         invalidateApiCache(/\/teams(\/|$)/);
       } else if (path.includes("/notifications")) {
@@ -125,7 +127,7 @@ export async function api<T>(path: string, init: RequestInit = {}, options: ApiO
       } else if (path.includes("/idea-submissions") || path.includes("/problem-statements")) {
         invalidateApiCache(/\/(teams|problem-statements|idea-submissions)(\/|$)/);
       } else {
-        invalidateApiCache(/\/teams(\/|$)/);
+        invalidateApiCache(/\/(teams|admin)(\/|$)/);
       }
     }
     return data as T;
