@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { friendlyAuthError, loginWithPassword, type AuthResponse } from "../../lib/auth-login";
 import TextField from "./TextField";
@@ -22,7 +23,9 @@ export default function LoginPasswordForm({
   footer,
   onSuccess,
 }: Props) {
-  const [email, setEmail] = useState("");
+  const searchParams = useSearchParams();
+  const presetEmail = (searchParams.get("email") ?? "").trim();
+  const [email, setEmail] = useState(presetEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -41,7 +44,7 @@ export default function LoginPasswordForm({
           setError("");
           setLoading(true);
           try {
-            const res = await loginWithPassword(email, password, portal);
+            const res = await loginWithPassword(email.trim().toLowerCase(), password.trim(), portal);
             if (!res?.accessToken || !res?.platformRole) {
               throw new Error("Sign-in succeeded but the server response was incomplete. Try again.");
             }

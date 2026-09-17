@@ -294,8 +294,20 @@ export class IdentityService {
     }
     const email = body.email.toLowerCase();
     const existing = await this.repo.findByEmail(email);
+    const passwordHash = hashPassword(body.password);
     if (existing) {
-      throw new ConflictException('A user with this email already exists.');
+      // Admin re-invite resets credentials so the emailed password always works.
+      return this.prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          fullName: body.fullName,
+          platformRole: body.platformRole,
+          institute: body.institute ?? existing.institute,
+          department: body.department ?? existing.department,
+          passwordHash,
+          isActive: true,
+        },
+      });
     }
     return this.prisma.user.create({
       data: {
@@ -305,7 +317,7 @@ export class IdentityService {
         platformRole: body.platformRole,
         institute: body.institute,
         department: body.department,
-        passwordHash: hashPassword(body.password),
+        passwordHash,
         isActive: true,
       },
     });

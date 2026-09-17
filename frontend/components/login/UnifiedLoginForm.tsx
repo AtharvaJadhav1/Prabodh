@@ -13,7 +13,7 @@ export default function UnifiedLoginForm() {
   return (
     <LoginPasswordForm
       title="Sign in to Prabodh"
-      description="Use your institutional email and password. Students, mentors, and admins all sign in here — we route you to the right workspace."
+      description="Use the email and temporary password from your invite. Students, mentors, and admins all sign in here — we route you to the right workspace."
       submitLabel="Sign in"
       footer={
         <div className="space-y-3">
@@ -23,6 +23,13 @@ export default function UnifiedLoginForm() {
               then sign in above.
             </p>
           ) : null}
+          <p className="text-center text-xs text-brand-muted">
+            Signing in on a shared browser? Open{" "}
+            <a href="/login?switch=1" className="font-semibold text-brand-primary hover:text-brand-hover">
+              switch account
+            </a>{" "}
+            first so the previous session does not take over.
+          </p>
           <p className="text-center text-sm text-brand-muted">
             New student?{" "}
             <a href="/register" className="font-semibold text-brand-primary hover:text-brand-hover">
@@ -33,8 +40,7 @@ export default function UnifiedLoginForm() {
       }
       onSuccess={(result) => {
         establishSession(result);
-        const target = dashboardForRole(result.platformRole);
-        window.location.assign(target);
+        window.location.assign(dashboardForRole(result.platformRole));
       }}
     />
   );

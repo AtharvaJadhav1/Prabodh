@@ -127,9 +127,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [ready, session, isDashboard, pathname, router]);
 
   useEffect(() => {
-    if (!ready || !session || !isAuthEntry) return;
+    if (!ready || !isAuthEntry) return;
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("switch") === "1" || params.get("logout") === "1") {
+        clearApiCache();
+        clearSession();
+        setAccessToken(null);
+        setSession(null);
+        params.delete("switch");
+        params.delete("logout");
+        const next = `${pathname}${params.toString() ? `?${params}` : ""}`;
+        window.history.replaceState({}, "", next);
+        return;
+      }
+    }
+
+    if (!session) return;
     router.replace(dashboardForRole(session.platformRole));
-  }, [ready, session, isAuthEntry, router]);
+  }, [ready, session, isAuthEntry, pathname, router]);
 
   const establishSession = useCallback(
     (payload: {

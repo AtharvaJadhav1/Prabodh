@@ -39,38 +39,49 @@ export function renderEmail(
   ctaUrl?: string,
 ) {
   const safe = `<p>${escapeHtml(body)}</p>`;
+  return renderEmailHtml(template, title, safe, ctaLabel, ctaUrl);
+}
+
+/** Like renderEmail, but body is trusted HTML (caller must escape user values). */
+export function renderEmailHtml(
+  template: EmailTemplate,
+  title: string,
+  bodyHtml: string,
+  ctaLabel?: string,
+  ctaUrl?: string,
+) {
   switch (template) {
     case 'team_invite':
       return layout(
         title,
-        `${safe}<p>Use the same email address when you register so your invite is linked automatically.</p>`,
+        `${bodyHtml}<p>Use the same email address when you register so your invite is linked automatically.</p>`,
         ctaLabel ?? 'Register & join team',
         ctaUrl,
       );
     case 'mentor_allocation':
       return layout(
         title,
-        `${safe}<p>Open your mentor dashboard to review the invitation.</p>`,
+        `${bodyHtml}<p>Open Prabodh and sign in with the email above to continue.</p>`,
         ctaLabel ?? 'Open mentor dashboard',
         ctaUrl,
       );
     case 'deadline_reminder':
-      return layout(title, `${safe}<p>Submit deliverables before the stage locks.</p>`);
+      return layout(title, `${bodyHtml}<p>Submit deliverables before the stage locks.</p>`);
     case 'evaluation_published':
-      return layout(title, `${safe}<p>Sign in to view scores and feedback. Scores are not included in this email.</p>`);
+      return layout(title, `${bodyHtml}<p>Sign in to view scores and feedback. Scores are not included in this email.</p>`);
     case 'admin_broadcast':
-      return layout(title, safe, 'Read announcement');
+      return layout(title, bodyHtml, 'Read announcement');
     case 'status_change':
-      return layout(title, `${safe}<p>Check the status tracker for the latest stage outcome.</p>`);
+      return layout(title, `${bodyHtml}<p>Check the status tracker for the latest stage outcome.</p>`);
     case 'ps_review':
       return layout(
         title,
-        `${safe}<p>Open your PS Approvals page to review the ranked preferences and lock one problem statement for this team.</p>`,
+        `${bodyHtml}<p>Open your PS Approvals page to review the ranked preferences and lock one problem statement for this team.</p>`,
         ctaLabel ?? 'Open PS Approvals',
         ctaUrl,
       );
     default:
-      return layout(title, safe);
+      return layout(title, bodyHtml);
   }
 }
 

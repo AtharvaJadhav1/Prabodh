@@ -1,4 +1,4 @@
-import { renderEmail } from '../modules/notifications/templates/render';
+import { renderEmail, renderEmailHtml } from '../modules/notifications/templates/render';
 import { resolveInviteFromAddress, sendTransactionalEmail } from './resend';
 
 function appOrigin() {
@@ -48,11 +48,29 @@ export async function sendStaffCredentialsEmail(opts: {
   platformRole: string;
 }) {
   const origin = appOrigin();
-  const loginUrl = `${origin}/login`;
+  const loginUrl = `${origin}/login?switch=1&email=${encodeURIComponent(opts.to)}`;
   const label = roleLabel(opts.platformRole);
   const title = `Your Prabodh ${label} account`;
-  const body = `Hello ${opts.fullName}, your administrator created a Prabodh ${label} account for you. Sign in using Email: ${opts.to} and Password: ${opts.password}. Use the same email on the sign-in page — you will be routed to the correct dashboard for your role.`;
-  const html = renderEmail('mentor_allocation', title, body, 'Sign in to Prabodh', loginUrl);
+  const safeName = escapeHtml(opts.fullName);
+  const safeEmail = escapeHtml(opts.to);
+  const safePassword = escapeHtml(opts.password);
+  const bodyHtml = `
+    <p>Hello ${safeName},</p>
+    <p>Your administrator created a Prabodh <strong>${escapeHtml(label)}</strong> account for you.</p>
+    <p style="margin:16px 0 8px;font-size:13px;color:#64748b">Sign in with these exact credentials:</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px">
+      <tr><td style="padding:12px 16px;font-size:13px;color:#64748b">Email</td></tr>
+      <tr><td style="padding:0 16px 12px;font-family:ui-monospace,Consolas,monospace;font-size:15px;font-weight:700;color:#0f172a">${safeEmail}</td></tr>
+      <tr><td style="padding:0 16px 4px;font-size:13px;color:#64748b">Temporary password</td></tr>
+      <tr><td style="padding:0 16px 14px;font-family:ui-monospace,Consolas,monospace;font-size:15px;font-weight:700;letter-spacing:0.02em;color:#0f172a">${safePassword}</td></tr>
+    </table>
+    <p style="margin-top:16px;font-size:13px;color:#64748b">Use <strong>Switch account / Sign in</strong> if another Prabodh session is still open in this browser. Copy the password carefully (no extra spaces).</p>
+  `;
+  const html = renderEmailHtml('mentor_allocation', title, bodyHtml, 'Sign in to Prabodh', loginUrl);
   const from = resolveInviteFromAddress();
   return sendTransactionalEmail({ to: opts.to, subject: title, html, from });
+}
+
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c);
 }
