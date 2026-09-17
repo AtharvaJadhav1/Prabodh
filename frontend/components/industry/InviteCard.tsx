@@ -5,12 +5,23 @@ import type { MentorInvite } from "../../data/industryDashboard";
 
 type Props = {
   invite: MentorInvite;
-  onAccept: (id: string) => void;
-  onDecline: (id: string) => void;
+  onAccept: (id: string) => void | Promise<void>;
+  onDecline: (id: string) => void | Promise<void>;
 };
 
 export default function InviteCard({ invite, onAccept, onDecline }: Props) {
   const [confirmDecline, setConfirmDecline] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const run = async (action: () => void | Promise<void>) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await action();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="rounded-2xl border border-brand-sand bg-white p-5 shadow-xs transition duration-200 hover:shadow-md hover:border-brand-primary/40">
@@ -51,17 +62,19 @@ export default function InviteCard({ invite, onAccept, onDecline }: Props) {
           <div className="flex gap-2">
             <button
               type="button"
+              disabled={busy}
               onClick={() => setConfirmDecline(false)}
-              className="rounded-lg border border-brand-sand px-3 py-1 text-[11px] font-bold text-brand-muted hover:bg-white"
+              className="rounded-lg border border-brand-sand px-3 py-1 text-[11px] font-bold text-brand-muted hover:bg-white disabled:opacity-60"
             >
               Cancel
             </button>
             <button
               type="button"
-              onClick={() => onDecline(invite.id)}
-              className="rounded-lg bg-brand-overdue px-3 py-1 text-[11px] font-bold text-white hover:bg-red-700"
+              disabled={busy}
+              onClick={() => void run(() => onDecline(invite.id))}
+              className="rounded-lg bg-brand-overdue px-3 py-1 text-[11px] font-bold text-white hover:bg-red-700 disabled:opacity-60"
             >
-              Confirm Decline
+              {busy ? "Working…" : "Confirm Decline"}
             </button>
           </div>
         </div>
@@ -69,15 +82,17 @@ export default function InviteCard({ invite, onAccept, onDecline }: Props) {
         <div className="flex gap-2.5 pt-1">
           <button
             type="button"
-            onClick={() => onAccept(invite.id)}
-            className="flex-1 rounded-xl bg-brand-primary px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-brand-hover active:scale-95"
+            disabled={busy}
+            onClick={() => void run(() => onAccept(invite.id))}
+            className="flex-1 rounded-xl bg-brand-primary px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all hover:bg-brand-hover active:scale-95 disabled:opacity-60"
           >
-            Accept Invite
+            {busy ? "Working…" : "Accept Invite"}
           </button>
           <button
             type="button"
+            disabled={busy}
             onClick={() => setConfirmDecline(true)}
-            className="flex-1 rounded-xl border border-brand-sand bg-white px-4 py-2.5 text-xs font-bold text-brand-deep transition-colors hover:bg-brand-cream"
+            className="flex-1 rounded-xl border border-brand-sand bg-white px-4 py-2.5 text-xs font-bold text-brand-deep transition-colors hover:bg-brand-cream disabled:opacity-60"
           >
             Decline
           </button>

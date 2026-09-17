@@ -486,16 +486,75 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         loadFacultyDirectory,
         sendFacultyInvite: async (email, mentorType = "institute") => {
           if (!team?.id || !email.includes("@")) return false;
-          const result = await apiPost<{ emailSent?: boolean; emailError?: string | null }>("/mentors/invite", {
-            teamId: team.id,
-            email,
-            mentorType,
+          const optimisticId = `optimistic-mentor-${email}`;
+          setTeam((prev) => {
+            if (!prev) return prev;
+            const next = {
+              ...prev,
+              mentorInvites: [
+                ...(prev.mentorInvites ?? []).filter((i) => i.invitedEmail !== email),
+                {
+                  id: optimisticId,
+                  invitedEmail: email,
+                  mentorType,
+                  inviteStatus: "pending" as const,
+                  mentor: null,
+                },
+              ],
+            };
+            teamRef.current = next;
+            return next;
           });
-          await reload();
-          if (result.emailError) {
-            throw new Error(result.emailError);
+          setFacultyInviteStatus("sent");
+          setFacultyInviteEmail(email);
+          try {
+            const result = await apiPost<{
+              id: string;
+              emailSent?: boolean;
+              emailError?: string | null;
+              mentor?: { id: string; fullName: string; email: string } | null;
+            }>("/mentors/invite", {
+              teamId: team.id,
+              email,
+              mentorType,
+            });
+            setTeam((prev) => {
+              if (!prev) return prev;
+              const next = {
+                ...prev,
+                mentorInvites: (prev.mentorInvites ?? []).map((i) =>
+                  i.id === optimisticId
+                    ? {
+                        ...i,
+                        id: result.id,
+                        mentor: result.mentor ?? i.mentor,
+                      }
+                    : i,
+                ),
+              };
+              teamRef.current = next;
+              return next;
+            });
+            void reload();
+            if (result.emailError) {
+              throw new Error(result.emailError);
+            }
+            return Boolean(result.emailSent ?? true);
+          } catch (err) {
+            setTeam((prev) => {
+              if (!prev) return prev;
+              const next = {
+                ...prev,
+                mentorInvites: (prev.mentorInvites ?? []).filter((i) => i.id !== optimisticId),
+              };
+              teamRef.current = next;
+              return next;
+            });
+            const stillPending = (teamRef.current?.mentorInvites ?? []).some((i) => i.inviteStatus === "pending");
+            setFacultyInviteStatus(stillPending ? "sent" : "none");
+            if (!stillPending) setFacultyInviteEmail("");
+            throw err;
           }
-          return Boolean(result.emailSent ?? true);
         },
         revokeFacultyInvite: async (inviteId) => {
           const pending = inviteId
@@ -514,10 +573,12 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           setFacultyInviteStatus("none");
           setFacultyInviteEmail("");
           try {
-            await apiPost(`/mentors/invites/${pending.id}/revoke`, {});
+            if (!pending.id.startsWith("optimistic-")) {
+              await apiPost(`/mentors/invites/${pending.id}/revoke`, {});
+            }
             void reload();
           } catch {
-            await reload();
+            void reload();
             throw new Error("Could not revoke mentor invitation");
           }
         },

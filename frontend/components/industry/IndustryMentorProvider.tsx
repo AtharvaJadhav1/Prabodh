@@ -194,11 +194,6 @@ export function IndustryMentorProvider({ children }: { children: ReactNode }) {
   const acceptInvite = useCallback(
     async (id: string) => {
       const target = pendingInvites.find((inv) => inv.id === id);
-      try {
-        await apiPost(`/mentors/invites/${id}/accept`, {});
-      } catch {
-        return;
-      }
       setPendingInvites((prev) => prev.filter((inv) => inv.id !== id));
       if (target) {
         setInviteHistory((h) => [
@@ -206,7 +201,15 @@ export function IndustryMentorProvider({ children }: { children: ReactNode }) {
           { ...target, status: "accepted", respondedAt: formatDate() },
         ]);
       }
-      await loadTeams();
+      try {
+        await apiPost(`/mentors/invites/${id}/accept`, {});
+        void loadTeams();
+      } catch {
+        if (target) {
+          setPendingInvites((prev) => (prev.some((inv) => inv.id === id) ? prev : [target, ...prev]));
+          setInviteHistory((h) => h.filter((inv) => inv.id !== target.id || inv.status !== "accepted"));
+        }
+      }
     },
     [pendingInvites, loadTeams],
   );
@@ -214,17 +217,20 @@ export function IndustryMentorProvider({ children }: { children: ReactNode }) {
   const declineInvite = useCallback(
     async (id: string) => {
       const target = pendingInvites.find((inv) => inv.id === id);
-      try {
-        await apiPost(`/mentors/invites/${id}/decline`, {});
-      } catch {
-        return;
-      }
       setPendingInvites((prev) => prev.filter((inv) => inv.id !== id));
       if (target) {
         setInviteHistory((h) => [
           ...h.filter((inv) => inv.id !== target.id),
           { ...target, status: "revoked", respondedAt: formatDate() },
         ]);
+      }
+      try {
+        await apiPost(`/mentors/invites/${id}/decline`, {});
+      } catch {
+        if (target) {
+          setPendingInvites((prev) => (prev.some((inv) => inv.id === id) ? prev : [target, ...prev]));
+          setInviteHistory((h) => h.filter((inv) => !(inv.id === target.id && inv.status === "revoked")));
+        }
       }
     },
     [pendingInvites],

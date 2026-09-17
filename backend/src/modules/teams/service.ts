@@ -192,34 +192,36 @@ export class TeamsService {
       throw new BadRequestException(`Team is at member cap (${team.memberCap})`);
     }
 
-    const clerk = getClerkClient();
-    let clerkInvitationId: string | null = null;
-    if (clerk && !team.clerkOrgId.startsWith('local-org-')) {
-      try {
-        const invitation = await clerk.organizations.createOrganizationInvitation({
-          organizationId: team.clerkOrgId,
-          emailAddress: email,
-          role: 'org:member',
-          inviterUserId: user.clerkUserId,
-        });
-        clerkInvitationId = invitation.id;
-      } catch {
-        // Clerk org invite is optional; portal invite still lands in the roster.
-      }
-    }
-
     const member =
       existing && (existing.inviteStatus === InviteStatus.revoked || existing.inviteStatus === InviteStatus.expired)
         ? await this.prisma.teamMember.update({
             where: { id: existing.id },
-            data: { inviteStatus: InviteStatus.pending, clerkInvitationId },
+            data: { inviteStatus: InviteStatus.pending },
           })
         : await this.repo.addMember({
             team: { connect: { id: teamId } },
             invitedEmail: email,
             inviteStatus: InviteStatus.pending,
-            clerkInvitationId,
           });
+
+    // Clerk + Resend stay off the request critical path so invite/revoke buttons stay snappy.
+    const clerk = getClerkClient();
+    if (clerk && !team.clerkOrgId.startsWith('local-org-')) {
+      void clerk.organizations
+        .createOrganizationInvitation({
+          organizationId: team.clerkOrgId,
+          emailAddress: email,
+          role: 'org:member',
+          inviterUserId: user.clerkUserId,
+        })
+        .then((invitation) =>
+          this.prisma.teamMember.update({
+            where: { id: member.id },
+            data: { clerkInvitationId: invitation.id },
+          }),
+        )
+        .catch(() => undefined);
+    }
 
     void sendTeamMemberInviteEmail({
       to: email,

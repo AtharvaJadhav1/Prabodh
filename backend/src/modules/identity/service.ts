@@ -10,6 +10,7 @@ import { InviteStatus, PlatformRole, Prisma } from '@prisma/client';
 import { signAccessToken } from '../../lib/jwt';
 import { sendOtp, verifyOtp } from '../../lib/otp';
 import { hashPassword, verifyPassword } from '../../lib/password';
+import { mapPool } from '../../lib/async-pool';
 import { PrismaService } from '../../lib/prisma.service';
 import { isS3Configured, normalizeUploadMime, putObjectBuffer } from '../../lib/s3';
 import { IdentityRepository } from './repository';
@@ -619,10 +620,10 @@ export class IdentityService {
     platformRole: PlatformRole;
     institute?: string;
     department?: string;
+    /** When set, stores a password hash (used for staff credential emails). */
+    password?: string;
   }>) {
-    const results: Array<{ email: string; status: string; error?: string }> = [];
-
-    for (const row of rows) {
+    return mapPool(rows, 8, async (row) => {
       try {
         const email = row.email.toLowerCase();
         const existing = await this.repo.findByEmail(email);
@@ -635,6 +636,7 @@ export class IdentityService {
               institute: row.institute ?? existing.institute,
               department: row.department ?? existing.department,
               isActive: true,
+              ...(row.password ? { passwordHash: hashPassword(row.password) } : {}),
             },
           });
         } else {
@@ -646,19 +648,19 @@ export class IdentityService {
               platformRole: row.platformRole,
               institute: row.institute,
               department: row.department,
+              ...(row.password ? { passwordHash: hashPassword(row.password) } : {}),
             },
           });
         }
-        results.push({ email: row.email, status: 'created' });
+        return { email: row.email, status: 'created' as const, password: row.password };
       } catch (err) {
-        results.push({
+        return {
           email: row.email,
-          status: 'failed',
+          status: 'failed' as const,
           error: err instanceof Error ? err.message : 'unknown',
-        });
+        };
       }
-    }
-    return results;
+    });
   }
 }
 

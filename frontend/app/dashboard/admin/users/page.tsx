@@ -23,6 +23,7 @@ export default function AdminUsersPage() {
   const [inviteDepartment, setInviteDepartment] = useState("");
   const [inviteMsg, setInviteMsg] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
+  const [importBusy, setImportBusy] = useState(false);
 
   const students = users.filter((u) => u.platformRole === "student");
   const industry = users.filter((u) => u.platformRole === "industry_mentor");
@@ -111,14 +112,12 @@ export default function AdminUsersPage() {
                   department: inviteDepartment.trim() || undefined,
                 });
                 setInviteMsg(
-                  result.emailSent
-                    ? `Invited ${result.email}. Credentials email sent.`
-                    : `Account created for ${result.email}, but email failed: ${result.emailError ?? "unknown"}`,
+                  `Invited ${result.email}. Credentials email is sending in the background.`,
                 );
                 setInviteEmail("");
                 setInviteName("");
                 setInvitePassword("");
-                await reload();
+                void reload();
               } catch (err) {
                 setInviteMsg(err instanceof Error ? err.message : "Invite failed");
               } finally {
@@ -141,20 +140,30 @@ export default function AdminUsersPage() {
           />
           <button
             type="button"
-            className="mt-2 rounded-xl bg-brand-primary px-4 py-2 text-xs font-bold text-white"
+            disabled={importBusy}
+            className="mt-2 rounded-xl bg-brand-primary px-4 py-2 text-xs font-bold text-white disabled:opacity-60"
             onClick={async () => {
               setImportMsg("");
+              setImportBusy(true);
               try {
-                const batch = await apiPost<{ id: string; rowCount: number }>("/admin/users/import", { csv });
-                await apiPost(`/admin/users/import/${batch.id}/activate`, {});
-                setImportMsg(`Imported ${batch.rowCount} rows.`);
-                await reload();
+                const batch = await apiPost<{ id: string; rowCount: number }>(
+                  "/admin/users/import",
+                  { csv },
+                  { timeoutMs: 60_000 },
+                );
+                await apiPost(`/admin/users/import/${batch.id}/activate`, {}, { timeoutMs: 120_000 });
+                setImportMsg(
+                  `Imported ${batch.rowCount} rows. Staff credential emails are sending in the background.`,
+                );
+                void reload();
               } catch (err) {
                 setImportMsg(err instanceof Error ? err.message : "Import failed");
+              } finally {
+                setImportBusy(false);
               }
             }}
           >
-            Import and activate
+            {importBusy ? "Importing…" : "Import and activate"}
           </button>
           {importMsg ? <p className="mt-2 text-xs text-brand-muted">{importMsg}</p> : null}
         </div>

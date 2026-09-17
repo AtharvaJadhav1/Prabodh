@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PlatformRole, Prisma } from '@prisma/client';
+import { randomBytes } from 'crypto';
 import { sendStaffCredentialsEmail } from '../../lib/invite-email';
+import { fireAndForget, mapPool } from '../../lib/async-pool';
 import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
 import { DEFAULT_SETTINGS } from '../../domain/rules';
@@ -248,25 +250,21 @@ export class AdminService {
       institute: body.institute,
       department: body.department,
     });
-    let emailSent = false;
-    let emailError: string | null = null;
-    try {
-      await sendStaffCredentialsEmail({
-        to: user.email,
-        fullName: user.fullName,
-        password: body.password,
-        platformRole: user.platformRole,
-      });
-      emailSent = true;
-    } catch (err) {
-      emailError = err instanceof Error ? err.message : 'Email delivery failed';
-    }
+    // Email after DB write — do not block the admin UI on Resend latency.
+    void sendStaffCredentialsEmail({
+      to: user.email,
+      fullName: user.fullName,
+      password: body.password,
+      platformRole: user.platformRole,
+    }).catch((err) => {
+      console.error('[admin.inviteStaff] email failed for', user.email, err);
+    });
     return {
       userId: user.id,
       email: user.email,
       platformRole: user.platformRole,
-      emailSent,
-      emailError,
+      emailSent: true,
+      emailError: null,
     };
   }
 
@@ -305,24 +303,55 @@ export class AdminService {
     if (!batch || batch.status !== 'pending_review') {
       throw new NotFoundException('Import batch not pending review');
     }
-    const results = await this.identity.bulkCreate(
-      batch.rows.map((r) => ({
+
+    const staffRoles = new Set<PlatformRole>([
+      PlatformRole.institute_mentor,
+      PlatformRole.industry_mentor,
+      PlatformRole.admin,
+    ]);
+
+    const prepared = batch.rows.map((r) => {
+      const role = r.platformRole;
+      const needsCredentials = staffRoles.has(role);
+      return {
         email: r.email,
         fullName: r.fullName,
-        platformRole: r.platformRole,
+        platformRole: role,
         institute: r.institute ?? undefined,
         department: r.department ?? undefined,
-      })),
-    );
-    for (const result of results) {
+        password: needsCredentials ? randomBytes(9).toString('base64url') : undefined,
+      };
+    });
+
+    const results = await this.identity.bulkCreate(prepared);
+
+    await mapPool(results, 10, async (result) => {
       await this.prisma.userImportRow.updateMany({
         where: { batchId: id, email: result.email.toLowerCase() },
         data: {
           status: result.status === 'created' ? 'activated' : 'failed',
-          error: result.error,
+          error: 'error' in result ? result.error : undefined,
         },
       });
+    });
+
+    // Credential emails run in the background so bulk activate returns quickly.
+    const emailJobs = results.filter((r) => r.status === 'created' && Boolean(r.password));
+    if (emailJobs.length) {
+      fireAndForget('admin.bulk-credentials', async () => {
+        await mapPool(emailJobs, 3, async (job) => {
+          const row = prepared.find((p) => p.email.toLowerCase() === job.email.toLowerCase());
+          if (!row?.password) return;
+          await sendStaffCredentialsEmail({
+            to: job.email.toLowerCase(),
+            fullName: row.fullName,
+            password: row.password,
+            platformRole: row.platformRole,
+          });
+        });
+      });
     }
+
     return this.prisma.userImportBatch.update({
       where: { id },
       data: { status: 'activated' },

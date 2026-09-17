@@ -128,7 +128,7 @@ export default function GroupRequestCard({ request, atCap, busy = false, onAccep
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Decline
+              {busy ? "Working…" : "Decline"}
             </button>
             <button
               type="button"
@@ -143,7 +143,7 @@ export default function GroupRequestCard({ request, atCap, busy = false, onAccep
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              Accept Mentorship
+              {busy ? "Working…" : "Accept Mentorship"}
             </button>
           </div>
         </div>

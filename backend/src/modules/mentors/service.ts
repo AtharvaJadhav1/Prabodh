@@ -224,31 +224,22 @@ export class MentorsService {
           include: { mentor: true, team: true },
         });
 
-    let emailSent = false;
-    let emailError: string | null = null;
-    try {
-      await sendMentorInviteEmail({
-        to: email,
-        teamName: team.name,
-        leaderName: user.fullName,
-      });
-      emailSent = true;
-    } catch (err) {
-      emailError = err instanceof Error ? err.message : 'Email delivery failed';
-      console.error('[mentors.invite] email delivery failed for', email, emailError);
-    }
-    try {
-      await notifyUsers(this.prisma, [mentor.id], {
-        type: 'allocation',
-        template: 'mentor_allocation',
-        title: 'Mentor invitation received',
-        body: `${user.fullName} invited you to mentor ${team.name}.`,
-        relatedEntity: `team:${team.id}`,
-      });
-    } catch {
-      /* in-app notifications are best-effort */
-    }
-    return { ...invite, emailSent, emailError };
+    void sendMentorInviteEmail({
+      to: email,
+      teamName: team.name,
+      leaderName: user.fullName,
+    }).catch((err) => {
+      console.error('[mentors.invite] email delivery failed for', email, err);
+    });
+    void notifyUsers(this.prisma, [mentor.id], {
+      type: 'allocation',
+      template: 'mentor_allocation',
+      title: 'Mentor invitation received',
+      body: `${user.fullName} invited you to mentor ${team.name}.`,
+      relatedEntity: `team:${team.id}`,
+    }).catch(() => undefined);
+
+    return { ...invite, emailSent: true, emailError: null };
   }
 
   async revokeInvite(user: AuthUser, inviteId: string) {
@@ -357,22 +348,14 @@ export class MentorsService {
     });
 
     if (result.accepted) {
-      try {
-        await notifyUsers(this.prisma, [invite.invitedById], {
-          type: 'allocation',
-          template: 'mentor_allocation',
-          title: 'Mentor invitation accepted',
-          body: `${user.fullName} accepted the mentor invitation for ${invite.team.name}.`,
-          relatedEntity: `team:${invite.teamId}`,
-        });
-      } catch {
-        /* notifications are best-effort */
-      }
-      try {
-        await this.psPreferences.promoteSavedOnMentorAssigned(invite.teamId);
-      } catch {
-        /* PS auto-submit is best-effort */
-      }
+      void notifyUsers(this.prisma, [invite.invitedById], {
+        type: 'allocation',
+        template: 'mentor_allocation',
+        title: 'Mentor invitation accepted',
+        body: `${user.fullName} accepted the mentor invitation for ${invite.team.name}.`,
+        relatedEntity: `team:${invite.teamId}`,
+      }).catch(() => undefined);
+      void this.psPreferences.promoteSavedOnMentorAssigned(invite.teamId).catch(() => undefined);
     }
     return result;
   }

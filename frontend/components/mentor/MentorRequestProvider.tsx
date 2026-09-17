@@ -79,7 +79,7 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
 
   const acceptRequest = useCallback(
     (id: string) => {
-      if (processingId) return;
+      if (processingId === id) return;
       const target = pendingRequests.find((r) => r.id === id);
       setProcessingId(id);
       setPendingRequests((prev) => prev.filter((r) => r.id !== id));
@@ -119,7 +119,7 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
 
   const declineRequest = useCallback(
     (id: string) => {
-      if (processingId) return;
+      if (processingId === id) return;
       const target = pendingRequests.find((r) => r.id === id);
       setProcessingId(id);
       setPendingRequests((prev) => prev.filter((r) => r.id !== id));
