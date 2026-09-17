@@ -139,7 +139,7 @@ export default function RegisterForm() {
       </form>
       <p className="text-center text-sm text-brand-muted">
         Already registered?{" "}
-        <a href="/login/student" className="font-semibold text-brand-primary hover:text-brand-hover">
+        <a href="/login" className="font-semibold text-brand-primary hover:text-brand-hover">
           Sign in
         </a>
       </p>

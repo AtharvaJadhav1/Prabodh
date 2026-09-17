@@ -4,14 +4,20 @@ import AuthFooter from "./AuthFooter";
 import PortalTabs from "./PortalTabs";
 import RightPanel from "./RightPanel";
 
-export default function LoginShell({ children }: { children: ReactNode }) {
+export default function LoginShell({
+  children,
+  showPortalTabs = true,
+}: {
+  children: ReactNode;
+  showPortalTabs?: boolean;
+}) {
   return (
     <main className="flex min-h-screen w-full flex-col bg-brand-cream lg:flex-row">
       <section className="z-10 flex w-full flex-col justify-between border-r border-brand-sand/70 bg-brand-cream px-6 py-8 sm:px-10 lg:w-[46%] lg:px-12 xl:w-[42%]">
         <div>
           <AuthHeader />
           <div className="mx-auto w-full max-w-lg py-6 sm:py-8">
-            <PortalTabs />
+            {showPortalTabs ? <PortalTabs /> : null}
             {children}
           </div>
         </div>

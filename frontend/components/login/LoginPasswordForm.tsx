@@ -18,7 +18,7 @@ type AuthResponse = {
 };
 
 type Props = {
-  portal: "student" | "faculty";
+  portal?: "student" | "faculty";
   title: string;
   description: string;
   submitLabel: string;
@@ -53,7 +53,10 @@ export default function LoginPasswordForm({
           setError("");
           setLoading(true);
           try {
-            const res = await apiPost<AuthResponse>("/auth/login", { email, password, portal });
+            const res = await apiPost<AuthResponse>(
+              "/auth/login",
+              portal ? { email, password, portal } : { email, password },
+            );
             onSuccess(res);
           } catch (err) {
             setError(err instanceof Error ? err.message : "Sign in failed");

@@ -115,11 +115,8 @@ export default function MentorInvitePanel() {
         <div className="rounded-2xl border border-brand-softline bg-white p-5 sm:p-6">
           <h3 className="text-sm font-bold text-brand-deep">Invite a mentor by email</h3>
           <p className="mt-1 text-xs text-brand-muted">
-            Mentors must register first at{" "}
-            <a href="/register/faculty" className="font-semibold text-brand-primary hover:underline">
-              /register/faculty
-            </a>
-            . Invite an Institute Faculty Mentor by the same email.
+            Faculty mentors must already have a Prabodh account (created by your nodal admin). Invite them using
+            the same email they use to sign in.
           </p>
 
           <div className="mt-3 space-y-1.5">

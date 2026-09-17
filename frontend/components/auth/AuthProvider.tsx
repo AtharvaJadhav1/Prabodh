@@ -120,12 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ready) return;
     if (!session && isDashboard) {
-      const login = pathname.startsWith("/dashboard/mentor") || pathname.startsWith("/dashboard/industry")
-        ? "/login/faculty"
-        : pathname.startsWith("/dashboard/admin")
-          ? "/login/faculty"
-          : "/login/student";
-      router.replace(login);
+      router.replace("/login");
     }
   }, [ready, session, isDashboard, pathname, router]);
 
@@ -166,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearSession();
         setAccessToken(null);
         setSession(null);
-        window.location.assign(role && role !== "student" ? "/login/faculty" : "/login/student");
+        window.location.assign("/login");
       },
       refreshMe,
     }),

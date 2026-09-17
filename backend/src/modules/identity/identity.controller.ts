@@ -7,7 +7,7 @@ import { consumeToken } from '../../lib/rate-limit';
 import { PrismaService } from '../../lib/prisma.service';
 import { ZodPipe } from '../../common/zod.pipe';
 import { IdentityService } from './service';
-import { avatarUploadSchema, facultyRegisterSchema, loginSchema, otpSendSchema, otpVerifySchema, patchMeSchema, registerSchema } from './schema';
+import { avatarUploadSchema, loginSchema, otpSendSchema, otpVerifySchema, patchMeSchema, registerSchema } from './schema';
 
 @Controller()
 export class IdentityController {
@@ -34,7 +34,7 @@ export class IdentityController {
 
   @Post('auth/login')
   async login(@Body(new ZodPipe(loginSchema)) body: unknown) {
-    const parsed = body as { email: string; password: string; portal: 'student' | 'faculty' };
+    const parsed = body as { email: string; password: string; portal?: 'student' | 'faculty' };
     await consumeToken(`login:${parsed.email}`, Number(process.env.LOGIN_RATE_LIMIT_PER_MIN ?? 15));
     return this.identity.loginWithPassword(parsed);
   }
@@ -74,16 +74,10 @@ export class IdentityController {
   }
 
   @Post('auth/register/faculty')
-  async registerFaculty(@Body(new ZodPipe(facultyRegisterSchema)) body: unknown) {
-    const parsed = body as {
-      email: string;
-      password: string;
-      fullName: string;
-      institute?: string;
-      department?: string;
-      phone?: string;
-    };
-    return this.identity.registerFacultyWithPassword(parsed);
+  registerFaculty() {
+    throw new ForbiddenException(
+      'Faculty registration is disabled. Your administrator will email you login credentials.',
+    );
   }
 
   @Patch('me')

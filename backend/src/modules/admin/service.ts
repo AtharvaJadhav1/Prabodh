@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { PlatformRole, Prisma } from '@prisma/client';
+import { sendStaffCredentialsEmail } from '../../lib/invite-email';
 import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
 import { DEFAULT_SETTINGS } from '../../domain/rules';
@@ -9,7 +10,7 @@ import { exportQueue } from '../../lib/queue';
 import { createPresignedGetUrl } from '../../lib/s3';
 import { upsertSetting } from '../../lib/settings';
 import { IdentityService, parseCsvUsers } from '../identity/service';
-import { exportSchema, settingsSchema } from './schema';
+import { adminInviteUserSchema, exportSchema, settingsSchema } from './schema';
 import { createReadStream, existsSync } from 'fs';
 import { join } from 'path';
 
@@ -236,6 +237,37 @@ export class AdminService {
       await upsertSetting(this.prisma, key, String(value));
     }
     return this.getSettings();
+  }
+
+  async inviteStaff(admin: AuthUser, body: z.infer<typeof adminInviteUserSchema>) {
+    const user = await this.identity.createStaffAccount({
+      email: body.email,
+      password: body.password,
+      fullName: body.fullName,
+      platformRole: body.platformRole as PlatformRole,
+      institute: body.institute,
+      department: body.department,
+    });
+    let emailSent = false;
+    let emailError: string | null = null;
+    try {
+      await sendStaffCredentialsEmail({
+        to: user.email,
+        fullName: user.fullName,
+        password: body.password,
+        platformRole: user.platformRole,
+      });
+      emailSent = true;
+    } catch (err) {
+      emailError = err instanceof Error ? err.message : 'Email delivery failed';
+    }
+    return {
+      userId: user.id,
+      email: user.email,
+      platformRole: user.platformRole,
+      emailSent,
+      emailError,
+    };
   }
 
   async queueImport(admin: AuthUser, csv: string) {

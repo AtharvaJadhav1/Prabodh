@@ -17,7 +17,8 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1).max(128),
-  portal: z.enum(['student', 'faculty']),
+  /** Optional — when omitted, any role may sign in and the client routes by platformRole. */
+  portal: z.enum(['student', 'faculty']).optional(),
 });
 
 export const otpSendSchema = z.object({

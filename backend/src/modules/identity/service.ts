@@ -1,4 +1,11 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InviteStatus, PlatformRole, Prisma } from '@prisma/client';
 import { signAccessToken } from '../../lib/jwt';
 import { sendOtp, verifyOtp } from '../../lib/otp';
@@ -56,16 +63,18 @@ export class IdentityService {
     }
   }
 
-  async loginWithPassword(body: { email: string; password: string; portal: 'student' | 'faculty' }) {
+  async loginWithPassword(body: { email: string; password: string; portal?: 'student' | 'faculty' }) {
     const email = body.email.toLowerCase();
     const user = await this.repo.findByEmail(email);
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid email or password.');
     }
-    if (!verifyPassword(body.password, user.passwordHash)) {
+    if (!user.passwordHash || !verifyPassword(body.password, user.passwordHash)) {
       throw new UnauthorizedException('Invalid email or password.');
     }
-    this.assertPortal(user.platformRole, body.portal);
+    if (body.portal) {
+      this.assertPortal(user.platformRole, body.portal);
+    }
     await this.acceptPendingTeamInvites(user.id, user.email);
     return this.issueToken(user);
   }
@@ -96,6 +105,12 @@ export class IdentityService {
       }
       const result = await sendOtp({ email, purpose: 'login' });
       return { ok: true, message: 'Verification code sent to your email.', devCode: result.devCode };
+    }
+
+    if (accountType !== 'student') {
+      throw new ForbiddenException(
+        'Faculty and staff accounts are created by your administrator. Use the login details sent to your email.',
+      );
     }
 
     if (user && user.platformRole !== targetRole) {
@@ -224,6 +239,41 @@ export class IdentityService {
         department: body.department,
         phone: body.phone,
         passwordHash: hashPassword(body.password),
+      },
+    });
+  }
+
+  async createStaffAccount(body: {
+    email: string;
+    password: string;
+    fullName: string;
+    platformRole: PlatformRole;
+    institute?: string;
+    department?: string;
+  }) {
+    const allowed: PlatformRole[] = [
+      PlatformRole.institute_mentor,
+      PlatformRole.industry_mentor,
+      PlatformRole.admin,
+    ];
+    if (!allowed.includes(body.platformRole)) {
+      throw new BadRequestException('Staff invite supports institute mentor, industry mentor, or admin roles only.');
+    }
+    const email = body.email.toLowerCase();
+    const existing = await this.repo.findByEmail(email);
+    if (existing) {
+      throw new ConflictException('A user with this email already exists.');
+    }
+    return this.prisma.user.create({
+      data: {
+        clerkUserId: `local:${email}`,
+        email,
+        fullName: body.fullName,
+        platformRole: body.platformRole,
+        institute: body.institute,
+        department: body.department,
+        passwordHash: hashPassword(body.password),
+        isActive: true,
       },
     });
   }
