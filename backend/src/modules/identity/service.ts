@@ -700,13 +700,20 @@ export function parseCsvUsers(csv: string) {
   const lines = csv.trim().split(/\r?\n/);
   if (lines.length < 2) throw new BadRequestException('CSV needs a header and at least one row');
   const header = lines[0].split(',').map((h) => h.trim().toLowerCase());
-  const emailIdx = header.indexOf('email');
-  const nameIdx = header.indexOf('full_name') >= 0 ? header.indexOf('full_name') : header.indexOf('name');
-  const roleIdx = header.indexOf('role');
-  const instIdx = header.indexOf('institute');
-  const deptIdx = header.indexOf('department');
+  const col = (...names: string[]) => {
+    for (const name of names) {
+      const idx = header.indexOf(name);
+      if (idx >= 0) return idx;
+    }
+    return -1;
+  };
+  const emailIdx = col('email');
+  const nameIdx = col('full_name', 'fullname', 'name');
+  const roleIdx = col('role', 'platformrole', 'platform_role');
+  const instIdx = col('institute');
+  const deptIdx = col('department');
   if (emailIdx < 0 || nameIdx < 0 || roleIdx < 0) {
-    throw new BadRequestException('CSV must include email, full_name, role columns');
+    throw new BadRequestException('CSV must include email, fullName/full_name, and platformRole/role columns');
   }
   return lines.slice(1).filter((line) => line.trim()).map((line) => {
     const cols = line.split(',').map((c) => c.trim());
