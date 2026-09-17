@@ -15,6 +15,14 @@ export default function AdminUsersPage() {
   const [tab, setTab] = useState<Tab>("students");
   const [csv, setCsv] = useState("email,fullName,platformRole,institute,department\n");
   const [importMsg, setImportMsg] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [invitePassword, setInvitePassword] = useState("");
+  const [inviteRole, setInviteRole] = useState<"institute_mentor" | "industry_mentor" | "admin">("institute_mentor");
+  const [inviteInstitute, setInviteInstitute] = useState("");
+  const [inviteDepartment, setInviteDepartment] = useState("");
+  const [inviteMsg, setInviteMsg] = useState("");
+  const [inviteBusy, setInviteBusy] = useState(false);
 
   const students = users.filter((u) => u.platformRole === "student");
   const industry = users.filter((u) => u.platformRole === "industry_mentor");
@@ -31,6 +39,98 @@ export default function AdminUsersPage() {
   return (
     <AdminShell title="Manage Users">
       <div className="mx-auto max-w-7xl space-y-6">
+        <div className="rounded-2xl border border-brand-sand bg-white p-4">
+          <p className="text-xs font-bold uppercase text-brand-deep">Invite faculty / staff</p>
+          <p className="mt-1 text-xs text-brand-muted">
+            Creates the account and emails login ID (email) and password. Faculty cannot self-register.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <input
+              type="email"
+              placeholder="Email (login ID)"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              className="rounded-xl border border-brand-sand px-3 py-2 text-sm"
+            />
+            <input
+              type="text"
+              placeholder="Full name"
+              value={inviteName}
+              onChange={(e) => setInviteName(e.target.value)}
+              className="rounded-xl border border-brand-sand px-3 py-2 text-sm"
+            />
+            <input
+              type="password"
+              placeholder="Temporary password"
+              value={invitePassword}
+              onChange={(e) => setInvitePassword(e.target.value)}
+              className="rounded-xl border border-brand-sand px-3 py-2 text-sm"
+            />
+            <select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value as typeof inviteRole)}
+              className="rounded-xl border border-brand-sand px-3 py-2 text-sm"
+            >
+              <option value="institute_mentor">Institute mentor</option>
+              <option value="industry_mentor">Industry mentor</option>
+              <option value="admin">Admin</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Institute (optional)"
+              value={inviteInstitute}
+              onChange={(e) => setInviteInstitute(e.target.value)}
+              className="rounded-xl border border-brand-sand px-3 py-2 text-sm"
+            />
+            <input
+              type="text"
+              placeholder="Department (optional)"
+              value={inviteDepartment}
+              onChange={(e) => setInviteDepartment(e.target.value)}
+              className="rounded-xl border border-brand-sand px-3 py-2 text-sm"
+            />
+          </div>
+          <button
+            type="button"
+            disabled={inviteBusy}
+            className="mt-3 rounded-xl bg-brand-deep px-4 py-2 text-xs font-bold text-white disabled:opacity-60"
+            onClick={async () => {
+              setInviteMsg("");
+              setInviteBusy(true);
+              try {
+                const result = await apiPost<{
+                  email: string;
+                  emailSent?: boolean;
+                  emailError?: string | null;
+                }>("/admin/users/invite", {
+                  email: inviteEmail.trim(),
+                  fullName: inviteName.trim(),
+                  password: invitePassword,
+                  platformRole: inviteRole,
+                  institute: inviteInstitute.trim() || undefined,
+                  department: inviteDepartment.trim() || undefined,
+                });
+                setInviteMsg(
+                  result.emailSent
+                    ? `Invited ${result.email}. Credentials email sent.`
+                    : `Account created for ${result.email}, but email failed: ${result.emailError ?? "unknown"}`,
+                );
+                setInviteEmail("");
+                setInviteName("");
+                setInvitePassword("");
+                await reload();
+              } catch (err) {
+                setInviteMsg(err instanceof Error ? err.message : "Invite failed");
+              } finally {
+                setInviteBusy(false);
+              }
+            }}
+          >
+            {inviteBusy ? "Sending…" : "Create account & email credentials"}
+          </button>
+          {inviteMsg ? <p className="mt-2 text-xs text-brand-muted">{inviteMsg}</p> : null}
+        </div>
+
         <div className="rounded-2xl border border-brand-sand bg-white p-4">
           <p className="text-xs font-bold uppercase text-brand-deep">CSV import</p>
           <textarea

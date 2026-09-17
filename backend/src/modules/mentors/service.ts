@@ -187,7 +187,7 @@ export class MentorsService {
     const mentor = await this.prisma.user.findUnique({ where: { email } });
     if (!mentor || !mentor.isActive || mentor.platformRole !== expectedRole) {
       throw new BadRequestException(
-        'No faculty account exists for this email. Ask them to register as faculty first.',
+        'No faculty account exists for this email. Ask your nodal admin to create their Prabodh login first.',
       );
     }
 

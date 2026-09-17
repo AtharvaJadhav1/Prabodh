@@ -17,7 +17,8 @@ export const registerSchema = z.object({
 export const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1).max(128),
-  portal: z.enum(['student', 'faculty']),
+  /** Optional — when omitted, any role may sign in and the client routes by platformRole. */
+  portal: z.enum(['student', 'faculty']).optional(),
 });
 
 export const otpSendSchema = z.object({
@@ -47,6 +48,16 @@ export const otpVerifySchema = z.object({
   purpose: z.enum(['login', 'register']),
   code: z.string().regex(/^\d{6}$/),
   portal: z.enum(['student', 'faculty']).optional(),
+});
+
+export const passwordForgotSchema = z.object({
+  email: z.string().email(),
+});
+
+export const passwordResetSchema = z.object({
+  email: z.string().email(),
+  code: z.string().regex(/^\d{6}$/),
+  password: z.string().min(8).max(128),
 });
 
 export const patchMeSchema = z.object({

@@ -1,10 +1,10 @@
 import Image from "next/image";
 
 const portalLinks = [
-  { label: "Student Team Dashboard", href: "/login/student" },
-  { label: "Dual Mentorship Rubric Matrix", href: "/login/faculty" },
+  { label: "Student Team Dashboard", href: "/login" },
+  { label: "Dual Mentorship Rubric Matrix", href: "/login" },
   { label: "Incubation Qualifier Rules", href: "#prabodh-stages" },
-  { label: "Nodal Admin Evaluation Console", href: "/login/faculty" },
+  { label: "Nodal Admin Evaluation Console", href: "/login" },
   { label: "Problem Statement Repository", href: "#prabodh-stages" },
 ];
 

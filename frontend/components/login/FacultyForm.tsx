@@ -1,12 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useAuth } from "../auth/AuthProvider";
 import { dashboardForRole } from "../../lib/session";
 import LoginPasswordForm from "./LoginPasswordForm";
 
 export default function FacultyForm() {
-  const router = useRouter();
   const { establishSession } = useAuth();
 
   return (
@@ -18,7 +16,7 @@ export default function FacultyForm() {
         submitLabel="Sign in"
         onSuccess={(result) => {
           establishSession(result);
-          router.replace(dashboardForRole(result.platformRole));
+          window.location.assign(dashboardForRole(result.platformRole));
         }}
       />
       <p className="text-center text-sm text-brand-muted">

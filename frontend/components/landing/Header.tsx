@@ -44,7 +44,7 @@ export default function Header() {
 
           <div className="flex items-center gap-3">
             <Link
-              href="/login/student"
+              href="/login"
               className="hidden transform items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-hover hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-brand-primary/40 md:inline-flex"
             >
               <PortalIcon className="h-4 w-4" />
@@ -82,14 +82,14 @@ export default function Header() {
           ))}
           <div className="flex items-center gap-2 border-t border-brand-sand pt-4">
             <Link
-              href="/login/student"
+              href="/login"
               onClick={() => setMenuOpen(false)}
               className="flex-1 rounded-xl border border-brand-sand px-4 py-3 text-center text-sm font-bold text-brand-deep transition-colors hover:border-brand-primary/40 hover:text-brand-primary sm:hidden"
             >
               Student Login
             </Link>
             <Link
-              href="/login/faculty"
+              href="/login"
               onClick={() => setMenuOpen(false)}
               className="flex-1 rounded-xl bg-brand-deep px-4 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-brand-charcoal"
             >

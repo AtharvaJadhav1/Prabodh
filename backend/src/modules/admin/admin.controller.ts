@@ -6,7 +6,7 @@ import { CurrentUser } from '../../common/current-user.decorator';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
 import { ZodPipe } from '../../common/zod.pipe';
-import { exportSchema, settingsSchema } from './schema';
+import { adminInviteUserSchema, exportSchema, settingsSchema } from './schema';
 import { AdminService } from './service';
 import { StagesService } from '../stages/service';
 
@@ -96,6 +96,11 @@ export class AdminController {
   file(@Param('jobId') jobId: string) {
     const { stream, type } = this.admin.openLocalExport(jobId);
     return new StreamableFile(stream, { type });
+  }
+
+  @Post('users/invite')
+  inviteUser(@CurrentUser() user: AuthUser, @Body(new ZodPipe(adminInviteUserSchema)) body: unknown) {
+    return this.admin.inviteStaff(user, body as never);
   }
 
   @Post('users/import')

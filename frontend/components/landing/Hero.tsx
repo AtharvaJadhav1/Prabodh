@@ -102,24 +102,24 @@ export default function Hero() {
 
           <div className="space-y-4">
             <Link
-              href="/login/student"
+              href="/login"
               className="group inline-flex w-full transform items-center justify-center gap-2 rounded-xl bg-brand-primary px-4 py-3 text-sm font-bold text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:bg-brand-hover hover:shadow-xl pointer-events-auto sm:gap-3 sm:px-6 sm:py-4 sm:text-base md:text-lg"
             >
               <span className="whitespace-nowrap">Access Prabodh Portal</span>
               <ArrowRightIcon className="h-5 w-5 shrink-0 transform transition-transform duration-200 group-hover:translate-x-1.5" />
             </Link>
             <div className="flex flex-wrap items-center justify-center gap-4 pt-2 text-sm font-semibold text-brand-deep sm:gap-8">
-              <Link href="/login/student" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary pointer-events-auto">
+              <Link href="/login" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary pointer-events-auto">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary"></span>
                 Student Login
               </Link>
               <span className="hidden text-brand-sand sm:inline-block">•</span>
-              <Link href="/login/faculty" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary pointer-events-auto">
+              <Link href="/login" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary pointer-events-auto">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary"></span>
                 Mentor Login
               </Link>
               <span className="hidden text-brand-sand sm:inline-block">•</span>
-              <Link href="/login/faculty" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary pointer-events-auto">
+              <Link href="/login" className="flex items-center gap-1.5 transition-colors hover:text-brand-primary pointer-events-auto">
                 <span className="h-1.5 w-1.5 rounded-full bg-brand-primary"></span>
                 Nodal Admin Console
               </Link>

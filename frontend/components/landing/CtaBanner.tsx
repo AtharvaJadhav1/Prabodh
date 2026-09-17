@@ -20,7 +20,7 @@ export default function CtaBanner() {
           </div>
           <div className="flex w-full items-center justify-center lg:w-auto lg:justify-end">
             <Link
-              href="/login/student"
+              href="/login"
               className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-primary px-7 py-3.5 text-sm font-bold text-white shadow-md transition-colors hover:bg-brand-hover sm:w-auto"
             >
               Access Prabodh Portal

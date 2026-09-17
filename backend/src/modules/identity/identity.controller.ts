@@ -7,7 +7,16 @@ import { consumeToken } from '../../lib/rate-limit';
 import { PrismaService } from '../../lib/prisma.service';
 import { ZodPipe } from '../../common/zod.pipe';
 import { IdentityService } from './service';
-import { avatarUploadSchema, facultyRegisterSchema, loginSchema, otpSendSchema, otpVerifySchema, patchMeSchema, registerSchema } from './schema';
+import {
+  avatarUploadSchema,
+  loginSchema,
+  otpSendSchema,
+  otpVerifySchema,
+  passwordForgotSchema,
+  passwordResetSchema,
+  patchMeSchema,
+  registerSchema,
+} from './schema';
 
 @Controller()
 export class IdentityController {
@@ -34,7 +43,7 @@ export class IdentityController {
 
   @Post('auth/login')
   async login(@Body(new ZodPipe(loginSchema)) body: unknown) {
-    const parsed = body as { email: string; password: string; portal: 'student' | 'faculty' };
+    const parsed = body as { email: string; password: string; portal?: 'student' | 'faculty' };
     await consumeToken(`login:${parsed.email}`, Number(process.env.LOGIN_RATE_LIMIT_PER_MIN ?? 15));
     return this.identity.loginWithPassword(parsed);
   }
@@ -60,6 +69,20 @@ export class IdentityController {
     return this.identity.verifyOtpAndIssueToken(parsed);
   }
 
+  @Post('auth/password/forgot')
+  async forgotPassword(@Body(new ZodPipe(passwordForgotSchema)) body: unknown) {
+    const parsed = body as { email: string };
+    await consumeToken(`pwd-forgot:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 5));
+    return this.identity.requestPasswordReset(parsed.email);
+  }
+
+  @Post('auth/password/reset')
+  async resetPassword(@Body(new ZodPipe(passwordResetSchema)) body: unknown) {
+    const parsed = body as { email: string; code: string; password: string };
+    await consumeToken(`pwd-reset:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 10));
+    return this.identity.resetPasswordWithOtp(parsed);
+  }
+
   @Post('auth/register')
   async register(@Body(new ZodPipe(registerSchema)) body: unknown) {
     const parsed = body as {
@@ -74,16 +97,10 @@ export class IdentityController {
   }
 
   @Post('auth/register/faculty')
-  async registerFaculty(@Body(new ZodPipe(facultyRegisterSchema)) body: unknown) {
-    const parsed = body as {
-      email: string;
-      password: string;
-      fullName: string;
-      institute?: string;
-      department?: string;
-      phone?: string;
-    };
-    return this.identity.registerFacultyWithPassword(parsed);
+  registerFaculty() {
+    throw new ForbiddenException(
+      'Faculty registration is disabled. Your administrator will email you login credentials.',
+    );
   }
 
   @Patch('me')
