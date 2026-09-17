@@ -5,7 +5,7 @@ import AdminShell from "../../../../components/admin/AdminShell";
 import UserTable from "../../../../components/admin/UserTable";
 import Avatar from "../../../../components/Avatar";
 import { useAdmin } from "../../../../components/admin/AdminProvider";
-import { apiPost } from "../../../../lib/api";
+import { api, apiPost } from "../../../../lib/api";
 import type { PortalUser } from "../../../../lib/types";
 
 type Tab = "students" | "institute-mentors" | "industry-mentors";
@@ -149,13 +149,55 @@ export default function AdminUsersPage() {
                 const batch = await apiPost<{ id: string; rowCount: number }>(
                   "/admin/users/import",
                   { csv },
-                  { timeoutMs: 60_000 },
+                  { timeoutMs: 120_000 },
                 );
-                await apiPost(`/admin/users/import/${batch.id}/activate`, {}, { timeoutMs: 120_000 });
+                const queued = await apiPost<{
+                  id: string;
+                  status: string;
+                  queued?: boolean;
+                  message?: string;
+                }>(`/admin/users/import/${batch.id}/activate`, {}, { timeoutMs: 30_000 });
+
+                if (queued.status === "activated") {
+                  setImportMsg(`Imported ${batch.rowCount} rows.`);
+                  void reload();
+                  return;
+                }
+
                 setImportMsg(
-                  `Imported ${batch.rowCount} rows. Staff credential emails are sending in the background.`,
+                  `Queued ${batch.rowCount} rows — processing in background…`,
                 );
-                void reload();
+
+                const started = Date.now();
+                const maxWaitMs = 15 * 60 * 1000;
+                while (Date.now() - started < maxWaitMs) {
+                  await new Promise((r) => setTimeout(r, 2000));
+                  const status = await api<{
+                    id: string;
+                    status: string;
+                    rowCount: number;
+                    counts: { pending: number; activated: number; failed: number; skipped: number };
+                    done: boolean;
+                  }>(`/admin/users/import/${batch.id}/status`, {}, { timeoutMs: 30_000 });
+
+                  setImportMsg(
+                    `Processing ${batch.rowCount} rows… ${status.counts.activated} activated, ${status.counts.failed} failed (${status.status})`,
+                  );
+
+                  if (status.status === "activated") {
+                    setImportMsg(
+                      `Imported ${batch.rowCount} rows (${status.counts.activated} activated, ${status.counts.failed} failed). Credential emails continue in the background.`,
+                    );
+                    void reload();
+                    return;
+                  }
+                  if (status.status === "rejected") {
+                    throw new Error(
+                      `Import failed after ${status.counts.activated} activated / ${status.counts.failed} failed.`,
+                    );
+                  }
+                }
+                throw new Error("Import is still processing — refresh later to check status.");
               } catch (err) {
                 setImportMsg(err instanceof Error ? err.message : "Import failed");
               } finally {

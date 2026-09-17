@@ -113,6 +113,11 @@ export class AdminController {
     return this.admin.getImport(batchId);
   }
 
+  @Get('users/import/:batchId/status')
+  getImportStatus(@Param('batchId') batchId: string) {
+    return this.admin.getImportStatus(batchId);
+  }
+
   @Post('users/import/:batchId/activate')
   activateImport(@Param('batchId') batchId: string) {
     return this.admin.activateImport(batchId);

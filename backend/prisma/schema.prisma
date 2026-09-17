@@ -48,6 +48,7 @@ enum PsPreferenceStatus {
 
 enum ImportBatchStatus {
   pending_review
+  processing
   activated
   rejected
 }

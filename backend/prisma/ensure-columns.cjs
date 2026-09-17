@@ -36,8 +36,14 @@ async function main() {
   } catch {
     // Fresh DB handled by prisma db push — safe to skip.
   }
-}
 
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TYPE "ImportBatchStatus" ADD VALUE IF NOT EXISTS 'processing'`);
+    console.log('[ensure-columns] ok: ImportBatchStatus.processing');
+  } catch (err) {
+    console.warn('[ensure-columns] ImportBatchStatus.processing skipped:', err && err.message ? err.message : err);
+  }
+}
 main()
   .then(async () => {
     await prisma.$disconnect();

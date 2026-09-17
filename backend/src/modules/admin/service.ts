@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PlatformRole, Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { sendStaffCredentialsEmail } from '../../lib/invite-email';
@@ -270,39 +270,110 @@ export class AdminService {
 
   async queueImport(admin: AuthUser, csv: string) {
     const parsed = parseCsvUsers(csv);
+    if (parsed.length > 2000) {
+      throw new BadRequestException('CSV import is limited to 2000 rows per batch');
+    }
+
     const batch = await this.prisma.userImportBatch.create({
       data: {
         adminUserId: admin.id,
         status: 'pending_review',
         rowCount: parsed.length,
-        rows: {
-          create: parsed.map((r) => ({
-            email: r.email.toLowerCase(),
-            fullName: r.fullName,
-            platformRole: r.platformRole,
-            institute: r.institute,
-            department: r.department,
-          })),
-        },
       },
-      include: { rows: true },
     });
-    return batch;
+
+    // Chunked inserts so large CSVs (500+) do not blow one nested create.
+    const chunkSize = 100;
+    for (let i = 0; i < parsed.length; i += chunkSize) {
+      const slice = parsed.slice(i, i + chunkSize);
+      await this.prisma.userImportRow.createMany({
+        data: slice.map((r) => ({
+          batchId: batch.id,
+          email: r.email.toLowerCase(),
+          fullName: r.fullName,
+          platformRole: r.platformRole,
+          institute: r.institute,
+          department: r.department,
+        })),
+      });
+    }
+
+    return {
+      id: batch.id,
+      status: batch.status,
+      rowCount: parsed.length,
+      createdAt: batch.createdAt,
+    };
   }
 
   getImport(id: string) {
     return this.prisma.userImportBatch.findUnique({ where: { id }, include: { rows: true } });
   }
 
+  async getImportStatus(id: string) {
+    const batch = await this.prisma.userImportBatch.findUnique({ where: { id } });
+    if (!batch) throw new NotFoundException('Import batch not found');
+    const grouped = await this.prisma.userImportRow.groupBy({
+      by: ['status'],
+      where: { batchId: id },
+      _count: true,
+    });
+    const counts = { pending: 0, activated: 0, failed: 0, skipped: 0 };
+    for (const g of grouped) {
+      counts[g.status] = g._count;
+    }
+    return {
+      id: batch.id,
+      status: batch.status,
+      rowCount: batch.rowCount,
+      counts,
+      done: batch.status === 'activated' || batch.status === 'rejected',
+    };
+  }
+
   async rejectImport(id: string) {
     return this.prisma.userImportBatch.update({ where: { id }, data: { status: 'rejected' } });
   }
 
+  /**
+   * Queue activation and return immediately. Heavy work (user create + emails)
+   * runs in the background so 500-row batches do not time out the HTTP request.
+   */
   async activateImport(id: string) {
-    const batch = await this.prisma.userImportBatch.findUnique({ where: { id }, include: { rows: true } });
-    if (!batch || batch.status !== 'pending_review') {
+    const batch = await this.prisma.userImportBatch.findUnique({ where: { id } });
+    if (!batch) throw new NotFoundException('Import batch not found');
+    if (batch.status === 'activated' || batch.status === 'processing') {
+      return this.getImportStatus(id);
+    }
+    if (batch.status !== 'pending_review') {
       throw new NotFoundException('Import batch not pending review');
     }
+
+    const claimed = await this.prisma.userImportBatch.updateMany({
+      where: { id, status: 'pending_review' },
+      data: { status: 'processing' },
+    });
+    if (claimed.count === 0) {
+      return this.getImportStatus(id);
+    }
+
+    fireAndForget(`admin.import-activate:${id}`, () => this.processImportActivation(id));
+    return {
+      id,
+      status: 'processing' as const,
+      rowCount: batch.rowCount,
+      queued: true,
+      message: 'Import is processing in the background. Poll status until activated.',
+    };
+  }
+
+  /** Chunked create + background credential emails. Safe for ~500–2000 rows. */
+  async processImportActivation(id: string) {
+    const batch = await this.prisma.userImportBatch.findUnique({
+      where: { id },
+      include: { rows: true },
+    });
+    if (!batch || batch.status !== 'processing') return;
 
     const staffRoles = new Set<PlatformRole>([
       PlatformRole.institute_mentor,
@@ -310,53 +381,85 @@ export class AdminService {
       PlatformRole.admin,
     ]);
 
-    const prepared = batch.rows.map((r) => {
-      const role = r.platformRole;
-      const needsCredentials = staffRoles.has(role);
-      return {
-        email: r.email,
-        fullName: r.fullName,
-        platformRole: role,
-        institute: r.institute ?? undefined,
-        department: r.department ?? undefined,
-        password: needsCredentials ? randomBytes(9).toString('base64url') : undefined,
-      };
-    });
+    const credentialJobs: Array<{
+      email: string;
+      fullName: string;
+      password: string;
+      platformRole: PlatformRole;
+    }> = [];
 
-    const results = await this.identity.bulkCreate(prepared);
+    try {
+      const chunkSize = 50;
+      for (let i = 0; i < batch.rows.length; i += chunkSize) {
+        const slice = batch.rows.slice(i, i + chunkSize);
+        const prepared = slice.map((r) => {
+          const needsCredentials = staffRoles.has(r.platformRole);
+          const password = needsCredentials ? randomBytes(9).toString('base64url') : undefined;
+          return {
+            email: r.email,
+            fullName: r.fullName,
+            platformRole: r.platformRole,
+            institute: r.institute ?? undefined,
+            department: r.department ?? undefined,
+            password,
+          };
+        });
 
-    await mapPool(results, 10, async (result) => {
-      await this.prisma.userImportRow.updateMany({
-        where: { batchId: id, email: result.email.toLowerCase() },
-        data: {
-          status: result.status === 'created' ? 'activated' : 'failed',
-          error: 'error' in result ? result.error : undefined,
-        },
-      });
-    });
+        const results = await this.identity.bulkCreate(prepared);
 
-    // Credential emails run in the background so bulk activate returns quickly.
-    const emailJobs = results.filter((r) => r.status === 'created' && Boolean(r.password));
-    if (emailJobs.length) {
-      fireAndForget('admin.bulk-credentials', async () => {
-        await mapPool(emailJobs, 3, async (job) => {
-          const row = prepared.find((p) => p.email.toLowerCase() === job.email.toLowerCase());
-          if (!row?.password) return;
-          await sendStaffCredentialsEmail({
-            to: job.email.toLowerCase(),
-            fullName: row.fullName,
-            password: row.password,
-            platformRole: row.platformRole,
+        await mapPool(results, 10, async (result) => {
+          await this.prisma.userImportRow.updateMany({
+            where: { batchId: id, email: result.email.toLowerCase() },
+            data: {
+              status: result.status === 'created' ? 'activated' : 'failed',
+              error: 'error' in result ? result.error : undefined,
+            },
           });
+        });
+
+        for (const result of results) {
+          if (result.status !== 'created' || !result.password) continue;
+          const src = prepared.find((p) => p.email.toLowerCase() === result.email.toLowerCase());
+          if (!src?.password) continue;
+          credentialJobs.push({
+            email: result.email.toLowerCase(),
+            fullName: src.fullName,
+            password: src.password,
+            platformRole: src.platformRole,
+          });
+        }
+      }
+
+      await this.prisma.userImportBatch.update({
+        where: { id },
+        data: { status: 'activated' },
+      });
+    } catch (err) {
+      console.error('[admin.processImportActivation] failed', id, err);
+      await this.prisma.userImportBatch.update({
+        where: { id },
+        data: { status: 'rejected' },
+      }).catch(() => undefined);
+      throw err;
+    }
+
+    if (credentialJobs.length) {
+      // Slow email drain after DB work — keeps Resend from melting the API process.
+      fireAndForget(`admin.bulk-credentials:${id}`, async () => {
+        await mapPool(credentialJobs, 2, async (job) => {
+          try {
+            await sendStaffCredentialsEmail({
+              to: job.email,
+              fullName: job.fullName,
+              password: job.password,
+              platformRole: job.platformRole,
+            });
+          } catch (err) {
+            console.error('[admin.bulk-credentials] failed for', job.email, err);
+          }
         });
       });
     }
-
-    return this.prisma.userImportBatch.update({
-      where: { id },
-      data: { status: 'activated' },
-      include: { rows: true },
-    });
   }
 }
 
