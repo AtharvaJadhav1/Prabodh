@@ -33,6 +33,24 @@ export class TeamsController {
     return this.teams.getCurrentForUser(user);
   }
 
+  @Get('invites/my-invites')
+  @Roles(PlatformRole.student)
+  myInvites(@CurrentUser() user: AuthUser) {
+    return this.teams.myPendingInvites(user);
+  }
+
+  @Post('invites/:inviteId/accept')
+  @Roles(PlatformRole.student)
+  acceptInvite(@CurrentUser() user: AuthUser, @Param('inviteId') inviteId: string) {
+    return this.teams.acceptInvite(user, inviteId);
+  }
+
+  @Post('invites/:inviteId/decline')
+  @Roles(PlatformRole.student)
+  declineInvite(@CurrentUser() user: AuthUser, @Param('inviteId') inviteId: string) {
+    return this.teams.declineInvite(user, inviteId);
+  }
+
   @Get(':teamId/deliverables')
   deliverables(@CurrentUser() user: AuthUser, @Param('teamId') teamId: string) {
     return this.teams.listDeliverables(user, teamId);

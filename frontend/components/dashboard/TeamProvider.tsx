@@ -22,6 +22,19 @@ export type PsPreferenceInput =
   | { rank: number; psId: string }
   | { rank: number; title: string; theme: string; category: "software" | "hardware"; organisation: string; description: string };
 
+export type IncomingTeamInvite = {
+  id: string;
+  invitedEmail: string;
+  inviteStatus: "pending" | "accepted" | "revoked" | "expired";
+  createdAt: string;
+  team: {
+    id: string;
+    name: string;
+    teamCode: string;
+    leader: { id: string; fullName: string; email: string } | null;
+  };
+};
+
 type TeamContextValue = {
   team: PortalTeam | null;
   stages: PortalStage[];
@@ -33,6 +46,9 @@ type TeamContextValue = {
   cycleTeamAvatar: () => void;
   members: Member[];
   invites: OutgoingInvite[];
+  incomingInvites: IncomingTeamInvite[];
+  acceptInvite: (inviteId: string) => Promise<void>;
+  declineInvite: (inviteId: string) => Promise<void>;
   requests: JoinRequest[];
   requestResults: Record<string, "approved" | "rejected">;
   filledCount: number;
@@ -124,6 +140,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const [stages, setStages] = useState<PortalStage[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<OutgoingInvite[]>([]);
+  const [incomingInvites, setIncomingInvites] = useState<IncomingTeamInvite[]>([]);
   const [requests, setRequests] = useState<JoinRequest[]>([]);
   const [requestResults, setRequestResults] = useState<Record<string, "approved" | "rejected">>({});
   const [facultyInviteStatus, setFacultyInviteStatus] = useState<"none" | "sent" | "verified">("none");
@@ -148,7 +165,9 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const stagesLoaded = useRef(false);
   const teamRef = useRef<PortalTeam | null>(null);
   const reloadPromiseRef = useRef<Promise<void> | null>(null);
+  const incomingInvitesRef = useRef<IncomingTeamInvite[]>([]);
   teamRef.current = team;
+  incomingInvitesRef.current = incomingInvites;
 
   useEffect(() => {
     if (!team?.id) return;
@@ -217,6 +236,12 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const loadIncomingInvites = useCallback(() => {
+    void api<{ items: IncomingTeamInvite[]; total: number }>("/teams/invites/my-invites")
+      .then((res) => setIncomingInvites(res?.items ?? []))
+      .catch(() => setIncomingInvites([]));
+  }, []);
+
   const reload = useCallback(async () => {
     if (!userId) return;
     if (reloadPromiseRef.current) return reloadPromiseRef.current;
@@ -237,6 +262,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         }
 
         const detail = await api<PortalTeam | null>("/teams/current");
+        loadIncomingInvites();
 
         if (!detail) {
           setTeam(null);
@@ -265,7 +291,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       if (reloadPromiseRef.current === run) reloadPromiseRef.current = null;
     }).catch(() => undefined);
     return run;
-  }, [userId, applyTeamDetail]);
+  }, [userId, applyTeamDetail, loadIncomingInvites]);
 
   // Apply cached team before first paint so the workspace card does not flash a spinner.
   useLayoutEffect(() => {
@@ -466,6 +492,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         cycleTeamAvatar,
         members,
         invites,
+        incomingInvites,
         requests,
         requestResults,
         filledCount,
@@ -518,6 +545,25 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         },
         sendInvite,
         revokeInvite,
+        acceptInvite: async (inviteId) => {
+          setIncomingInvites((prev) => prev.filter((i) => i.id !== inviteId));
+          try {
+            await apiPost(`/teams/invites/${inviteId}/accept`, {});
+            void reload();
+          } catch (err) {
+            setIncomingInvites((prev) => [...prev, ...incomingInvitesRef.current.filter((i) => i.id !== inviteId)]);
+            throw err;
+          }
+        },
+        declineInvite: async (inviteId) => {
+          setIncomingInvites((prev) => prev.filter((i) => i.id !== inviteId));
+          try {
+            await apiPost(`/teams/invites/${inviteId}/decline`, {});
+          } catch (err) {
+            setIncomingInvites((prev) => [...prev, ...incomingInvitesRef.current.filter((i) => i.id !== inviteId)]);
+            throw err;
+          }
+        },
         savePreferences,
         submitPreferences,
         facultyDirectory,

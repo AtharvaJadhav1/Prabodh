@@ -294,6 +294,81 @@ export class TeamsService {
     return { expired: res.count };
   }
 
+  /** Student-facing: all invites dispatched to this account that are still awaiting acceptance. */
+  async myPendingInvites(user: AuthUser) {
+    const email = user.email.trim().toLowerCase();
+    const items = await this.prisma.teamMember.findMany({
+      where: {
+        OR: [{ invitedEmail: email }, { userId: user.id }],
+        inviteStatus: InviteStatus.pending,
+      },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        team: {
+          select: {
+            id: true,
+            name: true,
+            teamCode: true,
+            leader: { select: { id: true, fullName: true, email: true } },
+          },
+        },
+      },
+    });
+    return { items, total: items.length };
+  }
+
+  /** Student accepts a team invite sent to their email. Only one team membership is allowed. */
+  async acceptInvite(user: AuthUser, inviteId: string) {
+    const invite = await this.prisma.teamMember.findUnique({ where: { id: inviteId } });
+    if (!invite) throw new NotFoundException('Invite not found');
+    if (invite.inviteStatus !== InviteStatus.pending) {
+      throw new BadRequestException('This invite is no longer pending');
+    }
+    if (invite.userId !== user.id && invite.invitedEmail !== user.email.trim().toLowerCase()) {
+      throw new ForbiddenException('This invite was not dispatched to your account');
+    }
+
+    const existingTeam = await this.findUserTeam(user.id);
+    if (existingTeam) {
+      throw new ConflictException('You are already part of a team');
+    }
+
+    const member = await this.prisma.teamMember.update({
+      where: { id: invite.id },
+      data: { inviteStatus: InviteStatus.accepted, userId: user.id, joinedAt: new Date() },
+    });
+    void notifyUsers(
+      this.prisma,
+      [user.id],
+      {
+        type: NotificationType.team_join_request,
+        title: 'Team invitation accepted',
+        body: 'You joined the team as a member.',
+        relatedEntity: invite.teamId,
+        template: 'join_request_outcome',
+      },
+    ).catch((err) => console.error('[teams.acceptInvite] notify student failed', err));
+    return member;
+  }
+
+  /** Student declines a team invite sent to their email. */
+  async declineInvite(user: AuthUser, inviteId: string) {
+    const invite = await this.prisma.teamMember.findUnique({ where: { id: inviteId } });
+    if (!invite) throw new NotFoundException('Invite not found');
+    if (invite.inviteStatus !== InviteStatus.pending) {
+      throw new BadRequestException('This invite is no longer pending');
+    }
+    if (invite.userId !== user.id && invite.invitedEmail !== user.email.trim().toLowerCase()) {
+      throw new ForbiddenException('This invite was not dispatched to your account');
+    }
+
+    await this.prisma.teamMember.update({
+      where: { id: invite.id },
+      data: { inviteStatus: InviteStatus.revoked },
+    });
+    return { declined: true };
+  }
+
   /** Student asks to join a team. Lead then accepts or rejects from their Requests tab. */
   async createJoinRequest(user: AuthUser, teamId: string) {
     const team = await this.prisma.team.findUnique({

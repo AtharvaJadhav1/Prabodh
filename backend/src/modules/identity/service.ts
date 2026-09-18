@@ -81,7 +81,6 @@ export class IdentityService {
     if (body.portal) {
       this.assertPortal(user.platformRole, body.portal);
     }
-    void this.acceptPendingTeamInvites(user.id, user.email).catch(() => undefined);
     return this.issueToken(user);
   }
 
@@ -169,7 +168,6 @@ export class IdentityService {
       this.assertPortal(user.platformRole, body.portal);
     }
 
-    void this.acceptPendingTeamInvites(user.id, user.email).catch(() => undefined);
     return this.issueToken(user);
   }
 
@@ -178,7 +176,6 @@ export class IdentityService {
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Unknown or inactive account');
     }
-    void this.acceptPendingTeamInvites(user.id, user.email).catch(() => undefined);
     return this.issueToken(user);
   }
 
@@ -546,7 +543,6 @@ export class IdentityService {
       department,
       phone,
     });
-    await this.acceptPendingInvitesForUser(user.id, email, clerkUserId);
     return user;
   }
 
@@ -595,35 +591,6 @@ export class IdentityService {
       });
     }
     return { teamId: team.id, email, accepted: true };
-  }
-
-  async acceptPendingTeamInvites(userId: string, email: string) {
-    const existingTeam = await this.prisma.team.findFirst({
-      where: {
-        OR: [
-          { leaderUserId: userId },
-          { members: { some: { userId, inviteStatus: InviteStatus.accepted } } },
-        ],
-      },
-      select: { id: true },
-    });
-    if (existingTeam) return;
-
-    const pending = await this.prisma.teamMember.findFirst({
-      where: { invitedEmail: email, inviteStatus: InviteStatus.pending },
-      orderBy: { createdAt: 'asc' },
-    });
-    if (!pending) return;
-
-    await this.prisma.teamMember.update({
-      where: { id: pending.id },
-      data: { inviteStatus: InviteStatus.accepted, userId, joinedAt: new Date() },
-    });
-  }
-
-  private async acceptPendingInvitesForUser(userId: string, email: string, clerkUserId: string) {
-    await this.acceptPendingTeamInvites(userId, email);
-    void clerkUserId;
   }
 
   async bulkCreate(rows: Array<{
