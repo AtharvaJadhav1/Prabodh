@@ -1,11 +1,18 @@
 -- Join requests: students request to join a team; the team lead accepts or rejects.
--- Requires the join_requests table + partial unique index (Prisma cannot express
--- partial indexes in schema.prisma, so this is hand-maintained here and mirrored
--- in prisma/ensure-columns.ts for the db-push build path).
+-- Idempotent so it applies cleanly on a fresh database AND on the shared prod DB
+-- where the objects were pre-created via `prisma db push` (deploy runs
+-- `prisma migrate deploy`, which requires migrations here to be re-run safe).
 
-CREATE TYPE "JoinRequestStatus" AS ENUM ('pending', 'accepted', 'rejected');
+-- Prisma's db push cannot express a partial unique index, so it lives here (and in
+-- prisma/ensure-columns.ts / ensure-columns.cjs, which run on every build).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'JoinRequestStatus') THEN
+    CREATE TYPE "JoinRequestStatus" AS ENUM ('pending', 'accepted', 'rejected');
+  END IF;
+END $$;
 
-CREATE TABLE "join_requests" (
+CREATE TABLE IF NOT EXISTS "join_requests" (
     "id" TEXT NOT NULL,
     "student_id" TEXT NOT NULL,
     "team_id" TEXT NOT NULL,
@@ -18,9 +25,20 @@ CREATE TABLE "join_requests" (
 
 -- One pending request per student per team. Re-requesting after a reject is
 -- allowed because status='pending' is part of the index predicate.
-CREATE UNIQUE INDEX "join_requests_one_pending_idx" ON "join_requests"("student_id", "team_id") WHERE "status" = 'pending';
-CREATE INDEX "join_requests_team_id_status_idx" ON "join_requests"("team_id", "status");
-CREATE INDEX "join_requests_student_id_idx" ON "join_requests"("student_id");
+CREATE UNIQUE INDEX IF NOT EXISTS "join_requests_one_pending_idx" ON "join_requests"("student_id", "team_id") WHERE "status" = 'pending';
+CREATE INDEX IF NOT EXISTS "join_requests_team_id_status_idx" ON "join_requests"("team_id", "status");
+CREATE INDEX IF NOT EXISTS "join_requests_student_id_idx" ON "join_requests"("student_id");
 
-ALTER TABLE "join_requests" ADD CONSTRAINT "join_requests_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "join_requests" ADD CONSTRAINT "join_requests_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'join_requests_student_id_fkey') THEN
+    ALTER TABLE "join_requests" ADD CONSTRAINT "join_requests_student_id_fkey" FOREIGN KEY ("student_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'join_requests_team_id_fkey') THEN
+    ALTER TABLE "join_requests" ADD CONSTRAINT "join_requests_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "teams"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
