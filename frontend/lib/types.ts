@@ -9,11 +9,21 @@ export type PortalUser = {
   avatarUrl?: string | null;
 };
 
+export type PortalCommentAuthor = {
+  id: string;
+  fullName: string;
+  email: string;
+  platformRole?: string;
+  avatarUrl?: string | null;
+  profileJson?: Record<string, unknown> | null;
+};
+
 export type PortalComment = {
   id: string;
   message: string;
   createdAt: string;
-  author?: { id: string; fullName: string; email: string } | null;
+  author?: PortalCommentAuthor | null;
+  replies?: PortalComment[];
 };
 
 export type PortalDeliverable = {
