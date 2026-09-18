@@ -11,7 +11,7 @@ import { InviteStatus, JoinRequestStatus, NotificationType, Prisma, TeamStatus }
 import { AuthUser } from '../../common/auth.types';
 import { writeAudit } from '../../lib/audit';
 import { getClerkClient } from '../../lib/clerk';
-import { notifyUsers } from '../../lib/notify';
+import { createNotifications, notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { sendTeamMemberInviteEmail } from '../../lib/invite-email';
 import { consumeToken } from '../../lib/rate-limit';
@@ -233,6 +233,19 @@ export class TeamsService {
       console.error('[teams.invite] email delivery failed for', email, err);
     });
 
+    // In-app notification for the invitee so their bell + Group Requests badge light up.
+    // Non-registered invitees only get the email — there is no account to notify yet.
+    void (async () => {
+      const invitee = await this.prisma.user.findUnique({ where: { email } });
+      if (!invitee) return;
+      await createNotifications(this.prisma, [invitee.id], {
+        type: NotificationType.team_join_request,
+        title: "You've been invited to join a team",
+        body: `${team.name} (${team.teamCode}) invited you to join their squad. Open Group Requests to accept or decline.`,
+        relatedEntity: team.id,
+      });
+    })().catch((err) => console.error('[teams.invite] notify invitee failed', err));
+
     return { ...member, emailSent: true, emailError: null };
   }
 
@@ -319,7 +332,12 @@ export class TeamsService {
 
   /** Student accepts a team invite sent to their email. Only one team membership is allowed. */
   async acceptInvite(user: AuthUser, inviteId: string) {
-    const invite = await this.prisma.teamMember.findUnique({ where: { id: inviteId } });
+    const invite = await this.prisma.teamMember.findUnique({
+      where: { id: inviteId },
+      include: {
+        team: { select: { id: true, name: true, leaderUserId: true } },
+      },
+    });
     if (!invite) throw new NotFoundException('Invite not found');
     if (invite.inviteStatus !== InviteStatus.pending) {
       throw new BadRequestException('This invite is no longer pending');
@@ -348,12 +366,25 @@ export class TeamsService {
         template: 'join_request_outcome',
       },
     ).catch((err) => console.error('[teams.acceptInvite] notify student failed', err));
+    if (invite.team.leaderUserId) {
+      void createNotifications(this.prisma, [invite.team.leaderUserId], {
+        type: NotificationType.team_join_request,
+        title: 'Invite accepted',
+        body: `${user.fullName} accepted your invite and joined ${invite.team.name}.`,
+        relatedEntity: invite.team.id,
+      }).catch((err) => console.error('[teams.acceptInvite] notify leader failed', err));
+    }
     return member;
   }
 
   /** Student declines a team invite sent to their email. */
   async declineInvite(user: AuthUser, inviteId: string) {
-    const invite = await this.prisma.teamMember.findUnique({ where: { id: inviteId } });
+    const invite = await this.prisma.teamMember.findUnique({
+      where: { id: inviteId },
+      include: {
+        team: { select: { id: true, name: true, leaderUserId: true } },
+      },
+    });
     if (!invite) throw new NotFoundException('Invite not found');
     if (invite.inviteStatus !== InviteStatus.pending) {
       throw new BadRequestException('This invite is no longer pending');
@@ -366,6 +397,14 @@ export class TeamsService {
       where: { id: invite.id },
       data: { inviteStatus: InviteStatus.revoked },
     });
+    if (invite.team.leaderUserId) {
+      void createNotifications(this.prisma, [invite.team.leaderUserId], {
+        type: NotificationType.team_join_request,
+        title: 'Invite declined',
+        body: `${user.fullName} declined your invite to join ${invite.team.name}.`,
+        relatedEntity: invite.team.id,
+      }).catch((err) => console.error('[teams.declineInvite] notify leader failed', err));
+    }
     return { declined: true };
   }
 

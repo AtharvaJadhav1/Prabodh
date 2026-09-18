@@ -239,7 +239,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const loadIncomingInvites = useCallback(() => {
     void api<{ items: IncomingTeamInvite[]; total: number }>("/teams/invites/my-invites")
       .then((res) => setIncomingInvites(res?.items ?? []))
-      .catch(() => setIncomingInvites([]));
+      .catch(() => undefined);
   }, []);
 
   const reload = useCallback(async () => {
@@ -332,6 +332,14 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     if (!ready || !userId) return;
     void reload();
   }, [ready, userId, reload]);
+
+  // Keep the Group Requests badge + incoming invites fresh without a full reload.
+  useEffect(() => {
+    if (!ready || !userId) return;
+    loadIncomingInvites();
+    const id = window.setInterval(loadIncomingInvites, 60_000);
+    return () => window.clearInterval(id);
+  }, [ready, userId, loadIncomingInvites]);
 
   const isLead = role === "LEAD";
   const filledCount = useMemo(() => members.filter((m) => m.status === "Verified").length, [members]);

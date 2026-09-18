@@ -47,7 +47,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { session, logout } = useAuth();
-  const { filledCount, pendingRequestCount, role, teamName, capacity, team, isLead, renameTeam } = useTeam();
+  const { filledCount, pendingRequestCount, role, teamName, capacity, team, isLead, renameTeam, incomingInvites } = useTeam();
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(teamName);
   const [savingName, setSavingName] = useState(false);
@@ -204,8 +204,13 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                   ? pathname.startsWith(item.href)
                   : false;
             const Icon = item.icon;
-            const chip =
-              item.badge && pendingRequestCount > 0 ? String(pendingRequestCount) : item.chip;
+            const groupBadge =
+              incomingInvites.length > 0
+                ? incomingInvites.length
+                : pendingRequestCount > 0
+                  ? pendingRequestCount
+                  : 0;
+            const chip = item.badge && groupBadge > 0 ? String(groupBadge) : item.chip;
 
             return (
               <Link
