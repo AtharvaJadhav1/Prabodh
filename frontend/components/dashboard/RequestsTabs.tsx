@@ -33,7 +33,7 @@ export default function RequestsTabs() {
               icon={<UsersRoundIcon className="h-4 w-4" />}
               label="Active Team &amp; Outgoing Invites"
               chip={`${filledCount} verified • ${invites.length} pending`}
-              chipStyle="bg-brand-primary/10 text-brand-primary"
+              chipStyle="px-1.5 py-0.5 text-[10px] bg-brand-primary/10 text-brand-primary"
             />
             <TabButton
               active={tab === 2}
@@ -41,7 +41,7 @@ export default function RequestsTabs() {
               icon={<InboxIcon className="h-4 w-4" />}
               label="Incoming Join Requests"
               chip={`${incomingInvites.length} open`}
-              chipStyle="bg-[#C25E26] text-white"
+              chipStyle="ml-1.5 px-2 py-0.5 text-xs bg-[#C25E26] text-white"
             />
           </div>
         </div>
@@ -81,7 +81,7 @@ function TabButton({
     >
       {icon}
       <span className="hidden truncate sm:inline">{label}</span>
-      <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${chipStyle}`}>{chip}</span>
+      <span className={`shrink-0 rounded-full font-bold ${chipStyle}`}>{chip}</span>
     </button>
   );
 }
@@ -378,75 +378,73 @@ function IncomingInvitesTab() {
     }
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-bold text-brand-deep">Incoming Join Requests</h3>
-          <p className="text-xs text-brand-muted">
-            A team leader invited you to join their squad. Accept to become a member, or decline to keep looking.
-          </p>
-        </div>
-        <span className="rounded-full border border-warmBorder bg-brand-lightOrange px-3 py-1 text-xs font-semibold text-brand-primary">
-          {incomingInvites.length} Open Invite{incomingInvites.length !== 1 ? "s" : ""}
-        </span>
-      </div>
+  const invites = incomingInvites.map((inv) => ({
+    id: inv.id,
+    teamId: inv.team.id,
+    teamName: inv.team.name,
+    teamCode: inv.team.teamCode,
+    leaderName: inv.team.leader?.fullName ?? "Team leader",
+    leaderEmail: inv.team.leader?.email ?? "",
+    createdAt: inv.createdAt,
+  }));
 
+  const handleAccept = async (inviteId: string, _teamId?: string) => run(inviteId, () => acceptInvite(inviteId));
+  const handleDecline = async (inviteId: string) => run(inviteId, () => declineInvite(inviteId));
+
+  return (
+    <div>
       {actionError && (
-        <p className="flex items-center gap-1.5 rounded-lg border border-danger/30 bg-red-50 px-3 py-2 text-xs font-semibold text-danger">
+        <p className="mb-3 flex items-center gap-1.5 rounded-lg border border-danger/30 bg-red-50 px-3 py-2 text-xs font-semibold text-danger">
           <AlertCircleIcon className="h-3.5 w-3.5" /> {actionError}
         </p>
       )}
 
-      {incomingInvites.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-brand-softline bg-brand-cream p-4 text-sm text-brand-muted">
-          No incoming team invitations right now. When a team leader invites you, it will appear here for you to
-          accept or decline.
-        </p>
+      {invites.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-brand-softline p-8 text-center text-xs text-brand-muted">
+          No pending invitations or join requests right now.
+        </div>
       ) : (
-        <div className="space-y-2.5">
-          {incomingInvites.map((inv) => (
+        <div className="space-y-3">
+          {invites.map((invite) => (
             <div
-              key={inv.id}
-              className="rounded-xl border border-brand-softline bg-brand-cream/40 p-3.5 transition-colors hover:border-brand-primary/40"
+              key={invite.id}
+              className="flex items-center justify-between rounded-2xl border border-brand-softline bg-white p-5 shadow-xs transition-all hover:border-[#C25E26]/40"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-bold text-brand-deep">{inv.team.name}</span>
-                    <span className="rounded border border-brand-softline bg-white px-1.5 py-0.5 font-mono text-[10px] font-semibold text-brand-charcoal/80">
-                      {inv.team.teamCode}
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-brand-softline bg-[#FAF7F2] text-sm font-black text-[#C25E26]">
+                  {invite.teamName.slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-brand-deep">{invite.teamName}</h3>
+                    <span className="rounded-md border border-brand-softline bg-[#FAF7F2] px-2 py-0.5 font-mono text-[11px] font-medium text-brand-deep">
+                      {invite.teamCode}
                     </span>
                   </div>
-                  <p className="mt-0.5 text-[11px] text-brand-muted">
-                    {inv.team.leader?.fullName || "Team leader"}
-                    {inv.team.leader?.email ? ` · ${inv.team.leader.email}` : ""}
-                  </p>
-                  <p className="mt-1 flex items-center gap-1 text-[10px] font-medium text-brand-muted">
-                    <ClockIcon className="h-3 w-3" />
-                    Invited{" "}
-                    {new Date(inv.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  <p className="mt-1 text-xs text-brand-muted">
+                    Invited by <span className="font-semibold text-brand-deep">{invite.leaderName}</span> (
+                    {invite.leaderEmail}) • {timeAgo(new Date(invite.createdAt))} ago
                   </p>
                 </div>
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+              <div className="flex items-center gap-2.5">
                 <button
                   type="button"
                   disabled={busyId !== null}
-                  onClick={() => run(inv.id, () => acceptInvite(inv.id))}
-                  className="flex items-center gap-1.5 rounded-lg bg-brand-approved px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition-all duration-150 hover:bg-green-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-brand-sand disabled:text-brand-muted"
+                  onClick={() => handleDecline(invite.id)}
+                  className="cursor-pointer rounded-xl border border-brand-softline px-4 py-2 text-xs font-semibold text-brand-muted transition-all hover:bg-red-50 hover:text-red-600"
                 >
-                  <CheckIcon className="h-3.5 w-3.5" />
-                  {busyId === inv.id ? "Joining…" : "Accept Invite"}
+                  Decline
                 </button>
                 <button
                   type="button"
                   disabled={busyId !== null}
-                  onClick={() => run(inv.id, () => declineInvite(inv.id))}
-                  className="flex items-center gap-1 rounded-lg border border-danger px-3 py-1.5 text-xs font-semibold text-danger transition-all hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => handleAccept(invite.id, invite.teamId)}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-[#C25E26] px-5 py-2 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#A84E1D] active:scale-95"
                 >
-                  <XIcon className="h-3.5 w-3.5" /> Decline
+                  <CheckIcon className="h-3.5 w-3.5 stroke-[2.5]" />
+                  <span>Accept Invite</span>
                 </button>
               </div>
             </div>
@@ -455,4 +453,19 @@ function IncomingInvitesTab() {
       )}
     </div>
   );
+}
+
+function timeAgo(date: Date): string {
+  const seconds = Math.round((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return "less than a minute";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"}`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `${days} day${days === 1 ? "" : "s"}`;
+  const weeks = Math.round(days / 7);
+  if (weeks < 4) return `${weeks} week${weeks === 1 ? "" : "s"}`;
+  const months = Math.round(days / 30);
+  return `${months} month${months === 1 ? "" : "s"}`;
 }
