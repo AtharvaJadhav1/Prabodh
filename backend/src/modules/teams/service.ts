@@ -7,10 +7,11 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InviteStatus, Prisma, TeamStatus } from '@prisma/client';
+import { InviteStatus, JoinRequestStatus, NotificationType, Prisma, TeamStatus } from '@prisma/client';
 import { AuthUser } from '../../common/auth.types';
 import { writeAudit } from '../../lib/audit';
 import { getClerkClient } from '../../lib/clerk';
+import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { sendTeamMemberInviteEmail } from '../../lib/invite-email';
 import { consumeToken } from '../../lib/rate-limit';
@@ -291,6 +292,248 @@ export class TeamsService {
       data: { inviteStatus: InviteStatus.expired },
     });
     return { expired: res.count };
+  }
+
+  /** Student asks to join a team. Lead then accepts or rejects from their Requests tab. */
+  async createJoinRequest(user: AuthUser, teamId: string) {
+    const team = await this.prisma.team.findUnique({
+      where: { id: teamId },
+      select: { id: true, name: true, leaderUserId: true, memberCap: true },
+    });
+    if (!team) throw new NotFoundException('Team not found');
+
+    const alreadyInTeam = await this.findUserTeam(user.id);
+    if (alreadyInTeam) {
+      throw new ConflictException('You are already part of a team');
+    }
+    const existing = await this.prisma.joinRequest.findFirst({
+      where: { studentId: user.id, teamId },
+    });
+    if (existing) {
+      if (existing.status === JoinRequestStatus.pending) {
+        throw new ConflictException('You already have a pending request for this team');
+      }
+      if (existing.status === JoinRequestStatus.accepted) {
+        throw new ConflictException('Your request for this team was already accepted');
+      }
+    }
+
+    const count = await this.prisma.teamMember.count({
+      where: { teamId, inviteStatus: { in: [InviteStatus.pending, InviteStatus.accepted] } },
+    });
+    if (count >= team.memberCap) {
+      throw new BadRequestException(`Team is at member cap (${team.memberCap})`);
+    }
+
+    const request =
+      existing && existing.status === JoinRequestStatus.rejected
+        ? await this.prisma.joinRequest.update({
+            where: { id: existing.id },
+            data: { status: JoinRequestStatus.pending, respondedAt: null },
+          })
+        : await this.prisma.joinRequest.create({
+            data: { studentId: user.id, teamId },
+          });
+
+    void notifyUsers(
+      this.prisma,
+      [team.leaderUserId],
+      {
+        type: NotificationType.team_join_request,
+        title: 'New request to join your team',
+        body: `${user.fullName} has requested to join ${team.name}. Review it in your Group Requests tab.`,
+        relatedEntity: team.id,
+        template: 'join_request',
+      },
+    ).catch((err) => console.error('[teams.createJoinRequest] notify leader failed', err));
+
+    return { ...request, memberCount: count };
+  }
+
+  /** Pending join requests awaiting the leader's decision. */
+  async listJoinRequests(user: AuthUser, teamId: string) {
+    const team = await this.repo.findForAccessCheck(teamId);
+    if (!team) throw new NotFoundException('Team not found');
+    if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
+      throw new ForbiddenException('Only the team leader can see join requests');
+    }
+    return this.prisma.joinRequest.findMany({
+      where: { teamId, status: JoinRequestStatus.pending },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        student: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            institute: true,
+            department: true,
+            domainTags: true,
+          },
+        },
+      },
+    });
+  }
+
+  /** Leader accepts a pending request: places the student on the team atomically. */
+  async acceptJoinRequest(user: AuthUser, requestId: string) {
+    const request = await this.prisma.joinRequest.findUnique({
+      where: { id: requestId },
+      include: { student: true },
+    });
+    if (!request || request.status !== JoinRequestStatus.pending) {
+      throw new NotFoundException('Pending join request not found');
+    }
+    const team = await this.prisma.team.findUnique({
+      where: { id: request.teamId },
+      select: { id: true, name: true, leaderUserId: true, memberCap: true, clerkOrgId: true },
+    });
+    if (!team) throw new NotFoundException('Team not found');
+    if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
+      throw new ForbiddenException('Only the team leader can accept join requests');
+    }
+
+    const member = await this.prisma.$transaction(async (tx) => {
+      const verified = await tx.team.findUnique({
+        where: { id: team.id },
+        select: { id: true, leaderUserId: true, memberCap: true },
+      });
+      if (!verified) throw new NotFoundException('Team not found');
+      if (verified.leaderUserId !== user.id && user.platformRole !== 'admin') {
+        throw new ForbiddenException('Only the team leader can accept join requests');
+      }
+
+      const alreadyPlaced = await tx.team.findFirst({
+        where: {
+          AND: [
+            { id: { not: team.id } },
+            {
+              OR: [
+                { leaderUserId: request.studentId },
+                { members: { some: { userId: request.studentId, inviteStatus: InviteStatus.accepted } } },
+              ],
+            },
+          ],
+        },
+      });
+      if (alreadyPlaced) {
+        throw new ConflictException('This student has already joined another team');
+      }
+
+      const count = await tx.teamMember.count({
+        where: { teamId: team.id, inviteStatus: { in: [InviteStatus.pending, InviteStatus.accepted] } },
+      });
+      if (count >= verified.memberCap) {
+        throw new BadRequestException(`Team is at member cap (${verified.memberCap})`);
+      }
+
+      const email = request.student.email.toLowerCase();
+      const placed = await tx.teamMember.create({
+        data: {
+          teamId: team.id,
+          userId: request.studentId,
+          invitedEmail: email,
+          inviteStatus: InviteStatus.accepted,
+          joinedAt: new Date(),
+        },
+      });
+
+      await tx.joinRequest.update({
+        where: { id: request.id },
+        data: { status: JoinRequestStatus.accepted, respondedAt: new Date() },
+      });
+      await tx.joinRequest.updateMany({
+        where: {
+          studentId: request.studentId,
+          status: JoinRequestStatus.pending,
+          teamId: { not: team.id },
+        },
+        data: { status: JoinRequestStatus.rejected, respondedAt: new Date() },
+      });
+      const remaining = await tx.teamMember.count({
+        where: { teamId: team.id, inviteStatus: { in: [InviteStatus.pending, InviteStatus.accepted] } },
+      });
+      if (remaining >= verified.memberCap) {
+        await tx.joinRequest.updateMany({
+          where: { teamId: team.id, status: JoinRequestStatus.pending },
+          data: { status: JoinRequestStatus.rejected, respondedAt: new Date() },
+        });
+      }
+      return placed;
+    });
+
+    void notifyUsers(
+      this.prisma,
+      [request.studentId],
+      {
+        type: NotificationType.team_join_request,
+        title: 'Join request accepted',
+        body: `${team.name} accepted your request to join the team.`,
+        relatedEntity: team.id,
+        template: 'join_request_outcome',
+      },
+    ).catch((err) => console.error('[teams.acceptJoinRequest] notify student failed', err));
+
+    return {
+      ...member,
+      memberCount: await this.prisma.teamMember.count({
+        where: {
+          teamId: team.id,
+          inviteStatus: { in: [InviteStatus.pending, InviteStatus.accepted] },
+        },
+      }),
+    };
+  }
+
+  /** Leader rejects a pending request. */
+  async rejectJoinRequest(user: AuthUser, requestId: string) {
+    const request = await this.prisma.joinRequest.findUnique({
+      where: { id: requestId },
+      include: { student: true },
+    });
+    if (!request || request.status !== JoinRequestStatus.pending) {
+      throw new NotFoundException('Pending join request not found');
+    }
+    const team = await this.prisma.team.findUnique({
+      where: { id: request.teamId },
+      select: { id: true, name: true, leaderUserId: true },
+    });
+    if (!team) throw new NotFoundException('Team not found');
+    if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
+      throw new ForbiddenException('Only the team leader can reject join requests');
+    }
+
+    const updated = await this.prisma.joinRequest.update({
+      where: { id: request.id },
+      data: { status: JoinRequestStatus.rejected, respondedAt: new Date() },
+    });
+
+    void notifyUsers(
+      this.prisma,
+      [request.studentId],
+      {
+        type: NotificationType.team_join_request,
+        title: 'Join request declined',
+        body: `${team.name} declined your request to join the team. You can request again if a slot opens up.`,
+        relatedEntity: team.id,
+        template: 'join_request_outcome',
+      },
+    ).catch((err) => console.error('[teams.rejectJoinRequest] notify student failed', err));
+
+    return updated;
+  }
+
+  /** Team a user leads or has an accepted membership in, if any. */
+  private async findUserTeam(userId: string) {
+    return this.prisma.team.findFirst({
+      where: {
+        OR: [
+          { leaderUserId: userId },
+          { members: { some: { userId, inviteStatus: InviteStatus.accepted } } },
+        ],
+      },
+      select: { id: true, name: true, leaderUserId: true },
+    });
   }
 
   async lock(user: AuthUser, teamId: string) {
