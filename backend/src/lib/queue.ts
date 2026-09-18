@@ -1,15 +1,30 @@
 import { Queue } from 'bullmq';
-import IORedis from 'ioredis';
+import Redis from 'ioredis';
 
-let connection: IORedis | null = null;
+let redisClient: Redis | null = null;
 
-export function getRedis(): IORedis {
-  if (!connection) {
-    connection = new IORedis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
-      maxRetriesPerRequest: null,
+export function getRedis(): Redis {
+  if (!redisClient) {
+    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+
+    redisClient = new Redis(redisUrl, {
+      tls: redisUrl.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
+      enableReadyCheck: false,
+      maxRetriesPerRequest: 3,
+      connectTimeout: 10000,
+      retryStrategy(times) {
+        return Math.min(times * 150, 2000);
+      },
+    });
+
+    // Catches ECONNRESET so Node does not crash when Upstash drops idle connections
+    redisClient.on('error', (err: any) => {
+      if (err?.code === 'ECONNRESET') return;
+      console.warn('[ioredis notice]:', err.message || err);
     });
   }
-  return connection;
+
+  return redisClient;
 }
 
 export const QUEUE_NOTIFICATION = 'notifications';
