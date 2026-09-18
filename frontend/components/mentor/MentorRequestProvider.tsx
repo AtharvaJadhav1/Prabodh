@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { mentorMaxCap, type GroupRequest, type GroupRequestHistoryEntry } from "../../data/mentorDashboard";
-import { api, apiPost } from "../../lib/api";
+import { api, apiPatch, apiPost } from "../../lib/api";
 import { avatarUrlFrom } from "../../lib/avatar";
 import { useAuth } from "../auth/AuthProvider";
 import { useMentorTeams } from "./MentorTeamsProvider";
@@ -30,6 +31,7 @@ type MentorRequestContextValue = {
   acceptRequest: (id: string) => void;
   declineRequest: (id: string) => void;
   processingId: string | null;
+  unreadCommentCount: number;
 };
 
 const MentorRequestContext = createContext<MentorRequestContextValue | null>(null);
@@ -52,9 +54,13 @@ function mapInvite(row: MentorInviteRow): GroupRequest {
 export function MentorRequestProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   const { refresh: refreshMentorTeams } = useMentorTeams();
+  const pathname = usePathname();
+  const onQueriesPage = pathname?.startsWith("/dashboard/mentor/queries");
   const [pendingRequests, setPendingRequests] = useState<GroupRequest[]>([]);
   const [requestHistory, setRequestHistory] = useState<GroupRequestHistoryEntry[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [unreadCommentCount, setUnreadCommentCount] = useState(0);
+  const unreadCommentIdsRef = useRef<string[]>([]);
 
   const reload = useCallback(async () => {
     if (!session) return;
@@ -69,6 +75,42 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  const refreshUnreadComments = useCallback(async () => {
+    if (!session) return;
+    try {
+      const rows = await api<Array<{ id: string; type: string; readAt: string | null }>>(
+        "/notifications?unread=true",
+      );
+      const ids = rows.filter((n) => n.type === "comment" && !n.readAt).map((n) => n.id);
+      unreadCommentIdsRef.current = ids;
+      setUnreadCommentCount(ids.length);
+    } catch {
+      // keep the last known unread state on transient errors
+    }
+  }, [session]);
+
+  useEffect(() => {
+    void refreshUnreadComments();
+    const timer = window.setInterval(() => void refreshUnreadComments(), 30_000);
+    return () => window.clearInterval(timer);
+  }, [refreshUnreadComments]);
+
+  const markCommentNotificationsRead = useCallback(() => {
+    const ids = unreadCommentIdsRef.current;
+    if (!ids.length) return;
+    unreadCommentIdsRef.current = [];
+    setUnreadCommentCount(0);
+    for (const id of ids) {
+      void apiPatch(`/notifications/${id}/read`, {}).catch(() => undefined);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (onQueriesPage && unreadCommentCount > 0) {
+      markCommentNotificationsRead();
+    }
+  }, [onQueriesPage, unreadCommentCount, markCommentNotificationsRead]);
 
   const pendingCount = pendingRequests.length;
   const acceptedCount = useMemo(
@@ -167,6 +209,7 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
         acceptRequest,
         declineRequest,
         processingId,
+        unreadCommentCount,
       }}
     >
       {children}

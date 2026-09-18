@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   DashboardIcon,
-  FileCheckIcon,
   CompassIcon,
   MessageIcon,
   PersonIcon,
@@ -31,7 +30,7 @@ type NavItem = {
 
 export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
   const pathname = usePathname();
-  const { pendingCount } = useMentorRequests();
+  const { pendingCount, unreadCommentCount } = useMentorRequests();
   const { session, logout } = useAuth();
   const role = roleLabel(session?.platformRole ?? "institute_mentor");
   const fullName = session?.fullName ?? "Mentor";
@@ -46,9 +45,8 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
       icon: InboxIcon,
       badge: pendingCount > 0 ? String(pendingCount) : undefined,
     },
-    { label: "Review & Rubrics", href: "/dashboard/mentor#reviews", match: "never", icon: FileCheckIcon },
     { label: "PS Approvals", href: "/dashboard/mentor/ps-approvals", match: "start", icon: CompassIcon },
-    { label: "Team Queries", href: "/dashboard/mentor#queries", match: "never", icon: MessageIcon },
+    { label: "Team Queries", href: "/dashboard/mentor/queries", match: "start", icon: MessageIcon, badge: unreadCommentCount > 0 ? String(unreadCommentCount) : undefined },
     { label: "Profile", href: "/dashboard/mentor/profile", match: "start", icon: PersonIcon },
   ];
 
