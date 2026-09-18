@@ -10,6 +10,10 @@ async function main() {
   const statements = [
     `ALTER TABLE "teams" ADD COLUMN IF NOT EXISTS "mentor_locked_at" TIMESTAMP(3)`,
     `CREATE INDEX IF NOT EXISTS "team_members_invited_email_invite_status_idx" ON "team_members" ("invited_email", "invite_status")`,
+    // Partial unique index — one pending join request per student per team.
+    // Prisma's db push cannot create partial indexes, so it lives here (and in
+    // prisma/migrations/20260919000000_add_join_requests/migration.sql).
+    `CREATE UNIQUE INDEX IF NOT EXISTS "join_requests_one_pending_idx" ON "join_requests"("student_id", "team_id") WHERE "status" = 'pending'`,
   ];
 
   for (const sql of statements) {
@@ -42,6 +46,13 @@ async function main() {
     console.log('[ensure-columns] ok: ImportBatchStatus.processing');
   } catch (err) {
     console.warn('[ensure-columns] ImportBatchStatus.processing skipped:', err && err.message ? err.message : err);
+  }
+
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'team_join_request'`);
+    console.log('[ensure-columns] ok: NotificationType.team_join_request');
+  } catch (err) {
+    console.warn('[ensure-columns] NotificationType.team_join_request skipped:', err && err.message ? err.message : err);
   }
 }
 main()

@@ -5,7 +5,9 @@ export type EmailTemplate =
   | 'evaluation_published'
   | 'admin_broadcast'
   | 'status_change'
-  | 'ps_review';
+  | 'ps_review'
+  | 'join_request'
+  | 'join_request_outcome';
 
 function layout(title: string, bodyHtml: string, ctaLabel = 'Open Prabodh', ctaUrl?: string) {
   const raw = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_ORIGIN ?? 'http://localhost:3000';
@@ -80,6 +82,15 @@ export function renderEmailHtml(
         ctaLabel ?? 'Open PS Approvals',
         ctaUrl,
       );
+    case 'join_request':
+      return layout(
+        title,
+        `${bodyHtml}<p>Open your Group Requests page to accept or reject this request.</p>`,
+        ctaLabel ?? 'Review join request',
+        ctaUrl,
+      );
+    case 'join_request_outcome':
+      return layout(title, bodyHtml, ctaLabel ?? 'Open your dashboard', ctaUrl);
     default:
       return layout(title, bodyHtml);
   }

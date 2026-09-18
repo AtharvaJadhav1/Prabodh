@@ -56,6 +56,14 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const fullName = session?.fullName ?? "Student";
   const displayName = fullName.length > 16 ? fullName.split(" ")[0] : fullName;
   const profileAvatar = getUserAvatarUrl(session);
+  const rolePill =
+    role !== null
+      ? role === "LEAD"
+        ? { label: "Team Lead", className: "bg-brand-primary/10 text-brand-primary" }
+        : role === "MEMBER"
+          ? { label: "Team Member", className: "bg-brand-approved/10 text-brand-approved" }
+          : { label: "Solo / No Team", className: "bg-brand-muted/10 text-brand-muted" }
+      : null;
 
   return (
     <>
@@ -249,7 +257,15 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 <p title={fullName} className="truncate max-w-full text-sm font-bold text-brand-deep">
                   {displayName}
                 </p>
-                <p className="text-xs font-medium text-brand-muted">{role}</p>
+                {rolePill ? (
+                  <span
+                    className={`inline-flex max-w-full items-center truncate text-xs font-semibold ${rolePill.className} rounded-full px-2.5 py-0.5`}
+                  >
+                    {rolePill.label}
+                  </span>
+                ) : (
+                  <p className="text-xs font-medium text-brand-muted">&nbsp;</p>
+                )}
               </div>
             </div>
             <button

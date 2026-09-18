@@ -28,6 +28,12 @@ enum InviteStatus {
   revoked
 }
 
+enum JoinRequestStatus {
+  pending
+  accepted
+  rejected
+}
+
 enum PsCategory {
   software
   hardware
@@ -86,6 +92,7 @@ enum NotificationType {
   status_change
   broadcast
   comment
+  team_join_request
 }
 
 enum NotificationLogStatus {
@@ -133,7 +140,8 @@ model User {
   auditLogs            AuditLog[]
   createdIdea          IdeaSubmission[]     @relation("IdeaAuthor")
   mentorInvitesReceived MentorInvite[]      @relation("MentorInvitee")
-  mentorInvitesSent    MentorInvite[]       @relation("MentorInviter")
+  mentorsInvited       MentorInvite[]      @relation("MentorInviter")
+  joinRequestsSent     JoinRequest[]       @relation("JoinRequester")
   psPreferencesSubmitted TeamPsPreference[] @relation("PsPreferenceSubmitter")
   psPreferencesDecided   TeamPsPreference[] @relation("PsPreferenceDecider")
 
@@ -168,6 +176,7 @@ model Team {
   comments         Comment[]
   mentorInvites    MentorInvite[]
   psPreferences    TeamPsPreference[]
+  joinRequestsReceived JoinRequest[]
 
   @@index([status])
   @@index([theme])
@@ -217,6 +226,22 @@ model ProblemStatement {
   @@index([category])
   @@index([organisation])
   @@map("problem_statements")
+}
+
+model JoinRequest {
+  id           String            @id @default(uuid())
+  studentId    String            @map("student_id")
+  teamId       String            @map("team_id")
+  status       JoinRequestStatus @default(pending)
+  createdAt    DateTime          @default(now()) @map("created_at")
+  respondedAt  DateTime?         @map("responded_at")
+
+  student User @relation("JoinRequester", fields: [studentId], references: [id])
+  team    Team @relation(fields: [teamId], references: [id])
+
+  @@index([teamId, status])
+  @@index([studentId])
+  @@map("join_requests")
 }
 
 model IdeaSubmission {
