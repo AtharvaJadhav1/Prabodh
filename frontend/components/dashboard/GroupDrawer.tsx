@@ -102,17 +102,31 @@ export default function GroupDrawer() {
     }
   };
 
-  const handleApprove = (index: number) => {
+  const handleApprove = async (requestId: string) => {
     if (resultFlashTimer.current) clearTimeout(resultFlashTimer.current);
-    approveRequest(index);
-    setResultFlash({ text: "Request approved — candidate added to roster.", tone: "approved" });
+    try {
+      await approveRequest(requestId);
+      setResultFlash({ text: "Request approved — candidate added to roster.", tone: "approved" });
+    } catch (err) {
+      setResultFlash({
+        text: err instanceof Error ? err.message : "Could not approve this request.",
+        tone: "rejected",
+      });
+    }
     resultFlashTimer.current = setTimeout(() => setResultFlash(null), 3000);
   };
 
-  const handleReject = (index: number) => {
+  const handleReject = async (requestId: string) => {
     if (resultFlashTimer.current) clearTimeout(resultFlashTimer.current);
-    rejectRequest(index);
-    setResultFlash({ text: "Request rejected — candidate notified.", tone: "rejected" });
+    try {
+      await rejectRequest(requestId);
+      setResultFlash({ text: "Request rejected — candidate notified.", tone: "rejected" });
+    } catch (err) {
+      setResultFlash({
+        text: err instanceof Error ? err.message : "Could not decline this request.",
+        tone: "rejected",
+      });
+    }
     resultFlashTimer.current = setTimeout(() => setResultFlash(null), 3000);
   };
 
@@ -266,28 +280,45 @@ export default function GroupDrawer() {
             <div className="mt-2 space-y-2">
               {requests.length === 0 && (
                 <p className="rounded-xl border border-dashed border-brand-softline bg-brand-cream p-3 text-center text-xs font-medium text-brand-muted">
-                  Team formation uses email invites. Join requests are not available in this release.
+                  No pending requests. When a student requests to join your team, it will appear here.
                 </p>
               )}
-              {requests.map((req, i) => {
-                const result = requestResults[i];
+              {requests.map((req) => {
+                const result = requestResults[req.id];
                 return (
-                  <div key={i} className="rounded-xl border border-brand-softline bg-white p-3.5">
+                  <div key={req.id} className="rounded-xl border border-brand-softline bg-white p-3.5">
                     <div className="flex items-start gap-3">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-deep text-xs font-bold text-white">
-                        {req.initials}
+                        {(req.student.fullName || req.student.email)
+                          .split(" ")
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .map((p) => p[0]?.toUpperCase() ?? "")
+                          .join("")}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-bold text-brand-deep">{req.name}</p>
+                          <p className="text-sm font-bold text-brand-deep">{req.student.fullName}</p>
                           <span className="rounded-full bg-brand-softline px-2 py-0.5 text-[10px] font-bold text-brand-charcoal/70">
-                            CGPA {req.cgpa}
+                            {req.student.email}
                           </span>
                         </div>
                         <p className="text-xs font-medium text-brand-muted">
-                          {req.prn} • {req.branch}
+                          {req.student.institute || "Institute not set"}
+                          {req.student.department ? ` • ${req.student.department}` : ""}
                         </p>
-                        <p className="mt-1.5 text-xs leading-relaxed text-brand-charcoal/75">{req.note}</p>
+                        {req.student.domainTags.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {req.student.domainTags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="rounded border border-brand-softline bg-brand-cream px-1.5 py-0.5 font-mono text-[10px] font-semibold text-brand-deep"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                     {result ? (
@@ -305,7 +336,7 @@ export default function GroupDrawer() {
                       <div className="mt-3 flex flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={() => handleApprove(i)}
+                          onClick={() => handleApprove(req.id)}
                           disabled={seatsLeft <= 0}
                           className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-approved px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-brand-approved/90 disabled:cursor-not-allowed disabled:bg-brand-sand disabled:text-brand-muted sm:flex-none"
                         >
@@ -313,7 +344,7 @@ export default function GroupDrawer() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleReject(i)}
+                          onClick={() => handleReject(req.id)}
                           className="inline-flex flex-1 items-center justify-center rounded-lg border border-brand-softline px-3 py-2 text-xs font-bold text-brand-charcoal/70 transition-colors hover:border-brand-primary/40 hover:text-brand-primary sm:flex-none"
                         >
                           Reject
