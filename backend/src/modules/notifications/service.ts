@@ -146,11 +146,8 @@ export class NotificationsService {
     if (!comment || comment.teamId !== teamId) {
       throw new NotFoundException('Comment not found');
     }
-    const team = await this.prisma.team.findUnique({ where: { id: teamId } });
-    const isAuthor = comment.authorUserId === user.id;
-    const isLead = team?.leaderUserId === user.id;
-    if (!isAuthor && !isLead && user.platformRole !== PlatformRole.admin) {
-      throw new ForbiddenException('Only the author or team lead can delete this comment');
+    if (comment.authorUserId !== user.id) {
+      throw new ForbiddenException('You can only delete your own messages');
     }
     await this.prisma.comment.deleteMany({ where: { parentCommentId: commentId } });
     await this.prisma.comment.delete({ where: { id: commentId } });
