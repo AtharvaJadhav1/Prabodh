@@ -34,7 +34,7 @@ type TeamContextValue = {
   members: Member[];
   invites: OutgoingInvite[];
   requests: JoinRequest[];
-  requestResults: Record<number, "approved" | "rejected">;
+  requestResults: Record<string, "approved" | "rejected">;
   filledCount: number;
   pendingRequestCount: number;
   facultyInviteStatus: "none" | "sent" | "verified";
@@ -47,8 +47,8 @@ type TeamContextValue = {
   error: string | null;
   openDrawer: () => void;
   closeDrawer: () => void;
-  approveRequest: (index: number) => void;
-  rejectRequest: (index: number) => void;
+  approveRequest: (requestId: string) => Promise<void>;
+  rejectRequest: (requestId: string) => Promise<void>;
   removeMember: (index: number) => void;
   sendInvite: (email: string) => Promise<{ ok: boolean; emailSent: boolean; emailError?: string | null }>;
   revokeInvite: (inviteId: string) => Promise<void>;
@@ -124,8 +124,8 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const [stages, setStages] = useState<PortalStage[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<OutgoingInvite[]>([]);
-  const [requests] = useState<JoinRequest[]>([]);
-  const [requestResults, setRequestResults] = useState<Record<number, "approved" | "rejected">>({});
+  const [requests, setRequests] = useState<JoinRequest[]>([]);
+  const [requestResults, setRequestResults] = useState<Record<string, "approved" | "rejected">>({});
   const [facultyInviteStatus, setFacultyInviteStatus] = useState<"none" | "sent" | "verified">("none");
   const [facultyInviteEmail, setFacultyInviteEmail] = useState("");
   const [mentorLocked, setMentorLocked] = useState(false);
@@ -207,6 +207,16 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     }
   }, [userId]);
 
+  const loadRequests = useCallback(
+    (id: string) => {
+      setRequests([]);
+      void api<JoinRequest[]>(`/teams/${id}/join-requests`)
+        .then((rows) => setRequests(rows ?? []))
+        .catch(() => setRequests([]));
+    },
+    [],
+  );
+
   const reload = useCallback(async () => {
     if (!userId) return;
     if (reloadPromiseRef.current) return reloadPromiseRef.current;
@@ -238,6 +248,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         }
 
         applyTeamDetail(detail);
+        loadRequests(detail.id);
       } catch (err) {
         if (!soft) {
           setTeam(null);
@@ -298,10 +309,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
 
   const isLead = role === "LEAD";
   const filledCount = useMemo(() => members.filter((m) => m.status === "Verified").length, [members]);
-  const pendingRequestCount = useMemo(
-    () => requests.filter((_, i) => !requestResults[i]).length,
-    [requests, requestResults],
-  );
+  const pendingRequestCount = requests.filter((r) => r.status === "pending").length;
 
   const sendInvite = async (email: string) => {
     if (!email || !email.includes("@") || !team?.id) return { ok: false, emailSent: false };
@@ -472,8 +480,36 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         error,
         openDrawer: () => setDrawerOpen(true),
         closeDrawer: () => setDrawerOpen(false),
-        approveRequest: (index) => setRequestResults((prev) => ({ ...prev, [index]: "approved" })),
-        rejectRequest: (index) => setRequestResults((prev) => ({ ...prev, [index]: "rejected" })),
+        approveRequest: async (requestId) => {
+          if (!teamRef.current?.id) return;
+          setRequestResults((prev) => ({ ...prev, [requestId]: "approved" }));
+          try {
+            await apiPatch(`/teams/join-requests/${requestId}/accept`, {});
+            void loadRequests(teamRef.current.id);
+          } catch (err) {
+            setRequestResults((prev) => {
+              const next = { ...prev };
+              delete next[requestId];
+              return next;
+            });
+            throw err;
+          }
+        },
+        rejectRequest: async (requestId) => {
+          if (!teamRef.current?.id) return;
+          setRequestResults((prev) => ({ ...prev, [requestId]: "rejected" }));
+          try {
+            await apiPatch(`/teams/join-requests/${requestId}/reject`, {});
+            void loadRequests(teamRef.current.id);
+          } catch (err) {
+            setRequestResults((prev) => {
+              const next = { ...prev };
+              delete next[requestId];
+              return next;
+            });
+            throw err;
+          }
+        },
         removeMember: (index: number) => {
           const member = members[index];
           const id = member?.inviteEmail ? memberIds[member.inviteEmail] : undefined;
