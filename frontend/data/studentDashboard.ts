@@ -1,4 +1,4 @@
-export type StudentRole = "Team Lead" | "Team Member";
+export type StudentRole = "NO_TEAM" | "MEMBER" | "LEAD";
 
 export type Member = {
   id?: string;

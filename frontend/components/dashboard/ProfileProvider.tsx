@@ -73,9 +73,12 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [section, setSection] = useState<StudentEditSection>("basic");
 
+  const roleLabel =
+    role === "LEAD" ? "Team Lead" : role === "MEMBER" ? "Team Member" : "Solo / No Team";
+
   useEffect(() => {
     if (!session) return;
-    setProfile(mergeProfileFromApi(initialProfile, session, teamName, role));
+    setProfile(mergeProfileFromApi(initialProfile, session, teamName, roleLabel));
   }, [
     session?.userId,
     session?.fullName,

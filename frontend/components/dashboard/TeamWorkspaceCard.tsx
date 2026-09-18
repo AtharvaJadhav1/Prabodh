@@ -31,6 +31,7 @@ export default function TeamWorkspaceCard() {
     loading,
     revokeInvite,
     sendInvite,
+    role,
   } = useTeam();
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -41,6 +42,7 @@ export default function TeamWorkspaceCard() {
   const [inviteSuccess, setInviteSuccess] = useState("");
   const [revokingInviteId, setRevokingInviteId] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const teamNameInputRef = useRef<HTMLInputElement | null>(null);
   const percent = Math.round((filledCount / Math.max(capacity, 1)) * 100);
   const confirmedMembers = members.filter((m) => m.status === "Verified");
   const totalOccupied = confirmedMembers.length + invites.length;
@@ -96,12 +98,12 @@ export default function TeamWorkspaceCard() {
     );
   }
 
-  if (!teamId) {
+  if (!teamId || role === "NO_TEAM") {
     return (
       <section className="rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)] sm:p-6">
         <h2 className="text-base font-bold text-brand-deep">Create your team</h2>
         <p className="mt-1 text-sm text-brand-muted">
-          You are not on a team yet. Create one to invite members and lock a problem statement.
+          You're not on a team yet — create one or wait for an invite.
         </p>
         <form
           className="mt-4 flex flex-col gap-3"
@@ -125,6 +127,7 @@ export default function TeamWorkspaceCard() {
         >
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
+              ref={teamNameInputRef}
               name="team-name"
               required
               disabled={creating}
@@ -141,6 +144,24 @@ export default function TeamWorkspaceCard() {
           </div>
           {createError ? <p className="text-sm font-medium text-red-700">{createError}</p> : null}
         </form>
+        <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-brand-softline pt-4">
+          <button
+            type="button"
+            onClick={() => {
+              teamNameInputRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+              teamNameInputRef.current?.focus();
+            }}
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-cream px-4 py-2.5 text-sm font-bold text-brand-primary transition-colors hover:bg-brand-primary/15"
+          >
+            Create a Team
+          </button>
+          <Link
+            href="/dashboard/student/group-requests"
+            className="inline-flex items-center gap-2 rounded-xl border border-brand-softline px-4 py-2.5 text-sm font-bold text-brand-deep transition-colors hover:border-brand-primary/40 hover:text-brand-primary"
+          >
+            Invited to a team?
+          </Link>
+        </div>
       </section>
     );
   }

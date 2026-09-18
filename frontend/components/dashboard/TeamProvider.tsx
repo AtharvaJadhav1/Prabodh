@@ -40,7 +40,7 @@ type TeamContextValue = {
   facultyInviteStatus: "none" | "sent" | "verified";
   facultyInviteEmail: string;
   mentorLocked: boolean;
-  role: StudentRole;
+  role: StudentRole | null;
   isLead: boolean;
   drawerOpen: boolean;
   loading: boolean;
@@ -129,7 +129,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const [facultyInviteStatus, setFacultyInviteStatus] = useState<"none" | "sent" | "verified">("none");
   const [facultyInviteEmail, setFacultyInviteEmail] = useState("");
   const [mentorLocked, setMentorLocked] = useState(false);
-  const [role, setRole] = useState<StudentRole>("Team Lead");
+  const [role, setRole] = useState<StudentRole | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [memberIds, setMemberIds] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -190,7 +190,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     for (const m of detail.members) ids[m.invitedEmail] = m.id;
     setMemberIds(ids);
     if (userId) {
-      setRole(detail.leaderUserId === userId ? "Team Lead" : "Team Member");
+      setRole(detail.leaderUserId === userId ? "LEAD" : "MEMBER");
     }
     const inst = detail.mentorAssignments?.find((a) => a.mentorType === "institute");
     const pendingMentor = detail.mentorInvites?.find((i) => i.inviteStatus === "pending");
@@ -233,6 +233,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           setMembers([]);
           setInvites([]);
           setMemberIds({});
+          setRole("NO_TEAM");
           return;
         }
 
@@ -266,6 +267,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       setMembers([]);
       setInvites([]);
       setMemberIds({});
+      setRole("NO_TEAM");
     }
     setLoading(false);
   }, [userId, applyTeamDetail]);
@@ -294,7 +296,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     void reload();
   }, [ready, userId, reload]);
 
-  const isLead = role === "Team Lead";
+  const isLead = role === "LEAD";
   const filledCount = useMemo(() => members.filter((m) => m.status === "Verified").length, [members]);
   const pendingRequestCount = useMemo(
     () => requests.filter((_, i) => !requestResults[i]).length,
