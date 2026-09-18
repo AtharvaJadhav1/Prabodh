@@ -7,7 +7,6 @@ import {
 import LeaderNote from "../../../../components/dashboard/LeaderNote";
 import DispatchInviteCard from "../../../../components/dashboard/DispatchInviteCard";
 import RequestsTabs from "../../../../components/dashboard/RequestsTabs";
-import IncomingInvitesCard from "../../../../components/dashboard/IncomingInvitesCard";
 
 export const metadata: Metadata = {
   title: "Team Formation & Group Requests",
@@ -21,7 +20,6 @@ export default function GroupRequestsPage() {
 
       <div className="mt-6 grid grid-cols-1 gap-8 xl:grid-cols-12">
         <div className="space-y-6 xl:col-span-4">
-          <IncomingInvitesCard />
           <DispatchInviteCard />
           <MentorInvitePointer />
           <MultidisciplinaryCard />

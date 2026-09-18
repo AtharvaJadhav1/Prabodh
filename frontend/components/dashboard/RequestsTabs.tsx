@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useTeam } from "./TeamProvider";
-import type { JoinRequest } from "../../data/studentDashboard";
 import {
   UsersRoundIcon,
   InboxIcon,
@@ -21,8 +20,7 @@ import { getUserAvatarUrl } from "../../lib/avatar";
 
 export default function RequestsTabs() {
   const [tab, setTab] = useState<1 | 2>(1);
-  const { filledCount, invites, requests, requestResults } = useTeam();
-  const incoming = requests.filter((r) => r.status === "pending" && !requestResults[r.id]).length;
+  const { filledCount, invites, incomingInvites } = useTeam();
 
   return (
     <div className="overflow-hidden rounded-2xl border border-brand-softline bg-white shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
@@ -42,15 +40,15 @@ export default function RequestsTabs() {
               onClick={() => setTab(2)}
               icon={<InboxIcon className="h-4 w-4" />}
               label="Incoming Join Requests"
-              chip={`${incoming} open`}
-              chipStyle="bg-brand-primary text-white"
+              chip={`${incomingInvites.length} open`}
+              chipStyle="bg-[#C25E26] text-white"
             />
           </div>
         </div>
       </div>
 
       <div className="p-6">
-        {tab === 1 ? <ActiveRosterTab /> : <IncomingRequestsTab />}
+        {tab === 1 ? <ActiveRosterTab /> : <IncomingInvitesTab />}
       </div>
     </div>
   );
@@ -363,107 +361,36 @@ function MemberRow({
   );
 }
 
-function IncomingRequestsTab() {
-  const { requests, filledCount, pendingRequestCount, teamName, capacity } = useTeam();
-  const seatsLeft = capacity - filledCount;
+function IncomingInvitesTab() {
+  const { incomingInvites, acceptInvite, declineInvite } = useTeam();
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const awaiting = requests.filter((r) => r.status === "pending");
+  const run = async (inviteId: string, fn: () => Promise<void>) => {
+    setActionError(null);
+    setBusyId(inviteId);
+    try {
+      await fn();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Could not update this invitation");
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   return (
     <div className="space-y-4">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-bold text-brand-deep">
-            Student requests to join {teamName}
-          </h3>
+          <h3 className="text-sm font-bold text-brand-deep">Incoming Join Requests</h3>
           <p className="text-xs text-brand-muted">
-            Students who asked to join your squad. Review and accept or decline.
+            A team leader invited you to join their squad. Accept to become a member, or decline to keep looking.
           </p>
         </div>
         <span className="rounded-full border border-warmBorder bg-brand-lightOrange px-3 py-1 text-xs font-semibold text-brand-primary">
-          {pendingRequestCount} Candidate{pendingRequestCount !== 1 ? "s" : ""} in Queue
+          {incomingInvites.length} Open Invite{incomingInvites.length !== 1 ? "s" : ""}
         </span>
       </div>
-
-      {awaiting.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-brand-softline bg-brand-cream p-4 text-sm text-brand-muted">
-          No pending join requests right now. When a student requests to join, it will appear here for you to accept or decline.
-        </p>
-      ) : (
-        awaiting.map((req) => <CandidateCard key={req.id} req={req} seatsLeft={seatsLeft} />)
-      )}
-
-      <div className="flex items-center gap-2 rounded-xl border border-brand-softline bg-brand-cream p-3 text-xs text-brand-muted">
-        <AlertCircleIcon className="h-4 w-4 shrink-0 text-brand-primary" />
-        You can also add members by sending email invites from your Team workspace.
-      </div>
-    </div>
-  );
-}
-
-function CandidateCard({ req, seatsLeft }: { req: JoinRequest; seatsLeft: number }) {
-  const { approveRequest, rejectRequest, requestResults, isLead } = useTeam();
-  const [busy, setBusy] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const result = requestResults[req.id];
-  const initials = (req.student.fullName || req.student.email)
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? "")
-    .join("");
-
-  const run = async (fn: () => Promise<void>) => {
-    setActionError(null);
-    setBusy("pending");
-    try {
-      await fn();
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Could not update the request");
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  return (
-    <div className="space-y-3 rounded-xl border border-brand-softline bg-brand-cream/30 p-4 transition-all hover:border-brand-primary">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-primary/10 text-sm font-bold text-brand-primary shadow-sm">
-            {initials || "?"}
-          </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h4 className="text-sm font-bold text-brand-deep">{req.student.fullName}</h4>
-              <span className="rounded border border-brand-softline bg-white px-2 py-0.5 font-mono text-[11px] text-brand-charcoal/80">
-                {req.student.email}
-              </span>
-            </div>
-            <p className="text-xs text-brand-muted">
-              {req.student.institute || "Institute not set"}
-              {req.student.department ? ` • ${req.student.department}` : ""}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1 text-[11px] text-brand-muted">
-          <ClockIcon className="h-3.5 w-3.5" />
-          Requested {new Date(req.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-        </div>
-      </div>
-
-      {req.student.domainTags.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-[11px] font-semibold text-brand-muted">Domains:</span>
-          {req.student.domainTags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded border border-brand-softline bg-white px-2 py-0.5 font-mono text-[10px] font-semibold text-brand-deep"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
 
       {actionError && (
         <p className="flex items-center gap-1.5 rounded-lg border border-danger/30 bg-red-50 px-3 py-2 text-xs font-semibold text-danger">
@@ -471,44 +398,61 @@ function CandidateCard({ req, seatsLeft }: { req: JoinRequest; seatsLeft: number
         </p>
       )}
 
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        {result ? (
-          <p
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold ${
-              result === "approved"
-                ? "bg-brand-approved/10 text-brand-approved"
-                : "bg-brand-cream text-brand-muted"
-            }`}
-          >
-            <CheckIcon className="h-3.5 w-3.5" />
-            {result === "approved" ? "Approved & added to roster" : "Request declined"}
-          </p>
-        ) : isLead ? (
-          <>
-            <button
-              type="button"
-              disabled={busy !== null || seatsLeft <= 0}
-              onClick={() => run(() => approveRequest(req.id))}
-              className="flex items-center gap-1.5 rounded-lg bg-brand-approved px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition-all duration-150 hover:bg-green-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-brand-sand disabled:text-brand-muted"
+      {incomingInvites.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-brand-softline bg-brand-cream p-4 text-sm text-brand-muted">
+          No incoming team invitations right now. When a team leader invites you, it will appear here for you to
+          accept or decline.
+        </p>
+      ) : (
+        <div className="space-y-2.5">
+          {incomingInvites.map((inv) => (
+            <div
+              key={inv.id}
+              className="rounded-xl border border-brand-softline bg-brand-cream/40 p-3.5 transition-colors hover:border-brand-primary/40"
             >
-              <CheckIcon className="h-3.5 w-3.5" />
-              {busy === "pending" ? "Updating…" : "Accept Request (+1 Member)"}
-            </button>
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={() => run(() => rejectRequest(req.id))}
-              className="flex items-center gap-1 rounded-lg border border-danger px-3 py-1.5 text-xs font-semibold text-danger transition-all hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <XIcon className="h-3.5 w-3.5" /> Decline
-            </button>
-          </>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand-softline bg-white px-3 py-1.5 text-xs font-medium text-brand-muted">
-            <LockIcon className="h-3.5 w-3.5" /> View Only — Team Lead approves requests
-          </span>
-        )}
-      </div>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-bold text-brand-deep">{inv.team.name}</span>
+                    <span className="rounded border border-brand-softline bg-white px-1.5 py-0.5 font-mono text-[10px] font-semibold text-brand-charcoal/80">
+                      {inv.team.teamCode}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-brand-muted">
+                    {inv.team.leader?.fullName || "Team leader"}
+                    {inv.team.leader?.email ? ` · ${inv.team.leader.email}` : ""}
+                  </p>
+                  <p className="mt-1 flex items-center gap-1 text-[10px] font-medium text-brand-muted">
+                    <ClockIcon className="h-3 w-3" />
+                    Invited{" "}
+                    {new Date(inv.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={busyId !== null}
+                  onClick={() => run(inv.id, () => acceptInvite(inv.id))}
+                  className="flex items-center gap-1.5 rounded-lg bg-brand-approved px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition-all duration-150 hover:bg-green-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-brand-sand disabled:text-brand-muted"
+                >
+                  <CheckIcon className="h-3.5 w-3.5" />
+                  {busyId === inv.id ? "Joining…" : "Accept Invite"}
+                </button>
+                <button
+                  type="button"
+                  disabled={busyId !== null}
+                  onClick={() => run(inv.id, () => declineInvite(inv.id))}
+                  className="flex items-center gap-1 rounded-lg border border-danger px-3 py-1.5 text-xs font-semibold text-danger transition-all hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <XIcon className="h-3.5 w-3.5" /> Decline
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
