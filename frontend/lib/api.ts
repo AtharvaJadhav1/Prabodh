@@ -120,6 +120,8 @@ export async function api<T>(path: string, init: RequestInit = {}, options: ApiO
         invalidateApiCache(/\/admin(\/|$)/);
       } else if (path.includes("/mentors")) {
         invalidateApiCache(/\/(teams|mentors|admin)(\/|$)/);
+      } else if (path.includes("/join-requests")) {
+        invalidateApiCache(/\/join-requests(\/|$)/);
       } else if (path.includes("/teams")) {
         invalidateApiCache(/\/teams(\/|$)/);
       } else if (path.includes("/notifications")) {

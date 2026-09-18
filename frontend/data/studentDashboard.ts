@@ -21,15 +21,20 @@ export type OutgoingInvite = {
 };
 
 export type JoinRequest = {
-  initials: string;
-  name: string;
-  prn: string;
-  branch: string;
-  cgpa: string;
-  skills: string[];
-  note: string;
-  requestedAt: string;
-  avatarClass: string;
+  id: string;
+  status: "pending" | "accepted" | "rejected";
+  createdAt: string;
+  respondedAt: string | null;
+  teamId: string;
+  studentId: string;
+  student: {
+    id: string;
+    fullName: string;
+    email: string;
+    institute: string | null;
+    department: string | null;
+    domainTags: string[];
+  };
 };
 
 export const initialMembers: Member[] = [];
