@@ -117,9 +117,9 @@ export async function api<T>(path: string, init: RequestInit = {}, options: ApiO
       if (path.includes("/comments")) {
         invalidateApiCache(/\/teams(\/|$)/);
       } else if (path.includes("/admin")) {
-        invalidateApiCache(/\/admin(\/|$)/);
+        invalidateApiCache(/\/(admin|industrial-mentors)(\/|$)/);
       } else if (path.includes("/mentors")) {
-        invalidateApiCache(/\/(teams|mentors|admin)(\/|$)/);
+        invalidateApiCache(/\/(teams|mentors|admin|industrial-mentors)(\/|$)/);
       } else if (path.includes("/join-requests")) {
         invalidateApiCache(/\/join-requests(\/|$)/);
       } else if (path.includes("/teams")) {
