@@ -20,7 +20,7 @@ export default function AuthHeader() {
         href="/"
         className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-sand px-3 py-1.5 text-xs font-semibold text-brand-deep shadow-sm transition-all duration-200 hover:border-brand-amber hover:bg-white"
       >
-        Incubation Home
+        Home
       </Link>
     </div>
   );
