@@ -68,6 +68,7 @@ type InviteApiRow = {
   inviteStatus: string;
   invitedById: string;
   createdAt: string;
+  invitedBy?: { id: string; fullName: string; email: string } | null;
   team: {
     id: string;
     name: string;
@@ -84,7 +85,9 @@ function toInvite(row: InviteApiRow): MentorInvite {
     instituteMentorId: row.id,
     instituteMentorName: team.name,
     instituteMentorInitials: initials(team.name),
-    instituteMentorTitle: team.leader?.fullName ?? team.teamCode,
+    instituteMentorTitle: row.invitedBy?.fullName
+      ? `Invited by ${row.invitedBy.fullName}`
+      : team.leader?.fullName ?? team.teamCode,
     status: "pending",
     invitedAt: new Date(row.createdAt).toLocaleDateString(),
     respondedAt: null,
