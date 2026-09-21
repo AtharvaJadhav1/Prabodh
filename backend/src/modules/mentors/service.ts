@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
 import { pickLeastLoadedMentor } from '../../domain/rules';
 import { writeAudit } from '../../lib/audit';
+import { syncTeamMentorPointers } from '../../lib/mentor-pointers';
 import { sendMentorInviteEmail } from '../../lib/invite-email';
 import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
@@ -33,13 +34,24 @@ export class MentorsService {
     if (activeOfType >= cap) {
       throw new BadRequestException(`Team already has ${cap} ${body.mentorType} mentor(s)`);
     }
+    const industrialMentorId =
+      body.mentorType === 'industry'
+        ? (
+            await this.prisma.industrialMentor.findUnique({
+              where: { userId: body.mentorUserId },
+              select: { id: true },
+            })
+          )?.id ?? null
+        : null;
     const assignment = await this.repo.create({
       team: { connect: { id: body.teamId } },
       mentor: { connect: { id: body.mentorUserId } },
       assignedBy: { connect: { id: admin.id } },
       mentorType: body.mentorType,
       assignmentMethod: body.assignmentMethod,
+      ...(industrialMentorId ? { industrialMentor: { connect: { id: industrialMentorId } } } : {}),
     });
+    await this.syncTeamMentorPointers(this.prisma, body.teamId);
     await writeAudit(this.prisma, {
       actorUserId: admin.id,
       action: 'mentor.allocate',
@@ -63,6 +75,11 @@ export class MentorsService {
   }
 
   async autoAllocate(admin: AuthUser, mentorType: MentorType) {
+    if (mentorType === 'industry') {
+      throw new BadRequestException(
+        'Industrial mentors are never auto-allocated; faculty mentors invite them and they accept or decline.',
+      );
+    }
     const teams = await this.repo.unassignedTeams(mentorType);
     const mentors = await this.repo.mentorsByType(mentorType);
     if (!mentors.length) throw new BadRequestException('No mentors available for auto-allocation');
@@ -87,6 +104,15 @@ export class MentorsService {
     const current = await this.repo.findById(assignmentId);
     if (!current) throw new NotFoundException('Assignment not found');
     await this.repo.deactivate(assignmentId);
+    const industrialMentorId =
+      current.mentorType === 'industry'
+        ? (
+            await this.prisma.industrialMentor.findUnique({
+              where: { userId: mentorUserId },
+              select: { id: true },
+            })
+          )?.id ?? null
+        : null;
     const next = await this.repo.create({
       team: { connect: { id: current.teamId } },
       mentor: { connect: { id: mentorUserId } },
@@ -94,7 +120,9 @@ export class MentorsService {
       mentorType: current.mentorType,
       assignmentMethod: 'manual',
       reassignedFrom: { connect: { id: assignmentId } },
+      ...(industrialMentorId ? { industrialMentor: { connect: { id: industrialMentorId } } } : {}),
     });
+    await this.syncTeamMentorPointers(this.prisma, current.teamId);
     await writeAudit(this.prisma, {
       actorUserId: admin.id,
       action: 'mentor.reassign',
@@ -121,6 +149,7 @@ export class MentorsService {
         OR: [{ mentorUserId: user.id }, { invitedEmail: user.email }],
       },
       include: {
+        invitedBy: { select: { id: true, fullName: true, email: true } },
         team: {
           select: {
             id: true,
@@ -146,6 +175,7 @@ export class MentorsService {
         active: false,
         pendingInvite: true,
         inviteId: invite.id,
+        invitedBy: invite.invitedBy,
         team: invite.team,
       }));
 
@@ -174,55 +204,64 @@ export class MentorsService {
   async inviteFromLeader(user: AuthUser, body: z.infer<typeof mentorInviteSchema>) {
     const team = await this.prisma.team.findUnique({ where: { id: body.teamId } });
     if (!team) throw new NotFoundException('Team not found');
-    if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
-      throw new ForbiddenException('Only the team leader can invite mentors');
-    }
 
+    const mentorType: MentorType = body.mentorType;
     const email = body.email.toLowerCase();
-    if (body.mentorType === 'industry') {
-      throw new BadRequestException('Industry mentors are centrally allocated by the platform.');
-    }
-    const mentorType: MentorType = 'institute';
-    const expectedRole = PlatformRole.institute_mentor;
-    const mentor = await this.prisma.user.findUnique({ where: { email } });
-    if (!mentor || !mentor.isActive || mentor.platformRole !== expectedRole) {
-      throw new BadRequestException(
-        'No faculty account exists for this email. Ask your nodal admin to create their Prabodh login first.',
-      );
+
+    if (mentorType === 'institute') {
+      if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
+        throw new ForbiddenException('Only the team leader can invite a faculty mentor');
+      }
+    } else if (user.platformRole !== 'admin') {
+      const faculty = await this.repo.activeForTeam(team.id, 'institute');
+      if (!faculty || faculty.mentorUserId !== user.id) {
+        throw new ForbiddenException("Only the team's faculty mentor can invite an industrial mentor");
+      }
     }
 
-    if (team.mentorLockedAt) {
-      throw new BadRequestException('This team already has a locked faculty mentor');
-    }
-    const active = await this.repo.activeForTeam(team.id, mentorType);
-    if (active) {
-      throw new BadRequestException('This team already has a locked faculty mentor');
+    let mentor: { id: string };
+    if (mentorType === 'industry') {
+      const profile = await this.prisma.industrialMentor.findUnique({
+        where: { email },
+        include: { user: { select: { id: true, isActive: true } } },
+      });
+      if (!profile || !profile.isActive || !profile.user.isActive) {
+        throw new BadRequestException(
+          'No industrial mentor profile exists for this email. Ask your nodal admin to onboard them first.',
+        );
+      }
+      mentor = { id: profile.user.id };
+      const cap = await getSettingNumber(this.prisma, 'industry_mentor_cap');
+      const activeCount = await this.prisma.mentorAssignment.count({
+        where: { teamId: team.id, mentorType: 'industry', active: true },
+      });
+      if (activeCount >= cap) {
+        throw new BadRequestException(`Team already has ${cap} industrial mentor(s)`);
+      }
+    } else {
+      const found = await this.prisma.user.findUnique({ where: { email } });
+      if (!found || !found.isActive || found.platformRole !== PlatformRole.institute_mentor) {
+        throw new BadRequestException(
+          'No faculty account exists for this email. Ask your nodal admin to create their Prabodh login first.',
+        );
+      }
+      mentor = { id: found.id };
+      if (team.mentorLockedAt) {
+        throw new BadRequestException('This team already has a locked faculty mentor');
+      }
+      const active = await this.repo.activeForTeam(team.id, 'institute');
+      if (active) {
+        throw new BadRequestException('This team already has a locked faculty mentor');
+      }
     }
 
-    const existing = await this.prisma.mentorInvite.findUnique({
-      where: { teamId_invitedEmail_mentorType: { teamId: team.id, invitedEmail: email, mentorType } },
+    const invite = await this.upsertMentorInvite({
+      teamId: team.id,
+      email,
+      mentorUserId: mentor.id,
+      mentorType,
+      invitedById: user.id,
     });
-    const invite = existing
-      ? await this.prisma.mentorInvite.update({
-          where: { id: existing.id },
-          data: {
-            inviteStatus: InviteStatus.pending,
-            mentorUserId: mentor.id,
-            invitedById: user.id,
-          },
-          include: { mentor: true, team: true },
-        })
-      : await this.prisma.mentorInvite.create({
-          data: {
-            teamId: team.id,
-            invitedEmail: email,
-            mentorUserId: mentor.id,
-            mentorType,
-            invitedById: user.id,
-            inviteStatus: InviteStatus.pending,
-          },
-          include: { mentor: true, team: true },
-        });
 
     void sendMentorInviteEmail({
       to: email,
@@ -245,8 +284,12 @@ export class MentorsService {
   async revokeInvite(user: AuthUser, inviteId: string) {
     const invite = await this.prisma.mentorInvite.findUnique({ include: { team: true }, where: { id: inviteId } });
     if (!invite) throw new NotFoundException('Invite not found');
-    if (invite.team.leaderUserId !== user.id && user.platformRole !== 'admin') {
-      throw new ForbiddenException('Only the team leader can revoke mentor invites');
+    if (
+      invite.team.leaderUserId !== user.id &&
+      invite.invitedById !== user.id &&
+      user.platformRole !== 'admin'
+    ) {
+      throw new ForbiddenException('Only the team leader, the mentor who sent the invite, or an admin can revoke it');
     }
     if (invite.inviteStatus === InviteStatus.accepted) {
       throw new BadRequestException('Accepted mentor assignments cannot be revoked here');
@@ -264,6 +307,7 @@ export class MentorsService {
         OR: [{ mentorUserId: user.id }, { invitedEmail: user.email }],
       },
       include: {
+        invitedBy: { select: { id: true, fullName: true, email: true } },
         team: {
           select: {
             id: true,
@@ -315,13 +359,33 @@ export class MentorsService {
       const active = await tx.mentorAssignment.findFirst({
         where: { teamId: team.id, mentorType: fresh.mentorType, active: true },
       });
-      if (team.mentorLockedAt || active) {
+      const facultyLocked = fresh.mentorType === 'institute' && team.mentorLockedAt !== null;
+      if (facultyLocked || active) {
         await tx.mentorInvite.update({
           where: { id: fresh.id },
           data: { inviteStatus: InviteStatus.expired },
         });
         return { accepted: false };
       }
+
+      if (fresh.mentorType === 'industry') {
+        const cap = await getSettingNumber(this.prisma, 'industry_mentor_cap');
+        const activeCount = await tx.mentorAssignment.count({
+          where: { teamId: team.id, mentorType: 'industry', active: true },
+        });
+        if (activeCount >= cap) {
+          await tx.mentorInvite.update({
+            where: { id: fresh.id },
+            data: { inviteStatus: InviteStatus.expired },
+          });
+          return { accepted: false };
+        }
+      }
+
+      const industrialMentorId =
+        fresh.mentorType === 'industry'
+          ? (await tx.industrialMentor.findUnique({ where: { userId: user.id }, select: { id: true } }))?.id ?? null
+          : null;
 
       const assignment = await tx.mentorAssignment.create({
         data: {
@@ -330,12 +394,16 @@ export class MentorsService {
           assignedBy: { connect: { id: fresh.invitedById } },
           mentorType: fresh.mentorType,
           assignmentMethod: 'manual',
+          ...(industrialMentorId ? { industrialMentor: { connect: { id: industrialMentorId } } } : {}),
         },
       });
-      await tx.team.update({
-        where: { id: team.id },
-        data: { mentorLockedAt: new Date() },
-      });
+      if (fresh.mentorType === 'institute') {
+        await tx.team.update({
+          where: { id: team.id },
+          data: { mentorLockedAt: new Date() },
+        });
+      }
+      await this.syncTeamMentorPointers(tx, team.id);
       await tx.mentorInvite.update({
         where: { id: fresh.id },
         data: { inviteStatus: InviteStatus.accepted, mentorUserId: user.id },
@@ -358,5 +426,60 @@ export class MentorsService {
       void this.psPreferences.promoteSavedOnMentorAssigned(invite.teamId).catch(() => undefined);
     }
     return result;
+  }
+
+  private async upsertMentorInvite(opts: {
+    teamId: string;
+    email: string;
+    mentorUserId: string;
+    mentorType: MentorType;
+    invitedById: string;
+  }) {
+    return this.prisma.mentorInvite.upsert({
+      where: {
+        teamId_invitedEmail_mentorType: {
+          teamId: opts.teamId,
+          invitedEmail: opts.email,
+          mentorType: opts.mentorType,
+        },
+      },
+      update: {
+        inviteStatus: InviteStatus.pending,
+        mentorUserId: opts.mentorUserId,
+        invitedById: opts.invitedById,
+      },
+      create: {
+        teamId: opts.teamId,
+        invitedEmail: opts.email,
+        mentorUserId: opts.mentorUserId,
+        mentorType: opts.mentorType,
+        invitedById: opts.invitedById,
+        inviteStatus: InviteStatus.pending,
+      },
+      include: { mentor: true, team: true },
+    });
+  }
+
+  private async syncTeamMentorPointers(db: Parameters<typeof syncTeamMentorPointers>[0], teamId: string) {
+    return syncTeamMentorPointers(db, teamId);
+  }
+
+  listIndustrialMentors(query: { domain?: string; q?: string }) {
+    return this.prisma.industrialMentor.findMany({
+      where: {
+        isActive: true,
+        ...(query.domain ? { domainExpertise: { has: query.domain } } : {}),
+        ...(query.q
+          ? {
+              OR: [
+                { fullName: { contains: query.q, mode: 'insensitive' } },
+                { companyName: { contains: query.q, mode: 'insensitive' } },
+                { email: { contains: query.q, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: { fullName: 'asc' },
+    });
   }
 }
