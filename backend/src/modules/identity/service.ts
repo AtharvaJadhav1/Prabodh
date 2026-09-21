@@ -240,11 +240,12 @@ export class IdentityService {
     const role =
       body.mentorKind === 'industry' ? PlatformRole.industry_mentor : PlatformRole.institute_mentor;
     const existing = await this.repo.findByEmail(email);
+    let user;
     if (existing) {
       if (existing.platformRole !== role) {
         throw new BadRequestException('This email is already registered with another role. Sign in instead.');
       }
-      return this.prisma.user.update({
+      user = await this.prisma.user.update({
         where: { id: existing.id },
         data: {
           fullName: body.fullName,
@@ -255,22 +256,46 @@ export class IdentityService {
           ...(body.password ? { passwordHash: hashPassword(body.password) } : {}),
         },
       });
+    } else {
+      if (!body.password) {
+        throw new BadRequestException('Password is required for registration.');
+      }
+      user = await this.prisma.user.create({
+        data: {
+          clerkUserId: `local:${email}`,
+          email,
+          fullName: body.fullName,
+          platformRole: role,
+          institute: body.institute,
+          department: body.department,
+          phone: body.phone,
+          passwordHash: hashPassword(body.password),
+        },
+      });
     }
-    if (!body.password) {
-      throw new BadRequestException('Password is required for registration.');
+    if (role === PlatformRole.industry_mentor) {
+      await this.prisma.industrialMentor.upsert({
+        where: { userId: user.id },
+        update: {
+          fullName: body.fullName,
+          email,
+          phone: body.phone ?? null,
+          companyName: body.institute ?? null,
+          designation: body.department ?? null,
+          isActive: true,
+        },
+        create: {
+          userId: user.id,
+          fullName: body.fullName,
+          email,
+          phone: body.phone ?? null,
+          companyName: body.institute ?? null,
+          designation: body.department ?? null,
+          isActive: true,
+        },
+      });
     }
-    return this.prisma.user.create({
-      data: {
-        clerkUserId: `local:${email}`,
-        email,
-        fullName: body.fullName,
-        platformRole: role,
-        institute: body.institute,
-        department: body.department,
-        phone: body.phone,
-        passwordHash: hashPassword(body.password),
-      },
-    });
+    return user;
   }
 
   async createStaffAccount(body: {
@@ -292,32 +317,52 @@ export class IdentityService {
     const email = body.email.toLowerCase();
     const existing = await this.repo.findByEmail(email);
     const passwordHash = hashPassword(body.password);
-    if (existing) {
-      // Admin re-invite resets credentials so the emailed password always works.
-      return this.prisma.user.update({
-        where: { id: existing.id },
-        data: {
+    const user = existing
+      ? await this.prisma.user.update({
+          where: { id: existing.id },
+          data: {
+            fullName: body.fullName,
+            platformRole: body.platformRole,
+            institute: body.institute ?? existing.institute,
+            department: body.department ?? existing.department,
+            passwordHash,
+            isActive: true,
+          },
+        })
+      : await this.prisma.user.create({
+          data: {
+            clerkUserId: `local:${email}`,
+            email,
+            fullName: body.fullName,
+            platformRole: body.platformRole,
+            institute: body.institute,
+            department: body.department,
+            passwordHash,
+            isActive: true,
+          },
+        });
+
+    if (body.platformRole === PlatformRole.industry_mentor) {
+      await this.prisma.industrialMentor.upsert({
+        where: { userId: user.id },
+        update: {
           fullName: body.fullName,
-          platformRole: body.platformRole,
-          institute: body.institute ?? existing.institute,
-          department: body.department ?? existing.department,
-          passwordHash,
+          email,
+          companyName: body.institute ?? null,
+          designation: body.department ?? null,
+          isActive: true,
+        },
+        create: {
+          userId: user.id,
+          fullName: body.fullName,
+          email,
+          companyName: body.institute ?? null,
+          designation: body.department ?? null,
           isActive: true,
         },
       });
     }
-    return this.prisma.user.create({
-      data: {
-        clerkUserId: `local:${email}`,
-        email,
-        fullName: body.fullName,
-        platformRole: body.platformRole,
-        institute: body.institute,
-        department: body.department,
-        passwordHash,
-        isActive: true,
-      },
-    });
+    return user;
   }
 
   async registerStudent(body: {
