@@ -6,6 +6,11 @@ const DEFAULT_PASSWORD = 'Prabodh@123';
 
 const INSTITUTE = 'MIT Art, Design and Technology University';
 
+const industrialProfiles: Record<string, { companyName: string; designation: string }> = {
+  'industry@partner.com': { companyName: 'Partner Health Systems', designation: 'Chief Innovation Officer' },
+  'leena.kapoor@partnertech.in': { companyName: 'PartnerTech Pvt Ltd', designation: 'Head of Engineering' },
+};
+
 const students: Array<{ email: string; fullName: string; department: string }> = [
   { email: 'aarav.sharma@mituniversity.edu.in', fullName: 'Aarav Sharma', department: 'CSE' },
   { email: 'diya.patil@mituniversity.edu.in', fullName: 'Diya Patil', department: 'CSE' },
@@ -406,6 +411,32 @@ async function main() {
     );
   }
 
+  for (const f of facultyRows) {
+    if (f.platformRole === PlatformRole.industry_mentor) {
+      const profile = industrialProfiles[f.email];
+      await prisma.industrialMentor.upsert({
+        where: { userId: f.id },
+        update: {
+          fullName: f.fullName,
+          email: f.email,
+          companyName: profile?.companyName ?? f.institute,
+          designation: profile?.designation ?? f.department,
+          domainExpertise: f.domainTags,
+          isActive: true,
+        },
+        create: {
+          userId: f.id,
+          fullName: f.fullName,
+          email: f.email,
+          companyName: profile?.companyName ?? f.institute,
+          designation: profile?.designation ?? f.department,
+          domainExpertise: f.domainTags,
+          isActive: true,
+        },
+      });
+    }
+  }
+
   for (const ps of problemStatements) {
     await prisma.problemStatement.upsert({
       where: { code: ps.code },
@@ -495,6 +526,29 @@ async function main() {
           },
         });
       }
+    }
+    const industryMentor = facultyRows.find((u) => u.email === 'leena.kapoor@partnertech.in');
+    if (industryMentor) {
+      const industrialProfile = await prisma.industrialMentor.findUnique({ where: { userId: industryMentor.id } });
+      const existingIndustry = await prisma.mentorAssignment.findFirst({
+        where: { teamId: team.id, mentorType: 'industry', active: true },
+      });
+      if (!existingIndustry && industrialProfile) {
+        await prisma.mentorAssignment.create({
+          data: {
+            teamId: team.id,
+            mentorUserId: industryMentor.id,
+            mentorType: 'industry',
+            assignedById: admin.id,
+            assignmentMethod: 'manual',
+            industrialMentorId: industrialProfile.id,
+          },
+        });
+      }
+      await prisma.team.update({
+        where: { id: team.id },
+        data: { industrialMentorId: industrialProfile?.id ?? null },
+      });
     }
   }
 
