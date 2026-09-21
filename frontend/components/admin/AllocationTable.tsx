@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { AdminAllocation } from "../../data/adminDashboard";
 import { useAdmin } from "./AdminProvider";
+import MentorDropdown from "./MentorDropdown";
 import { CheckIcon, SearchIcon, AlertCircleIcon } from "../dashboard/icons";
-
-type PendingChanges = Record<string, { institute?: string; industry?: string }>;
 
 type Props = {
   allocations: AdminAllocation[];
@@ -16,33 +15,12 @@ type Props = {
 export default function AllocationTable({ allocations, onAssignInstitute, onAssignIndustry }: Props) {
   const { mentors, industryMentorOptions } = useAdmin();
   const [search, setSearch] = useState("");
-  const [pendingChanges, setPendingChanges] = useState<PendingChanges>({});
 
   const filtered = useMemo(() => {
     if (!search.trim()) return allocations;
     const q = search.toLowerCase();
     return allocations.filter((a) => a.teamName.toLowerCase().includes(q) || a.teamId.toLowerCase().includes(q));
   }, [allocations, search]);
-
-  const setPending = (teamId: string, kind: "institute" | "industry", value: string) => {
-    setPendingChanges((prev) => ({ ...prev, [teamId]: { ...prev[teamId], [kind]: value } }));
-  };
-
-  const handleSave = (a: AdminAllocation) => {
-    const pending = pendingChanges[a.teamId];
-    if (!pending) return;
-    if (pending.institute && pending.institute !== a.assignedMentorId) {
-      onAssignInstitute(a.teamId, pending.institute);
-    }
-    if (pending.industry && pending.industry !== a.assignedIndustryMentorId) {
-      onAssignIndustry(a.teamId, pending.industry);
-    }
-    setPendingChanges((prev) => {
-      const next = { ...prev };
-      delete next[a.teamId];
-      return next;
-    });
-  };
 
   return (
     <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
@@ -74,15 +52,10 @@ export default function AllocationTable({ allocations, onAssignInstitute, onAssi
               <th className="px-4 py-3 text-center font-bold">Status</th>
               <th className="px-4 py-3 font-bold">Institute Mentor</th>
               <th className="px-4 py-3 font-bold">Industrial Mentor</th>
-              <th className="px-4 py-3 text-right font-bold">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-brand-sand">
             {filtered.map((a) => {
-              const pending = pendingChanges[a.teamId];
-              const institute = pending?.institute ?? a.assignedMentorId ?? "";
-              const industry = pending?.industry ?? a.assignedIndustryMentorId ?? "";
-              const hasPending = Boolean(pending?.institute || pending?.industry);
               const bothAssigned = Boolean(a.assignedMentorId && a.assignedIndustryMentorId);
               return (
                 <tr key={a.teamId} className="transition-colors hover:bg-brand-cream/80">
@@ -109,47 +82,20 @@ export default function AllocationTable({ allocations, onAssignInstitute, onAssi
                     )}
                   </td>
                   <td className="min-w-[190px] px-4 py-4">
-                    <select
-                      value={institute}
-                      onChange={(e) => setPending(a.teamId, "institute", e.target.value)}
-                      className="w-full rounded-xl border border-brand-sand bg-white px-3 py-1.5 text-xs font-medium text-brand-deep transition focus:border-brand-primary focus:outline-none"
-                    >
-                      <option value="">Select Institute Mentor...</option>
-                      {mentors.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
+                    <MentorDropdown
+                      options={mentors.map((m) => ({ id: m.id, name: m.name, subtext: m.title }))}
+                      selectedId={a.assignedMentorId ?? undefined}
+                      placeholder="Select Institute Mentor..."
+                      onSelect={(id) => onAssignInstitute(a.teamId, id)}
+                    />
                   </td>
                   <td className="min-w-[190px] px-4 py-4">
-                    <select
-                      value={industry}
-                      onChange={(e) => setPending(a.teamId, "industry", e.target.value)}
-                      className="w-full rounded-xl border border-brand-sand bg-white px-3 py-1.5 text-xs font-medium text-brand-deep transition focus:border-brand-primary focus:outline-none"
-                    >
-                      <option value="">Select Industrial Mentor...</option>
-                      {industryMentorOptions.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    {hasPending ? (
-                      <button
-                        type="button"
-                        onClick={() => handleSave(a)}
-                        className="rounded-lg bg-brand-deep px-4 py-1.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-brand-deep/90 active:scale-95"
-                      >
-                        Save
-                      </button>
-                    ) : (
-                      <button type="button" disabled className="rounded-lg border border-brand-sand bg-brand-cream px-4 py-1.5 text-xs font-bold text-brand-muted">
-                        Update
-                      </button>
-                    )}
+                    <MentorDropdown
+                      options={industryMentorOptions.map((m) => ({ id: m.id, name: m.name, subtext: m.title }))}
+                      selectedId={a.assignedIndustryMentorId ?? undefined}
+                      placeholder="Select Industrial Mentor..."
+                      onSelect={(id) => onAssignIndustry(a.teamId, id)}
+                    />
                   </td>
                 </tr>
               );
