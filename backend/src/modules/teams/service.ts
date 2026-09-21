@@ -10,6 +10,7 @@ import {
 import { InviteStatus, JoinRequestStatus, NotificationType, Prisma, TeamStatus } from '@prisma/client';
 import { AuthUser } from '../../common/auth.types';
 import { writeAudit } from '../../lib/audit';
+import { syncTeamMentorPointers } from '../../lib/mentor-pointers';
 import { getClerkClient } from '../../lib/clerk';
 import { createNotifications, notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
@@ -138,6 +139,149 @@ export class TeamsService {
   async listDeliverables(user: AuthUser, teamId: string) {
     await this.assertTeamAccess(user, teamId);
     return this.repo.listDeliverables(teamId);
+  }
+
+  /** Both mentors of a team (faculty + industrial) with assignment provenance. */
+  async mentorDetails(user: AuthUser, teamId: string) {
+    await this.assertTeamAccess(user, teamId);
+    const [assignments, pendingIndustryInvite] = await Promise.all([
+      this.prisma.mentorAssignment.findMany({
+        where: { teamId, active: true },
+        include: {
+          mentor: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true,
+              institute: true,
+              department: true,
+              domainTags: true,
+              platformRole: true,
+            },
+          },
+          assignedBy: { select: { id: true, fullName: true, platformRole: true } },
+          industrialMentor: true,
+        },
+      }),
+      this.prisma.mentorInvite.findFirst({
+        where: { teamId, mentorType: 'industry', inviteStatus: InviteStatus.pending },
+        orderBy: { createdAt: 'desc' },
+        include: { invitedBy: { select: { id: true, fullName: true, platformRole: true } } },
+      }),
+    ]);
+
+    const faculty = assignments.find((a) => a.mentorType === 'institute');
+    const industrial = assignments.find((a) => a.mentorType === 'industry');
+
+    return {
+      faculty:
+        faculty && {
+          userId: faculty.mentorUserId,
+          name: faculty.mentor.fullName,
+          email: faculty.mentor.email,
+          phone: faculty.mentor.phone,
+          department: faculty.mentor.department,
+          institute: faculty.mentor.institute,
+          domainTags: faculty.mentor.domainTags,
+          assignmentMethod: faculty.assignmentMethod,
+          assignedAt: faculty.assignedAt,
+          assignedBy: {
+            id: faculty.assignedBy.id,
+            name: faculty.assignedBy.fullName,
+            role: faculty.assignedBy.platformRole,
+          },
+        },
+      industrial:
+        industrial && {
+          id: industrial.industrialMentor?.id ?? null,
+          userId: industrial.mentorUserId,
+          name: industrial.mentor.fullName,
+          email: industrial.mentor.email,
+          phone: industrial.mentor.phone,
+          companyName: industrial.industrialMentor?.companyName ?? industrial.mentor.institute,
+          designation: industrial.industrialMentor?.designation ?? industrial.mentor.department,
+          domainExpertise: industrial.industrialMentor?.domainExpertise ?? industrial.mentor.domainTags,
+          assignmentMethod: industrial.assignmentMethod,
+          assignedAt: industrial.assignedAt,
+          assignedBy: {
+            id: industrial.assignedBy.id,
+            name: industrial.assignedBy.fullName,
+            role: industrial.assignedBy.platformRole,
+          },
+        },
+      pendingIndustryInvite:
+        pendingIndustryInvite && {
+          id: pendingIndustryInvite.id,
+          invitedEmail: pendingIndustryInvite.invitedEmail,
+          mentorUserId: pendingIndustryInvite.mentorUserId,
+          invitedById: pendingIndustryInvite.invitedById,
+          invitedByName: pendingIndustryInvite.invitedBy.fullName,
+          invitedAt: pendingIndustryInvite.createdAt,
+        },
+    };
+  }
+
+  /** Admin-only direct assignment/override. Industrial mentors are otherwise invite-accepted. */
+  async assignIndustrialMentor(
+    user: AuthUser,
+    teamId: string,
+    industrialMentorId?: string,
+    userId?: string,
+  ) {
+    const profile = await this.prisma.industrialMentor.findUnique({
+      where: userId && !industrialMentorId ? { userId } : { id: industrialMentorId! },
+      include: { user: { select: { id: true, isActive: true } } },
+    });
+    if (!profile || !profile.isActive || !profile.user.isActive) {
+      throw new BadRequestException('Industrial mentor profile not found or inactive');
+    }
+    const team = await this.prisma.team.findUnique({ where: { id: teamId } });
+    if (!team) throw new NotFoundException('Team not found');
+
+    const cap = await getSettingNumber(this.prisma, 'industry_mentor_cap');
+    const activeCount = await this.prisma.mentorAssignment.count({
+      where: { teamId, mentorType: 'industry', active: true },
+    });
+    if (activeCount >= cap) {
+      throw new BadRequestException(`Team already has ${cap} industrial mentor(s)`);
+    }
+
+    const assignment = await this.prisma.$transaction(async (tx) => {
+      await tx.mentorAssignment.updateMany({
+        where: { teamId, mentorType: 'industry', active: true },
+        data: { active: false },
+      });
+      const next = await tx.mentorAssignment.create({
+        data: {
+          teamId,
+          mentorUserId: profile.user.id,
+          mentorType: 'industry',
+          assignedById: user.id,
+          assignmentMethod: 'manual',
+          industrialMentorId: profile.id,
+        },
+        include: { team: true },
+      });
+      await syncTeamMentorPointers(tx, teamId);
+      return next;
+    });
+
+    await writeAudit(this.prisma, {
+      actorUserId: user.id,
+      action: 'mentor.assign_industry',
+      entityType: 'mentor_assignment',
+      entityId: assignment.id,
+      after: { teamId, industrialMentorId: profile.id, mentorUserId: profile.user.id },
+    });
+    await notifyUsers(this.prisma, [profile.user.id], {
+      type: 'allocation',
+      template: 'mentor_allocation',
+      title: 'New team allocated',
+      body: `You have been assigned as industrial mentor to ${team.name}.`,
+      relatedEntity: `team:${teamId}`,
+    }).catch(() => undefined);
+    return assignment;
   }
 
   async listForUser(user: AuthUser, page: number, limit: number) {

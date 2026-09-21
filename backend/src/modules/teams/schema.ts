@@ -16,3 +16,13 @@ export const patchTeamSchema = z.object({
 export const inviteSchema = z.object({
   email: z.string().email(),
 });
+
+export const assignIndustrialMentorSchema = z
+  .object({
+    industrialMentorId: z.string().uuid().optional(),
+    industrial_mentor_id: z.string().uuid().optional(),
+    userId: z.string().uuid().optional(),
+  })
+  .refine((b) => Boolean(b.industrialMentorId || b.industrial_mentor_id || b.userId), {
+    message: 'Provide "industrialMentorId", "industrial_mentor_id" or "userId"',
+  });

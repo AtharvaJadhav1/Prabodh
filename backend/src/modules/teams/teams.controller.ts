@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { PlatformRole } from '@prisma/client';
 import { CurrentUser } from '../../common/current-user.decorator';
 import { AuthUser } from '../../common/auth.types';
@@ -7,7 +7,7 @@ import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
 import { parsePagination } from '../../common/pagination';
 import { ZodPipe } from '../../common/zod.pipe';
-import { createTeamSchema, inviteSchema, patchTeamSchema } from './schema';
+import { assignIndustrialMentorSchema, createTeamSchema, inviteSchema, patchTeamSchema } from './schema';
 import { TeamsService } from './service';
 
 @Controller('teams')
@@ -54,6 +54,27 @@ export class TeamsController {
   @Get(':teamId/deliverables')
   deliverables(@CurrentUser() user: AuthUser, @Param('teamId') teamId: string) {
     return this.teams.listDeliverables(user, teamId);
+  }
+
+  @Get(':teamId/mentors')
+  mentors(@CurrentUser() user: AuthUser, @Param('teamId') teamId: string) {
+    return this.teams.mentorDetails(user, teamId);
+  }
+
+  @Post(':teamId/assign-industrial-mentor')
+  @Put(':teamId/assign-industrial-mentor')
+  @Roles(PlatformRole.admin)
+  assignIndustrialMentor(
+    @CurrentUser() user: AuthUser,
+    @Param('teamId') teamId: string,
+    @Body(new ZodPipe(assignIndustrialMentorSchema)) body: unknown,
+  ) {
+    const { industrialMentorId, industrial_mentor_id, userId } = body as {
+      industrialMentorId?: string;
+      industrial_mentor_id?: string;
+      userId?: string;
+    };
+    return this.teams.assignIndustrialMentor(user, teamId, industrialMentorId ?? industrial_mentor_id, userId);
   }
 
   @Get(':teamId')
