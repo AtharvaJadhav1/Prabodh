@@ -6,6 +6,7 @@ import MentorShell from "../../../../../components/mentor/MentorShell";
 import EmptyState from "../../../../../components/mentor/EmptyState";
 import PreferenceReviewCard, { type ReviewablePreference } from "../../../../../components/mentor/PreferenceReviewCard";
 import TeamRosterTable, { type RosterMember } from "../../../../../components/mentor/TeamRosterTable";
+import IndustrialMentorPanel from "../../../../../components/mentor/IndustrialMentorPanel";
 import PsDetailCard from "../../../../../components/dashboard/ps/PsDetailCard";
 import { AlertCircleIcon, ClockIcon } from "../../../../../components/dashboard/icons";
 import { api, apiPost, ApiError } from "../../../../../lib/api";
@@ -103,6 +104,7 @@ export default function MentorTeamDetailPage() {
             <PsDetailCard ps={ps} statusLabel="Locked by mentor" />
             <h3 className="text-base font-bold text-brand-deep">Team Roster</h3>
             <TeamRosterTable members={roster} />
+            <IndustrialMentorPanel teamId={team.id} teamName={team.name} />
           </>
         ) : submitted.length > 0 ? (
           <>
