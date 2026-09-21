@@ -43,6 +43,8 @@ export type AdminAllocation = {
   track: string;
   assignedMentorId: string | null;
   assignedMentorName: string | null;
+  assignedIndustryMentorId: string | null;
+  assignedIndustryMentorName: string | null;
   status: "unassigned" | "assigned";
 };
 
