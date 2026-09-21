@@ -32,9 +32,9 @@ export default function MentorsCard() {
         Mentors
       </h2>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <div className="mt-3 flex flex-col gap-3">
         {/* Faculty mentor */}
-        <div className="rounded-xl border border-brand-softline bg-brand-cream p-3">
+        <div className="w-full rounded-xl border border-brand-softline bg-brand-cream p-3">
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-muted">
             <GradCapIcon className="h-3.5 w-3.5" /> Institute / Faculty
           </p>
@@ -42,9 +42,9 @@ export default function MentorsCard() {
             <>
               <p className="mt-1 text-sm font-bold text-brand-deep">{faculty.mentor.fullName}</p>
               <p className="text-xs text-brand-muted">
-                {[faculty.mentor.department, faculty.mentor.institute].filter(Boolean).join(" · ") || faculty.mentor.email}
+                {[faculty.mentor.department, faculty.mentor.institute].filter(Boolean).join(" · ")}
               </p>
-              <p className="text-xs text-brand-muted">{faculty.mentor.email}</p>
+              <p className="truncate text-xs text-brand-muted">{faculty.mentor.email}</p>
               <StatusPill label="Assigned" />
             </>
           ) : (
@@ -56,7 +56,7 @@ export default function MentorsCard() {
         </div>
 
         {/* Industrial mentor */}
-        <div className="rounded-xl border border-brand-softline bg-brand-cream p-3">
+        <div className="w-full rounded-xl border border-brand-softline bg-brand-cream p-3">
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-muted">
             <BriefcaseIcon className="h-3.5 w-3.5" /> Industrial
           </p>
@@ -68,7 +68,7 @@ export default function MentorsCard() {
                   industrial.mentor.institute ||
                   industrial.mentor.department}
               </p>
-              <p className="text-xs text-brand-muted">{industrial.mentor.email}</p>
+              <p className="truncate text-xs text-brand-muted">{industrial.mentor.email}</p>
               <StatusPill label="Assigned" />
             </>
           ) : pendingIndustry ? (
