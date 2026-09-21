@@ -127,74 +127,103 @@ model User {
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  ledTeams             Team[]               @relation("TeamLeader")
-  memberships          TeamMember[]
-  mentorAssignments    MentorAssignment[]   @relation("MentorUser")
-  assignedBy           MentorAssignment[]   @relation("AssignedBy")
-  evaluations          Evaluation[]
-  publishedResults     StageResult[]        @relation("PublishedBy")
-  notifications        Notification[]
-  notificationLogs     NotificationLog[]
-  broadcasts           Broadcast[]
-  comments             Comment[]
-  auditLogs            AuditLog[]
-  createdIdea          IdeaSubmission[]     @relation("IdeaAuthor")
-  mentorInvitesReceived MentorInvite[]      @relation("MentorInvitee")
-  mentorsInvited       MentorInvite[]      @relation("MentorInviter")
-  joinRequestsSent     JoinRequest[]       @relation("JoinRequester")
-  psPreferencesSubmitted TeamPsPreference[] @relation("PsPreferenceSubmitter")
-  psPreferencesDecided   TeamPsPreference[] @relation("PsPreferenceDecider")
+  ledTeams                Team[]             @relation("TeamLeader")
+  facultyTeams            Team[]             @relation("TeamFacultyMentor")
+  industrialMentorProfile IndustrialMentor?
+  memberships             TeamMember[]
+  mentorAssignments       MentorAssignment[] @relation("MentorUser")
+  assignedBy              MentorAssignment[] @relation("AssignedBy")
+  evaluations             Evaluation[]
+  publishedResults        StageResult[]      @relation("PublishedBy")
+  notifications           Notification[]
+  notificationLogs        NotificationLog[]
+  broadcasts              Broadcast[]
+  comments                Comment[]
+  auditLogs               AuditLog[]
+  createdIdea             IdeaSubmission[]   @relation("IdeaAuthor")
+  mentorInvitesReceived   MentorInvite[]     @relation("MentorInvitee")
+  mentorsInvited          MentorInvite[]     @relation("MentorInviter")
+  joinRequestsSent        JoinRequest[]      @relation("JoinRequester")
+  psPreferencesSubmitted  TeamPsPreference[] @relation("PsPreferenceSubmitter")
+  psPreferencesDecided    TeamPsPreference[] @relation("PsPreferenceDecider")
 
   @@map("users")
 }
 
 model Team {
-  id            String     @id @default(uuid())
-  clerkOrgId    String     @unique @map("clerk_org_id")
-  teamCode      String     @unique @map("team_code")
-  name          String
-  theme         String?
-  institute     String
-  leaderUserId  String     @map("leader_user_id")
-  psId          String?    @map("ps_id")
-  status        TeamStatus @default(forming)
-  memberCap     Int        @default(6) @map("member_cap")
-  detailsLockAt DateTime?  @map("details_lock_at")
-  mentorLockedAt DateTime? @map("mentor_locked_at")
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
+  id                 String     @id @default(uuid())
+  clerkOrgId         String     @unique @map("clerk_org_id")
+  teamCode           String     @unique @map("team_code")
+  name               String
+  theme              String?
+  institute          String
+  leaderUserId       String     @map("leader_user_id")
+  psId               String?    @map("ps_id")
+  status             TeamStatus @default(forming)
+  memberCap          Int        @default(6) @map("member_cap")
+  detailsLockAt      DateTime?  @map("details_lock_at")
+  mentorLockedAt     DateTime?  @map("mentor_locked_at")
+  facultyMentorId    String?    @map("faculty_mentor_id")
+  industrialMentorId String?    @map("industrial_mentor_id")
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
 
-  leader           User                @relation("TeamLeader", fields: [leaderUserId], references: [id])
-  problemStatement ProblemStatement?   @relation(fields: [psId], references: [id])
-  members          TeamMember[]
-  ideaSubmissions  IdeaSubmission[]
-  mentorAssignments MentorAssignment[]
-  deliverables     Deliverable[]
-  stageStatuses    TeamStageStatus[]
-  evaluations      Evaluation[]
-  stageResults     StageResult[]
-  comments         Comment[]
-  mentorInvites    MentorInvite[]
-  psPreferences    TeamPsPreference[]
+  leader               User               @relation("TeamLeader", fields: [leaderUserId], references: [id])
+  facultyMentor        User?              @relation("TeamFacultyMentor", fields: [facultyMentorId], references: [id])
+  industrialMentor     IndustrialMentor?  @relation(fields: [industrialMentorId], references: [id])
+  problemStatement     ProblemStatement?  @relation(fields: [psId], references: [id])
+  members              TeamMember[]
+  ideaSubmissions      IdeaSubmission[]
+  mentorAssignments    MentorAssignment[]
+  deliverables         Deliverable[]
+  stageStatuses        TeamStageStatus[]
+  evaluations          Evaluation[]
+  stageResults         StageResult[]
+  comments             Comment[]
+  mentorInvites        MentorInvite[]
+  psPreferences        TeamPsPreference[]
   joinRequestsReceived JoinRequest[]
 
   @@index([status])
   @@index([theme])
   @@index([institute])
   @@index([leaderUserId])
+  @@index([facultyMentorId])
+  @@index([industrialMentorId])
   @@map("teams")
 }
 
+model IndustrialMentor {
+  id              String   @id @default(uuid())
+  userId          String   @unique @map("user_id")
+  fullName        String   @map("full_name")
+  email           String   @unique
+  phone           String?
+  companyName     String?  @map("company_name")
+  designation     String?
+  domainExpertise String[] @default([]) @map("domain_expertise")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user        User               @relation(fields: [userId], references: [id])
+  assignments MentorAssignment[] @relation("IndustrialAssignment")
+  teams       Team[]
+
+  @@index([isActive])
+  @@map("industrial_mentors")
+}
+
 model TeamMember {
-  id                 String       @id @default(uuid())
-  teamId             String       @map("team_id")
-  userId             String?      @map("user_id")
-  invitedEmail       String       @map("invited_email")
-  inviteStatus       InviteStatus @default(pending) @map("invite_status")
-  clerkInvitationId  String?      @map("clerk_invitation_id")
-  joinedAt           DateTime?    @map("joined_at")
-  createdAt          DateTime     @default(now()) @map("created_at")
-  updatedAt          DateTime     @updatedAt @map("updated_at")
+  id                String       @id @default(uuid())
+  teamId            String       @map("team_id")
+  userId            String?      @map("user_id")
+  invitedEmail      String       @map("invited_email")
+  inviteStatus      InviteStatus @default(pending) @map("invite_status")
+  clerkInvitationId String?      @map("clerk_invitation_id")
+  joinedAt          DateTime?    @map("joined_at")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
 
   team Team  @relation(fields: [teamId], references: [id])
   user User? @relation(fields: [userId], references: [id])
@@ -206,21 +235,21 @@ model TeamMember {
 }
 
 model ProblemStatement {
-  id                  String     @id @default(uuid())
-  code                String     @unique
-  title               String
-  theme               String
-  category            PsCategory
-  organisation        String
-  description         String
-  teamCap             Int?       @map("team_cap")
-  teamsSelectedCount  Int        @default(0) @map("teams_selected_count")
-  createdAt           DateTime   @default(now()) @map("created_at")
-  updatedAt           DateTime   @updatedAt @map("updated_at")
+  id                 String     @id @default(uuid())
+  code               String     @unique
+  title              String
+  theme              String
+  category           PsCategory
+  organisation       String
+  description        String
+  teamCap            Int?       @map("team_cap")
+  teamsSelectedCount Int        @default(0) @map("teams_selected_count")
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
 
-  teams            Team[]
-  ideaSubmissions  IdeaSubmission[]
-  teamPreferences  TeamPsPreference[]
+  teams           Team[]
+  ideaSubmissions IdeaSubmission[]
+  teamPreferences TeamPsPreference[]
 
   @@index([theme])
   @@index([category])
@@ -229,12 +258,12 @@ model ProblemStatement {
 }
 
 model JoinRequest {
-  id           String            @id @default(uuid())
-  studentId    String            @map("student_id")
-  teamId       String            @map("team_id")
-  status       JoinRequestStatus @default(pending)
-  createdAt    DateTime          @default(now()) @map("created_at")
-  respondedAt  DateTime?         @map("responded_at")
+  id          String            @id @default(uuid())
+  studentId   String            @map("student_id")
+  teamId      String            @map("team_id")
+  status      JoinRequestStatus @default(pending)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  respondedAt DateTime?         @map("responded_at")
 
   student User @relation("JoinRequester", fields: [studentId], references: [id])
   team    Team @relation(fields: [teamId], references: [id])
@@ -272,6 +301,7 @@ model MentorAssignment {
   mentorUserId       String           @map("mentor_user_id")
   mentorType         MentorType       @map("mentor_type")
   assignedById       String           @map("assigned_by")
+  industrialMentorId String?          @map("industrial_mentor_id")
   assignmentMethod   AssignmentMethod @map("assignment_method")
   active             Boolean          @default(true)
   reassignedFromId   String?          @map("reassigned_from_id")
@@ -279,14 +309,16 @@ model MentorAssignment {
   createdAt          DateTime         @default(now()) @map("created_at")
   updatedAt          DateTime         @updatedAt @map("updated_at")
 
-  team           Team               @relation(fields: [teamId], references: [id])
-  mentor         User               @relation("MentorUser", fields: [mentorUserId], references: [id])
-  assignedBy     User               @relation("AssignedBy", fields: [assignedById], references: [id])
-  reassignedFrom MentorAssignment?  @relation("ReassignChain", fields: [reassignedFromId], references: [id])
-  reassignedTo   MentorAssignment[] @relation("ReassignChain")
+  team             Team               @relation(fields: [teamId], references: [id])
+  mentor           User               @relation("MentorUser", fields: [mentorUserId], references: [id])
+  assignedBy       User               @relation("AssignedBy", fields: [assignedById], references: [id])
+  industrialMentor IndustrialMentor?  @relation("IndustrialAssignment", fields: [industrialMentorId], references: [id])
+  reassignedFrom   MentorAssignment?  @relation("ReassignChain", fields: [reassignedFromId], references: [id])
+  reassignedTo     MentorAssignment[] @relation("ReassignChain")
 
   @@index([teamId])
   @@index([mentorUserId, active])
+  @@index([industrialMentorId, active])
   @@map("mentor_assignments")
 }
 
@@ -301,9 +333,9 @@ model MentorInvite {
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
-  team     Team  @relation(fields: [teamId], references: [id])
-  mentor   User? @relation("MentorInvitee", fields: [mentorUserId], references: [id])
-  invitedBy User @relation("MentorInviter", fields: [invitedById], references: [id])
+  team      Team  @relation(fields: [teamId], references: [id])
+  mentor    User? @relation("MentorInvitee", fields: [mentorUserId], references: [id])
+  invitedBy User  @relation("MentorInviter", fields: [invitedById], references: [id])
 
   @@unique([teamId, invitedEmail, mentorType])
   @@index([invitedEmail, inviteStatus])
@@ -329,9 +361,9 @@ model TeamPsPreference {
   updatedAt     DateTime           @updatedAt @map("updated_at")
 
   team             Team              @relation(fields: [teamId], references: [id])
-  problemStatement  ProblemStatement? @relation(fields: [psId], references: [id])
-  submittedBy       User              @relation("PsPreferenceSubmitter", fields: [submittedById], references: [id])
-  decidedBy         User?             @relation("PsPreferenceDecider", fields: [decidedById], references: [id])
+  problemStatement ProblemStatement? @relation(fields: [psId], references: [id])
+  submittedBy      User              @relation("PsPreferenceSubmitter", fields: [submittedById], references: [id])
+  decidedBy        User?             @relation("PsPreferenceDecider", fields: [decidedById], references: [id])
 
   @@unique([teamId, rank])
   @@index([teamId, status])
@@ -365,7 +397,7 @@ model Rubric {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  stage       Stage         @relation(fields: [stageId], references: [id])
+  stage       Stage        @relation(fields: [stageId], references: [id])
   evaluations Evaluation[]
 
   @@map("rubrics")
@@ -408,24 +440,24 @@ model TeamStageStatus {
 }
 
 model Evaluation {
-  id               String   @id @default(uuid())
-  teamId           String   @map("team_id")
-  stageId          String   @map("stage_id")
-  rubricId         String   @map("rubric_id")
-  evaluatorUserId  String   @map("evaluator_user_id")
-  score            Decimal  @db.Decimal(5, 2)
-  feedback         String?
-  submittedAt      DateTime @default(now()) @map("submitted_at")
-  supersededById   String?  @unique @map("superseded_by_id")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  teamId          String   @map("team_id")
+  stageId         String   @map("stage_id")
+  rubricId        String   @map("rubric_id")
+  evaluatorUserId String   @map("evaluator_user_id")
+  score           Decimal  @db.Decimal(5, 2)
+  feedback        String?
+  submittedAt     DateTime @default(now()) @map("submitted_at")
+  supersededById  String?  @unique @map("superseded_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  team      Team        @relation(fields: [teamId], references: [id])
-  stage     Stage       @relation(fields: [stageId], references: [id])
-  rubric    Rubric      @relation(fields: [rubricId], references: [id])
-  evaluator User        @relation(fields: [evaluatorUserId], references: [id])
-  supersededBy Evaluation?  @relation("EvalSupersede", fields: [supersededById], references: [id])
-  supersedes   Evaluation?  @relation("EvalSupersede")
+  team         Team        @relation(fields: [teamId], references: [id])
+  stage        Stage       @relation(fields: [stageId], references: [id])
+  rubric       Rubric      @relation(fields: [rubricId], references: [id])
+  evaluator    User        @relation(fields: [evaluatorUserId], references: [id])
+  supersededBy Evaluation? @relation("EvalSupersede", fields: [supersededById], references: [id])
+  supersedes   Evaluation? @relation("EvalSupersede")
 
   @@index([teamId, stageId, evaluatorUserId])
   @@map("evaluations")
@@ -435,7 +467,7 @@ model StageResult {
   id            String    @id @default(uuid())
   teamId        String    @map("team_id")
   stageId       String    @map("stage_id")
-  weightedScore Decimal   @db.Decimal(6, 2) @map("weighted_score")
+  weightedScore Decimal   @map("weighted_score") @db.Decimal(6, 2)
   rank          Int?
   published     Boolean   @default(false)
   publishedAt   DateTime? @map("published_at")
@@ -443,9 +475,9 @@ model StageResult {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  team        Team   @relation(fields: [teamId], references: [id])
-  stage       Stage  @relation(fields: [stageId], references: [id])
-  publishedBy User?  @relation("PublishedBy", fields: [publishedById], references: [id])
+  team        Team  @relation(fields: [teamId], references: [id])
+  stage       Stage @relation(fields: [stageId], references: [id])
+  publishedBy User? @relation("PublishedBy", fields: [publishedById], references: [id])
 
   @@unique([teamId, stageId])
   @@index([stageId, published])
@@ -470,17 +502,17 @@ model Notification {
 }
 
 model NotificationLog {
-  id                 String                 @id @default(uuid())
-  recipientUserId    String?                @map("recipient_user_id")
-  recipientEmail     String                 @map("recipient_email")
-  template           String
-  providerMessageId  String?                @map("provider_message_id")
-  status             NotificationLogStatus  @default(queued)
-  sentAt             DateTime?              @map("sent_at")
-  deliveredAt        DateTime?              @map("delivered_at")
-  openedAt           DateTime?              @map("opened_at")
-  createdAt          DateTime               @default(now()) @map("created_at")
-  updatedAt          DateTime               @updatedAt @map("updated_at")
+  id                String                @id @default(uuid())
+  recipientUserId   String?               @map("recipient_user_id")
+  recipientEmail    String                @map("recipient_email")
+  template          String
+  providerMessageId String?               @map("provider_message_id")
+  status            NotificationLogStatus @default(queued)
+  sentAt            DateTime?             @map("sent_at")
+  deliveredAt       DateTime?             @map("delivered_at")
+  openedAt          DateTime?             @map("opened_at")
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
 
   recipient User? @relation(fields: [recipientUserId], references: [id])
 
@@ -489,15 +521,15 @@ model NotificationLog {
 }
 
 model Broadcast {
-  id              String    @id @default(uuid())
-  adminUserId     String    @map("admin_user_id")
-  title           String
-  body            String
-  filterCriteria  Json      @default("{}") @map("filter_criteria")
-  recipientCount  Int       @default(0) @map("recipient_count")
-  sentAt          DateTime? @map("sent_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id             String    @id @default(uuid())
+  adminUserId    String    @map("admin_user_id")
+  title          String
+  body           String
+  filterCriteria Json      @default("{}") @map("filter_criteria")
+  recipientCount Int       @default(0) @map("recipient_count")
+  sentAt         DateTime? @map("sent_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   admin User @relation(fields: [adminUserId], references: [id])
 
