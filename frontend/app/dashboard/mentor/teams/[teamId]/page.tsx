@@ -99,12 +99,13 @@ export default function MentorTeamDetailPage() {
       <div className="flex flex-col gap-6">
         {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
 
+        <IndustrialMentorPanel teamId={team.id} teamName={team.name} />
+
         {ps ? (
           <>
             <PsDetailCard ps={ps} statusLabel="Locked by mentor" />
             <h3 className="text-base font-bold text-brand-deep">Team Roster</h3>
             <TeamRosterTable members={roster} />
-            <IndustrialMentorPanel teamId={team.id} teamName={team.name} />
           </>
         ) : submitted.length > 0 ? (
           <>

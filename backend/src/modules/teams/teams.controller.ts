@@ -62,13 +62,26 @@ export class TeamsController {
   }
 
   @Post(':teamId/assign-industrial-mentor')
-  @Put(':teamId/assign-industrial-mentor')
   @Roles(PlatformRole.admin)
   assignIndustrialMentor(
     @CurrentUser() user: AuthUser,
     @Param('teamId') teamId: string,
     @Body(new ZodPipe(assignIndustrialMentorSchema)) body: unknown,
   ) {
+    return this.doAssignIndustrialMentor(user, teamId, body);
+  }
+
+  @Put(':teamId/assign-industrial-mentor')
+  @Roles(PlatformRole.admin)
+  assignIndustrialMentorPut(
+    @CurrentUser() user: AuthUser,
+    @Param('teamId') teamId: string,
+    @Body(new ZodPipe(assignIndustrialMentorSchema)) body: unknown,
+  ) {
+    return this.doAssignIndustrialMentor(user, teamId, body);
+  }
+
+  private doAssignIndustrialMentor(user: AuthUser, teamId: string, body: unknown) {
     const { industrialMentorId, industrial_mentor_id, userId } = body as {
       industrialMentorId?: string;
       industrial_mentor_id?: string;

@@ -240,10 +240,11 @@ export class TeamsService {
     if (!team) throw new NotFoundException('Team not found');
 
     const cap = await getSettingNumber(this.prisma, 'industry_mentor_cap');
-    const activeCount = await this.prisma.mentorAssignment.count({
+    const activeAssignments = await this.prisma.mentorAssignment.findMany({
       where: { teamId, mentorType: 'industry', active: true },
     });
-    if (activeCount >= cap) {
+    const alreadyActive = activeAssignments.some((a) => a.industrialMentorId === profile.id);
+    if (!alreadyActive && activeAssignments.length >= cap) {
       throw new BadRequestException(`Team already has ${cap} industrial mentor(s)`);
     }
 

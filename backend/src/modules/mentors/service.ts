@@ -231,12 +231,14 @@ export class MentorsService {
         );
       }
       mentor = { id: profile.user.id };
-      const cap = await getSettingNumber(this.prisma, 'industry_mentor_cap');
-      const activeCount = await this.prisma.mentorAssignment.count({
-        where: { teamId: team.id, mentorType: 'industry', active: true },
-      });
-      if (activeCount >= cap) {
-        throw new BadRequestException(`Team already has ${cap} industrial mentor(s)`);
+      if (user.platformRole !== 'admin') {
+        const cap = await getSettingNumber(this.prisma, 'industry_mentor_cap');
+        const activeCount = await this.prisma.mentorAssignment.count({
+          where: { teamId: team.id, mentorType: 'industry', active: true },
+        });
+        if (activeCount >= cap) {
+          throw new BadRequestException(`Team already has ${cap} industrial mentor(s)`);
+        }
       }
     } else {
       const found = await this.prisma.user.findUnique({ where: { email } });
@@ -369,7 +371,7 @@ export class MentorsService {
       }
 
       if (fresh.mentorType === 'industry') {
-        const cap = await getSettingNumber(this.prisma, 'industry_mentor_cap');
+        const cap = await getSettingNumber(tx, 'industry_mentor_cap');
         const activeCount = await tx.mentorAssignment.count({
           where: { teamId: team.id, mentorType: 'industry', active: true },
         });
@@ -413,7 +415,7 @@ export class MentorsService {
         data: { inviteStatus: InviteStatus.expired },
       });
       return { accepted: true, assignment };
-    });
+    }, { timeout: 15000 });
 
     if (result.accepted) {
       void notifyUsers(this.prisma, [invite.invitedById], {

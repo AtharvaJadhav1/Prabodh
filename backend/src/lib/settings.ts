@@ -1,7 +1,10 @@
+import { Prisma } from '@prisma/client';
 import { PrismaService } from './prisma.service';
 import { DEFAULT_SETTINGS } from '../domain/rules';
 
-export async function getSettingNumber(prisma: PrismaService, key: keyof typeof DEFAULT_SETTINGS): Promise<number> {
+type SettingsClient = Pick<PrismaService, 'platformSetting'> | Pick<Prisma.TransactionClient, 'platformSetting'>;
+
+export async function getSettingNumber(prisma: SettingsClient, key: keyof typeof DEFAULT_SETTINGS): Promise<number> {
   const row = await prisma.platformSetting.findUnique({ where: { key } });
   if (!row) return DEFAULT_SETTINGS[key];
   const n = Number(row.value);
