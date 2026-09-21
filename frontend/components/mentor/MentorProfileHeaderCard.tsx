@@ -1,11 +1,12 @@
 "use client";
 
 import { useMentorProfile } from "./MentorProfileProvider";
+import ExpandableContactItem from "../dashboard/ExpandableContactItem";
 import {
+  HashIcon,
   ShieldCheckIcon,
   MailIcon,
   MapPinIcon,
-  HashIcon,
   BookOpenIcon,
   Share2Icon,
   LinkedinIcon,
@@ -17,9 +18,9 @@ export default function MentorProfileHeaderCard() {
   const { initials, fullName, designation, department, facultyId, roleBadge, email, location, socials } = profile;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-brand-sand bg-white shadow-sm">
+    <section className="rounded-2xl border border-brand-sand bg-white shadow-sm">
       {/* Cover Banner */}
-      <div className="custom-pattern relative flex h-24 w-full items-end justify-end bg-gradient-to-r from-brand-deep via-[#7E3B14] to-brand-deep-deep px-6" />
+      <div className="custom-pattern relative flex h-24 w-full items-end justify-end rounded-t-2xl bg-gradient-to-r from-brand-deep via-[#7E3B14] to-brand-deep-deep px-6" />
 
       {/* Bio & Identity */}
       <div className="relative px-8 pb-6 pt-4">
@@ -53,22 +54,29 @@ export default function MentorProfileHeaderCard() {
         {/* Metadata + Socials Row */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-t border-brand-sand/70 pt-3 text-xs text-brand-muted">
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand-sand bg-brand-cream px-3 py-1 font-mono font-medium text-brand-deep">
-              <HashIcon className="h-3.5 w-3.5 text-brand-muted" />
-              Faculty ID: {facultyId}
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand-warmBorder bg-brand-lightOrange px-3 py-1 font-semibold text-brand-primary">
-              <ShieldCheckIcon className="h-3.5 w-3.5" />
-              {roleBadge}
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-1">
-              <MailIcon className="h-3.5 w-3.5 text-brand-primary" />
-              {email}
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2 py-1">
-              <MapPinIcon className="h-3.5 w-3.5 text-brand-primary" />
-              {location}
-            </span>
+            <ExpandableContactItem
+              icon={<HashIcon className="h-4 w-4" />}
+              label="Faculty ID (click to copy)"
+              value={facultyId}
+              onCopy
+            />
+            <ExpandableContactItem
+              icon={<ShieldCheckIcon className="h-4 w-4" />}
+              label="Designated Internal Faculty Guide"
+              value={roleBadge}
+            />
+            <ExpandableContactItem
+              icon={<MailIcon className="h-4 w-4" />}
+              label="Institutional Academic Email (click to copy)"
+              value={email}
+              onCopy
+            />
+            <ExpandableContactItem
+              icon={<MapPinIcon className="h-4 w-4" />}
+              label="Department Office / Cabin Location"
+              value={location || "empty"}
+              onAction={location ? undefined : () => openDrawer("basic")}
+            />
           </div>
           <div className="flex items-center gap-3">
             {socials.map((link, i) => (
