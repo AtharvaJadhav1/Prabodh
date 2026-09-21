@@ -74,7 +74,21 @@ export class TeamsRepository {
     },
     mentorAssignments: {
       where: { active: true },
-      include: { mentor: { select: { id: true, fullName: true, email: true, platformRole: true } } },
+      include: {
+        mentor: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            platformRole: true,
+            phone: true,
+            institute: true,
+            department: true,
+            domainTags: true,
+          },
+        },
+        industrialMentor: true,
+      },
     },
     ideaSubmissions: {
       orderBy: { version: 'desc' as const },
