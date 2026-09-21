@@ -89,7 +89,7 @@ export class AdminService {
         include: {
           leader: true,
           problemStatement: true,
-          mentorAssignments: { where: { active: true }, include: { mentor: true } },
+          mentorAssignments: { where: { active: true }, include: { mentor: true, industrialMentor: true } },
         },
       }),
       this.prisma.team.count({ where }),
