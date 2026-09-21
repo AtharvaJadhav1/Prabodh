@@ -10,7 +10,6 @@ export default function IndustryMentorsPage() {
   return (
     <IndustryShell
       title="My Institute Mentors"
-      subtitle="Select one or more mentors to filter the teams they've shared with you."
     >
       <div className="mx-auto max-w-7xl space-y-4">
         {acceptedMentors.length === 0 ? (

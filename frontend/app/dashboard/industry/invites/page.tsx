@@ -11,7 +11,6 @@ export default function IndustryInvitesPage() {
   return (
     <IndustryShell
       title="Mentorship Invites"
-      subtitle="Review invitations from Institute Mentors and accept or decline them."
     >
       <div className="mx-auto max-w-7xl space-y-8">
         <div className="space-y-4">

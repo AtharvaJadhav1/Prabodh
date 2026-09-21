@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   DashboardIcon,
   InboxIcon,
@@ -29,8 +29,9 @@ type NavItem = {
 };
 
 export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
+  const router = useRouter();
   const pathname = usePathname();
-  const { pendingCount } = useIndustryMentor();
+  const { pendingCount, visibleTeams } = useIndustryMentor();
   const { session, logout } = useAuth();
   const role = roleLabel(session?.platformRole ?? "industry_mentor");
   const fullName = session?.fullName ?? "Industry Mentor";
@@ -65,7 +66,7 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
           mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between gap-2 border-b border-brand-softline px-5 py-4">
+        <div className="flex h-16 min-h-[64px] max-h-16 shrink-0 items-center justify-between gap-2 border-b border-brand-softline px-5">
           <div className="flex min-w-0 items-center gap-2.5">
             <Image
               src="/images/logo/Prabodh_Horizontal_Logo_Web_1000px.png"
@@ -85,6 +86,22 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
             >
               <XIcon className="h-5 w-5" />
             </button>
+          </div>
+        </div>
+
+        <div className="border-b border-brand-softline px-4 py-4">
+          <div className="rounded-2xl border border-brand-softline bg-white p-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-brand-muted">Workspace Role</p>
+            </div>
+            <div className="mt-1.5 flex items-center justify-between gap-2 text-sm">
+              <span className="truncate font-extrabold text-brand-deep">
+                {visibleTeams.length} assigned {visibleTeams.length === 1 ? "team" : "teams"}
+              </span>
+              {pendingCount > 0 ? (
+                <span className="shrink-0 font-semibold text-brand-muted">{pendingCount} pending</span>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -135,12 +152,15 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
                 <p title={fullName} className="truncate max-w-full text-sm font-bold text-brand-deep">
                   {displayName}
                 </p>
-                <p className="text-xs font-medium text-brand-muted">{role}</p>
+                <p className="truncate text-xs font-medium text-brand-muted">{role}</p>
               </div>
             </div>
             <button
               type="button"
-              onClick={() => logout()}
+              onClick={() => {
+                logout();
+                router.push("/");
+              }}
               className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-brand-primary px-4 py-2.5 text-xs font-bold tracking-wide text-white shadow-sm transition-all duration-200 hover:bg-brand-hover hover:shadow-md sm:text-sm"
             >
               <LogoutIcon className="h-5 w-5 shrink-0" />
