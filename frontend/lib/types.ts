@@ -77,7 +77,26 @@ export type PortalTeam = {
     id: string;
     mentorUserId: string;
     mentorType: string;
-    mentor: { id: string; fullName: string; email: string; platformRole: string };
+    mentor: {
+      id: string;
+      fullName: string;
+      email: string;
+      platformRole: string;
+      phone?: string | null;
+      institute?: string | null;
+      department?: string | null;
+      domainTags?: string[];
+    };
+    industrialMentor?: {
+      id: string;
+      fullName: string;
+      email: string;
+      phone?: string | null;
+      companyName?: string | null;
+      designation?: string | null;
+      domainExpertise?: string[];
+      isActive: boolean;
+    } | null;
   }>;
   mentorInvites?: Array<{
     id: string;
@@ -132,4 +151,49 @@ export type PortalNotification = {
   readAt: string | null;
   createdAt: string;
   type: string;
+};
+
+export type MentorDetail = {
+  userId: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  department?: string | null;
+  institute?: string | null;
+  domainTags?: string[];
+};
+
+export type IndustrialMentorProfile = {
+  id: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  companyName?: string | null;
+  designation?: string | null;
+  domainExpertise: string[];
+  isActive: boolean;
+};
+
+export type TeamMentors = {
+  faculty: (MentorDetail & { domainTags?: string[]; assignmentMethod?: string; assignedAt?: string }) | null;
+  industrial:
+    | (MentorDetail & {
+        id?: string | null;
+        companyName?: string | null;
+        designation?: string | null;
+        domainExpertise?: string[];
+        assignmentMethod?: string;
+        assignedAt?: string;
+        assignedBy?: { id: string; name: string; role: string } | null;
+      })
+    | null;
+  pendingIndustryInvite?: {
+    id: string;
+    invitedEmail: string;
+    mentorUserId?: string | null;
+    invitedById: string;
+    invitedByName?: string;
+    invitedAt: string;
+  } | null;
 };
