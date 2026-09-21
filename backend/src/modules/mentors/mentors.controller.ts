@@ -29,7 +29,7 @@ export class MentorsController {
   }
 
   @Post('invite')
-  @Roles(PlatformRole.student, PlatformRole.admin)
+  @Roles(PlatformRole.student, PlatformRole.institute_mentor, PlatformRole.admin)
   invite(@CurrentUser() user: AuthUser, @Body(new ZodPipe(mentorInviteSchema)) body: unknown) {
     return this.mentors.inviteFromLeader(user, body as never);
   }
@@ -47,7 +47,7 @@ export class MentorsController {
   }
 
   @Post('invites/:inviteId/revoke')
-  @Roles(PlatformRole.student, PlatformRole.admin)
+  @Roles(PlatformRole.student, PlatformRole.institute_mentor, PlatformRole.admin)
   revokeInvite(@CurrentUser() user: AuthUser, @Param('inviteId') inviteId: string) {
     return this.mentors.revokeInvite(user, inviteId);
   }
