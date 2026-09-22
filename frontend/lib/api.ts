@@ -43,6 +43,9 @@ function withTimeoutSignal(ms: number, init: RequestInit = {}): RequestInit {
 }
 
 export function messageFromApiBody(data: unknown, fallback: string): string {
+  if (typeof data === "string" && data.trim() && !data.trim().startsWith("<")) {
+    return data.trim().slice(0, 280);
+  }
   if (typeof data === "object" && data) {
     if ("message" in data) {
       const m = (data as { message: unknown }).message;

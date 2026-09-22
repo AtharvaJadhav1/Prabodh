@@ -23,20 +23,43 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  // Allowed frontend origins
+  // Allowed frontend origins (env + known production hosts)
   const origins = [
     ...(process.env.APP_ORIGIN ?? 'http://localhost:3000').split(','),
     ...(process.env.NEXT_PUBLIC_APP_URL ?? '').split(','),
     'https://incubation.prabodh.app',
+    'https://www.incubation.prabodh.app',
+    'https://prabodh-2.onrender.com',
     'http://localhost:3000',
   ]
     .map((s: string) => s.trim().replace(/\/$/, ''))
     .filter(Boolean);
 
-  const allowed = [...new Set(origins)];
+  const allowed = new Set(origins);
+
+  const isAllowedOrigin = (origin?: string) => {
+    if (!origin) return true;
+    const normalized = origin.replace(/\/$/, '');
+    if (allowed.has(normalized)) return true;
+    try {
+      const host = new URL(origin).hostname;
+      if (host === 'localhost' || host === '127.0.0.1') return true;
+      if (host === 'prabodh.app' || host.endsWith('.prabodh.app')) return true;
+      if (host.endsWith('.onrender.com')) return true;
+    } catch {
+      return false;
+    }
+    return false;
+  };
 
   app.enableCors({
-    origin: process.env.NODE_ENV === 'production' ? allowed : true,
+    origin: (origin, callback) => {
+      if (process.env.NODE_ENV !== 'production' || isAllowedOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error(`CORS blocked for origin ${origin}`));
+    },
     credentials: true,
   });
 

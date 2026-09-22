@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function RegisterPage() {
   return (
-    <LoginShell>
+    <LoginShell showPortalTabs={false}>
       <RegisterForm />
     </LoginShell>
   );

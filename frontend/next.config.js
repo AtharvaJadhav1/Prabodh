@@ -1,6 +1,26 @@
+function backendOrigin() {
+  const raw =
+    process.env.API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    (process.env.NODE_ENV === "production" ? "https://prabodh.onrender.com" : "http://localhost:3001");
+  return String(raw)
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/api$/i, "");
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  async rewrites() {
+    const origin = backendOrigin();
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${origin}/api/:path*`,
+      },
+    ];
+  },
   async headers() {
     return [
       {
