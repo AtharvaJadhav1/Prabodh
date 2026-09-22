@@ -127,4 +127,9 @@ export class AdminController {
   rejectImport(@Param('batchId') batchId: string) {
     return this.admin.rejectImport(batchId);
   }
+
+  @Post('ops/clear-seed')
+  clearSeed(@Body() body: { confirm?: string }) {
+    return this.admin.clearSeedData(String(body?.confirm ?? ''));
+  }
 }
