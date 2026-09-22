@@ -13,15 +13,17 @@ export default function LoginShell({
 }) {
   return (
     <main className="flex min-h-screen w-full flex-col bg-brand-cream lg:flex-row">
-      <section className="z-10 flex w-full flex-col justify-between border-r border-brand-sand/70 bg-brand-cream px-6 py-8 sm:px-10 lg:w-[46%] lg:px-12 xl:w-[42%]">
-        <div>
+      <section className="z-10 flex min-h-screen w-full flex-col justify-between border-r border-brand-sand/70 bg-brand-cream p-8 sm:p-12 lg:w-[46%] xl:w-[42%]">
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
           <AuthHeader />
-          <div className="mx-auto w-full max-w-lg py-6 sm:py-8">
+          <div className="py-6 pb-10 pt-4 sm:py-8">
             {showPortalTabs ? <PortalTabs /> : null}
             {children}
           </div>
         </div>
-        <AuthFooter />
+        <div className="mt-auto pt-6">
+          <AuthFooter />
+        </div>
       </section>
 
       <div className="hidden lg:block lg:min-h-screen lg:w-[54%] xl:w-[58%]">

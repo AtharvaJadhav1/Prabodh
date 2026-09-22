@@ -80,20 +80,13 @@ export default function Header() {
               <ArrowRightIcon className="h-4 w-4 text-brand-muted" />
             </a>
           ))}
-          <div className="flex items-center gap-2 border-t border-brand-sand pt-4">
+          <div className="w-full border-t border-brand-sand px-4 pt-4">
             <Link
               href="/login"
               onClick={() => setMenuOpen(false)}
-              className="flex-1 rounded-xl border border-brand-sand px-4 py-3 text-center text-sm font-bold text-brand-deep transition-colors hover:border-brand-primary/40 hover:text-brand-primary sm:hidden"
+              className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-brand-hover active:scale-[0.98]"
             >
-              Student Login
-            </Link>
-            <Link
-              href="/login"
-              onClick={() => setMenuOpen(false)}
-              className="flex-1 rounded-xl bg-brand-deep px-4 py-3 text-center text-sm font-bold text-white transition-colors hover:bg-brand-charcoal"
-            >
-              Faculty Login
+              Sign In
             </Link>
           </div>
         </nav>

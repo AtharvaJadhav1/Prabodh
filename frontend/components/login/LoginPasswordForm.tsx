@@ -60,7 +60,7 @@ export default function LoginPasswordForm({
           id="login-email"
           label="Email"
           type="email"
-          placeholder="you@institute.edu"
+          placeholder="e.g. name@example.com"
           required
           autoComplete="username"
           value={email}

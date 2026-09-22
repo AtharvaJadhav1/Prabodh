@@ -29,7 +29,7 @@ export default function RegisterForm() {
       <OtpAuthFlow
         purpose="register"
         title="Verify your email"
-        description="We sent a 6-digit code to your institutional email. Enter it below to activate your student account."
+        description="We sent a 6-digit code to your email. Enter it below to activate your student account."
         submitLabel="Verify & create account"
         initialEmail={draft.email}
         profile={{
@@ -55,7 +55,7 @@ export default function RegisterForm() {
           Student Registration
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-brand-muted">
-          Create a student account with your institutional email. You will receive an OTP to verify your email before
+          Create a student account with your email. You will receive an OTP to verify your email before
           accessing the dashboard.
         </p>
       </div>
@@ -89,9 +89,9 @@ export default function RegisterForm() {
         <TextField id="fullName" label="Full name" placeholder="Aarav Sharma" required autoComplete="name" />
         <TextField
           id="email"
-          label="Institutional email"
+          label="Email"
           type="email"
-          placeholder="you@mituniversity.edu.in"
+          placeholder="e.g. name@example.com"
           required
           autoComplete="email"
         />

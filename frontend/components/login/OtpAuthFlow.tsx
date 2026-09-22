@@ -115,9 +115,9 @@ export default function OtpAuthFlow({
         >
           <TextField
             id="otp-email"
-            label="Institutional email"
+            label="Email"
             type="email"
-            placeholder="you@institute.edu"
+            placeholder="e.g. name@example.com"
             required
             autoComplete="email"
             value={email}

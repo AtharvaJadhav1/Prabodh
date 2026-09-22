@@ -167,7 +167,7 @@ export default function ForgotPasswordForm() {
           id="forgot-email"
           label="Email"
           type="email"
-          placeholder="you@institute.edu"
+          placeholder="e.g. name@example.com"
           required
           autoComplete="email"
           value={email}
