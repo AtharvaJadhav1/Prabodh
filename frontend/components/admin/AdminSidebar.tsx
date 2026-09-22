@@ -153,26 +153,28 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }: Props) {
           ))}
         </nav>
 
-        <div className="border-t border-brand-softline bg-white/60 px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold text-white">
+        <div className="mt-auto pb-4">
+          <div className="mx-3 mb-2 flex items-center gap-3 rounded-2xl border border-neutral-200/80 bg-white p-3 shadow-sm">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#3c2415] text-sm font-bold text-[#ffddb8]">
               {initialsFrom(session?.fullName ?? "AD")}
             </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-brand-deep">
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate text-sm font-semibold leading-tight text-neutral-900">
                 {session?.fullName ?? "Platform Administrator"}
-              </p>
-              <p className="truncate text-xs font-medium text-brand-muted">Nodal Admin</p>
+              </span>
+              <span className="truncate text-xs text-neutral-500">Nodal Admin</span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => logout()}
-            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#C25E26] px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#A84E1D] sm:text-sm"
-          >
-            <LogoutIcon className="h-5 w-5 shrink-0" />
-            <span className="whitespace-nowrap">Logout</span>
-          </button>
+          <div className="px-3">
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#d95c26] py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#c04d1c] active:scale-[0.98]"
+            >
+              <LogoutIcon className="h-4 w-4" />
+              <span>Logout</span>
+            </button>
+          </div>
         </div>
       </aside>
     </>
