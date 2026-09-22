@@ -10,6 +10,7 @@ import {
   FileCheckIcon,
   MessageIcon,
   CompassIcon,
+  UsersIcon,
   LogoutIcon,
   XIcon,
 } from "../dashboard/icons";
@@ -40,6 +41,7 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }: Props) {
       items: [
         { label: "Overview", href: "/dashboard/admin", match: "exact", icon: DashboardIcon },
         { label: "Manage Users", href: "/dashboard/admin/users", match: "start", icon: PersonIcon },
+        { label: "Teams", href: "/dashboard/admin/teams", match: "start", icon: UsersIcon },
         {
           label: "Mentor Allocation",
           href: "/dashboard/admin/mentor-allocation",
