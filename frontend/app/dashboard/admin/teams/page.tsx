@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import AdminShell from "../../../../components/admin/AdminShell";
 import Avatar from "../../../../components/Avatar";
 import { api } from "../../../../lib/api";
-import { SearchIcon, UsersIcon } from "../../../../components/dashboard/icons";
+import { SearchIcon, UsersIcon, ChevronRightIcon } from "../../../../components/dashboard/icons";
+import StatusPill, { STATUS_BADGES, type TeamStatus } from "../../../../components/admin/StatusPill";
 import type { ReactNode } from "react";
-
-type TeamStatus = "forming" | "active" | "locked" | "disqualified";
 
 type AdminTeam = {
   id: string;
@@ -42,35 +42,18 @@ type AdminTeam = {
   _count?: { members: number };
 };
 
-type StatusBadge = { label: string; className: string };
-
-const STATUS_BADGES: Record<TeamStatus, StatusBadge> = {
-  forming: { label: "Forming", className: "border-amber-200 bg-amber-50 text-amber-700" },
-  active: { label: "Active", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-  locked: { label: "Locked", className: "border-brand-warmBorder bg-brand-lightOrange text-brand-primary" },
-  disqualified: { label: "Disqualified", className: "border-red-200 bg-red-50 text-red-600" },
-};
-
 const STATUS_ORDER: TeamStatus[] = ["forming", "active", "locked", "disqualified"];
 
 const COL_SIZES = {
   team: "w-[18%] min-w-[180px]",
-  leader: "w-[22%] min-w-[210px]",
+  leader: "w-[21%] min-w-[200px]",
   status: "w-[10%] min-w-[110px]",
-  ps: "w-[14%] min-w-[150px]",
-  institute: "w-[14%] min-w-[140px]",
-  mentors: "w-[16%] min-w-[180px]",
+  ps: "w-[13%] min-w-[140px]",
+  institute: "w-[13%] min-w-[130px]",
+  mentors: "w-[15%] min-w-[170px]",
   members: "w-[6%] min-w-[80px]",
+  chevron: "w-[4%] min-w-[36px]",
 } as const;
-
-function StatusPill({ status }: { status: TeamStatus }) {
-  const badge = STATUS_BADGES[status] ?? { label: status, className: "border-brand-sand bg-brand-cream text-brand-muted" };
-  return (
-    <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${badge.className}`}>
-      {badge.label}
-    </span>
-  );
-}
 
 function MentorCell({ assignments }: { assignments: AdminTeam["mentorAssignments"] }) {
   const institute = assignments.find((a) => a.mentorType === "institute");
@@ -115,6 +98,7 @@ function TableShell({ count, total, children }: { count: number; total: number; 
 }
 
 export default function AdminTeamsPage() {
+  const router = useRouter();
   const [teams, setTeams] = useState<AdminTeam[]>([]);
   const [total, setTotal] = useState(0);
   const [byStatus, setByStatus] = useState<Record<string, number>>({});
@@ -226,13 +210,15 @@ export default function AdminTeamsPage() {
                   <th className={`${COL_SIZES.institute} border-b border-neutral-100 px-3 py-3 font-semibold`}>Institute</th>
                   <th className={`${COL_SIZES.mentors} border-b border-neutral-100 px-3 py-3 font-semibold`}>Mentors</th>
                   <th className={`${COL_SIZES.members} border-b border-neutral-100 px-3 py-3 text-right font-semibold`}>Members</th>
+                  <th className={`${COL_SIZES.chevron} border-b border-neutral-100 px-3 py-3`} aria-hidden="true"></th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((t) => (
                   <tr
                     key={t.id}
-                    className="border-b border-neutral-100 transition-colors last:border-b-0 hover:bg-neutral-50/60"
+                    onClick={() => router.push(`/dashboard/admin/teams/${t.id}`)}
+                    className="cursor-pointer border-b border-neutral-100 transition-colors last:border-b-0 hover:bg-neutral-50/60"
                   >
                     <td className={`${COL_SIZES.team} px-3 py-4 align-middle`}>
                       <div className="truncate text-sm font-bold text-neutral-900">{t.name}</div>
@@ -280,11 +266,14 @@ export default function AdminTeamsPage() {
                         {t._count?.members ?? 0}/{t.memberCap}
                       </span>
                     </td>
+                    <td className={`${COL_SIZES.chevron} px-3 py-4 text-right align-middle`}>
+                      <ChevronRightIcon className="ml-auto h-4 w-4 text-neutral-300" aria-label="View team details" />
+                    </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-3 py-12 text-center text-xs font-medium text-neutral-500">
+                    <td colSpan={8} className="px-3 py-12 text-center text-xs font-medium text-neutral-500">
                       No teams match your filters.
                     </td>
                   </tr>
