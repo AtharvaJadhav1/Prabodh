@@ -502,13 +502,44 @@ export class AdminService {
       'sanjay.verma@mituniversity.edu.in',
       'industry@partner.com',
       'leena.kapoor@partnertech.in',
+      'test.mentor@mituniversity.edu.in',
+      'test.leader@mituniversity.edu.in',
     ];
     const seedTeamCodes = ['DEMO01', 'DEMO02', 'DEMO03'];
 
     const seedUsers = await this.prisma.user.findMany({
       where: {
-        OR: [{ clerkUserId: { startsWith: 'seed:' } }, { email: { in: seedEmails } }],
-        NOT: { email: { in: keepEmails } },
+        AND: [
+          { NOT: { email: { in: keepEmails } } },
+          {
+            OR: [
+              { clerkUserId: { startsWith: 'seed:' } },
+              { clerkUserId: 'dev_admin' },
+              { email: { in: seedEmails } },
+              { email: { endsWith: '@prabodh.test' } },
+              { email: { endsWith: '@institute.edu' } },
+              { email: { endsWith: '@partner.com' } },
+              { email: { endsWith: '@partnertech.in' } },
+              { email: { contains: 'bulk500.' } },
+              { email: { contains: 'bulk.invite.' } },
+              { email: { contains: 'ui.bulk.' } },
+              { email: { contains: 'probe.async.' } },
+              // Seed faculty/students used @mituniversity.edu.in with seed: clerk ids —
+              // also catch leftover MIT demo accounts that match known seed names.
+              {
+                AND: [
+                  { email: { endsWith: '@mituniversity.edu.in' } },
+                  {
+                    OR: [
+                      { clerkUserId: { startsWith: 'seed:' } },
+                      { email: { in: seedEmails } },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
       },
       select: { id: true, email: true },
     });
@@ -517,6 +548,7 @@ export class AdminService {
       where: {
         OR: [
           { teamCode: { in: seedTeamCodes } },
+          { teamCode: { startsWith: 'DEMO' } },
           { clerkOrgId: { startsWith: 'local-org-DEMO' } },
           ...(seedUserIds.length ? [{ leaderUserId: { in: seedUserIds } }] : []),
         ],

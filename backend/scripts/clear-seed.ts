@@ -1,5 +1,5 @@
 /**
- * Deletes demo/seed data created by prisma/seed.ts.
+ * Deletes demo/seed data created by prisma/seed.ts and bulk test imports.
  * Keeps admin@institute.edu so the nodal admin account remains usable.
  */
 import { PrismaClient } from '@prisma/client';
@@ -37,6 +37,8 @@ const SEED_EMAILS = [
   'sanjay.verma@mituniversity.edu.in',
   'industry@partner.com',
   'leena.kapoor@partnertech.in',
+  'test.mentor@mituniversity.edu.in',
+  'test.leader@mituniversity.edu.in',
 ];
 
 const SEED_TEAM_CODES = ['DEMO01', 'DEMO02', 'DEMO03'];
@@ -44,11 +46,35 @@ const SEED_TEAM_CODES = ['DEMO01', 'DEMO02', 'DEMO03'];
 async function main() {
   const seedUsers = await prisma.user.findMany({
     where: {
-      OR: [
-        { clerkUserId: { startsWith: 'seed:' } },
-        { email: { in: SEED_EMAILS } },
+      AND: [
+        { NOT: { email: { in: [...KEEP_EMAILS] } } },
+        {
+          OR: [
+            { clerkUserId: { startsWith: 'seed:' } },
+            { clerkUserId: 'dev_admin' },
+            { email: { in: SEED_EMAILS } },
+            { email: { endsWith: '@prabodh.test' } },
+            { email: { endsWith: '@institute.edu' } },
+            { email: { endsWith: '@partner.com' } },
+            { email: { endsWith: '@partnertech.in' } },
+            { email: { contains: 'bulk500.' } },
+            { email: { contains: 'bulk.invite.' } },
+            { email: { contains: 'ui.bulk.' } },
+            { email: { contains: 'probe.async.' } },
+            {
+              AND: [
+                { email: { endsWith: '@mituniversity.edu.in' } },
+                {
+                  OR: [
+                    { clerkUserId: { startsWith: 'seed:' } },
+                    { email: { in: SEED_EMAILS } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
       ],
-      NOT: { email: { in: [...KEEP_EMAILS] } },
     },
     select: { id: true, email: true, clerkUserId: true },
   });
@@ -58,6 +84,7 @@ async function main() {
     where: {
       OR: [
         { teamCode: { in: SEED_TEAM_CODES } },
+        { teamCode: { startsWith: 'DEMO' } },
         { clerkOrgId: { startsWith: 'local-org-DEMO' } },
         ...(seedUserIds.length ? [{ leaderUserId: { in: seedUserIds } }] : []),
       ],
@@ -194,12 +221,23 @@ async function main() {
 
   const remainingSeed = await prisma.user.count({
     where: {
-      OR: [{ clerkUserId: { startsWith: 'seed:' } }, { email: { in: SEED_EMAILS } }],
-      NOT: { email: { in: [...KEEP_EMAILS] } },
+      AND: [
+        { NOT: { email: { in: [...KEEP_EMAILS] } } },
+        {
+          OR: [
+            { clerkUserId: { startsWith: 'seed:' } },
+            { email: { in: SEED_EMAILS } },
+            { email: { endsWith: '@prabodh.test' } },
+            { email: { endsWith: '@institute.edu' } },
+          ],
+        },
+      ],
     },
   });
   const remainingDemoTeams = await prisma.team.count({
-    where: { teamCode: { in: SEED_TEAM_CODES } },
+    where: {
+      OR: [{ teamCode: { in: SEED_TEAM_CODES } }, { teamCode: { startsWith: 'DEMO' } }],
+    },
   });
   const adminLeft = await prisma.user.findUnique({
     where: { email: 'admin@institute.edu' },
