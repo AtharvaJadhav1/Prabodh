@@ -1,4 +1,4 @@
-import { PrismaClient, PlatformRole, PsCategory } from '@prisma/client';
+import { PrismaClient, PlatformRole } from '@prisma/client';
 import { hashPassword } from '../src/lib/password';
 
 const prisma = new PrismaClient();
@@ -111,196 +111,8 @@ const faculty: Array<{
   },
 ];
 
-const problemStatements: Array<{
-  code: string;
-  title: string;
-  theme: string;
-  category: PsCategory;
-  organisation: string;
-  description: string;
-  teamCap: number;
-}> = [
-  {
-    code: 'SIH2026-CS-001',
-    title: 'AI-assisted rural health triage',
-    theme: 'HealthTech',
-    category: PsCategory.software,
-    organisation: 'MoHFW',
-    description: 'Build a lightweight triage assistant that helps PHC workers prioritize cases with limited connectivity.',
-    teamCap: 8,
-  },
-  {
-    code: 'SIH2026-HW-001',
-    title: 'Low-cost soil moisture sensor network',
-    theme: 'AgriTech',
-    category: PsCategory.hardware,
-    organisation: 'ICAR',
-    description: 'Design a field-deployable moisture sensing kit with solar charging and village-level dashboards.',
-    teamCap: 6,
-  },
-  {
-    code: 'SIH2026-CS-002',
-    title: 'Multilingual civic grievance chatbot',
-    theme: 'Smart Governance',
-    category: PsCategory.software,
-    organisation: 'MeitY',
-    description: 'Create a Marathi/Hindi/English chatbot that routes municipal complaints and tracks SLA status.',
-    teamCap: 10,
-  },
-  {
-    code: 'SIH2026-CS-003',
-    title: 'Campus waste segregation verifier',
-    theme: 'Sustainability',
-    category: PsCategory.software,
-    organisation: 'MoEFCC',
-    description: 'Use computer vision to verify wet/dry segregation at campus bins and report contamination rates.',
-    teamCap: 8,
-  },
-  {
-    code: 'SIH2026-HW-002',
-    title: 'Assistive navigation band for visually impaired students',
-    theme: 'Assistive Tech',
-    category: PsCategory.hardware,
-    organisation: 'DEPwD',
-    description: 'Prototype a wearable that combines ultrasonic ranging and haptic cues for indoor campus navigation.',
-    teamCap: 5,
-  },
-  {
-    code: 'SIH2026-CS-004',
-    title: 'UPI fraud pattern early-warning tool',
-    theme: 'FinTech',
-    category: PsCategory.software,
-    organisation: 'RBI Innovation Hub',
-    description: 'Detect mule-account and social-engineering patterns in synthetic UPI logs and explain alerts to users.',
-    teamCap: 8,
-  },
-  {
-    code: 'SIH2026-CS-005',
-    title: 'Open-source flood inundation notifier',
-    theme: 'Disaster Management',
-    category: PsCategory.software,
-    organisation: 'NDMA',
-    description: 'Combine rainfall, river-gauge, and DEM data to send street-level flood risk SMS to local bodies.',
-    teamCap: 7,
-  },
-  {
-    code: 'SIH2026-HW-003',
-    title: 'Low-power cold-chain logger for vaccines',
-    theme: 'HealthTech',
-    category: PsCategory.hardware,
-    organisation: 'MoHFW',
-    description: 'Build a temperature logger with local buffer storage that flags cold-chain breaks during last-mile delivery.',
-    teamCap: 5,
-  },
-  {
-    code: 'SIH2026-CS-006',
-    title: 'Skill-gap recommender for polytechnic students',
-    theme: 'Smart Education',
-    category: PsCategory.software,
-    organisation: 'MSDE',
-    description: 'Map student transcripts to NSDC job roles and recommend free courses plus local internship openings.',
-    teamCap: 10,
-  },
-  {
-    code: 'SIH2026-CS-007',
-    title: 'Farm-gate price transparency board',
-    theme: 'AgriTech',
-    category: PsCategory.software,
-    organisation: 'Ministry of Agriculture',
-    description: 'Show nearby mandi prices, transport cost estimates, and fair-price alerts for smallholder farmers.',
-    teamCap: 8,
-  },
-  {
-    code: 'SIH2026-HW-004',
-    title: 'Modular rooftop rainwater quality kit',
-    theme: 'Sustainability',
-    category: PsCategory.hardware,
-    organisation: 'CGWB',
-    description: 'Sense turbidity and TDS in harvested rainwater and indicate when first-flush diversion is needed.',
-    teamCap: 6,
-  },
-  {
-    code: 'SIH2026-CS-008',
-    title: 'Heritage site crowd-flow planner',
-    theme: 'Tourism',
-    category: PsCategory.software,
-    organisation: 'Ministry of Tourism',
-    description: 'Predict peak-hour congestion at monuments and suggest timed-entry slots for visitors and staff.',
-    teamCap: 7,
-  },
-  {
-    code: 'SIH2026-CS-009',
-    title: 'Women safety corridor mapper for night travel',
-    theme: 'Women Safety',
-    category: PsCategory.software,
-    organisation: 'MHA',
-    description: 'Rank well-lit, CCTV-covered walking routes between hostels, metro, and bus stops using open map data.',
-    teamCap: 8,
-  },
-  {
-    code: 'SIH2026-CS-010',
-    title: 'MSMEs GST filing copilot',
-    theme: 'FinTech',
-    category: PsCategory.software,
-    organisation: 'GSTN',
-    description: 'Help micro businesses reconcile invoices, flag mismatch risks, and generate a filing checklist in plain language.',
-    teamCap: 8,
-  },
-  {
-    code: 'SIH2026-HW-005',
-    title: 'Portable water-quality strip reader',
-    theme: 'HealthTech',
-    category: PsCategory.hardware,
-    organisation: 'Jal Jeevan Mission',
-    description: 'Read colorimetric strips with a phone-attached optic and log village water quality for PHED officers.',
-    teamCap: 6,
-  },
-  {
-    code: 'SIH2026-CS-011',
-    title: 'Exam malpractice signal dashboard',
-    theme: 'Smart Education',
-    category: PsCategory.software,
-    organisation: 'AICTE',
-    description: 'Use anonymized device and seating-pattern signals to highlight halls that need human invigilation focus.',
-    teamCap: 6,
-  },
-  {
-    code: 'SIH2026-CS-012',
-    title: 'Public EV charger availability predictor',
-    theme: 'Smart Cities',
-    category: PsCategory.software,
-    organisation: 'MoP',
-    description: 'Forecast charger occupancy in a city using historical sessions and help drivers plan charging stops.',
-    teamCap: 8,
-  },
-  {
-    code: 'SIH2026-HW-006',
-    title: 'Low-cost greenhouse climate node',
-    theme: 'AgriTech',
-    category: PsCategory.hardware,
-    organisation: 'ICAR',
-    description: 'Sense temperature, humidity, and CO2 in polyhouses and actuate fans or misters on a simple rule engine.',
-    teamCap: 5,
-  },
-  {
-    code: 'SIH2026-CS-013',
-    title: 'Open contracting bid-anomaly finder',
-    theme: 'Smart Governance',
-    category: PsCategory.software,
-    organisation: 'CVC',
-    description: 'Flag unusual bid clustering, repeat winners, and last-minute bid patterns in published tender data.',
-    teamCap: 7,
-  },
-  {
-    code: 'SIH2026-CS-014',
-    title: 'Mental-health first-response companion for campuses',
-    theme: 'HealthTech',
-    category: PsCategory.software,
-    organisation: 'MoHFW',
-    description: 'Provide confidential screening, campus counsellor routing, and crisis escalation without storing chat transcripts.',
-    teamCap: 8,
-  },
-];
+/* Problem statements are loaded from the SIH'26 source CSV via
+ * `npx tsx scripts/import-ps.ts` — see backend/scripts/import-ps.ts. */
 
 async function upsertUser(data: {
   email: string;
@@ -437,21 +249,6 @@ async function main() {
     }
   }
 
-  for (const ps of problemStatements) {
-    await prisma.problemStatement.upsert({
-      where: { code: ps.code },
-      update: {
-        title: ps.title,
-        theme: ps.theme,
-        category: ps.category,
-        organisation: ps.organisation,
-        description: ps.description,
-        teamCap: ps.teamCap,
-      },
-      create: ps,
-    });
-  }
-
   const stages = [
     { name: 'Idea Submission', sequence: 1, deadline: daysFromNow(14) },
     { name: 'Internal Hackathon', sequence: 2, deadline: daysFromNow(28) },
@@ -578,7 +375,6 @@ async function main() {
     adminId: admin.id,
     students: studentRows.length,
     faculty: facultyRows.length,
-    problemStatements: problemStatements.length,
     defaultPassword: DEFAULT_PASSWORD,
   });
 }
