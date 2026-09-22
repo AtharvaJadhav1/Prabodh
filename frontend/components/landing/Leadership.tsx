@@ -25,11 +25,11 @@ const leaders: Leader[] = [
     bio: "Pro VC with 19+ years of global experience. As CEO of AIC, he drives startup incubation and venture acceleration, and previously led full automation of university operations, IT infrastructure, and marketing, admissions & examination processes.",
   },
   {
-    src: "/images/leaders/santosh-darade.jpg",
-    alt: "Santosh Darade",
-    name: "Santosh Darade",
-    role: "Chief Operating Officer, CRIYA Research Park Foundation, MIT-ADT University",
-    bio: "With 20+ years in higher education, R&D, and cybersecurity. Architect of CRIYA, an INR 3 Cr–funded pre-incubation model, enabling 200+ research projects, 30+ prototypes, and 5 startup incubations.",
+    src: "/images/leaders/rajesh.jpg",
+    alt: "Prof. Dr. Rajesh S",
+    name: "Prof. Dr. Rajesh S",
+    role: "Vice Chancellor, MIT Art, Design & Technology University, Pune",
+    bio: "Currently serving as Vice Chancellor of MIT-ADT University, Pune, and NAAC Peer Team Chairperson. With 27 years in academia across BITS Pilani, Adamas, Saveetha, and Joy Universities, he brings unmatched academic and research leadership to MIT-ADT.",
   },
 ];
 
