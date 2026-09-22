@@ -6,6 +6,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { dashboardForRole } from "../../lib/session";
 import OtpAuthFlow from "./OtpAuthFlow";
 import TextField from "./TextField";
+import { INSTITUTES } from "./RegisterForm";
 
 type MentorKind = "institute" | "industry";
 
@@ -141,17 +142,37 @@ export default function FacultyRegisterForm() {
             </button>
           </div>
         </div>
-        <TextField
-          id="institute"
-          label={mentorKind === "industry" ? "Organisation / Company" : "Institute"}
-          placeholder={
-            mentorKind === "industry"
-              ? "Acme Technologies"
-              : "MIT Art, Design and Technology University"
-          }
-          required
-          autoComplete="organization"
-        />
+        {mentorKind === "institute" ? (
+          <div className="space-y-1.5">
+            <label htmlFor="institute" className="block text-xs font-bold uppercase tracking-wider text-brand-deep">
+              Institute
+            </label>
+            <select
+              id="institute"
+              name="institute"
+              required
+              defaultValue=""
+              className="w-full rounded-xl border border-brand-sand bg-white px-4 py-3 text-sm font-medium text-brand-charcoal outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+            >
+              <option value="" disabled>
+                Select your institute
+              </option>
+              {INSTITUTES.map((institute) => (
+                <option key={institute} value={institute}>
+                  {institute}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <TextField
+            id="institute"
+            label="Organisation / Company"
+            placeholder="Acme Technologies"
+            required
+            autoComplete="organization"
+          />
+        )}
         <TextField
           id="department"
           label={mentorKind === "industry" ? "Domain / Expertise" : "Department"}

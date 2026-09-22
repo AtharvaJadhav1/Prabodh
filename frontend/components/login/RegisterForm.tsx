@@ -7,6 +7,28 @@ import { dashboardForRole } from "../../lib/session";
 import OtpAuthFlow from "./OtpAuthFlow";
 import TextField from "./TextField";
 
+export const INSTITUTES = [
+  "Vishwashanti Sangeet Kala Academy",
+  "School of Fine Arts and Applied Arts",
+  "Institute of Design",
+  "School of Architecture & Planning",
+  "School of Computing",
+  "School of Artificial Intelligence",
+  "School of Engineering & Sciences",
+  "School of Food Technology",
+  "School of Bioengineering Sciences and Research",
+  "Maharashtra Academy of Naval Education and Training",
+  "School of Education and Research",
+  "School of Vedic Sciences",
+  "School of Humanities",
+  "School of Indian Civil Services",
+  "School of Business and Computer Applications",
+  "College of Management and Computer Applications",
+  "School of Film and Television",
+  "School of Drama",
+  "School of Law",
+];
+
 type RegistrationDraft = {
   fullName: string;
   email: string;
@@ -119,13 +141,27 @@ export default function RegisterForm() {
             </button>
           </div>
         </div>
-        <TextField
-          id="institute"
-          label="Institute"
-          placeholder="MIT Art, Design and Technology University"
-          required
-          autoComplete="organization"
-        />
+        <div className="space-y-1.5">
+          <label htmlFor="institute" className="block text-xs font-bold uppercase tracking-wider text-brand-deep">
+            Institute
+          </label>
+          <select
+            id="institute"
+            name="institute"
+            required
+            defaultValue=""
+            className="w-full rounded-xl border border-brand-sand bg-white px-4 py-3 text-sm font-medium text-brand-charcoal outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+          >
+            <option value="" disabled>
+              Select your institute
+            </option>
+            {INSTITUTES.map((institute) => (
+              <option key={institute} value={institute}>
+                {institute}
+              </option>
+            ))}
+          </select>
+        </div>
         <TextField id="department" label="Department" placeholder="CSE" autoComplete="organization-title" />
         <TextField id="phone" label="Phone" type="text" placeholder="Optional" autoComplete="tel" />
         {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
