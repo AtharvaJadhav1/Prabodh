@@ -7,9 +7,7 @@ import FilterBar from "../../../components/mentor/FilterBar";
 import GroupCard from "../../../components/mentor/GroupCard";
 import EmptyState from "../../../components/mentor/EmptyState";
 
-import EvaluateDrawer from "../../../components/mentor/EvaluateDrawer";
 import { useMentorTeams } from "../../../components/mentor/MentorTeamsProvider";
-import { type MentorGroup } from "../../../data/mentorDashboard";
 import { DashboardIcon } from "../../../components/dashboard/icons";
 
 export default function MentorDashboardPage() {
@@ -17,7 +15,6 @@ export default function MentorDashboardPage() {
   const [filter, setFilter] = useState<"all" | "pending" | "evaluated">("all");
   const [search, setSearch] = useState("");
   const [track, setTrack] = useState("All Tracks");
-  const [reviewing, setReviewing] = useState<MentorGroup | null>(null);
 
   const groups = useMemo(
     () =>
@@ -106,13 +103,11 @@ export default function MentorDashboardPage() {
           </div>
           <div>
             {filtered.map((g) => (
-              <GroupCard key={g.id ?? g.teamId} group={g} status={g.score ? "evaluated" : "pending"} onReview={setReviewing} />
+              <GroupCard key={g.id ?? g.teamId} group={g} status={g.score ? "evaluated" : "pending"} />
             ))}
           </div>
         </section>
       )}
-
-      {reviewing ? <EvaluateDrawer group={reviewing} open onClose={() => setReviewing(null)} /> : null}
     </MentorShell>
   );
 }
