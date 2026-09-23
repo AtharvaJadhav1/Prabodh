@@ -3,6 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
+import LoadingState from "../LoadingState";
 import { dashboardForRole, type PlatformRole } from "../../lib/session";
 
 const ROUTE_ROLES: Record<string, PlatformRole[]> = {
@@ -32,9 +33,10 @@ export default function DashboardRoleGuard({ children }: { children: ReactNode }
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-brand-canvas text-sm font-medium text-brand-muted">
-        Loading…
-      </div>
+      <LoadingState
+        label="Preparing your workspace"
+        steps={["Verifying your session", "Loading your profile"]}
+      />
     );
   }
 
