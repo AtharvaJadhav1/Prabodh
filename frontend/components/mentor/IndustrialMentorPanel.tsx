@@ -5,6 +5,7 @@ import { api } from "../../lib/api";
 import type { TeamMentors } from "../../lib/types";
 import { BriefcaseIcon, ClockIcon, CheckIcon, UserCheckIcon, PlusIcon } from "../dashboard/icons";
 import InviteIndustrialMentorModal from "./InviteIndustrialMentorModal";
+import LoadingState from "../LoadingState";
 
 type Props = {
   teamId: string;
@@ -53,7 +54,7 @@ export default function IndustrialMentorPanel({ teamId, teamName }: Props) {
 
       <div className="mt-4">
         {!details ? (
-          <p className="text-sm text-brand-muted">Loading…</p>
+          <LoadingState compact label="Loading mentors" steps={["Fetching mentor directory"]} />
         ) : industrial ? (
           <div className="flex flex-wrap items-center gap-4 rounded-xl border border-brand-softline bg-brand-cream p-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold tracking-wider text-white">

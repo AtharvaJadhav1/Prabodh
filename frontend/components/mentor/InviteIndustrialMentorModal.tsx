@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, apiPost } from "../../lib/api";
 import type { IndustrialMentorProfile } from "../../lib/types";
 import { XIcon, SearchIcon, CheckIcon, MailIcon, BriefcaseIcon, UserCheckIcon } from "../dashboard/icons";
+import LoadingState from "../LoadingState";
 
 type Props = {
   open: boolean;
@@ -162,7 +163,9 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
 
           <div className="space-y-2">
             {loading ? (
-              <p className="py-6 text-center text-xs text-brand-muted">Loading directory…</p>
+              <div className="py-4">
+                <LoadingState compact fontSize={13} label="Loading directory" steps={["Searching industrial mentors"]} />
+              </div>
             ) : filtered.length === 0 ? (
               <p className="py-6 text-center text-xs text-brand-muted">
                 No matching industrial mentors found. Ask the nodal admin to register them first.
