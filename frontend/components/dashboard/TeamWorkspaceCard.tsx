@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useTeam } from "./TeamProvider";
 import Avatar from "../Avatar";
+import LoadingState from "../LoadingState";
 import { getUserAvatarUrl } from "../../lib/avatar";
 import InteractiveTeamAvatar from "./InteractiveTeamAvatar";
 import {
@@ -90,9 +91,13 @@ export default function TeamWorkspaceCard() {
     return (
       <section className="rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)] sm:p-6">
         <h2 className="text-base font-bold text-brand-deep">Team workspace</h2>
-        <div className="mt-3 flex items-center gap-2 text-sm text-brand-muted">
-          <span className="h-4 w-4 animate-pulse rounded-full border-2 border-brand-primary border-t-transparent" />
-          Loading your team…
+        <div className="mt-4">
+          <LoadingState
+            compact
+            label="Loading your team"
+            steps={["Fetching your team details", "Syncing your workspace"]}
+            fontSize={14}
+          />
         </div>
       </section>
     );
