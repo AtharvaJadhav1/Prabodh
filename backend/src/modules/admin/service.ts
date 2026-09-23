@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PlatformRole, Prisma } from '@prisma/client';
-import { randomBytes } from 'crypto';
 import { sendStaffCredentialsEmail } from '../../lib/invite-email';
+import { deriveStaffPassword } from '../../lib/staff-password';
 import { fireAndForget, mapPool } from '../../lib/async-pool';
 import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
@@ -243,9 +243,10 @@ export class AdminService {
   }
 
   async inviteStaff(admin: AuthUser, body: z.infer<typeof adminInviteUserSchema>) {
+    const password = deriveStaffPassword(body.email);
     const user = await this.identity.createStaffAccount({
       email: body.email,
-      password: body.password,
+      password,
       fullName: body.fullName,
       platformRole: body.platformRole as PlatformRole,
       institute: body.institute,
@@ -255,7 +256,7 @@ export class AdminService {
     void sendStaffCredentialsEmail({
       to: user.email,
       fullName: user.fullName,
-      password: body.password,
+      password,
       platformRole: user.platformRole,
     }).catch((err) => {
       console.error('[admin.inviteStaff] email failed for', user.email, err);
@@ -395,7 +396,7 @@ export class AdminService {
         const slice = batch.rows.slice(i, i + chunkSize);
         const prepared = slice.map((r) => {
           const needsCredentials = staffRoles.has(r.platformRole);
-          const password = needsCredentials ? randomBytes(9).toString('base64url') : undefined;
+          const password = needsCredentials ? deriveStaffPassword(r.email) : undefined;
           return {
             email: r.email,
             fullName: r.fullName,
