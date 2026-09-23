@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshMe = useCallback(async () => {
     const cached = readSession();
-    if (!cached?.accessToken) return;
+    if (!cached?.accessToken || cached.platformRole === "student_expert") return;
     setAccessToken(cached.accessToken);
     const me = await api<{
       id: string;
@@ -200,6 +200,7 @@ export function roleLabel(role: PlatformRole) {
   if (role === "admin") return "Admin";
   if (role === "institute_mentor") return "Institute Mentor";
   if (role === "industry_mentor") return "Industry Mentor";
+  if (role === "student_expert") return "Student Expert";
   return "Student";
 }
 

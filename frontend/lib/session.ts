@@ -1,6 +1,6 @@
 import { SESSION_KEY } from "./config";
 
-export type PlatformRole = "student" | "institute_mentor" | "industry_mentor" | "admin";
+export type PlatformRole = "student" | "institute_mentor" | "industry_mentor" | "admin" | "student_expert";
 
 export type Session = {
   userId: string;
@@ -39,5 +39,6 @@ export function dashboardForRole(role: PlatformRole) {
   if (role === "admin") return "/dashboard/admin";
   if (role === "institute_mentor") return "/dashboard/mentor";
   if (role === "industry_mentor") return "/dashboard/industry";
+  if (role === "student_expert") return "/dashboard/expert";
   return "/dashboard/student";
 }

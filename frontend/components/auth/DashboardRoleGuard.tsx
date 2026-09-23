@@ -11,6 +11,7 @@ const ROUTE_ROLES: Record<string, PlatformRole[]> = {
   "/dashboard/mentor": ["institute_mentor"],
   "/dashboard/industry": ["industry_mentor"],
   "/dashboard/admin": ["admin"],
+  "/dashboard/expert": ["student_expert"],
 };
 
 function rolesForPath(pathname: string): PlatformRole[] | null {
