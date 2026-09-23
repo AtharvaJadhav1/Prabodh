@@ -6,7 +6,7 @@ import MetricCards from "../../../components/mentor/MetricCards";
 import FilterBar from "../../../components/mentor/FilterBar";
 import GroupCard from "../../../components/mentor/GroupCard";
 import EmptyState from "../../../components/mentor/EmptyState";
-import GuidelinesBanner from "../../../components/mentor/GuidelinesBanner";
+
 import EvaluateDrawer from "../../../components/mentor/EvaluateDrawer";
 import { useMentorTeams } from "../../../components/mentor/MentorTeamsProvider";
 import { type MentorGroup } from "../../../data/mentorDashboard";
@@ -113,8 +113,6 @@ export default function MentorDashboardPage() {
       )}
 
       {reviewing ? <EvaluateDrawer group={reviewing} open onClose={() => setReviewing(null)} /> : null}
-
-      <GuidelinesBanner />
     </MentorShell>
   );
 }
