@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import MentorShell from "../../../../components/mentor/MentorShell";
 import EmptyState from "../../../../components/mentor/EmptyState";
+import LoadingState from "../../../../components/LoadingState";
 import { useMentorTeams } from "../../../../components/mentor/MentorTeamsProvider";
 import { useAuth } from "../../../../components/auth/AuthProvider";
 import { api, apiDelete, apiPost } from "../../../../lib/api";
@@ -155,7 +156,9 @@ export default function MentorQueriesPage() {
           </div>
 
           {loading ? (
-            <p className="mt-4 text-sm text-brand-muted">Loading teams…</p>
+            <div className="mt-4">
+              <LoadingState compact label="Loading your teams" steps={["Fetching assigned teams"]} />
+            </div>
           ) : assignedTeams.length === 0 ? (
             <p className="mt-4 text-sm text-brand-muted">No teams assigned to you yet.</p>
           ) : (
@@ -221,7 +224,9 @@ export default function MentorQueriesPage() {
                 {displayError ? <p className="text-sm font-semibold text-red-700">{displayError}</p> : null}
 
                 {loadingComments ? (
-                  <p className="text-sm text-brand-muted">Loading thread…</p>
+                  <div className="py-6">
+                    <LoadingState compact label="Loading thread" steps={["Fetching comments", "Arranging replies"]} />
+                  </div>
                 ) : flatComments.length === 0 ? (
                   <EmptyState
                     icon={<MessageIcon className="h-10 w-10" />}

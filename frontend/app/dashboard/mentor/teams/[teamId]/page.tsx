@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import MentorShell from "../../../../../components/mentor/MentorShell";
 import EmptyState from "../../../../../components/mentor/EmptyState";
+import LoadingState from "../../../../../components/LoadingState";
 import PreferenceReviewCard, { type ReviewablePreference } from "../../../../../components/mentor/PreferenceReviewCard";
 import TeamRosterTable, { type RosterMember } from "../../../../../components/mentor/TeamRosterTable";
 import IndustrialMentorPanel from "../../../../../components/mentor/IndustrialMentorPanel";
@@ -77,7 +78,9 @@ export default function MentorTeamDetailPage() {
         {error ? (
           <EmptyState icon={<AlertCircleIcon className="h-10 w-10" />} heading="Could not load team" description={error} />
         ) : (
-          <p className="text-sm text-brand-muted">Loading team…</p>
+          <div className="py-4">
+            <LoadingState compact label="Loading team" steps={["Fetching team details", "Preparing roster"]} />
+          </div>
         )}
       </MentorShell>
     );

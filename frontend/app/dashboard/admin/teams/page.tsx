@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminShell from "../../../../components/admin/AdminShell";
 import Avatar from "../../../../components/Avatar";
+import LoadingState from "../../../../components/LoadingState";
 import { api } from "../../../../lib/api";
 import { SearchIcon, UsersIcon, ChevronRightIcon } from "../../../../components/dashboard/icons";
 import StatusPill, { STATUS_BADGES, type TeamStatus } from "../../../../components/admin/StatusPill";
@@ -163,10 +164,7 @@ export default function AdminTeamsPage() {
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm font-medium text-red-600">{error}</div>
       ) : loading ? (
         <div className="flex h-48 items-center justify-center rounded-2xl border border-brand-sand bg-white">
-          <div className="flex items-center gap-2 text-sm font-medium text-brand-muted">
-            <UsersIcon className="h-5 w-5 animate-pulse" />
-            Loading teams…
-          </div>
+          <LoadingState compact label="Loading teams" steps={["Fetching team records", "Preparing the list"]} />
         </div>
       ) : (
         <TableShell count={filtered.length} total={total}>

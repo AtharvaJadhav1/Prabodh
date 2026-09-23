@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "../components/ThoughtLine.css";
 import PwaRegister from "../components/PwaRegister";
 import AuthProviders from "../components/auth/AuthProviders";
 

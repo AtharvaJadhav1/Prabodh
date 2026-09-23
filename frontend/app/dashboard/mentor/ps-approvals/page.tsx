@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import MentorShell from "../../../../components/mentor/MentorShell";
 import EmptyState from "../../../../components/mentor/EmptyState";
+import LoadingState from "../../../../components/LoadingState";
 import PreferenceReviewCard, { type ReviewablePreference } from "../../../../components/mentor/PreferenceReviewCard";
 import PsDetailCard from "../../../../components/dashboard/ps/PsDetailCard";
 import { CheckIcon, ClockIcon, ShieldCheckIcon, UsersIcon } from "../../../../components/dashboard/icons";
@@ -113,7 +114,13 @@ export default function MentorPsApprovalsPage() {
           </div>
 
           {loading ? (
-            <p className="text-sm text-brand-muted">Loading approval status…</p>
+            <div className="py-2">
+              <LoadingState
+                compact
+                label="Loading approval status"
+                steps={["Fetching pending approvals", "Checking problem statements"]}
+              />
+            </div>
           ) : awaiting.length > 0 ? (
             <div className="flex flex-col gap-5">
               {awaiting.map((team) => (
@@ -174,7 +181,9 @@ export default function MentorPsApprovalsPage() {
           </div>
 
           {loading ? (
-            <p className="text-sm text-brand-muted">Loading…</p>
+            <div className="py-2">
+              <LoadingState compact label="Loading locked submissions" steps={["Fetching approved problem statements"]} />
+            </div>
           ) : locked.length > 0 ? (
             <div className="flex flex-col gap-5">
               {locked.map((team) => (
@@ -219,7 +228,9 @@ export default function MentorPsApprovalsPage() {
           </div>
 
           {loading ? (
-            <p className="text-sm text-brand-muted">Loading…</p>
+            <div className="py-2">
+              <LoadingState compact label="Loading draft submissions" steps={["Fetching draft problem statements"]} />
+            </div>
           ) : draft.length > 0 ? (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {draft.map((team) => (
@@ -262,7 +273,9 @@ export default function MentorPsApprovalsPage() {
           </div>
 
           {loading ? (
-            <p className="text-sm text-brand-muted">Loading…</p>
+            <div className="py-2">
+              <LoadingState compact label="Loading team list" steps={["Fetching teams without statements"]} />
+            </div>
           ) : notStarted.length > 0 ? (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {notStarted.map((team) => (
