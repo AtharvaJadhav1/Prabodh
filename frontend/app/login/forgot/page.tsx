@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function ForgotPasswordPage() {
   return (
-    <LoginShell>
+    <LoginShell showPortalTabs={false}>
       <ForgotPasswordForm />
     </LoginShell>
   );
