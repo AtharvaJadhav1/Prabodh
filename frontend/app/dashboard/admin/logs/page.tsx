@@ -203,13 +203,6 @@ export default function AdminLogsPage() {
   return (
     <AdminShell title="Audit Logs">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-6">
-          <h1 className="text-xl font-bold text-neutral-900">Audit &amp; Activity Logs</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Track every action taken across teams, mentors, evaluations, and broadcasts.
-          </p>
-        </div>
-
         <div className="mb-5 flex flex-col gap-4 rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-3">
             <div className="relative w-full sm:w-72">
