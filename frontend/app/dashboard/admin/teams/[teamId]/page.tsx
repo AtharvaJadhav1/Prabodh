@@ -6,6 +6,7 @@ import Link from "next/link";
 import AdminShell from "../../../../../components/admin/AdminShell";
 import StatusPill from "../../../../../components/admin/StatusPill";
 import Avatar from "../../../../../components/Avatar";
+import LoadingState from "../../../../../components/LoadingState";
 import { api, apiPost, ApiError } from "../../../../../lib/api";
 import type { PortalTeam, TeamMentors } from "../../../../../lib/types";
 import {
@@ -24,10 +25,6 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
       {children}
     </section>
   );
-}
-
-function SkeletonCard({ heightClass = "h-40" }: { heightClass?: string }) {
-  return <div className={`animate-pulse rounded-2xl border border-neutral-200/80 bg-neutral-100 ${heightClass}`} />;
 }
 
 function InviteStatusBadge({ status }: { status: string }) {
@@ -135,20 +132,12 @@ export default function AdminTeamDetailPage() {
   if (loading) {
     return (
       <AdminShell title="Team Details">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6">
-          <div className="h-4 w-32 animate-pulse rounded bg-neutral-200" />
-          <SkeletonCard heightClass="h-24" />
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="flex flex-col gap-6 lg:col-span-2">
-              <SkeletonCard />
-              <SkeletonCard />
-              <SkeletonCard />
-            </div>
-            <div className="flex flex-col gap-6">
-              <SkeletonCard />
-              <SkeletonCard heightClass="h-32" />
-            </div>
-          </div>
+        <div className="py-16">
+          <LoadingState
+            compact
+            label="Loading team details"
+            steps={["Fetching team record", "Preparing workspace"]}
+          />
         </div>
       </AdminShell>
     );
