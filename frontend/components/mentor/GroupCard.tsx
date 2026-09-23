@@ -1,14 +1,12 @@
-import type { MentorGroup, GroupStatus } from "../../data/mentorDashboard";
+import type { MentorGroup } from "../../data/mentorDashboard";
 import Link from "next/link";
 import { UsersIcon, ChevronRightIcon } from "../dashboard/icons";
 
 type Props = {
   group: MentorGroup;
-  status: GroupStatus;
 };
 
-export default function GroupCard({ group, status }: Props) {
-  const isPending = status === "pending";
+export default function GroupCard({ group }: Props) {
   const capacityColor = group.capacity === "6/6" ? "bg-brand-approved/10 text-brand-approved" : "bg-brand-lightOrange text-brand-primary";
 
   return (
@@ -35,7 +33,7 @@ export default function GroupCard({ group, status }: Props) {
           {group.problemTitle}
         </p>
 
-        {/* Leader + Score/Milestone */}
+        {/* Leader + Milestone */}
         <div className="flex items-center gap-4 text-[11px] text-brand-muted flex-wrap">
           <div className="flex items-center gap-1.5">
             <svg className="h-3.5 w-3.5 shrink-0 text-brand-primary" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
@@ -45,22 +43,12 @@ export default function GroupCard({ group, status }: Props) {
             <span className="font-bold text-brand-deep">{group.leader}</span>
             <span className="font-mono text-brand-muted">({group.leaderPrn})</span>
           </div>
-          {isPending ? (
-            <div className="flex items-center gap-1.5">
-              <svg className="h-3.5 w-3.5 shrink-0 text-brand-amber" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 20a8 8 0 100-16 8 8 0 000 16zM12 8v4l3 2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span>Milestone: <strong className="text-brand-deep">{group.milestone}</strong></span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5">
-              <svg className="h-3.5 w-3.5 shrink-0 text-brand-approved" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M22 11.08V12a10 10 0 11-5.93-9.14" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M22 4L12 14.01l-3-3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span>Score: <strong className="text-brand-approved">{group.score} / 100 (Grade {group.grade})</strong></span>
-            </div>
-          )}
+          <div className="flex items-center gap-1.5">
+            <svg className="h-3.5 w-3.5 shrink-0 text-brand-amber" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 20a8 8 0 100-16 8 8 0 000 16zM12 8v4l3 2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>Milestone: <strong className="text-brand-deep">{group.milestone}</strong></span>
+          </div>
         </div>
       </div>
 

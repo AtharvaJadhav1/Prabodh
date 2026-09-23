@@ -8,7 +8,7 @@ export const metadata = {
     template: "Prabodh | %s",
   },
   description:
-    "Mentor Evaluation Hub — monitor assigned student cohorts, review submissions, and record official rubric scores.",
+    "Mentor Dashboard — monitor assigned student cohorts, track teams, and review problem statement approvals.",
 };
 
 export default function MentorDashboardLayout({ children }: { children: React.ReactNode }) {

@@ -1,15 +1,13 @@
 "use client";
 
-import { UsersIcon, ClockIcon, GradCapIcon } from "../dashboard/icons";
+import { UsersIcon, GradCapIcon } from "../dashboard/icons";
 
 export default function MetricCards({
   assignedTeams = 0,
   totalStudents = 0,
-  pendingReviews = 0,
 }: {
   assignedTeams?: number;
   totalStudents?: number;
-  pendingReviews?: number;
 }) {
   const cards = [
     {
@@ -19,14 +17,6 @@ export default function MetricCards({
       icon: UsersIcon,
       stripe: "bg-brand-primary",
       iconBg: "bg-brand-primary/10 text-brand-primary",
-    },
-    {
-      label: "Pending Reviews",
-      value: String(pendingReviews),
-      desc: "Submissions awaiting your rubric score",
-      icon: ClockIcon,
-      stripe: "bg-brand-amber",
-      iconBg: "bg-brand-amber/10 text-brand-amber",
     },
     {
       label: "Students Guided",
@@ -39,7 +29,7 @@ export default function MetricCards({
   ];
 
   return (
-    <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
       {cards.map((card) => (
         <div
           key={card.label}

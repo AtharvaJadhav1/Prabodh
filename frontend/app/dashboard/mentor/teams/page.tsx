@@ -14,10 +14,9 @@ type PsFilter = "all" | "awaiting" | "locked";
 const COL_SIZES = {
   team: "w-[20%] min-w-[200px]",
   leader: "w-[22%] min-w-[210px]",
-  ps: "w-[34%] min-w-[260px]",
-  members: "w-[9%] min-w-[90px]",
-  score: "w-[11%] min-w-[100px]",
-  chevron: "w-[4%] min-w-[36px]",
+  ps: "w-[36%] min-w-[280px]",
+  members: "w-[12%] min-w-[110px]",
+  chevron: "w-[10%] min-w-[36px]",
 } as const;
 
 function psStatusOf(row: {
@@ -139,14 +138,13 @@ export default function MentorTeamsPage() {
           </div>
 
           <div className="w-full overflow-x-auto">
-            <table className="w-full min-w-[960px] border-collapse text-left text-xs">
+            <table className="w-full min-w-[840px] border-collapse text-left text-xs">
               <thead>
                 <tr className="text-xs font-semibold uppercase tracking-wider text-brand-muted">
                   <th className={`${COL_SIZES.team} border-b border-brand-sand/60 px-4 py-3 font-semibold`}>Team</th>
                   <th className={`${COL_SIZES.leader} border-b border-brand-sand/60 px-4 py-3 font-semibold`}>Leader</th>
                   <th className={`${COL_SIZES.ps} border-b border-brand-sand/60 px-4 py-3 font-semibold`}>Problem Statement</th>
                   <th className={`${COL_SIZES.members} border-b border-brand-sand/60 px-4 py-3 text-center font-semibold`}>Members</th>
-                  <th className={`${COL_SIZES.score} border-b border-brand-sand/60 px-4 py-3 text-center font-semibold`}>Score</th>
                   <th className={`${COL_SIZES.chevron} border-b border-brand-sand/60 px-4 py-3`} aria-hidden="true"></th>
                 </tr>
               </thead>
@@ -154,8 +152,6 @@ export default function MentorTeamsPage() {
                 {filtered.map(({ row, psStatus }) => {
                   const team = row.team;
                   const ps = team.problemStatement;
-                  const published = team.stageResults?.find((r) => r.published);
-                  const score = published ? Number(published.weightedScore) : null;
                   const memberCount = team.members?.length ?? 0;
                   const canOpen = psStatus !== "pending";
                   const detailHref = `/dashboard/mentor/teams/${team.id}`;
@@ -215,13 +211,6 @@ export default function MentorTeamsPage() {
                           <UsersIcon className="h-3.5 w-3.5 text-brand-muted" />
                           {memberCount}/{team.memberCap ?? 6}
                         </span>
-                      </td>
-                      <td className={`${COL_SIZES.score} px-4 py-4 text-center align-middle`}>
-                        {score !== null ? (
-                          <span className="font-bold text-brand-approved">{score} / 100</span>
-                        ) : (
-                          <span className="text-brand-muted">—</span>
-                        )}
                       </td>
                       <td className={`${COL_SIZES.chevron} px-4 py-4 text-right align-middle`}>
                         {canOpen ? (

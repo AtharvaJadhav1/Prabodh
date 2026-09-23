@@ -12,30 +12,24 @@ import { DashboardIcon } from "../../../components/dashboard/icons";
 
 export default function MentorDashboardPage() {
   const { teams } = useMentorTeams();
-  const [filter, setFilter] = useState<"all" | "pending" | "evaluated">("all");
   const [search, setSearch] = useState("");
   const [track, setTrack] = useState("All Tracks");
 
   const groups = useMemo(
     () =>
-      teams.map((row) => {
-        const published = row.team.stageResults?.find((r) => r.published);
-        return {
-          id: row.team.id,
-          teamName: row.team.name,
-          teamId: row.team.teamCode,
-          capacity: `${row.team.members?.length ?? "?"}/${row.team.memberCap ?? 6}`,
-          track: row.team.theme ?? "Unassigned",
-          problemCode: row.team.problemStatement?.code ?? "—",
-          problemTitle: row.team.problemStatement?.title ?? "No PS locked yet",
-          leader: row.team.leader?.fullName ?? "—",
-          leaderPrn: row.team.leader?.email ?? "",
-          milestone: row.pendingInvite ? "Invite pending — accept in Group Requests" : "Assigned",
-          domains: row.team.theme ? [row.team.theme] : [],
-          score: published ? Number(published.weightedScore) : undefined,
-          publishStatus: published ? ("published" as const) : undefined,
-        };
-      }),
+      teams.map((row) => ({
+        id: row.team.id,
+        teamName: row.team.name,
+        teamId: row.team.teamCode,
+        capacity: `${row.team.members?.length ?? "?"}/${row.team.memberCap ?? 6}`,
+        track: row.team.theme ?? "Unassigned",
+        problemCode: row.team.problemStatement?.code ?? "—",
+        problemTitle: row.team.problemStatement?.title ?? "No PS locked yet",
+        leader: row.team.leader?.fullName ?? "—",
+        leaderPrn: row.team.leader?.email ?? "",
+        milestone: row.pendingInvite ? "Invite pending — accept in Group Requests" : "Assigned",
+        domains: row.team.theme ? [row.team.theme] : [],
+      })),
     [teams],
   );
 
@@ -62,15 +56,9 @@ export default function MentorDashboardPage() {
       <MetricCards
         assignedTeams={groups.length}
         totalStudents={groups.reduce((n, g) => n + Number.parseInt(g.capacity.split("/")[0] || "0", 10) || 0, 0)}
-        pendingReviews={groups.filter((g) => !g.score).length}
       />
 
       <FilterBar
-        totalGroups={groups.length}
-        pendingCount={groups.filter((g) => !g.score).length}
-        evaluatedCount={groups.filter((g) => Boolean(g.score)).length}
-        activeFilter={filter}
-        onFilterChange={setFilter}
         search={search}
         onSearchChange={setSearch}
         track={track}
@@ -88,7 +76,6 @@ export default function MentorDashboardPage() {
               onClick={() => {
                 setSearch("");
                 setTrack("All Tracks");
-                setFilter("all");
               }}
               className="rounded-lg bg-brand-primary px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-brand-hover"
             >
@@ -103,7 +90,7 @@ export default function MentorDashboardPage() {
           </div>
           <div>
             {filtered.map((g) => (
-              <GroupCard key={g.id ?? g.teamId} group={g} status={g.score ? "evaluated" : "pending"} />
+              <GroupCard key={g.id ?? g.teamId} group={g} />
             ))}
           </div>
         </section>
