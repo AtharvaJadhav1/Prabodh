@@ -61,7 +61,7 @@ export async function sendStaffCredentialsEmail(opts: {
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px">
       <tr><td style="padding:12px 16px;font-size:13px;color:#64748b">Email</td></tr>
       <tr><td style="padding:0 16px 12px;font-family:ui-monospace,Consolas,monospace;font-size:15px;font-weight:700;color:#0f172a">${safeEmail}</td></tr>
-      <tr><td style="padding:0 16px 4px;font-size:13px;color:#64748b">Temporary password</td></tr>
+      <tr><td style="padding:0 16px 4px;font-size:13px;color:#64748b">Your password</td></tr>
       <tr><td style="padding:0 16px 14px;font-family:ui-monospace,Consolas,monospace;font-size:15px;font-weight:700;letter-spacing:0.02em;color:#0f172a">${safePassword}</td></tr>
     </table>
     <p style="margin-top:16px;font-size:13px;color:#64748b">Use <strong>Switch account / Sign in</strong> if another Prabodh session is still open in this browser. Copy the password carefully (no extra spaces).</p>
