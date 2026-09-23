@@ -11,6 +11,7 @@ import {
   LogoutIcon,
   XIcon,
   InboxIcon,
+  UsersIcon,
 } from "../dashboard/icons";
 import { roleLabel, useAuth, initialsFrom } from "../auth/AuthProvider";
 import { useMentorRequests } from "./MentorRequestProvider";
@@ -38,6 +39,7 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
 
   const navItems: NavItem[] = [
     { label: "Assigned Groups", href: "/dashboard/mentor", match: "exact", icon: DashboardIcon },
+    { label: "Teams", href: "/dashboard/mentor/teams", match: "start", icon: UsersIcon },
     {
       label: "Group Requests",
       href: "/dashboard/mentor/group-requests",

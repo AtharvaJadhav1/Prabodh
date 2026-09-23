@@ -1,8 +1,10 @@
 import type { MentorGroup, GroupStatus } from "../../data/mentorDashboard";
+import Link from "next/link";
 import {
   AwardIcon,
   FileTextIcon,
   ArrowRightIcon,
+  UsersIcon,
 } from "../dashboard/icons";
 
 type Props = {
@@ -113,6 +115,15 @@ export default function GroupCard({ group, status, onReview }: Props) {
             </button>
           </>
         )}
+        {group.id ? (
+          <Link
+            href={`/dashboard/mentor/teams/${group.id}`}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-brand-sand bg-white px-3 text-xs font-bold text-brand-deep transition-colors hover:border-brand-primary/40 hover:bg-brand-cream"
+          >
+            <UsersIcon className="h-3.5 w-3.5 text-brand-muted" />
+            <span>View Team</span>
+          </Link>
+        ) : null}
       </div>
     </div>
   );
