@@ -63,7 +63,34 @@ export class AdminController {
   }
 
   @Get('audit-log')
-  audit(@Query() query: { page?: string; limit?: string; action?: string; entityType?: string }) {
+  audit(
+    @Query()
+    query: {
+      page?: string;
+      limit?: string;
+      action?: string;
+      entityType?: string;
+      category?: string;
+      search?: string;
+      hours?: string;
+    },
+  ) {
+    return this.admin.listAudit(query);
+  }
+
+  @Get('logs')
+  logs(
+    @Query()
+    query: {
+      page?: string;
+      limit?: string;
+      action?: string;
+      entityType?: string;
+      category?: string;
+      search?: string;
+      hours?: string;
+    },
+  ) {
     return this.admin.listAudit(query);
   }
 

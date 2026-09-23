@@ -78,7 +78,7 @@ export class TeamsService {
         }
 
         try {
-          return await this.repo.create({
+          const team = await this.repo.create({
             clerkOrgId,
             teamCode,
             name: body.name,
@@ -96,6 +96,14 @@ export class TeamsService {
               },
             },
           });
+          await writeAudit(this.prisma, {
+            actorUserId: user.id,
+            action: 'team.created',
+            entityType: 'team',
+            entityId: team.id,
+            after: { name: team.name, teamCode: team.teamCode, theme: team.theme ?? null, institute: team.institute },
+          });
+          return team;
         } catch (err) {
           const isTeamCodeCollision =
             err instanceof Prisma.PrismaClientKnownRequestError &&
@@ -318,7 +326,18 @@ export class TeamsService {
     if (team.status === TeamStatus.locked || team.detailsLockAt) {
       throw new ForbiddenException('Team details are locked');
     }
-    return this.repo.update(teamId, body);
+    const updated = await this.repo.update(teamId, body);
+    if (typeof body.name === 'string' && body.name !== team.name) {
+      await writeAudit(this.prisma, {
+        actorUserId: user.id,
+        action: 'team.renamed',
+        entityType: 'team',
+        entityId: teamId,
+        before: { name: team.name },
+        after: { name: body.name },
+      });
+    }
+    return updated;
   }
 
   async invite(user: AuthUser, teamId: string, body: z.infer<typeof inviteSchema>) {
@@ -390,6 +409,14 @@ export class TeamsService {
         relatedEntity: team.id,
       });
     })().catch((err) => console.error('[teams.invite] notify invitee failed', err));
+
+    await writeAudit(this.prisma, {
+      actorUserId: user.id,
+      action: 'team.invite',
+      entityType: 'team',
+      entityId: teamId,
+      after: { invitedEmail: email },
+    });
 
     return { ...member, emailSent: true, emailError: null };
   }
@@ -499,6 +526,13 @@ export class TeamsService {
     const member = await this.prisma.teamMember.update({
       where: { id: invite.id },
       data: { inviteStatus: InviteStatus.accepted, userId: user.id, joinedAt: new Date() },
+    });
+    await writeAudit(this.prisma, {
+      actorUserId: user.id,
+      action: 'team.join',
+      entityType: 'team',
+      entityId: invite.teamId,
+      after: { memberEmail: user.email, memberName: user.fullName },
     });
     void notifyUsers(
       this.prisma,

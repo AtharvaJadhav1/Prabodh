@@ -5,7 +5,7 @@ type CacheEntry = { data: unknown; storedAt: number };
 const PREFIX = "sih-api-cache-v1:";
 const memory = new Map<string, CacheEntry>();
 
-const neverCachePaths = [/^\/me($|\?)/, /^\/auth\//, /^\/health/];
+const neverCachePaths = [/^\/me($|\?)/, /^\/auth\//, /^\/health/, /^\/admin\/(audit-log|logs)/];
 
 export function cacheKey(userId: string | undefined, method: string, path: string): string {
   const clean = path.split("?")[0];

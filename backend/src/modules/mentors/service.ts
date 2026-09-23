@@ -265,6 +265,14 @@ export class MentorsService {
       invitedById: user.id,
     });
 
+    await writeAudit(this.prisma, {
+      actorUserId: user.id,
+      action: 'mentor.invite',
+      entityType: 'mentor_invite',
+      entityId: invite.id,
+      after: { teamId: team.id, mentorType, invitedEmail: email, mentorUserId: mentor.id },
+    });
+
     void sendMentorInviteEmail({
       to: email,
       teamName: team.name,
@@ -426,6 +434,20 @@ export class MentorsService {
         relatedEntity: `team:${invite.teamId}`,
       }).catch(() => undefined);
       void this.psPreferences.promoteSavedOnMentorAssigned(invite.teamId).catch(() => undefined);
+      if (result.assignment) {
+        await writeAudit(this.prisma, {
+          actorUserId: user.id,
+          action: 'mentor.invite_accepted',
+          entityType: 'mentor_assignment',
+          entityId: result.assignment.id,
+          after: {
+            teamId: invite.teamId,
+            teamName: invite.team.name,
+            mentorType: invite.mentorType,
+            mentorUserId: user.id,
+          },
+        });
+      }
     }
     return result;
   }

@@ -11,6 +11,7 @@ import {
   MessageIcon,
   CompassIcon,
   UsersIcon,
+  HistoryIcon,
   LogoutIcon,
   XIcon,
 } from "../dashboard/icons";
@@ -49,6 +50,7 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }: Props) {
           icon: BriefcaseIcon,
           badge: metrics.pendingAllocations > 0 ? String(metrics.pendingAllocations) : undefined,
         },
+        { label: "Audit Logs", href: "/dashboard/admin/logs", match: "start", icon: HistoryIcon },
         { label: "Stages & Rubrics", href: "/dashboard/admin/stages-rubrics", match: "start", icon: FileCheckIcon },
         { label: "Broadcasts", href: "/dashboard/admin/broadcasts", match: "start", icon: MessageIcon },
         { label: "Reports", href: "/dashboard/admin/reports", match: "start", icon: CompassIcon },

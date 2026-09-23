@@ -43,6 +43,19 @@ export class EvaluationsService {
         data: { supersededById: created.id },
       });
     }
+    await writeAudit(this.prisma, {
+      actorUserId: user.id,
+      action: 'evaluation.submitted',
+      entityType: 'evaluation',
+      entityId: created.id,
+      after: {
+        teamId: body.teamId,
+        stageId: body.stageId,
+        rubricId: body.rubricId,
+        score: Number(body.score),
+        supersedes: Boolean(prior),
+      },
+    });
     await aggregateQueue().add('recompute', { teamId: body.teamId, stageId: body.stageId });
     await this.recomputeStageResult(body.teamId, body.stageId);
     return created;
