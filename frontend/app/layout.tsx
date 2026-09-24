@@ -4,13 +4,15 @@ import "../components/ThoughtLine.css";
 import PwaRegister from "../components/PwaRegister";
 import AuthProviders from "../components/auth/AuthProviders";
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://incubation.prabodh.app";
+
 export const metadata: Metadata = {
   title: {
-    default: "Prabodh",
+    default: "Prabodh — Project Based Learning Portal",
     template: "Prabodh | %s",
   },
   description:
-    "Prabodh — Project Based Learning Portal. Centralized SIH team management, dual-mentor tracking, and milestone-based evaluation.",
+    "Prabodh is the Project Based Learning portal for SIH — centralized team management, dual-mentor tracking, and milestone-based evaluation.",
   applicationName: "Prabodh",
   manifest: "/manifest.webmanifest",
   icons: {
@@ -21,6 +23,12 @@ export const metadata: Metadata = {
     capable: true,
     title: "Prabodh",
     statusBarStyle: "default",
+  },
+  openGraph: {
+    title: "Prabodh — Project Based Learning Portal",
+    description:
+      "Prabodh is the Project Based Learning portal for SIH — centralized team management, dual-mentor tracking, and milestone-based evaluation.",
+    url: APP_URL,
   },
 };
 
