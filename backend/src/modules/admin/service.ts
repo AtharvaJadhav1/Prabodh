@@ -413,6 +413,7 @@ export class AdminService {
       PlatformRole.institute_mentor,
       PlatformRole.industry_mentor,
       PlatformRole.admin,
+      PlatformRole.student_expert,
     ]);
 
     const credentialJobs: Array<{

@@ -194,6 +194,15 @@ async function main() {
     department: 'Nodal Cell',
   });
 
+  const studentExpert = await upsertUser({
+    clerkUserId: 'seed:expert@institute.edu',
+    email: 'expert@institute.edu',
+    fullName: 'Student Expert',
+    platformRole: PlatformRole.student_expert,
+    institute: INSTITUTE,
+    department: 'Expert Cell',
+  });
+
   const studentRows = [];
   for (const s of students) {
     studentRows.push(
@@ -373,6 +382,7 @@ async function main() {
 
   console.log('Seed complete', {
     adminId: admin.id,
+    studentExpertId: studentExpert.id,
     students: studentRows.length,
     faculty: facultyRows.length,
     defaultPassword: DEFAULT_PASSWORD,

@@ -17,4 +17,7 @@ Demo logins:
 - Student: `leader@institute.edu`
 - Institute mentor: `faculty@institute.edu`
 - Industry mentor: `industry@partner.com`
+- Student expert: `expert@institute.edu`
 - Admin: `admin@institute.edu`
+
+Default seed password: `Prabodh@123` (local/demo only). In production, create Student Expert accounts from Admin → Manage Users (invite emails credentials).

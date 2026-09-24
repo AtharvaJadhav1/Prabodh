@@ -31,17 +31,6 @@ async function postLogin(email: string, password: string, portal?: "student" | "
 
 /** Unified login (no portal) with fallback for APIs that still require student/faculty portal. */
 export async function loginWithPassword(email: string, password: string, portal?: "student" | "faculty") {
-  const EXPERT_EMAIL = "expert@prabodh.in";
-  const EXPERT_PASSWORD = "Prabodh@123";
-  if (email === EXPERT_EMAIL && password === EXPERT_PASSWORD) {
-    return {
-      accessToken: "expert-local-token",
-      userId: "expert-local",
-      email: EXPERT_EMAIL,
-      fullName: "Student Expert",
-      platformRole: "student_expert" as const,
-    };
-  }
   try {
     return await postLogin(email, password, portal);
   } catch (err) {

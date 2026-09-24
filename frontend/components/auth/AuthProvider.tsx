@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshMe = useCallback(async () => {
     const cached = readSession();
-    if (!cached?.accessToken || cached.platformRole === "student_expert") return;
+    if (!cached?.accessToken) return;
     setAccessToken(cached.accessToken);
     const me = await api<{
       id: string;
