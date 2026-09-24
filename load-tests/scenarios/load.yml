@@ -1,0 +1,69 @@
+config:
+  target: "http://localhost:3001/api"
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      name: warm-up
+    - duration: 120
+      arrivalRate: 15
+      name: sustained
+  defaults:
+    headers:
+      content-type: application/json
+  processor: "../processors/auth.js"
+  plugins:
+    expect: {}
+  variables:
+    loginEmail: "admin@institute.edu"
+    loginPassword: "Prabodh@123"
+
+scenarios:
+  - name: Health
+    weight: 2
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+
+  - name: Authenticated dashboard traffic
+    weight: 8
+    flow:
+      - function: ensureToken
+      - think: 1
+      - get:
+          url: "/me"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/problem-statements"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/teams"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/stages"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/admin/dashboard"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/notifications"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
