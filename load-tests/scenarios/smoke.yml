@@ -1,0 +1,63 @@
+config:
+  # Override: --target https://prabodh.onrender.com/api
+  target: "http://localhost:3001/api"
+  phases:
+    - duration: 30
+      arrivalRate: 3
+      name: smoke
+  defaults:
+    headers:
+      content-type: application/json
+  processor: "../processors/auth.js"
+  plugins:
+    expect: {}
+  variables:
+    loginEmail: "admin@institute.edu"
+    loginPassword: "Prabodh@123"
+
+scenarios:
+  - name: Health check
+    weight: 3
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: ok
+
+  - name: Authenticated reads
+    weight: 7
+    flow:
+      - function: ensureToken
+      - get:
+          url: "/me"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+            - hasProperty: email
+      - get:
+          url: "/problem-statements"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/teams"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/stages"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/notifications"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200

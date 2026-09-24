@@ -1,0 +1,65 @@
+config:
+  target: "http://localhost:3001/api"
+  phases:
+    - duration: 30
+      arrivalRate: 5
+      name: ramp-start
+    - duration: 60
+      arrivalRate: 20
+      rampTo: 40
+      name: ramp-up
+    - duration: 90
+      arrivalRate: 40
+      name: peak
+    - duration: 30
+      arrivalRate: 10
+      name: cool-down
+  defaults:
+    headers:
+      content-type: application/json
+  processor: "../processors/auth.js"
+  plugins:
+    expect: {}
+  variables:
+    loginEmail: "admin@institute.edu"
+    loginPassword: "Prabodh@123"
+  http:
+    timeout: 20
+
+scenarios:
+  - name: Health flood
+    weight: 3
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+
+  - name: Authenticated reads at peak
+    weight: 7
+    flow:
+      - function: ensureToken
+      - get:
+          url: "/me"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/teams"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/problem-statements"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/admin/bootstrap"
+          headers:
+            Authorization: "Bearer {{ accessToken }}"
+          expect:
+            - statusCode: 200

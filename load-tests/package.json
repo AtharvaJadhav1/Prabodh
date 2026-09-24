@@ -1,0 +1,17 @@
+{
+  "name": "prabodh-load-tests",
+  "private": true,
+  "description": "Artillery load tests for the Prabodh NestJS API",
+  "scripts": {
+    "smoke": "mkdir -p reports && bash scripts/run-with-token.sh scenarios/smoke.yml reports/smoke.json",
+    "load": "mkdir -p reports && bash scripts/run-with-token.sh scenarios/load.yml reports/load.json",
+    "stress": "mkdir -p reports && bash scripts/run-with-token.sh scenarios/stress.yml reports/stress.json",
+    "smoke:render": "TARGET=https://prabodh.onrender.com/api npm run smoke",
+    "load:render": "TARGET=https://prabodh.onrender.com/api npm run load",
+    "stress:render": "TARGET=https://prabodh.onrender.com/api npm run stress",
+    "report:smoke": "artillery report reports/smoke.json --output reports/smoke.html"
+  },
+  "devDependencies": {
+    "artillery": "^2.0.23"
+  }
+}
