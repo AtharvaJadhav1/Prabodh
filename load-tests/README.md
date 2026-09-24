@@ -1,6 +1,6 @@
 # Artillery load tests — Prabodh / SIH Portal API
 
-HTTP load tests for the NestJS backend (`/api`).
+HTTP load tests for the NestJS backend (`/api`). Works on **Windows, macOS, and Linux**.
 
 ## Setup
 
@@ -23,7 +23,7 @@ Default credentials (seeded admin):
 
 Override with `LOGIN_EMAIL` / `LOGIN_PASSWORD` / `TARGET`.
 
-Scripts **log in once**, export `ACCESS_TOKEN`, then run Artillery — this avoids the API login rate limit (`LOGIN_RATE_LIMIT_PER_MIN`).
+Scripts **log in once**, set `ACCESS_TOKEN`, then run Artillery — this avoids the API login rate limit (`LOGIN_RATE_LIMIT_PER_MIN`).
 
 ## Commands
 
@@ -34,13 +34,22 @@ npm run smoke:render
 
 # Steady load (~3 min)
 npm run load
-# npm run load:render
+npm run load:render
 
 # Stress ramp (~3.5 min, peak 40 arrivals/sec)
 npm run stress
 
 # HTML report
 npm run report:smoke
+```
+
+### Windows PowerShell (manual env override)
+
+```powershell
+$env:TARGET = "https://prabodh.onrender.com/api"
+$env:LOGIN_EMAIL = "admin@institute.edu"
+$env:LOGIN_PASSWORD = "Prabodh@123"
+npm run smoke
 ```
 
 ## Scenarios
@@ -55,3 +64,4 @@ npm run report:smoke
 
 - Prefer staging for load/stress; avoid production peak hours.
 - Reports under `reports/` are gitignored.
+- Deprecation warnings from Artillery dependencies are safe to ignore.
