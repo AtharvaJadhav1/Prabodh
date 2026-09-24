@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const adminInviteUserSchema = z.object({
   email: z.string().email(),
   fullName: z.string().min(2).max(120),
-  platformRole: z.enum(['institute_mentor', 'industry_mentor', 'admin']),
+  platformRole: z.enum(['institute_mentor', 'industry_mentor', 'admin', 'student_expert']),
   institute: z.string().min(2).max(200).optional(),
   department: z.string().max(120).optional(),
 });

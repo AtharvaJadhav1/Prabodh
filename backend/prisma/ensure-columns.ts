@@ -28,6 +28,7 @@ async function main() {
   // Enum values that Prisma's `db push` cannot add inside a transaction.
   const rawStatements = [
     `ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'team_join_request'`,
+    `ALTER TYPE "PlatformRole" ADD VALUE IF NOT EXISTS 'student_expert'`,
   ];
   for (const sql of rawStatements) {
     try {

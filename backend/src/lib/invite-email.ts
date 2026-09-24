@@ -38,6 +38,7 @@ export async function sendMentorInviteEmail(opts: {
 function roleLabel(role: string) {
   if (role === 'admin') return 'Administrator';
   if (role === 'industry_mentor') return 'Industry Mentor';
+  if (role === 'student_expert') return 'Student Expert';
   return 'Institute Mentor';
 }
 

@@ -310,9 +310,12 @@ export class IdentityService {
       PlatformRole.institute_mentor,
       PlatformRole.industry_mentor,
       PlatformRole.admin,
+      PlatformRole.student_expert,
     ];
     if (!allowed.includes(body.platformRole)) {
-      throw new BadRequestException('Staff invite supports institute mentor, industry mentor, or admin roles only.');
+      throw new BadRequestException(
+        'Staff invite supports institute mentor, industry mentor, student expert, or admin roles only.',
+      );
     }
     const email = body.email.toLowerCase();
     const existing = await this.repo.findByEmail(email);
@@ -706,7 +709,13 @@ function extensionForMime(mime: string) {
 }
 
 function parseRole(role: unknown): PlatformRole {
-  if (role === 'admin' || role === 'institute_mentor' || role === 'industry_mentor' || role === 'student') {
+  if (
+    role === 'admin' ||
+    role === 'institute_mentor' ||
+    role === 'industry_mentor' ||
+    role === 'student' ||
+    role === 'student_expert'
+  ) {
     return role;
   }
   return 'student';

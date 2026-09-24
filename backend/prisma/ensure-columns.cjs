@@ -74,6 +74,13 @@ async function main() {
     console.warn('[ensure-columns] NotificationType.team_join_request skipped:', err && err.message ? err.message : err);
   }
 
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TYPE "PlatformRole" ADD VALUE IF NOT EXISTS 'student_expert'`);
+    console.log('[ensure-columns] ok: PlatformRole.student_expert');
+  } catch (err) {
+    console.warn('[ensure-columns] PlatformRole.student_expert skipped:', err && err.message ? err.message : err);
+  }
+
   // Backfill industrial mentor profiles for existing industry_mentor users, then
   // wire link columns + team pointers (idempotent).
   try {

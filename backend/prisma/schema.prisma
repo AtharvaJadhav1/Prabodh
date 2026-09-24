@@ -12,6 +12,7 @@ enum PlatformRole {
   institute_mentor
   industry_mentor
   admin
+  student_expert
 }
 
 enum TeamStatus {

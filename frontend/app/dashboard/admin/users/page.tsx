@@ -15,8 +15,8 @@ import {
   FileSpreadsheetIcon,
 } from "../../../../components/dashboard/icons";
 
-type Tab = "students" | "institute-mentors" | "industry-mentors";
-type InviteRole = "institute_mentor" | "industry_mentor" | "admin";
+type Tab = "students" | "institute-mentors" | "industry-mentors" | "student-experts";
+type InviteRole = "institute_mentor" | "industry_mentor" | "admin" | "student_expert";
 
 const INPUT_CLS =
   "w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-[#d95c26] focus:ring-2 focus:ring-[#d95c26]/20 transition-all outline-none";
@@ -26,6 +26,7 @@ const CSV_HEADER = "email,fullName,platformRole,institute,department";
 const INVITE_ROLES: { value: InviteRole; label: string }[] = [
   { value: "institute_mentor", label: "Institute Mentor" },
   { value: "industry_mentor", label: "Industrial Mentor" },
+  { value: "student_expert", label: "Student Expert" },
   { value: "admin", label: "Nodal Admin" },
 ];
 
@@ -49,14 +50,23 @@ export default function AdminUsersPage() {
   const students = users.filter((u) => u.platformRole === "student");
   const industry = users.filter((u) => u.platformRole === "industry_mentor");
   const institute = users.filter((u) => u.platformRole === "institute_mentor");
+  const experts = users.filter((u) => u.platformRole === "student_expert");
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "students", label: "Students", count: students.length },
     { key: "institute-mentors", label: "Institute Mentors", count: institute.length },
     { key: "industry-mentors", label: "Industry Mentors", count: industry.length },
+    { key: "student-experts", label: "Student Experts", count: experts.length },
   ];
 
-  const rowsFor = tab === "students" ? students : tab === "institute-mentors" ? institute : industry;
+  const rowsFor =
+    tab === "students"
+      ? students
+      : tab === "institute-mentors"
+        ? institute
+        : tab === "industry-mentors"
+          ? industry
+          : experts;
 
   const readCsvFile = (file: File | undefined | null) => {
     if (!file) return;
@@ -70,7 +80,7 @@ export default function AdminUsersPage() {
   };
 
   const downloadTemplate = () => {
-    const content = `${CSV_HEADER}\njane.doe@example.edu,Dr. Jane Doe,institute_mentor,School of Computing,AI & Analytics\nravi.kumar@example.org,Ravi Kumar,industry_mentor,Acme Technologies,Research`;
+    const content = `${CSV_HEADER}\njane.doe@example.edu,Dr. Jane Doe,institute_mentor,School of Computing,AI & Analytics\nravi.kumar@example.org,Ravi Kumar,industry_mentor,Acme Technologies,Research\npriya.expert@example.edu,Priya Expert,student_expert,School of Computing,Expert Cell`;
     const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -91,10 +101,10 @@ export default function AdminUsersPage() {
               <UserPlusIcon className="h-5 w-5 text-[#d95c26]" />
             </span>
             <div className="min-w-0">
-              <h2 className="text-lg font-bold text-neutral-900">Invite Faculty / Staff</h2>
+              <h2 className="text-lg font-bold text-neutral-900">Invite Faculty / Staff / Experts</h2>
               <p className="mt-1 text-xs text-neutral-500">
                 Creates the account and emails the login ID (email) along with the auto-generated
-                password, so no temporary password entry is needed. Faculty cannot self-register.
+                password. Faculty, industry mentors, and student experts cannot self-register.
               </p>
             </div>
           </div>

@@ -23,7 +23,7 @@ export default function ExpertSidebar({ mobileOpen, onCloseMobile }: Props) {
   const pathname = usePathname();
   const { session, logout } = useAuth();
   const role = roleLabel(session?.platformRole ?? "student_expert");
-  const fullName = session?.fullName ?? "Student Expert";
+  const fullName = session?.fullName?.trim() || "Student Expert";
   const displayName = fullName.length > 16 ? fullName.split(" ")[0] : fullName;
 
   const navItems: NavItem[] = [
@@ -73,7 +73,7 @@ export default function ExpertSidebar({ mobileOpen, onCloseMobile }: Props) {
         <div className="border-b border-brand-softline px-4 py-4">
           <div className="rounded-2xl border border-brand-softline bg-white p-4">
             <p className="text-[10px] font-bold uppercase tracking-widest text-brand-muted">Workspace Role</p>
-            <p className="mt-1.5 truncate text-sm font-extrabold text-brand-deep">Student Expert</p>
+            <p className="mt-1.5 truncate text-sm font-extrabold text-brand-deep">{role}</p>
           </div>
         </div>
 
