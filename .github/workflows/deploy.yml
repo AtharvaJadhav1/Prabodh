@@ -3,6 +3,20 @@ name: Deploy
 on:
   push:
     branches: [main]
+  # Manual trigger, so a branch can be validated before it is merged. Defaults
+  # to a dry run: a manual click must never cut over production by accident.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (build + backup, no cutover)'
+        type: boolean
+        required: false
+        default: true
+      sha:
+        description: 'Commit SHA to deploy (blank = the ref that triggered this run)'
+        type: string
+        required: false
+        default: ''
 
 # One deploy at a time. Never cancel a deploy that is mid-cutover.
 concurrency:
@@ -108,9 +122,20 @@ jobs:
           VM_USERNAME: ${{ secrets.VM_USERNAME }}
           DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          GIT_SHA: ${{ github.sha }}
+          # `inputs.sha` is empty for a push, so this resolves to github.sha
+          # (the pushed commit) for normal deploys and to the typed SHA for a
+          # manual run. github.sha alone is wrong for workflow_dispatch: it is
+          # the ref the workflow was invoked from, not a ref named in an input.
+          TARGET_SHA: ${{ inputs.sha || github.sha }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
           set -euo pipefail
+          # Unquoted below so an empty value collapses and the script sees no
+          # stray empty argument between `--` and the SHA.
+          dry_flag=''
+          if [ "$DRY_RUN" = "true" ]; then
+            dry_flag='--dry-run'
+          fi
           # The script is piped over stdin rather than executed from the VM repo:
           # it checks that repo out to a detached SHA, which would otherwise
           # rewrite the running script underneath bash mid-execution.
@@ -121,12 +146,17 @@ jobs:
             -o BatchMode=yes \
             -o LogLevel=ERROR \
             "$VM_USERNAME@$VM_HOST" \
-            "DEPLOY_PATH='$DEPLOY_PATH' bash -s -- '$GIT_SHA'" \
+            "DEPLOY_PATH='$DEPLOY_PATH' bash -s -- $dry_flag '$TARGET_SHA'" \
             < scripts/deploy-server.sh
 
       - name: Smoke test
+        # A dry run never cut over, so the live site is still the previous
+        # release. Probing it here would report success for a build that was
+        # never actually released.
+        if: ${{ inputs.dry_run != true }}
         env:
           SMOKE_URL: ${{ secrets.SMOKE_URL }}
+          TARGET_SHA: ${{ inputs.sha || github.sha }}
         run: |
           set -euo pipefail
           # Runs from the runner, outside the VM, so this also proves nginx,
@@ -135,7 +165,7 @@ jobs:
             if curl -fsS --max-time 15 -o /dev/null "$SMOKE_URL"; then
               echo "Smoke test passed: $SMOKE_URL (attempt $attempt)"
               echo "### Deploy succeeded" >> "$GITHUB_STEP_SUMMARY"
-              echo "- Commit: \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+              echo "- Commit: \`$TARGET_SHA\`" >> "$GITHUB_STEP_SUMMARY"
               echo "- Smoke test: \`$SMOKE_URL\`" >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
@@ -144,9 +174,18 @@ jobs:
           done
           echo "Smoke test failed: $SMOKE_URL"
           echo "### Deploy finished, smoke test FAILED" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Commit: \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: \`$TARGET_SHA\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Smoke test: \`$SMOKE_URL\`" >> "$GITHUB_STEP_SUMMARY"
           exit 1
+
+      - name: Report dry run
+        if: ${{ inputs.dry_run == true }}
+        run: |
+          {
+            echo "### Dry run complete — nothing was released"
+            echo "- Commit: \`${{ inputs.sha || github.sha }}\`"
+            echo "- Build and database backup succeeded; \`current\` still points at the previous release."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Remove SSH private key
         if: always()

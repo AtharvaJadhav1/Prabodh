@@ -7,6 +7,7 @@
 #
 #   bash scripts/deploy-server.sh --dry-run <sha>
 #   bash scripts/deploy-server.sh <sha>
+#   bash scripts/deploy-server.sh --force <sha>   # rebuild even if already live
 #
 # Layout, all under DEPLOY_PATH:
 #
@@ -65,6 +66,7 @@ RELEASE_DIR=''
 PREV_RELEASE=''
 DRY_RUN=0
 SKIP_BACKUP=0
+FORCE_DEPLOY=0
 
 log()  { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33mWARN: %s\033[0m\n' "$*" >&2; }
@@ -183,12 +185,13 @@ for arg in "$@"; do
   case "$arg" in
     --dry-run)     DRY_RUN=1 ;;
     --skip-backup) SKIP_BACKUP=1 ;;
+    --force)       FORCE_DEPLOY=1 ;;
     -*)            fail "Unknown flag: $arg" ;;
     *)             SHA="$arg" ;;
   esac
 done
 
-[ -n "$SHA" ] || fail "Usage: bash scripts/deploy-server.sh [--dry-run] [--skip-backup] <sha>"
+[ -n "$SHA" ] || fail "Usage: bash scripts/deploy-server.sh [--dry-run] [--skip-backup] [--force] <sha>"
 printf '%s' "$SHA" | grep -qE '^[0-9a-f]{7,40}$' || fail "Not a git SHA: $SHA"
 
 # Last-resort fallback for `bash -s` runs where the guard above was skipped
@@ -206,6 +209,23 @@ RELEASE_DIR="$RELEASES_DIR/$SHA"
 
 if [ -L "$CURRENT_LINK" ]; then
   PREV_RELEASE="$(readlink -f "$CURRENT_LINK" 2>/dev/null || true)"
+fi
+
+# Deploying the SHA that is already live must not delete the live release out
+# from under the running processes. Staging does `rm -rf "$RELEASE_DIR"` before
+# rebuilding, so when RELEASE_DIR == PREV_RELEASE that wipe hits the directory
+# pm2 is serving from: `next start` loses .next/ and every /_next/static chunk
+# 404s for the length of the rebuild, and the rollback target no longer exists.
+# A fast-forward merge to an already-deployed SHA hits this every time, as does
+# re-running a failed workflow on the same commit.
+#
+# Exits 0, so re-running a successful deploy is a green no-op rather than a
+# destructive rebuild. --force overrides, for genuinely transient infra faults.
+if [ -n "$PREV_RELEASE" ] && [ "$PREV_RELEASE" = "$RELEASE_DIR" ] && [ "$FORCE_DEPLOY" -eq 0 ]; then
+  log "Commit ${SHA:0:7} is already the live release — nothing to do."
+  log "Pass --force to rebuild it in place (deletes the live release first)."
+  pm2 list
+  exit 0
 fi
 
 [ "$DRY_RUN" -eq 1 ] && log "DRY RUN: will build and back up, but not cut over."
