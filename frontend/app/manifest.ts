@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Prabodh",
     short_name: "Prabodh",
     description:
-      "Prabodh Portal— team formation, milestone gates, dual-mentor tracking, and deliverable submission.",
+      "Portal by Prabodh — team formation, milestone gates, dual-mentor tracking, and deliverable submission.",
     start_url: "/",
     scope: "/",
     display: "standalone",
