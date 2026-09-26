@@ -342,10 +342,14 @@ fi
 # 5. Build backend
 # --------------------------------------------------------------------------
 log "Building backend"
-# Dev dependencies are required here: prisma (CLI) and typescript (tsc).
+# --include=dev is required, not optional. export_env_file above puts
+# NODE_ENV=production into this environment, and npm then defaults
+# `omit` to [dev]. Without it the prisma CLI (a devDependency) is missing and
+# `npx prisma db push` silently downloads a random version from the registry
+# instead of failing loudly.
 (
   cd "$RELEASE_DIR/backend"
-  NODE_OPTIONS=--max-old-space-size=1536 npm ci --no-audit --no-fund
+  NODE_OPTIONS=--max-old-space-size=1536 npm ci --include=dev --no-audit --no-fund
   # Runs ensure-columns.cjs, then prisma db push, then tsc.
   NODE_OPTIONS=--max-old-space-size=1536 npm run build
 )
@@ -356,9 +360,11 @@ log "Building backend"
 # 6. Build frontend
 # --------------------------------------------------------------------------
 log "Building frontend"
+# Same reason as the backend: tailwindcss, postcss and autoprefixer are
+# devDependencies, and next build cannot process CSS without them.
 (
   cd "$RELEASE_DIR/frontend"
-  NODE_OPTIONS=--max-old-space-size=1536 npm ci --no-audit --no-fund
+  NODE_OPTIONS=--max-old-space-size=1536 npm ci --include=dev --no-audit --no-fund
   NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS=--max-old-space-size=1536 npm run build
 )
 [ -d "$RELEASE_DIR/frontend/.next" ] || fail "Frontend build produced no .next directory"

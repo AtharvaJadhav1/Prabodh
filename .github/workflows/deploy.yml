@@ -30,7 +30,9 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+        # --include=dev so this stays correct even if NODE_ENV=production is
+        # set at the org or repository level, which would make npm omit devDependencies.
+        run: npm ci --include=dev --no-audit --no-fund
 
       - name: Generate Prisma client
         env:
@@ -60,7 +62,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+        # --include=dev so this stays correct even if NODE_ENV=production is
+        # set at the org or repository level, which would make npm omit devDependencies.
+        run: npm ci --include=dev --no-audit --no-fund
 
       - name: Typecheck
         run: npx tsc --noEmit
