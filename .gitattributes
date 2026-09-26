@@ -1,0 +1,9 @@
+# scripts/deploy-server.sh is piped to bash on the Linux VM. A stray CR makes
+# bash fail with errors like "set: -euo pipefail: invalid option", so line
+# endings must not depend on each contributor's git settings. This repo is
+# developed on Windows, where core.autocrlf=true silently rewrites them.
+*.sh text eol=lf
+
+# CI config is parsed by Actions rather than a shell, but keeping it LF matches
+# the rest of the pipeline and avoids surprises in diffs and logs.
+*.yml text eol=lf

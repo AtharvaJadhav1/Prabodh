@@ -9,6 +9,14 @@ async function bootstrap() {
     bodyParser: false,
   });
 
+  // Handle SIGTERM/SIGINT so a `pm2 reload` during a deploy drains in-flight
+  // requests instead of dropping them: Nest closes the HTTP server (waiting for
+  // active requests), and PrismaService.onModuleDestroy disconnects the pool.
+  // Registered before listen() so no traffic is served before the handler is in
+  // place. Node's 5s default keepAliveTimeout keeps the drain inside the 10s
+  // kill_timeout set in scripts/ecosystem.config.cjs.
+  app.enableShutdownHooks();
+
   // Allow PPTX/PDF uploads through the API
   const express = require('express') as {
     json: (opts: { limit: string }) => unknown;

@@ -1,0 +1,149 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+# One deploy at a time. Never cancel a deploy that is mid-cutover.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify-backend:
+    name: Verify backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Must match the VM. `next` and `sharp` require >=20.9.0; nothing needs 21+.
+          node-version: '20.x'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Generate Prisma client
+        env:
+          # Placeholder only: `prisma generate` compiles the client and never connects.
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?schema=public
+        run: npx prisma generate
+
+      - name: Test
+        run: npm test
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+  verify-frontend:
+    name: Verify frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build
+        # Hermetic: auth is localStorage-based and all API calls are client-side,
+        # so no backend or NEXT_PUBLIC_* values are needed to compile.
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: npm run build
+
+  deploy:
+    name: Deploy to VM
+    needs: [verify-backend, verify-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write SSH private key
+        env:
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$VM_SSH_KEY" > "$HOME/.ssh/vm_key"
+          chmod 600 "$HOME/.ssh/vm_key"
+
+      - name: Write pinned known_hosts
+        env:
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          # Pins the VM host key (generated with: ssh-keyscan -p <port> <host>).
+          # StrictHostKeyChecking stays on; we never fall back to TOFU.
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Deploy over SSH
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USERNAME: ${{ secrets.VM_USERNAME }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # The script is piped over stdin rather than executed from the VM repo:
+          # it checks that repo out to a detached SHA, which would otherwise
+          # rewrite the running script underneath bash mid-execution.
+          ssh -i "$HOME/.ssh/vm_key" \
+            -p "$DEPLOY_PORT" \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o BatchMode=yes \
+            -o LogLevel=ERROR \
+            "$VM_USERNAME@$VM_HOST" \
+            "DEPLOY_PATH='$DEPLOY_PATH' bash -s -- '$GIT_SHA'" \
+            < scripts/deploy-server.sh
+
+      - name: Smoke test
+        env:
+          SMOKE_URL: ${{ secrets.SMOKE_URL }}
+        run: |
+          set -euo pipefail
+          # Runs from the runner, outside the VM, so this also proves nginx,
+          # TLS and DNS are serving the freshly deployed release.
+          for attempt in $(seq 1 10); do
+            if curl -fsS --max-time 15 -o /dev/null "$SMOKE_URL"; then
+              echo "Smoke test passed: $SMOKE_URL (attempt $attempt)"
+              echo "### Deploy succeeded" >> "$GITHUB_STEP_SUMMARY"
+              echo "- Commit: \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+              echo "- Smoke test: \`$SMOKE_URL\`" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "Attempt $attempt failed, retrying..."
+            sleep 6
+          done
+          echo "Smoke test failed: $SMOKE_URL"
+          echo "### Deploy finished, smoke test FAILED" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Smoke test: \`$SMOKE_URL\`" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      - name: Remove SSH private key
+        if: always()
+        run: rm -f "$HOME/.ssh/vm_key"
