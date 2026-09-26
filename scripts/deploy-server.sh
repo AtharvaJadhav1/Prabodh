@@ -35,8 +35,11 @@ set -euo pipefail
 # --------------------------------------------------------------------------
 if [ -z "${DEPLOY_SCRIPT_SAFE:-}" ] && [ -f "$0" ]; then
   export DEPLOY_SCRIPT_SAFE=1
-  # $0 is <DEPLOY_PATH>/Prabodh/scripts/deploy-server.sh
-  export DEPLOY_PATH="${DEPLOY_PATH:-$(cd "$(dirname "$0")/../../.." && pwd)}"
+  # $0 is <DEPLOY_PATH>/Prabodh/scripts/deploy-server.sh, so dirname gives
+  # <DEPLOY_PATH>/Prabodh/scripts and DEPLOY_PATH is exactly two levels up.
+  # Three levels (../../..) overshoots to DEPLOY_PATH's parent, which turns
+  # REPO_DIR into /home/Prabodh instead of /home/azureuser/Prabodh.
+  export DEPLOY_PATH="${DEPLOY_PATH:-$(cd "$(dirname "$0")/../.." && pwd)}"
   _safe_script="$(mktemp "${TMPDIR:-/tmp}/deploy-server-XXXXXX.sh")"
   cp -- "$0" "$_safe_script"
   exec bash "$_safe_script" "$@"
@@ -188,6 +191,11 @@ done
 [ -n "$SHA" ] || fail "Usage: bash scripts/deploy-server.sh [--dry-run] [--skip-backup] <sha>"
 printf '%s' "$SHA" | grep -qE '^[0-9a-f]{7,40}$' || fail "Not a git SHA: $SHA"
 
+# Last-resort fallback for `bash -s` runs where the guard above was skipped
+# (stdin is not a file, so $0 is not the script). CI always passes DEPLOY_PATH
+# explicitly. When running by hand this must be the directory that CONTAINS
+# Prabodh/ and shared/ -- not the clone itself, or REPO_DIR gains a doubled
+# Prabodh/ segment. The preflight below names DEPLOY_PATH if it is wrong.
 DEPLOY_PATH="${DEPLOY_PATH:-$(pwd)}"
 REPO_DIR="$DEPLOY_PATH/Prabodh"
 RELEASES_DIR="$DEPLOY_PATH/releases"
@@ -224,7 +232,11 @@ if [ "$node_major" -lt 20 ] || { [ "$node_major" -eq 20 ] && [ "$node_minor" -lt
 fi
 log "Node $node_version (>= $NODE_VERSION_REQUIRED OK)"
 
-[ -d "$REPO_DIR/.git" ] || fail "Not a git clone: $REPO_DIR"
+[ -d "$REPO_DIR/.git" ] || fail "Not a git clone: $REPO_DIR
+  DEPLOY_PATH=$DEPLOY_PATH
+  DEPLOY_PATH must be the directory that CONTAINS Prabodh/ and shared/ (e.g. /home/azureuser),
+  and must be passed in when the script is piped over stdin, e.g.:
+    DEPLOY_PATH=/home/azureuser bash scripts/deploy-server.sh --dry-run <sha>"
 [ -f "$SHARED_DIR/backend.env" ] || fail "Missing $SHARED_DIR/backend.env — populate it before deploying (do not let this script create it)."
 [ -f "$SHARED_DIR/frontend.env" ] || fail "Missing $SHARED_DIR/frontend.env — populate it before deploying."
 
