@@ -127,26 +127,27 @@ jobs:
           # manual run. github.sha alone is wrong for workflow_dispatch: it is
           # the ref the workflow was invoked from, not a ref named in an input.
           TARGET_SHA: ${{ inputs.sha || github.sha }}
-          DRY_RUN: ${{ inputs.dry_run }}
+          DRY_RUN_INPUT: ${{ inputs.dry_run }}
         run: |
           set -euo pipefail
-          # Unquoted below so an empty value collapses and the script sees no
-          # stray empty argument between `--` and the SHA.
+          DRY_RUN="$(printf '%s' "$DRY_RUN_INPUT" | tr '[:upper:]' '[:lower:]')"
+          DEPLOY_PORT_TRIMMED="$(printf '%s' "$DEPLOY_PORT" | tr -d '\r\n')"
+          TARGET_SHA_TRIMMED="$(printf '%s' "$TARGET_SHA" | tr -d '\r\n' | grep -E '^[0-9a-f]{7,40}$' || printf '%s' "$TARGET_SHA" | tr -d '\r\n')"
           dry_flag=''
-          if [ "$DRY_RUN" = "true" ]; then
+          if [ "$DRY_RUN" = "true" ] || [ "$DRY_RUN" = "1" ]; then
             dry_flag='--dry-run'
           fi
           # The script is piped over stdin rather than executed from the VM repo:
           # it checks that repo out to a detached SHA, which would otherwise
           # rewrite the running script underneath bash mid-execution.
           ssh -i "$HOME/.ssh/vm_key" \
-            -p "$DEPLOY_PORT" \
+            -p "$DEPLOY_PORT_TRIMMED" \
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
             -o BatchMode=yes \
             -o LogLevel=ERROR \
             "$VM_USERNAME@$VM_HOST" \
-            "DEPLOY_PATH='$DEPLOY_PATH' bash -s -- $dry_flag '$TARGET_SHA'" \
+            "DEPLOY_PATH='$DEPLOY_PATH' bash -s -- $dry_flag '$TARGET_SHA_TRIMMED'" \
             < scripts/deploy-server.sh
 
       - name: Smoke test
