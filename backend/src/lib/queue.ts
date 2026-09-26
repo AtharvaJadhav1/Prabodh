@@ -10,7 +10,7 @@ export function getRedis(): Redis {
     redisClient = new Redis(redisUrl, {
       tls: redisUrl.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
       enableReadyCheck: false,
-      maxRetriesPerRequest: 3,
+      maxRetriesPerRequest: null,
       connectTimeout: 10000,
       retryStrategy(times) {
         return Math.min(times * 150, 2000);
