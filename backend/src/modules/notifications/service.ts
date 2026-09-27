@@ -21,13 +21,42 @@ export class NotificationsService {
       where: { userId: user.id, ...(unreadOnly ? { readAt: null } : {}) },
       orderBy: { createdAt: 'desc' },
       take: 100,
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        title: true,
+        body: true,
+        readAt: true,
+        relatedEntity: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
   }
 
   async markRead(user: AuthUser, id: string) {
-    const row = await this.prisma.notification.findUnique({ where: { id } });
-    if (!row || row.userId !== user.id) return null;
-    return this.prisma.notification.update({ where: { id }, data: { readAt: new Date() } });
+    // Single ownership-scoped update; return the row only when it existed.
+    const readAt = new Date();
+    const updated = await this.prisma.notification.updateMany({
+      where: { id, userId: user.id },
+      data: { readAt },
+    });
+    if (!updated.count) return null;
+    return this.prisma.notification.findFirst({
+      where: { id, userId: user.id },
+      select: {
+        id: true,
+        userId: true,
+        type: true,
+        title: true,
+        body: true,
+        readAt: true,
+        relatedEntity: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
   }
 
   async broadcast(admin: AuthUser, body: z.infer<typeof broadcastSchema>) {
@@ -79,11 +108,23 @@ export class NotificationsService {
     return broadcast;
   }
 
+  private readonly recipientSelect = { id: true, email: true } as const;
+  private readonly authorSelect = {
+    id: true,
+    fullName: true,
+    email: true,
+    platformRole: true,
+  } as const;
+
   private async resolveRecipients(filter: { theme?: string; institute?: string; role?: PlatformRole }) {
     if (filter.theme) {
       const teams = await this.prisma.team.findMany({
         where: { theme: filter.theme, ...(filter.institute ? { institute: filter.institute } : {}) },
-        include: { members: { include: { user: true } } },
+        select: {
+          members: {
+            select: { user: { select: this.recipientSelect } },
+          },
+        },
       });
       const users = teams.flatMap((t) => t.members.map((m) => m.user).filter(Boolean));
       const unique = new Map(users.map((u) => [u!.id, u!]));
@@ -95,6 +136,7 @@ export class NotificationsService {
         ...(filter.institute ? { institute: filter.institute } : {}),
         ...(filter.role ? { platformRole: filter.role } : {}),
       },
+      select: this.recipientSelect,
     });
   }
 
@@ -107,11 +149,14 @@ export class NotificationsService {
         parentCommentId: body.parentCommentId,
         message: body.message,
       },
-      include: { author: true },
+      include: { author: { select: this.authorSelect } },
     });
     const team = await this.prisma.team.findUnique({
       where: { id: teamId },
-      include: { members: true, mentorAssignments: { where: { active: true } } },
+      select: {
+        members: { select: { userId: true } },
+        mentorAssignments: { where: { active: true }, select: { mentorUserId: true } },
+      },
     });
     const notifyIds = new Set<string>();
     team?.members.forEach((m) => m.userId && notifyIds.add(m.userId));
@@ -135,7 +180,10 @@ export class NotificationsService {
     await this.teams.assertTeamAccess(user, teamId);
     return this.prisma.comment.findMany({
       where: { teamId, parentCommentId: null },
-      include: { author: true, replies: { include: { author: true } } },
+      include: {
+        author: { select: this.authorSelect },
+        replies: { include: { author: { select: this.authorSelect } } },
+      },
       orderBy: { createdAt: 'asc' },
     });
   }

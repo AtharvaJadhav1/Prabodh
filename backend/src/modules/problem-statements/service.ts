@@ -9,9 +9,12 @@ import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
 import { PrismaService } from '../../lib/prisma.service';
 import { getSettingNumber } from '../../lib/settings';
+import { TtlCache } from '../../lib/ttl-cache';
 import { TeamsService } from '../teams/service';
 import { ProblemStatementsRepository } from './repository';
 import { createIdeaSchema, createPsSchema, manualIdeaSchema, patchIdeaSchema, patchPsSchema } from './schema';
+
+const psListCache = new TtlCache<{ items: unknown; total: number; page: number; limit: number; pages: number }>(15_000);
 
 @Injectable()
 export class ProblemStatementsService {
@@ -24,18 +27,27 @@ export class ProblemStatementsService {
   async list(query: { theme?: string; category?: string; organisation?: string; q?: string; page?: string; limit?: string }) {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 50));
+    const cacheKey = `ps:${page}:${limit}:${query.theme ?? ''}:${query.category ?? ''}:${query.organisation ?? ''}:${query.q ?? ''}`;
+    const cached = psListCache.get(cacheKey);
+    if (cached) return cached;
     const [items, total] = await this.repo.list(query, (page - 1) * limit, limit);
-    return { items, total, page, limit, pages: Math.ceil(total / limit) };
+    const payload = { items, total, page, limit, pages: Math.ceil(total / limit) };
+    psListCache.set(cacheKey, payload);
+    return payload;
   }
 
-  createPs(body: z.infer<typeof createPsSchema>) {
-    return this.repo.createPs(body);
+  async createPs(body: z.infer<typeof createPsSchema>) {
+    const created = await this.repo.createPs(body);
+    psListCache.clear();
+    return created;
   }
 
   async updatePs(id: string, body: z.infer<typeof patchPsSchema>) {
     const existing = await this.repo.findPs(id);
     if (!existing) throw new NotFoundException('Problem statement not found');
-    return this.prisma.problemStatement.update({ where: { id }, data: body });
+    const updated = await this.prisma.problemStatement.update({ where: { id }, data: body });
+    psListCache.clear();
+    return updated;
   }
 
   async deletePs(id: string) {
@@ -45,7 +57,9 @@ export class ProblemStatementsService {
       where: { psId: id, status: { not: 'abandoned' } },
     });
     if (inUse) throw new ConflictException('Cannot delete a PS that still has submissions');
-    return this.prisma.problemStatement.delete({ where: { id } });
+    const deleted = await this.prisma.problemStatement.delete({ where: { id } });
+    psListCache.clear();
+    return deleted;
   }
 
   async createIdea(user: AuthUser, body: z.infer<typeof createIdeaSchema>) {
@@ -65,6 +79,8 @@ export class ProblemStatementsService {
     if ('error' in result && result.error === 'ps_full') {
       throw new ConflictException('PS full: team cap reached for this problem statement');
     }
+    // Cap counters change list payload — drop short-lived list cache.
+    psListCache.clear();
     return result.idea;
   }
 
@@ -85,7 +101,9 @@ export class ProblemStatementsService {
     if ('error' in result && result.error === 'ps_full') {
       throw new ConflictException('PS full: team cap reached for this problem statement');
     }
-    return this.repo.lockIdea(result.idea.id, body.teamId, body.psId);
+    const locked = await this.repo.lockIdea(result.idea.id, body.teamId, body.psId);
+    psListCache.clear();
+    return locked;
   }
 
   async patchIdea(user: AuthUser, id: string, body: z.infer<typeof patchIdeaSchema>) {
@@ -111,6 +129,7 @@ export class ProblemStatementsService {
       throw new ConflictException('PS full: team cap reached for this problem statement');
     }
     if ('error' in result && result.error === 'ps_not_found') throw new NotFoundException('Problem statement not found');
+    if (body.psId && body.psId !== idea.psId) psListCache.clear();
     return result.idea;
   }
 
@@ -134,6 +153,7 @@ export class ProblemStatementsService {
     }
     const res = await this.repo.abandonDraft(id);
     if ('error' in res) throw new ForbiddenException('Only unlocked drafts can be abandoned');
+    psListCache.clear();
     return { abandoned: true };
   }
 
@@ -173,6 +193,8 @@ export class ProblemStatementsService {
       authorUserId: user.id,
     });
     if ('error' in draft) throw new ConflictException('Could not create manual submission');
-    return this.repo.lockIdea(draft.idea.id, body.teamId, ps.id);
+    const locked = await this.repo.lockIdea(draft.idea.id, body.teamId, ps.id);
+    psListCache.clear();
+    return locked;
   }
 }

@@ -123,6 +123,13 @@ export class TeamsRepository {
     });
   }
 
+  private readonly authorSelect = {
+    id: true,
+    fullName: true,
+    email: true,
+    platformRole: true,
+  } as const;
+
   findById(id: string) {
     return this.prisma.team.findUnique({
       where: { id },
@@ -133,10 +140,18 @@ export class TeamsRepository {
           include: { problemStatement: { select: this.psSelect } },
         },
         deliverables: { orderBy: { submittedAt: 'desc' }, take: 12 },
-        comments: { orderBy: { createdAt: 'asc' }, include: { author: true }, take: 50 },
+        comments: {
+          orderBy: { createdAt: 'asc' },
+          include: { author: { select: this.authorSelect } },
+          take: 50,
+        },
         evaluations: {
           where: { supersededById: null },
-          include: { rubric: true, stage: true, evaluator: true },
+          include: {
+            rubric: true,
+            stage: { select: { id: true, name: true, sequence: true, deadline: true, isActive: true } },
+            evaluator: { select: this.authorSelect },
+          },
           take: 80,
         },
       },
@@ -151,13 +166,54 @@ export class TeamsRepository {
     });
   }
 
+  private readonly listLeaderSelect = {
+    id: true,
+    fullName: true,
+    email: true,
+    department: true,
+    institute: true,
+  } as const;
+
+  private readonly listMemberSelect = {
+    id: true,
+    userId: true,
+    invitedEmail: true,
+    inviteStatus: true,
+    joinedAt: true,
+    user: {
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        department: true,
+        institute: true,
+        profileJson: true,
+      },
+    },
+  } as const;
+
   listMine(userId: string) {
     return this.prisma.team.findMany({
       where: {
         OR: [{ leaderUserId: userId }, { members: { some: { userId } } }],
       },
       orderBy: { createdAt: 'desc' },
-      include: { leader: true, problemStatement: true, members: true },
+      select: {
+        id: true,
+        teamCode: true,
+        name: true,
+        theme: true,
+        institute: true,
+        leaderUserId: true,
+        status: true,
+        memberCap: true,
+        psId: true,
+        createdAt: true,
+        updatedAt: true,
+        leader: { select: this.listLeaderSelect },
+        problemStatement: { select: this.psSelect },
+        members: { select: this.listMemberSelect },
+      },
     });
   }
 
@@ -166,7 +222,21 @@ export class TeamsRepository {
       skip,
       take,
       orderBy: { createdAt: 'desc' },
-      include: { leader: true, problemStatement: true },
+      select: {
+        id: true,
+        teamCode: true,
+        name: true,
+        theme: true,
+        institute: true,
+        leaderUserId: true,
+        status: true,
+        memberCap: true,
+        psId: true,
+        createdAt: true,
+        updatedAt: true,
+        leader: { select: this.listLeaderSelect },
+        problemStatement: { select: this.psSelect },
+      },
     });
   }
 

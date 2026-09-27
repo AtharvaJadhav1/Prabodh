@@ -81,6 +81,22 @@ async function main() {
     console.warn('[ensure-columns] PlatformRole.student_expert skipped:', err && err.message ? err.message : err);
   }
 
+  // Hot-path indexes for list endpoints under concurrent load.
+  const indexStatements = [
+    `CREATE INDEX IF NOT EXISTS "users_is_active_idx" ON "users"("is_active")`,
+    `CREATE INDEX IF NOT EXISTS "users_platform_role_is_active_idx" ON "users"("platform_role", "is_active")`,
+    `CREATE INDEX IF NOT EXISTS "rubrics_stage_id_idx" ON "rubrics"("stage_id")`,
+    `CREATE INDEX IF NOT EXISTS "notifications_user_id_created_at_idx" ON "notifications"("user_id", "created_at")`,
+  ];
+  for (const sql of indexStatements) {
+    try {
+      await prisma.$executeRawUnsafe(sql);
+      console.log('[ensure-columns] ok:', sql);
+    } catch (err) {
+      console.warn('[ensure-columns] index skipped:', sql, err && err.message ? err.message : err);
+    }
+  }
+
   // Backfill industrial mentor profiles for existing industry_mentor users, then
   // wire link columns + team pointers (idempotent).
   try {

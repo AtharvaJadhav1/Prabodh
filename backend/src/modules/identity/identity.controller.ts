@@ -2,7 +2,7 @@ import { Body, Controller, ForbiddenException, Get, Headers, Inject, Patch, Post
 import { Webhook } from 'svix';
 import { CurrentUser } from '../../common/current-user.decorator';
 import { ClerkAuthGuard } from '../../common/clerk-auth.guard';
-import { AuthUser } from '../../common/auth.types';
+import { AUTH_USER_SELECT, AuthUser } from '../../common/auth.types';
 import { consumeToken } from '../../lib/rate-limit';
 import { PrismaService } from '../../lib/prisma.service';
 import { ZodPipe } from '../../common/zod.pipe';
@@ -123,11 +123,16 @@ export class IdentityController {
 
   @Get('me')
   @UseGuards(ClerkAuthGuard)
-  async me(@CurrentUser() user: AuthUser) {
-    const row = await this.prisma.user.findUnique({ where: { id: user.id } });
-    if (!row) return null;
-    const { passwordHash: _ph, ...safe } = row;
-    return safe;
+  async me(
+    @CurrentUser() user: AuthUser,
+    @Req() req: { authDbUser?: Record<string, unknown> },
+  ) {
+    // Guard already loaded the safe user row — reuse it (saves a second round-trip).
+    if (req.authDbUser) return req.authDbUser;
+    return this.prisma.user.findUnique({
+      where: { id: user.id },
+      select: AUTH_USER_SELECT,
+    });
   }
 
   @Post('webhooks/clerk')

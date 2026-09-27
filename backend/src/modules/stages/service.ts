@@ -14,6 +14,7 @@ import { PrismaService } from '../../lib/prisma.service';
 import { consumeToken } from '../../lib/rate-limit';
 import { createPresignedPutUrl, isS3Configured, normalizeUploadMime, putObjectBuffer } from '../../lib/s3';
 import { requestVirusScan } from '../../lib/scan';
+import { TtlCache } from '../../lib/ttl-cache';
 import { TeamsService } from '../teams/service';
 import {
   createRubricSchema,
@@ -24,6 +25,8 @@ import {
   statusPatchSchema,
 } from './schema';
 
+const stagesListCache = new TtlCache<unknown>(30_000);
+
 @Injectable()
 export class StagesService {
   constructor(
@@ -31,20 +34,40 @@ export class StagesService {
     private readonly teams: TeamsService,
   ) {}
 
-  list() {
-    return this.prisma.stage.findMany({ orderBy: { sequence: 'asc' }, include: { rubrics: true } });
+  async list() {
+    const cached = stagesListCache.get('all');
+    if (cached) return cached;
+    const rows = await this.prisma.stage.findMany({
+      orderBy: { sequence: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        sequence: true,
+        deadline: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        rubrics: {
+          select: { id: true, stageId: true, criteria: true, weightage: true, createdAt: true, updatedAt: true },
+        },
+      },
+    });
+    stagesListCache.set('all', rows);
+    return rows;
   }
 
-  create(body: z.infer<typeof createStageSchema>) {
-    return this.prisma.stage.create({
+  async create(body: z.infer<typeof createStageSchema>) {
+    const created = await this.prisma.stage.create({
       data: { name: body.name, sequence: body.sequence, deadline: new Date(body.deadline) },
     });
+    stagesListCache.clear();
+    return created;
   }
 
   async update(id: string, body: Partial<z.infer<typeof createStageSchema>>) {
-    const stage = await this.prisma.stage.findUnique({ where: { id } });
+    const stage = await this.prisma.stage.findUnique({ where: { id }, select: { id: true } });
     if (!stage) throw new NotFoundException('Stage not found');
-    return this.prisma.stage.update({
+    const updated = await this.prisma.stage.update({
       where: { id },
       data: {
         name: body.name,
@@ -52,24 +75,33 @@ export class StagesService {
         deadline: body.deadline ? new Date(body.deadline) : undefined,
       },
     });
+    stagesListCache.clear();
+    return updated;
   }
 
   async deactivate(id: string) {
-    const stage = await this.prisma.stage.findUnique({ where: { id } });
+    const stage = await this.prisma.stage.findUnique({ where: { id }, select: { id: true } });
     if (!stage) throw new NotFoundException('Stage not found');
-    return this.prisma.stage.update({ where: { id }, data: { isActive: false } });
+    const updated = await this.prisma.stage.update({ where: { id }, data: { isActive: false } });
+    stagesListCache.clear();
+    return updated;
   }
 
   async addRubric(stageId: string, body: z.infer<typeof createRubricSchema>) {
-    const stage = await this.prisma.stage.findUnique({ where: { id: stageId }, include: { rubrics: true } });
+    const stage = await this.prisma.stage.findUnique({
+      where: { id: stageId },
+      select: { id: true, rubrics: { select: { weightage: true } } },
+    });
     if (!stage) throw new NotFoundException('Stage not found');
     const sum = stage.rubrics.reduce((acc, r) => acc + Number(r.weightage), 0) + body.weightage;
     if (sum > 100.01) {
       throw new ForbiddenException('Rubric weightages cannot exceed 100 for a stage');
     }
-    return this.prisma.rubric.create({
+    const created = await this.prisma.rubric.create({
       data: { stageId, criteria: body.criteria, weightage: body.weightage },
     });
+    stagesListCache.clear();
+    return created;
   }
 
   async presign(user: AuthUser, stageId: string, body: z.infer<typeof presignSchema>) {
@@ -194,14 +226,33 @@ export class StagesService {
 
   async statusTracker(user: AuthUser, teamId: string) {
     await this.teams.assertTeamAccess(user, teamId);
-    const stages = await this.prisma.stage.findMany({ orderBy: { sequence: 'asc' } });
-    const statuses = await this.prisma.teamStageStatus.findMany({ where: { teamId } });
+    const [stages, statuses] = await Promise.all([
+      this.list() as Promise<
+        Array<{
+          id: string;
+          name: string;
+          sequence: number;
+          deadline: Date;
+          isActive: boolean;
+          createdAt: Date;
+          updatedAt: Date;
+          rubrics: unknown[];
+        }>
+      >,
+      this.prisma.teamStageStatus.findMany({
+        where: { teamId },
+        select: { stageId: true, status: true, updatedAt: true },
+      }),
+    ]);
     const byStage = new Map(statuses.map((s) => [s.stageId, s]));
-    return stages.map((stage) => ({
-      stage,
-      status: byStage.get(stage.id)?.status ?? StageProgressStatus.not_started,
-      updatedAt: byStage.get(stage.id)?.updatedAt ?? null,
-    }));
+    return stages.map((stage) => {
+      const { rubrics: _rubrics, ...stageRow } = stage;
+      return {
+        stage: stageRow,
+        status: byStage.get(stage.id)?.status ?? StageProgressStatus.not_started,
+        updatedAt: byStage.get(stage.id)?.updatedAt ?? null,
+      };
+    });
   }
 
   async patchStatus(user: AuthUser, teamId: string, stageId: string, body: z.infer<typeof statusPatchSchema>) {

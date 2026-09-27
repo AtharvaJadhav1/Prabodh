@@ -7,6 +7,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
     bodyParser: false,
+    // Cut Nest bootstrap/request noise under load; keep errors/warnings.
+    logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['log', 'error', 'warn'],
   });
 
   // Handle SIGTERM/SIGINT so a `pm2 reload` during a deploy drains in-flight

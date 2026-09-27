@@ -7,6 +7,20 @@ import { PrismaService } from '../../lib/prisma.service';
 export class ProblemStatementsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly listSelect = {
+    id: true,
+    code: true,
+    title: true,
+    theme: true,
+    category: true,
+    organisation: true,
+    description: true,
+    teamCap: true,
+    teamsSelectedCount: true,
+    createdAt: true,
+    updatedAt: true,
+  } as const;
+
   list(filters: { theme?: string; category?: string; organisation?: string; q?: string }, skip: number, take: number) {
     const where: Prisma.ProblemStatementWhereInput = {
       ...(filters.theme ? { theme: { contains: filters.theme, mode: 'insensitive' } } : {}),
@@ -23,13 +37,19 @@ export class ProblemStatementsRepository {
         : {}),
     };
     return Promise.all([
-      this.prisma.problemStatement.findMany({ where, skip, take, orderBy: { code: 'asc' } }),
+      this.prisma.problemStatement.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { code: 'asc' },
+        select: this.listSelect,
+      }),
       this.prisma.problemStatement.count({ where }),
     ]);
   }
 
   createPs(data: Prisma.ProblemStatementCreateInput) {
-    return this.prisma.problemStatement.create({ data });
+    return this.prisma.problemStatement.create({ data, select: this.listSelect });
   }
 
   findPs(id: string) {

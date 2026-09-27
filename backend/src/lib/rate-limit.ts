@@ -5,10 +5,9 @@ export async function consumeToken(key: string, limitPerMin: number) {
   try {
     const redis = getRedis();
     const bucket = `rl:${key}:${Math.floor(Date.now() / 60000)}`;
-    const count = await redis.incr(bucket);
-    if (count === 1) {
-      await redis.expire(bucket, 70);
-    }
+    // Single RTT: incr + expire together (expire is a no-op after first set via TTL refresh).
+    const results = await redis.multi().incr(bucket).expire(bucket, 70).exec();
+    const count = Number(results?.[0]?.[1] ?? 0);
     if (count > limitPerMin) {
       throw new HttpException('Too many requests', HttpStatus.TOO_MANY_REQUESTS);
     }

@@ -300,7 +300,37 @@ export class TeamsService {
     if (user.platformRole === 'institute_mentor' || user.platformRole === 'industry_mentor') {
       const assignments = await this.prisma.mentorAssignment.findMany({
         where: { mentorUserId: user.id, active: true },
-        include: { team: { include: { leader: true, problemStatement: true } } },
+        select: {
+          team: {
+            select: {
+              id: true,
+              teamCode: true,
+              name: true,
+              theme: true,
+              institute: true,
+              leaderUserId: true,
+              status: true,
+              memberCap: true,
+              psId: true,
+              createdAt: true,
+              updatedAt: true,
+              leader: {
+                select: { id: true, fullName: true, email: true, department: true, institute: true },
+              },
+              problemStatement: {
+                select: {
+                  id: true,
+                  code: true,
+                  title: true,
+                  theme: true,
+                  category: true,
+                  organisation: true,
+                  description: true,
+                },
+              },
+            },
+          },
+        },
       });
       const items = assignments.map((a) => a.team);
       return { items, total: items.length, page: 1, limit: items.length || 1, pages: 1 };

@@ -148,6 +148,8 @@ model User {
   psPreferencesSubmitted  TeamPsPreference[] @relation("PsPreferenceSubmitter")
   psPreferencesDecided    TeamPsPreference[] @relation("PsPreferenceDecider")
 
+  @@index([isActive])
+  @@index([platformRole, isActive])
   @@map("users")
 }
 
@@ -401,6 +403,7 @@ model Rubric {
   stage       Stage        @relation(fields: [stageId], references: [id])
   evaluations Evaluation[]
 
+  @@index([stageId])
   @@map("rubrics")
 }
 
@@ -499,6 +502,7 @@ model Notification {
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId, readAt])
+  @@index([userId, createdAt])
   @@map("notifications")
 }
 

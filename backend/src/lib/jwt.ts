@@ -9,7 +9,10 @@ export type AccessTokenPayload = {
   exp: number;
 };
 
+let cachedSecret: string | null = null;
+
 function secret() {
+  if (cachedSecret) return cachedSecret;
   const key =
     process.env.AUTH_JWT_SECRET ??
     process.env.CLERK_SECRET_KEY ??
@@ -17,6 +20,7 @@ function secret() {
   if (process.env.NODE_ENV === 'production' && key === 'dev-only-change-me') {
     throw new Error('AUTH_JWT_SECRET must be set in production');
   }
+  cachedSecret = key;
   return key;
 }
 
