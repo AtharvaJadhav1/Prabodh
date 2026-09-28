@@ -6,9 +6,9 @@ import { PrismaService } from '../../lib/prisma.service';
 export class PsPreferencesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  listForTeam(teamId: string) {
+  listForTeam(teamId: string, statuses?: PsPreferenceStatus[]) {
     return this.prisma.teamPsPreference.findMany({
-      where: { teamId },
+      where: { teamId, ...(statuses ? { status: { in: statuses } } : {}) },
       orderBy: { rank: 'asc' },
       include: { problemStatement: true },
     });

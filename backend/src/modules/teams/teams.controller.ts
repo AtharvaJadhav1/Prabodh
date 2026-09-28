@@ -138,7 +138,7 @@ export class TeamsController {
   }
 
   @Post(':teamId/lock')
-  @Roles(PlatformRole.admin)
+  @Roles(PlatformRole.admin, PlatformRole.institute_mentor)
   lock(@CurrentUser() user: AuthUser, @Param('teamId') teamId: string) {
     return this.teams.lock(user, teamId);
   }

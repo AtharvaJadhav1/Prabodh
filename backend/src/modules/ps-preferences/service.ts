@@ -6,7 +6,7 @@ import { isPsCapReached } from '../../domain/rules';
 import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { ProblemStatementsRepository } from '../problem-statements/repository';
-import { TeamsService } from '../teams/service';
+import { TeamsService, visiblePsStatuses } from '../teams/service';
 import { PsPreferencesRepository } from './repository';
 import { submitPreferencesSchema } from './schema';
 
@@ -21,7 +21,7 @@ export class PsPreferencesService {
 
   async list(user: AuthUser, teamId: string) {
     await this.teams.assertTeamAccess(user, teamId);
-    return this.repo.listForTeam(teamId);
+    return this.repo.listForTeam(teamId, visiblePsStatuses(user));
   }
 
   async save(user: AuthUser, teamId: string, body: z.infer<typeof submitPreferencesSchema>) {

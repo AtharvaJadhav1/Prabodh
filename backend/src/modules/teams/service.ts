@@ -7,7 +7,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InviteStatus, JoinRequestStatus, NotificationType, Prisma, TeamStatus } from '@prisma/client';
+import { InviteStatus, JoinRequestStatus, NotificationType, Prisma, PsPreferenceStatus, TeamStatus } from '@prisma/client';
 import { AuthUser } from '../../common/auth.types';
 import { writeAudit } from '../../lib/audit';
 import { syncTeamMentorPointers } from '../../lib/mentor-pointers';
@@ -22,6 +22,20 @@ import { createTeamSchema, inviteSchema, patchTeamSchema } from './schema';
 import { z } from 'zod';
 
 const MAX_TEAM_CODE_ATTEMPTS = 3;
+
+/** Freezing a team is limited to admins and the team's faculty mentor. */
+function canFreezeTeam(user: AuthUser): boolean {
+  return user.platformRole === 'admin' || user.platformRole === 'institute_mentor';
+}
+
+/**
+ * Unsubmitted ("saved") problem statement preferences stay private to the student
+ * until they submit them. `undefined` means "no status filter" (students + admins).
+ */
+export function visiblePsStatuses(user: AuthUser): PsPreferenceStatus[] | undefined {
+  if (user.platformRole === 'student' || user.platformRole === 'admin') return undefined;
+  return [PsPreferenceStatus.submitted, PsPreferenceStatus.approved];
+}
 
 @Injectable()
 export class TeamsService {
@@ -138,7 +152,9 @@ export class TeamsService {
 
   async get(user: AuthUser, teamId: string, view: 'dashboard' | 'full' = 'dashboard') {
     const team =
-      view === 'full' ? await this.repo.findById(teamId) : await this.repo.findByIdDashboard(teamId);
+      view === 'full'
+        ? await this.repo.findById(teamId, { psPreferenceStatuses: visiblePsStatuses(user) })
+        : await this.repo.findByIdDashboard(teamId);
     if (!team) throw new NotFoundException('Team not found');
     await this.assertCanView(user, team);
     return team;
@@ -862,8 +878,8 @@ export class TeamsService {
   async lock(user: AuthUser, teamId: string) {
     const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
-    if (user.platformRole !== 'admin') {
-      throw new ForbiddenException('Only admin or system lock can freeze a team');
+    if (!canFreezeTeam(user)) {
+      throw new ForbiddenException('Only an admin or the team faculty mentor can freeze a team');
     }
     const before = { status: team.status, detailsLockAt: team.detailsLockAt };
     const updated = await this.repo.lock(teamId);
@@ -881,6 +897,9 @@ export class TeamsService {
   async disqualify(user: AuthUser, teamId: string) {
     const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
+    if (user.platformRole !== 'admin') {
+      throw new ForbiddenException('Only an admin can disqualify a team');
+    }
     const updated = await this.repo.update(teamId, { status: TeamStatus.disqualified });
     await writeAudit(this.prisma, {
       actorUserId: user.id,

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { MentorType, Prisma } from '@prisma/client';
+import { MentorType, Prisma, PsPreferenceStatus } from '@prisma/client';
 import { PrismaService } from '../../lib/prisma.service';
 
 @Injectable()
@@ -57,6 +57,8 @@ export class MentorsRepository {
               },
             },
             psPreferences: {
+              // Unsubmitted drafts stay private to the student until they submit for review.
+              where: { status: { in: [PsPreferenceStatus.submitted, PsPreferenceStatus.approved] } },
               orderBy: { rank: 'asc' },
               include: {
                 problemStatement: {

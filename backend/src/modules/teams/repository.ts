@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { InviteStatus, Prisma, TeamStatus } from '@prisma/client';
+import { InviteStatus, Prisma, PsPreferenceStatus, TeamStatus } from '@prisma/client';
 import { PrismaService } from '../../lib/prisma.service';
 
 @Injectable()
@@ -130,12 +130,13 @@ export class TeamsRepository {
     platformRole: true,
   } as const;
 
-  findById(id: string) {
+  findById(id: string, opts: { psPreferenceStatuses?: PsPreferenceStatus[] } = {}) {
     return this.prisma.team.findUnique({
       where: { id },
       include: {
         ...this.dashboardInclude,
         psPreferences: {
+          where: opts.psPreferenceStatuses ? { status: { in: opts.psPreferenceStatuses } } : undefined,
           orderBy: { rank: 'asc' as const },
           include: { problemStatement: { select: this.psSelect } },
         },
