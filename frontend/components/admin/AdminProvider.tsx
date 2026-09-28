@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { platformMetrics, type AdminAllocation, type StageConfig, type RubricCriterion } from "../../data/adminDashboard";
-import { api, apiPatch, apiPost } from "../../lib/api";
+import { platformMetrics, type AdminAllocation } from "../../data/adminDashboard";
+import { api, apiPost } from "../../lib/api";
 import { useAuth } from "../auth/AuthProvider";
 import type { PortalUser } from "../../lib/types";
 
@@ -12,9 +12,6 @@ type AdminContextValue = {
   allocations: AdminAllocation[];
   assignTeam: (teamId: string, mentorId: string) => void;
   assignIndustryMentor: (teamId: string, mentorId: string) => void;
-  stages: StageConfig[];
-  updateStage: (id: string, patch: Partial<StageConfig>) => void;
-  updateStageRubric: (id: string, rubricCriteria: RubricCriterion[]) => void;
   metrics: ReturnType<typeof platformMetrics>;
   mentors: LiveMentor[];
   industryMentorOptions: LiveMentor[];
@@ -27,7 +24,6 @@ const AdminContext = createContext<AdminContextValue | null>(null);
 export function AdminProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   const [allocations, setAllocations] = useState<AdminAllocation[]>([]);
-  const [stages, setStages] = useState<StageConfig[]>([]);
   const [mentors, setMentors] = useState<LiveMentor[]>([]);
   const [industryMentorOptions, setIndustryMentorOptions] = useState<LiveMentor[]>([]);
   const [metricsLive, setMetricsLive] = useState<ReturnType<typeof platformMetrics> | null>(null);
@@ -72,14 +68,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
               }>;
             };
         mentors: Array<{ id: string; fullName: string; platformRole: string; email: string }>;
-        stages: Array<{
-          id: string;
-          name: string;
-          sequence: number;
-          deadline: string;
-          isActive: boolean;
-          rubrics: Array<{ id: string; criteria: string; weightage: string }>;
-        }>;
         users: PortalUser[];
       }>("/admin/bootstrap");
 
@@ -118,21 +106,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
             status: inst && ind ? "assigned" : "unassigned",
           };
         }),
-      );
-
-      setStages(
-        (res.stages ?? []).map((s) => ({
-          id: s.id,
-          name: s.name,
-          order: s.sequence,
-          deadline: new Date(s.deadline).toLocaleString(),
-          rubricCriteria: (s.rubrics ?? []).map((r) => ({
-            id: r.id,
-            label: r.criteria,
-            maxScore: Number(r.weightage),
-          })),
-          status: s.isActive ? "active" : "closed",
-        })),
       );
     } catch (err) {
       console.error("[admin.bootstrap]", err);
@@ -197,23 +170,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     [allocations, load],
   );
 
-  const updateStage = useCallback((id: string, patch: Partial<StageConfig>) => {
-    setStages((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
-    const stage = stages.find((s) => s.id === id);
-    if (!stage) return;
-    if (patch.name || patch.deadline || patch.order) {
-      const deadlineIso = patch.deadline?.includes("T") ? patch.deadline : new Date(stage.deadline).toISOString();
-      void apiPatch("/stages/" + id, {
-        name: patch.name ?? stage.name,
-        sequence: patch.order ?? stage.order,
-        deadline: Number.isNaN(Date.parse(deadlineIso)) ? new Date().toISOString() : new Date(deadlineIso).toISOString(),
-      });
-    }
-    if (patch.status === "closed") {
-      void api(`/stages/${id}`, { method: "DELETE" });
-    }
-  }, [stages]);
-
   const metrics = useMemo(() => {
     if (metricsLive) return { ...metricsLive, pendingAllocations: allocations.filter((a) => a.status === "unassigned").length };
     const base = platformMetrics();
@@ -226,16 +182,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         allocations,
         assignTeam,
         assignIndustryMentor,
-        stages,
-        updateStage,
-        updateStageRubric: (id, rubricCriteria) => {
-          setStages((prev) => prev.map((s) => (s.id === id ? { ...s, rubricCriteria } : s)));
-          for (const c of rubricCriteria) {
-            if (!c.id && c.label) {
-              void apiPost(`/stages/${id}/rubrics`, { criteria: c.label, weightage: c.maxScore || 0 });
-            }
-          }
-        },
         metrics,
         mentors,
         industryMentorOptions,
