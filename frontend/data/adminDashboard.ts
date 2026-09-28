@@ -1,29 +1,3 @@
-export const admin = {
-  name: "",
-  initials: "",
-  title: "Platform administrator",
-  empId: "",
-  role: "Administrator",
-};
-
-export type Broadcast = {
-  id: string;
-  title: string;
-  message: string;
-  audience: "all" | "students" | "institute-mentors" | "industry-mentors";
-  sentAt: string;
-  sentBy: string;
-};
-
-export const audienceLabels: Record<Broadcast["audience"], string> = {
-  all: "Everyone",
-  students: "Students",
-  "institute-mentors": "Institute Mentors",
-  "industry-mentors": "Industry Mentors",
-};
-
-export const initialBroadcasts: Broadcast[] = [];
-
 export type RubricCriterion = { id?: string; label: string; maxScore: number };
 
 export type StageConfig = {
@@ -35,8 +9,6 @@ export type StageConfig = {
   status: "upcoming" | "active" | "closed";
 };
 
-export const initialStageConfigs: StageConfig[] = [];
-
 export type AdminAllocation = {
   teamId: string;
   teamName: string;
@@ -45,12 +17,10 @@ export type AdminAllocation = {
   assignedMentorName: string | null;
   assignedIndustryMentorId: string | null;
   assignedIndustryMentorName: string | null;
+  assignedMentorAssignmentId: string | null;
+  assignedIndustryMentorAssignmentId: string | null;
   status: "unassigned" | "assigned";
 };
-
-export const initialAllocations: AdminAllocation[] = [];
-
-export const availableMentors: Array<{ id: string; name: string; title: string }> = [];
 
 export function platformMetrics() {
   return {
@@ -62,7 +32,3 @@ export function platformMetrics() {
     activeStage: "—",
   };
 }
-
-export const tracks = ["All Tracks", "Software", "Hardware", "AI", "FinTech", "AgriTech"];
-
-export { allGroups, mentorProfile, initialIndustryMentors } from "./mentorDashboard";

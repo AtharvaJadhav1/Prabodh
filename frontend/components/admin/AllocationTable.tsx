@@ -86,6 +86,7 @@ export default function AllocationTable({ allocations, onAssignInstitute, onAssi
                       options={mentors.map((m) => ({ id: m.id, name: m.name, subtext: m.title }))}
                       selectedId={a.assignedMentorId ?? undefined}
                       placeholder="Select Institute Mentor..."
+                      allowClear
                       onSelect={(id) => onAssignInstitute(a.teamId, id)}
                     />
                   </td>
@@ -94,6 +95,7 @@ export default function AllocationTable({ allocations, onAssignInstitute, onAssi
                       options={industryMentorOptions.map((m) => ({ id: m.id, name: m.name, subtext: m.title }))}
                       selectedId={a.assignedIndustryMentorId ?? undefined}
                       placeholder="Select Industrial Mentor..."
+                      allowClear
                       onSelect={(id) => onAssignIndustry(a.teamId, id)}
                     />
                   </td>

@@ -3,11 +3,10 @@
 import Link from "next/link";
 import AdminShell from "../../../components/admin/AdminShell";
 import MetricCards from "../../../components/admin/MetricCards";
-import BroadcastFeed from "../../../components/admin/BroadcastFeed";
 import { useAdmin } from "../../../components/admin/AdminProvider";
 
 export default function AdminOverviewPage() {
-  const { metrics, allocations, broadcasts } = useAdmin();
+  const { metrics, allocations } = useAdmin();
   const unassigned = allocations.filter((a) => a.status === "unassigned");
 
   return (
@@ -45,19 +44,6 @@ export default function AdminOverviewPage() {
               ))}
             </div>
           )}
-        </section>
-
-        <section className="rounded-2xl border border-brand-softline/80 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-bold text-brand-deep">Recent Broadcasts</h2>
-            <Link
-              href="/dashboard/admin/broadcasts"
-              className="flex items-center gap-1 text-xs font-bold text-[#C25E26] hover:underline"
-            >
-              View all <span aria-hidden="true">&rarr;</span>
-            </Link>
-          </div>
-          <BroadcastFeed broadcasts={broadcasts.slice(0, 2)} />
         </section>
       </div>
     </AdminShell>

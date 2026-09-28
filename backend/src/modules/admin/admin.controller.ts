@@ -23,7 +23,7 @@ export class AdminController {
   async bootstrap() {
     const [dashboard, teams, mentors, stages, users] = await Promise.all([
       this.admin.dashboard(),
-      this.admin.listTeams({ page: '1', limit: '50' }),
+      this.admin.listTeams({ page: '1', limit: '10000' }),
       this.admin.listMentors(),
       this.stages.list(),
       this.admin.listUsers(),
@@ -94,6 +94,11 @@ export class AdminController {
     return this.admin.listAudit(query);
   }
 
+  @Get('reports')
+  reports() {
+    return this.admin.reportSnapshot();
+  }
+
   @Get('reviews/overdue')
   overdue() {
     return this.admin.overdueReviews();
@@ -153,6 +158,16 @@ export class AdminController {
   @Post('users/import/:batchId/reject')
   rejectImport(@Param('batchId') batchId: string) {
     return this.admin.rejectImport(batchId);
+  }
+
+  @Get('users/:id/remove-preview')
+  removePreview(@Param('id') id: string) {
+    return this.admin.removePreview(id);
+  }
+
+  @Post('users/:id/remove')
+  remove(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { confirm?: string }) {
+    return this.admin.removeUser(user, id, String(body?.confirm ?? ''));
   }
 
   @Post('ops/clear-seed')

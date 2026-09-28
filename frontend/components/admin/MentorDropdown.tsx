@@ -14,6 +14,7 @@ type MentorDropdownProps = {
   selectedId?: string;
   placeholder?: string;
   onSelect: (id: string) => void;
+  allowClear?: boolean;
 };
 
 export default function MentorDropdown({
@@ -21,6 +22,7 @@ export default function MentorDropdown({
   selectedId,
   placeholder = "Select mentor...",
   onSelect,
+  allowClear = false,
 }: MentorDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -56,6 +58,24 @@ export default function MentorDropdown({
       {/* Floating Menu */}
       {isOpen && (
         <div className="absolute left-0 top-[calc(100%+4px)] z-50 max-h-60 w-full overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1 shadow-xl">
+          {allowClear && selectedId ? (
+            <>
+              <button
+                key="none"
+                type="button"
+                onClick={() => {
+                  onSelect("");
+                  setIsOpen(false);
+                }}
+                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
+              >
+                <div className="flex flex-col truncate pr-2">
+                  <span className="truncate">None — unassign</span>
+                </div>
+              </button>
+              <div className="my-1 h-px bg-neutral-100" />
+            </>
+          ) : null}
           {options.length === 0 ? (
             <div className="px-3 py-2 text-center text-xs text-neutral-400">No mentors available</div>
           ) : (

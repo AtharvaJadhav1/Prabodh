@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PlatformRole, Prisma } from '@prisma/client';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { InviteStatus, PlatformRole, Prisma } from '@prisma/client';
 import { sendStaffCredentialsEmail } from '../../lib/invite-email';
 import { deriveStaffPassword } from '../../lib/staff-password';
+import { writeAudit } from '../../lib/audit';
 import { fireAndForget, mapPool } from '../../lib/async-pool';
 import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
@@ -11,6 +12,8 @@ import { PrismaService } from '../../lib/prisma.service';
 import { exportQueue } from '../../lib/queue';
 import { createPresignedGetUrl } from '../../lib/s3';
 import { upsertSetting } from '../../lib/settings';
+import { getClerkClient } from '../../lib/clerk';
+import { syncTeamMentorPointers } from '../../lib/mentor-pointers';
 import { IdentityService, parseCsvUsers } from '../identity/service';
 import { adminInviteUserSchema, exportSchema, settingsSchema } from './schema';
 import { createReadStream, existsSync } from 'fs';
@@ -68,7 +71,7 @@ export class AdminService {
     page?: string;
     limit?: string;
   }) {
-    const { page, limit, skip, take } = parsePagination(query);
+    const { page, limit, skip, take } = parsePagination(query, 10_000);
     const where: Prisma.TeamWhereInput = {
       ...(query.theme ? { theme: { contains: query.theme, mode: 'insensitive' } } : {}),
       ...(query.institute ? { institute: { contains: query.institute, mode: 'insensitive' } } : {}),
@@ -96,6 +99,341 @@ export class AdminService {
       this.prisma.team.count({ where }),
     ]);
     return { items, total, page, limit, pages: Math.ceil(total / limit) };
+  }
+
+  async reportSnapshot() {
+    const [
+      usersByRole,
+      teams,
+      psCount,
+      psPool,
+      activeAssignments,
+      assignmentsByMentor,
+      assignmentsByMethod,
+      invitesByStatus,
+      instituteMentors,
+      industryProfiles,
+      ideasByStatus,
+      stages,
+      publishedResults,
+      stageStatuses,
+      deliverablesByStage,
+      teamsCreatedAt,
+      deliverablesSubmittedAt,
+    ] = await Promise.all([
+      this.prisma.user.groupBy({ by: ['platformRole'], _count: true }),
+      this.prisma.team.findMany({
+        select: {
+          id: true,
+          name: true,
+          teamCode: true,
+          theme: true,
+          institute: true,
+          status: true,
+          psId: true,
+          problemStatement: {
+            select: { theme: true, category: true, organisation: true },
+          },
+          _count: { select: { members: true } },
+        },
+      }),
+      this.prisma.problemStatement.count(),
+      this.prisma.problemStatement.findMany({
+        select: {
+          id: true,
+          code: true,
+          title: true,
+          theme: true,
+          category: true,
+          organisation: true,
+          teamCap: true,
+          teamsSelectedCount: true,
+        },
+      }),
+      this.prisma.mentorAssignment.findMany({
+        where: { active: true },
+        select: { teamId: true, mentorType: true, assignmentMethod: true },
+      }),
+      this.prisma.mentorAssignment.groupBy({
+        by: ['mentorUserId'],
+        where: { active: true },
+        _count: true,
+      }),
+      this.prisma.mentorAssignment.groupBy({
+        by: ['assignmentMethod'],
+        where: { active: true },
+        _count: true,
+      }),
+      this.prisma.mentorInvite.groupBy({ by: ['inviteStatus'], _count: true }),
+      this.prisma.user.findMany({
+        where: { platformRole: PlatformRole.institute_mentor },
+        select: { id: true, isActive: true },
+      }),
+      this.prisma.industrialMentor.findMany({
+        select: { id: true, userId: true, isActive: true },
+      }),
+      this.prisma.ideaSubmission.groupBy({ by: ['status'], _count: true }),
+      this.prisma.stage.findMany({
+        orderBy: { sequence: 'asc' },
+        select: { id: true, name: true, sequence: true, deadline: true, isActive: true },
+      }),
+      this.prisma.stageResult.findMany({
+        where: { published: true },
+        select: {
+          teamId: true,
+          stageId: true,
+          weightedScore: true,
+          team: { select: { id: true, name: true, teamCode: true } },
+        },
+      }),
+      this.prisma.teamStageStatus.findMany({ select: { stageId: true, status: true } }),
+      this.prisma.deliverable.groupBy({ by: ['stageId'], _count: true }),
+      this.prisma.team.findMany({ select: { createdAt: true } }),
+      this.prisma.deliverable.findMany({ select: { submittedAt: true } }),
+    ]);
+
+    const countBy = <K extends string>(map: Map<K, number>) =>
+      [...map.entries()].map(([key, count]) => ({ key, count }));
+
+    const roleCounts = new Map<string, number>();
+    for (const r of usersByRole) roleCounts.set(r.platformRole, r._count);
+
+    const byStatusMap = new Map<string, number>();
+    const byPSTheme = new Map<string, number>();
+    const byCategory = new Map<string, number>();
+    const byInstitute = new Map<string, number>();
+    const sizeBuckets = new Map<string, number>([
+      ['1-2', 0],
+      ['3-4', 0],
+      ['5-6', 0],
+      ['7+', 0],
+    ]);
+    let teamMembers = 0;
+    let teamsWithoutPs = 0;
+
+    for (const t of teams) {
+      byStatusMap.set(t.status, (byStatusMap.get(t.status) ?? 0) + 1);
+      const domain = t.problemStatement?.theme ?? 'No PS Assigned';
+      byPSTheme.set(domain, (byPSTheme.get(domain) ?? 0) + 1);
+      byCategory.set(t.problemStatement?.category ?? 'unassigned', (byCategory.get(t.problemStatement?.category ?? 'unassigned') ?? 0) + 1);
+      if (t.institute) byInstitute.set(t.institute, (byInstitute.get(t.institute) ?? 0) + 1);
+      const m = t._count.members ?? 0;
+      teamMembers += m;
+      const key = m <= 2 ? '1-2' : m <= 4 ? '3-4' : m <= 6 ? '5-6' : '7+';
+      sizeBuckets.set(key, (sizeBuckets.get(key) ?? 0) + 1);
+      if (!t.psId) teamsWithoutPs += 1;
+    }
+
+    const teamsWithInstitute = new Set<string>();
+    const teamsWithIndustry = new Set<string>();
+    for (const a of activeAssignments) {
+      if (a.mentorType === 'institute') teamsWithInstitute.add(a.teamId);
+      else teamsWithIndustry.add(a.teamId);
+    }
+    let withBoth = 0;
+    let withInstituteOnly = 0;
+    let withIndustryOnly = 0;
+    let withNone = 0;
+    for (const t of teams) {
+      const hasInst = teamsWithInstitute.has(t.id);
+      const hasInd = teamsWithIndustry.has(t.id);
+      if (hasInst && hasInd) withBoth += 1;
+      else if (hasInst) withInstituteOnly += 1;
+      else if (hasInd) withIndustryOnly += 1;
+      else withNone += 1;
+    }
+
+    const mentorLoad = new Map<string, number>();
+    let totalActiveAssignments = 0;
+    for (const g of assignmentsByMentor) {
+      mentorLoad.set(g.mentorUserId, g._count);
+      totalActiveAssignments += g._count;
+    }
+    const activeInstituteMentors = instituteMentors.filter((m) => m.isActive).length;
+    const activeIndustryProfiles = industryProfiles.filter((p) => p.isActive).length;
+
+    const methodSplit = new Map<string, number>();
+    for (const g of assignmentsByMethod) methodSplit.set(g.assignmentMethod, g._count);
+    const inviteFunnel = new Map<string, number>();
+    for (const g of invitesByStatus) inviteFunnel.set(g.inviteStatus, g._count);
+
+    const totalSlots = psPool.reduce((sum, ps) => sum + (ps.teamCap ?? 0), 0);
+    const popularMap = new Map<string, number>();
+    for (const t of teams) {
+      if (t.psId) popularMap.set(t.psId, (popularMap.get(t.psId) ?? 0) + 1);
+    }
+
+    const byMethod = countBy(methodSplit);
+    const byInviteStatus = countBy(inviteFunnel);
+    const mentorLoadBuckets = new Map<string, number>([
+      ['0', 0],
+      ['1', 0],
+      ['2-3', 0],
+      ['4+', 0],
+    ]);
+    for (const [uid, count] of mentorLoad) {
+      const key = count === 0 ? '0' : count === 1 ? '1' : count <= 3 ? '2-3' : '4+';
+      void uid;
+      mentorLoadBuckets.set(key, (mentorLoadBuckets.get(key) ?? 0) + 1);
+    }
+    const mentorsWithNoTeams = Math.max(0, activeInstituteMentors + activeIndustryProfiles - mentorLoad.size);
+
+    const scoreByStage = new Map<string, { sum: number; count: number }>();
+    let scoreSum = 0;
+    let scoreCount = 0;
+    const scoreDistribution = new Map<string, number>([
+      ['0-20', 0],
+      ['21-40', 0],
+      ['41-60', 0],
+      ['61-80', 0],
+      ['81-100', 0],
+    ]);
+    const teamScoreAgg = new Map<string, { sum: number; count: number; name: string; teamCode: string }>();
+    for (const r of publishedResults) {
+      const score = Number(r.weightedScore);
+      scoreSum += score;
+      scoreCount += 1;
+      const stageAgg = scoreByStage.get(r.stageId) ?? { sum: 0, count: 0 };
+      stageAgg.sum += score;
+      stageAgg.count += 1;
+      scoreByStage.set(r.stageId, stageAgg);
+      const bucket =
+        score <= 20 ? '0-20' : score <= 40 ? '21-40' : score <= 60 ? '41-60' : score <= 80 ? '61-80' : '81-100';
+      scoreDistribution.set(bucket, (scoreDistribution.get(bucket) ?? 0) + 1);
+      const agg = teamScoreAgg.get(r.teamId) ?? { sum: 0, count: 0, name: r.team.name, teamCode: r.team.teamCode };
+      agg.sum += score;
+      agg.count += 1;
+      teamScoreAgg.set(r.teamId, agg);
+    }
+    const topTeams = [...teamScoreAgg.entries()]
+      .map(([teamId, agg]) => ({ teamId, name: agg.name, teamCode: agg.teamCode, avgScore: Math.round(agg.sum / agg.count) }))
+      .sort((a, b) => b.avgScore - a.avgScore)
+      .slice(0, 5);
+
+    const statusByStage = new Map<string, Map<string, number>>();
+    for (const s of stageStatuses) {
+      const stageMap = statusByStage.get(s.stageId) ?? new Map<string, number>();
+      stageMap.set(s.status, (stageMap.get(s.status) ?? 0) + 1);
+      statusByStage.set(s.stageId, stageMap);
+    }
+    const deliverablesByStageMap = new Map<string, number>();
+    for (const d of deliverablesByStage) deliverablesByStageMap.set(d.stageId, d._count);
+
+    const distribution = countBy(scoreDistribution);
+    const popular = [...popularMap.entries()]
+      .map(([psId, count]) => {
+        const ps = psPool.find((p) => p.id === psId);
+        return { code: ps?.code ?? psId, title: ps?.title ?? 'Unknown PS', count, capacity: ps?.teamCap ?? null };
+      })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+    const assignedPsTeams = [...popularMap.values()].reduce((sum, c) => sum + c, 0);
+
+    const psByTheme = new Map<string, number>();
+    const psByCategory = new Map<string, number>();
+    const psByOrganisation = new Map<string, number>();
+    for (const ps of psPool) {
+      psByTheme.set(ps.theme, (psByTheme.get(ps.theme) ?? 0) + 1);
+      psByCategory.set(ps.category, (psByCategory.get(ps.category) ?? 0) + 1);
+      psByOrganisation.set(ps.organisation, (psByOrganisation.get(ps.organisation) ?? 0) + 1);
+    }
+
+    return {
+      generatedAt: new Date().toISOString(),
+      kpi: {
+        totalUsers: [...roleCounts.values()].reduce((s, c) => s + c, 0),
+        students: roleCounts.get('student') ?? 0,
+        instituteMentors: roleCounts.get('institute_mentor') ?? 0,
+        industryMentors: roleCounts.get('industry_mentor') ?? 0,
+        experts: roleCounts.get('student_expert') ?? 0,
+        admins: roleCounts.get('admin') ?? 0,
+        totalTeams: teams.length,
+        totalProblemStatements: psCount,
+        totalIdeas: ideasByStatus.reduce((s, r) => s + r._count, 0),
+        totalDeliverables: deliverablesSubmittedAt.length,
+      },
+      teams: {
+        byStatus: countBy(byStatusMap),
+        byPSTheme: countBy(byPSTheme).sort((a, b) => b.count - a.count),
+        byCategory: countBy(byCategory).sort((a, b) => b.count - a.count),
+        byInstitute: countBy(byInstitute).sort((a, b) => b.count - a.count).slice(0, 8),
+        bySize: countBy(sizeBuckets),
+        avgTeamSize: teams.length > 0 ? Math.round((teamMembers / teams.length) * 10) / 10 : 0,
+        teamsWithoutPs: teamsWithoutPs,
+      },
+      psPool: {
+        total: psCount,
+        byTheme: countBy(psByTheme).sort((a, b) => b.count - a.count),
+        byCategory: countBy(psByCategory).sort((a, b) => b.count - a.count),
+        byOrganisation: countBy(psByOrganisation).sort((a, b) => b.count - a.count).slice(0, 8),
+        totalSlots,
+        filledTeams: assignedPsTeams,
+        utilizationPct: totalSlots > 0 ? Math.round((assignedPsTeams / totalSlots) * 100) : 0,
+        popular,
+      },
+      mentors: {
+        activeInstituteMentors,
+        activeIndustryMentors: activeIndustryProfiles,
+        instituteMentorsWithTeams: mentorLoad.size,
+        activeAssignments: totalActiveAssignments,
+        avgTeamsPerMentor: mentorLoad.size > 0 ? Math.round((totalActiveAssignments / mentorLoad.size) * 10) / 10 : 0,
+        mentorsWithNoTeams,
+        loadBuckets: countBy(mentorLoadBuckets),
+        byMethod,
+        invites: byInviteStatus,
+        coverage: { withBoth, withInstituteOnly, withIndustryOnly, withNone },
+        industryProfilesTotal: industryProfiles.length,
+      },
+      scoring: {
+        evaluatedTeams: teamScoreAgg.size,
+        avgScore: scoreCount > 0 ? Math.round(scoreSum / scoreCount) : null,
+        scoreCount,
+        distribution,
+        byStage: [...scoreByStage.entries()].map(([stageId, agg]) => {
+          const stage = stages.find((s) => s.id === stageId);
+          return { stageId, stageName: stage?.name ?? 'Unknown stage', avgScore: Math.round(agg.sum / agg.count), evaluated: agg.count };
+        }),
+        topTeams,
+      },
+      progress: {
+        stages: stages.map((s) => {
+          const stageMap = statusByStage.get(s.id) ?? new Map<string, number>();
+          return {
+            id: s.id,
+            name: s.name,
+            sequence: s.sequence,
+            deadline: s.deadline.toISOString(),
+            isActive: s.isActive,
+            notStarted: stageMap.get('not_started') ?? 0,
+            inProgress: stageMap.get('in_progress') ?? 0,
+            submitted: stageMap.get('submitted') ?? 0,
+            reviewed: (stageMap.get('reviewed') ?? 0) + (stageMap.get('qualified') ?? 0) + (stageMap.get('rejected') ?? 0),
+            deliverables: deliverablesByStageMap.get(s.id) ?? 0,
+          };
+        }),
+      },
+      engagement: {
+        teamsPerWeek: this.bucketWeeks(teamsCreatedAt.map((t) => t.createdAt)),
+        submissionsPerWeek: this.bucketWeeks(deliverablesSubmittedAt.map((d) => d.submittedAt)),
+      },
+    };
+  }
+
+  private bucketWeeks(dates: Date[]) {
+    if (dates.length === 0) return [];
+    const sorted = dates.map((d) => new Date(d).getTime()).sort((a, b) => a - b);
+    const start = new Date(sorted[0]);
+    start.setHours(0, 0, 0, 0);
+    const out = new Map<string, number>();
+    for (const ts of sorted) {
+      const day = new Date(ts);
+      day.setHours(0, 0, 0, 0);
+      const offset = Math.floor((day.getTime() - start.getTime()) / 86400000);
+      const weekIndex = Math.floor(offset / 7);
+      const label = new Date(start.getTime() + weekIndex * 604800000).toISOString().slice(0, 10);
+      out.set(label, (out.get(label) ?? 0) + 1);
+    }
+    return [...out.entries()].map(([label, count]) => ({ label, count }));
   }
 
   listMentors() {
@@ -225,6 +563,8 @@ export class AdminService {
                   ],
                 },
               },
+              { actorName: { contains: query.search, mode: 'insensitive' } },
+              { actorEmail: { contains: query.search, mode: 'insensitive' } },
               { after: { path: [], string_contains: query.search } },
             ],
           }
@@ -367,6 +707,229 @@ export class AdminService {
 
   async rejectImport(id: string) {
     return this.prisma.userImportBatch.update({ where: { id }, data: { status: 'rejected' } });
+  }
+
+  async removePreview(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        ledTeams: {
+          include: { members: { select: { userId: true, inviteStatus: true, joinedAt: true } } },
+        },
+      },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    const teams = user.ledTeams.map((t) => {
+      const successors = t.members
+        .filter((m) => m.inviteStatus === InviteStatus.accepted && m.userId !== null && m.userId !== user.id)
+        .sort((a, b) => (a.joinedAt?.getTime() ?? 0) - (b.joinedAt?.getTime() ?? 0));
+      return {
+        teamId: t.id,
+        name: t.name,
+        memberCount: t.members.length,
+        outcome: successors.length > 0 ? ('promote' as const) : ('delete' as const),
+        nextLeaderId: successors[0]?.userId ?? null,
+      };
+    });
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      platformRole: user.platformRole,
+      teams,
+    };
+  }
+
+  async removeUser(actor: AuthUser, userId: string, confirm: string) {
+    if (confirm !== 'CONFIRM') {
+      throw new BadRequestException('Removal requires the confirmation code CONFIRM');
+    }
+    if (actor.id === userId) {
+      throw new ForbiddenException('You cannot remove your own account');
+    }
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        ledTeams: {
+          include: { members: { select: { userId: true, inviteStatus: true, joinedAt: true } } },
+        },
+        industrialMentorProfile: { select: { id: true } },
+      },
+    });
+    if (!target) throw new NotFoundException('User not found');
+    if (target.platformRole === PlatformRole.admin) {
+      const otherAdmins = await this.prisma.user.count({
+        where: { platformRole: PlatformRole.admin, isActive: true, id: { not: userId } },
+      });
+      if (otherAdmins === 0) {
+        throw new BadRequestException('Cannot remove the last active admin on the platform');
+      }
+    }
+
+    const promotedTeams: Array<{ teamId: string; name: string; nextLeaderId: string }> = [];
+    const deletedTeams: Array<{ teamId: string; name: string }> = [];
+    const deletedTeamIds = new Set<string>();
+
+    for (const t of target.ledTeams) {
+      const successors = t.members
+        .filter((m) => m.inviteStatus === InviteStatus.accepted && m.userId !== null && m.userId !== target.id)
+        .sort((a, b) => (a.joinedAt?.getTime() ?? 0) - (b.joinedAt?.getTime() ?? 0));
+      if (successors.length > 0) {
+        promotedTeams.push({ teamId: t.id, name: t.name, nextLeaderId: successors[0].userId! });
+      } else {
+        deletedTeams.push({ teamId: t.id, name: t.name });
+        deletedTeamIds.add(t.id);
+      }
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const p of promotedTeams) {
+        await tx.team.update({ where: { id: p.teamId }, data: { leaderUserId: p.nextLeaderId } });
+      }
+      if (deletedTeamIds.size > 0) {
+        await this.deleteTeams(tx, [...deletedTeamIds]);
+      }
+
+      if (target.industrialMentorProfile) {
+        const profileId = target.industrialMentorProfile.id;
+        await tx.team.updateMany({
+          where: { industrialMentorId: profileId },
+          data: { industrialMentorId: null },
+        });
+        await tx.mentorAssignment.updateMany({
+          where: { industrialMentorId: profileId },
+          data: { industrialMentorId: null },
+        });
+        await tx.industrialMentor.delete({ where: { id: profileId } });
+      }
+
+      await tx.team.updateMany({ where: { facultyMentorId: target.id }, data: { facultyMentorId: null } });
+
+      const targetAssignments = await tx.mentorAssignment.findMany({
+        where: { mentorUserId: target.id },
+        select: { id: true, teamId: true },
+      });
+      const targetAssignmentIds = targetAssignments.map((a) => a.id);
+      if (targetAssignmentIds.length > 0) {
+        await tx.mentorAssignment.updateMany({
+          where: { reassignedFromId: { in: targetAssignmentIds } },
+          data: { reassignedFromId: null },
+        });
+        await tx.mentorAssignment.deleteMany({ where: { id: { in: targetAssignmentIds } } });
+      }
+      for (const teamId of [...new Set(targetAssignments.map((a) => a.teamId))]) {
+        if (!deletedTeamIds.has(teamId)) await syncTeamMentorPointers(tx, teamId);
+      }
+      await tx.mentorAssignment.updateMany({
+        where: { assignedById: target.id },
+        data: { assignedById: actor.id },
+      });
+      await tx.mentorInvite.deleteMany({ where: { mentorUserId: target.id } });
+      await tx.mentorInvite.deleteMany({ where: { invitedById: target.id } });
+
+      await tx.ideaSubmission.updateMany({ where: { authorUserId: target.id }, data: { authorUserId: null } });
+      await tx.teamPsPreference.updateMany({ where: { decidedById: target.id }, data: { decidedById: null } });
+      await tx.teamPsPreference.deleteMany({ where: { submittedById: target.id } });
+      await tx.notificationLog.updateMany({ where: { recipientUserId: target.id }, data: { recipientUserId: null } });
+      await tx.stageResult.updateMany({ where: { publishedById: target.id }, data: { publishedById: null } });
+      await tx.teamMember.deleteMany({ where: { userId: target.id } });
+      await tx.joinRequest.deleteMany({ where: { studentId: target.id } });
+      await tx.notification.deleteMany({ where: { userId: target.id } });
+      await tx.evaluation.deleteMany({ where: { evaluatorUserId: target.id } });
+      await tx.broadcast.deleteMany({ where: { adminUserId: target.id } });
+
+      const commentIds = await tx.comment.findMany({
+        where: { authorUserId: target.id },
+        select: { id: true },
+      });
+      if (commentIds.length > 0) {
+        const ids = commentIds.map((c) => c.id);
+        await tx.comment.updateMany({ where: { parentCommentId: { in: ids } }, data: { parentCommentId: null } });
+        await tx.comment.deleteMany({ where: { id: { in: ids } } });
+      }
+
+      await tx.auditLog.updateMany({ where: { actorUserId: target.id }, data: { actorUserId: null } });
+      await tx.user.delete({ where: { id: target.id } });
+
+      await writeAudit(tx, {
+        actorUserId: actor.id,
+        action: 'user.remove',
+        entityType: 'user',
+        entityId: target.id,
+        before: {
+          email: target.email,
+          fullName: target.fullName,
+          platformRole: target.platformRole,
+        },
+        after: {
+          removed: true,
+          promotedTeams: promotedTeams.map((p) => p.name),
+          deletedTeams: deletedTeams.map((d) => d.name),
+          auditLogsRetained: true,
+        },
+      });
+    });
+
+    const clerk = getClerkClient();
+    if (clerk && target.clerkUserId && !target.clerkUserId.startsWith('local:')) {
+      try {
+        await clerk.users.deleteUser(target.clerkUserId);
+      } catch (err) {
+        console.warn(`[admin.removeUser] Clerk delete failed for ${target.email}:`, err);
+      }
+    }
+
+    return {
+      removed: true,
+      email: target.email,
+      fullName: target.fullName,
+      promotedTeams: promotedTeams.length,
+      deletedTeams: deletedTeams.length,
+    };
+  }
+
+  private async deleteTeams(
+    tx: Prisma.TransactionClient,
+    teamIds: string[],
+  ) {
+    const assignments = await tx.mentorAssignment.findMany({
+      where: { teamId: { in: teamIds } },
+      select: { id: true },
+    });
+    const assignmentIds = assignments.map((a) => a.id);
+    if (assignmentIds.length > 0) {
+      await tx.mentorAssignment.updateMany({
+        where: { reassignedFromId: { in: assignmentIds } },
+        data: { reassignedFromId: null },
+      });
+    }
+    const psRows = await tx.team.findMany({
+      where: { id: { in: teamIds }, psId: { not: null } },
+      select: { psId: true },
+    });
+    await tx.comment.updateMany({
+      where: { teamId: { in: teamIds }, parentCommentId: { not: null } },
+      data: { parentCommentId: null },
+    });
+    await tx.comment.deleteMany({ where: { teamId: { in: teamIds } } });
+    await tx.deliverable.deleteMany({ where: { teamId: { in: teamIds } } });
+    await tx.evaluation.deleteMany({ where: { teamId: { in: teamIds } } });
+    await tx.ideaSubmission.deleteMany({ where: { teamId: { in: teamIds } } });
+    await tx.joinRequest.deleteMany({ where: { teamId: { in: teamIds } } });
+    await tx.mentorAssignment.deleteMany({ where: { teamId: { in: teamIds } } });
+    await tx.mentorInvite.deleteMany({ where: { teamId: { in: teamIds } } });
+    await tx.stageResult.deleteMany({ where: { teamId: { in: teamIds } } });
+    await tx.teamMember.deleteMany({ where: { teamId: { in: teamIds } } });
+    await tx.teamPsPreference.deleteMany({ where: { teamId: { in: teamIds } } });
+    await tx.teamStageStatus.deleteMany({ where: { teamId: { in: teamIds } } });
+    await tx.team.deleteMany({ where: { id: { in: teamIds } } });
+    for (const row of psRows) {
+      if (!row.psId) continue;
+      await tx.problemStatement.update({
+        where: { id: row.psId },
+        data: { teamsSelectedCount: { decrement: 1 } },
+      });
+    }
   }
 
   /**
@@ -733,7 +1296,10 @@ const CATEGORY_ACTIONS: Record<string, string[]> = {
 
 type AuditRow = {
   id: string;
-  actorUserId: string;
+  actorUserId: string | null;
+  actorName: string | null;
+  actorEmail: string | null;
+  actorRole: string | null;
   action: string;
   entityType: string;
   entityId: string;
@@ -840,7 +1406,9 @@ async function enrichAuditRows(prisma: PrismaService, rows: AuditRow[]) {
       after: it.after,
       createdAt: it.createdAt,
       actor: it.actor,
-      actorRole: it.actor?.platformRole ?? null,
+      actorName: it.actor?.fullName ?? it.actorName,
+      actorEmail: it.actor?.email ?? it.actorEmail,
+      actorRole: it.actor?.platformRole ?? it.actorRole,
       teamName: team?.name ?? null,
       teamCode: team?.teamCode ?? null,
       summary,

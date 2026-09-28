@@ -1,15 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import {
-  platformMetrics,
-  type AdminAllocation,
-  type Broadcast,
-  type StageConfig,
-  type RubricCriterion,
-} from "../../data/adminDashboard";
-import type { Member } from "../../data/studentDashboard";
-import type { IndustryMentor } from "../../data/mentorDashboard";
+import { platformMetrics, type AdminAllocation, type StageConfig, type RubricCriterion } from "../../data/adminDashboard";
 import { api, apiPatch, apiPost } from "../../lib/api";
 import { useAuth } from "../auth/AuthProvider";
 import type { PortalUser } from "../../lib/types";
@@ -20,16 +12,10 @@ type AdminContextValue = {
   allocations: AdminAllocation[];
   assignTeam: (teamId: string, mentorId: string) => void;
   assignIndustryMentor: (teamId: string, mentorId: string) => void;
-  broadcasts: Broadcast[];
-  sendBroadcast: (b: Omit<Broadcast, "id" | "sentAt" | "sentBy">) => void;
   stages: StageConfig[];
   updateStage: (id: string, patch: Partial<StageConfig>) => void;
   updateStageRubric: (id: string, rubricCriteria: RubricCriterion[]) => void;
-  students: Member[];
-  industryMentors: IndustryMentor[];
   metrics: ReturnType<typeof platformMetrics>;
-  teams: Array<{ teamId: string; teamName: string; track: string; score?: number; grade?: string }>;
-  updateTeamScore: (teamId: string, score: number, grade: string) => void;
   mentors: LiveMentor[];
   industryMentorOptions: LiveMentor[];
   users: PortalUser[];
@@ -38,19 +24,10 @@ type AdminContextValue = {
 
 const AdminContext = createContext<AdminContextValue | null>(null);
 
-const audienceToRole: Record<Broadcast["audience"], string | undefined> = {
-  all: undefined,
-  students: "student",
-  "institute-mentors": "institute_mentor",
-  "industry-mentors": "industry_mentor",
-};
-
 export function AdminProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   const [allocations, setAllocations] = useState<AdminAllocation[]>([]);
-  const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [stages, setStages] = useState<StageConfig[]>([]);
-  const [teams, setTeams] = useState<Array<{ teamId: string; teamName: string; track: string; score?: number; grade?: string }>>([]);
   const [mentors, setMentors] = useState<LiveMentor[]>([]);
   const [industryMentorOptions, setIndustryMentorOptions] = useState<LiveMentor[]>([]);
   const [metricsLive, setMetricsLive] = useState<ReturnType<typeof platformMetrics> | null>(null);
@@ -72,6 +49,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
               teamCode: string;
               theme?: string | null;
               mentorAssignments: Array<{
+                id: string;
                 mentorUserId: string;
                 mentor: { fullName: string };
                 mentorType: string;
@@ -85,6 +63,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
                 teamCode: string;
                 theme?: string | null;
                 mentorAssignments: Array<{
+                  id: string;
                   mentorUserId: string;
                   mentor: { fullName: string };
                   mentorType: string;
@@ -115,13 +94,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         activeStage: res.dashboard.stageFunnel[0]?.name ?? "—",
       });
       setUsers(res.users ?? []);
-      setTeams(
-        teamRows.map((t) => ({
-          teamId: t.id,
-          teamName: t.name,
-          track: t.theme ?? "Unassigned",
-        })),
-      );
 
       const instMentors = res.mentors.filter((m) => m.platformRole === "institute_mentor");
       setMentors(instMentors.map((m) => ({ id: m.id, name: m.fullName, title: m.email })));
@@ -141,6 +113,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
             assignedMentorName: inst?.mentor.fullName ?? null,
             assignedIndustryMentorId: ind?.mentorUserId ?? null,
             assignedIndustryMentorName: ind?.mentor.fullName ?? null,
+            assignedMentorAssignmentId: inst?.id ?? null,
+            assignedIndustryMentorAssignmentId: ind?.id ?? null,
             status: inst && ind ? "assigned" : "unassigned",
           };
         }),
@@ -175,18 +149,15 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       const current = allocations.find((a) => a.teamId === teamId);
       void (async () => {
         try {
-          if (current?.assignedMentorId) {
-            const teams = await api<{
-              items: Array<{
-                id: string;
-                mentorAssignments: Array<{ id: string; mentorType: string; active?: boolean }>;
-              }>;
-            }>("/admin/teams?limit=50");
-            const row = teams.items.find((t) => t.id === teamId);
-            const assignment = row?.mentorAssignments.find((a) => a.mentorType === "institute");
-            if (assignment) {
-              await apiPost(`/mentors/${assignment.id}/reassign`, { mentorUserId: mentorId });
+          if (!mentorId) {
+            if (current?.assignedMentorAssignmentId) {
+              await apiPost(`/mentors/${current.assignedMentorAssignmentId}/unassign`, {});
             }
+            await load();
+            return;
+          }
+          if (current?.assignedMentorAssignmentId) {
+            await apiPost(`/mentors/${current.assignedMentorAssignmentId}/reassign`, { mentorUserId: mentorId });
           } else {
             await apiPost("/mentors/allocate", {
               teamId,
@@ -206,9 +177,16 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const assignIndustryMentor = useCallback(
     (teamId: string, mentorUserId: string) => {
-      if (!mentorUserId) return;
+      const current = allocations.find((a) => a.teamId === teamId);
       void (async () => {
         try {
+          if (!mentorUserId) {
+            if (current?.assignedIndustryMentorAssignmentId) {
+              await apiPost(`/mentors/${current.assignedIndustryMentorAssignmentId}/unassign`, {});
+            }
+            await load();
+            return;
+          }
           await apiPost(`/teams/${teamId}/assign-industrial-mentor`, { userId: mentorUserId });
           await load();
         } catch {
@@ -216,23 +194,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         }
       })();
     },
-    [load],
-  );
-
-  const sendBroadcast = useCallback(
-    (b: Omit<Broadcast, "id" | "sentAt" | "sentBy">) => {
-      const role = audienceToRole[b.audience];
-      void apiPost("/broadcasts", {
-        title: b.title,
-        body: b.message,
-        filterCriteria: role ? { role } : {},
-      }).then(() => load());
-      setBroadcasts((prev) => [
-        { ...b, id: `BC-${Date.now()}`, sentAt: "Just now", sentBy: session?.fullName ?? "Admin" },
-        ...prev,
-      ]);
-    },
-    [load, session],
+    [allocations, load],
   );
 
   const updateStage = useCallback((id: string, patch: Partial<StageConfig>) => {
@@ -264,8 +226,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         allocations,
         assignTeam,
         assignIndustryMentor,
-        broadcasts,
-        sendBroadcast,
         stages,
         updateStage,
         updateStageRubric: (id, rubricCriteria) => {
@@ -276,38 +236,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
             }
           }
         },
-        students: users
-          .filter((u) => u.platformRole === "student")
-          .map((u) => ({
-            name: u.fullName,
-            initials: u.fullName.slice(0, 2).toUpperCase(),
-            prn: u.email,
-            branch: u.department ?? u.institute ?? "",
-            role: "Member" as const,
-            status: "Verified" as const,
-          })),
-        industryMentors: users
-          .filter((u) => u.platformRole === "industry_mentor")
-          .map((u) => ({
-            id: u.id,
-            name: u.fullName,
-            initials: u.fullName
-              .split(" ")
-              .map((p) => p[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase(),
-            email: u.email,
-            phone: "",
-            company: u.institute ?? "Partner",
-            designation: u.department ?? "Industry Mentor",
-            expertise: [],
-            mappedTeamIds: [] as string[],
-          })),
         metrics,
-        teams,
-        updateTeamScore: (teamId, score, grade) =>
-          setTeams((prev) => prev.map((t) => (t.teamId === teamId ? { ...t, score, grade } : t))),
         mentors,
         industryMentorOptions,
         users,

@@ -6,6 +6,7 @@ import UserTable from "../../../../components/admin/UserTable";
 import MentorDropdown from "../../../../components/admin/MentorDropdown";
 import Avatar from "../../../../components/Avatar";
 import { useAdmin } from "../../../../components/admin/AdminProvider";
+import { useAuth } from "../../../../components/auth/AuthProvider";
 import { api, apiPost } from "../../../../lib/api";
 import type { PortalUser } from "../../../../lib/types";
 import {
@@ -13,15 +14,40 @@ import {
   SendIcon,
   UploadCloudIcon,
   FileSpreadsheetIcon,
+  TrashIcon,
+  XIcon,
+  AlertTriangleIcon,
 } from "../../../../components/dashboard/icons";
 
 type Tab = "students" | "institute-mentors" | "industry-mentors" | "student-experts";
 type InviteRole = "institute_mentor" | "industry_mentor" | "admin" | "student_expert";
 
+type RemovePreview = {
+  id: string;
+  email: string;
+  fullName: string;
+  platformRole: string;
+  teams: Array<{
+    teamId: string;
+    name: string;
+    memberCount: number;
+    outcome: "promote" | "delete";
+    nextLeaderId: string | null;
+  }>;
+};
+
 const INPUT_CLS =
   "w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-[#d95c26] focus:ring-2 focus:ring-[#d95c26]/20 transition-all outline-none";
 const LABEL_CLS = "mb-1.5 block text-xs font-medium text-neutral-600";
 const CSV_HEADER = "email,fullName,platformRole,institute,department";
+
+const ROLE_LABEL: Record<string, string> = {
+  student: "Student",
+  institute_mentor: "Institute Mentor",
+  industry_mentor: "Industrial Mentor",
+  student_expert: "Student Expert",
+  admin: "Nodal Admin",
+};
 
 const INVITE_ROLES: { value: InviteRole; label: string }[] = [
   { value: "institute_mentor", label: "Institute Mentor" },
@@ -32,6 +58,7 @@ const INVITE_ROLES: { value: InviteRole; label: string }[] = [
 
 export default function AdminUsersPage() {
   const { users, reload } = useAdmin();
+  const { session } = useAuth();
   const [tab, setTab] = useState<Tab>("students");
   const [csv, setCsv] = useState(`${CSV_HEADER}\n`);
   const [importMode, setImportMode] = useState<"paste" | "upload">("paste");
@@ -46,6 +73,60 @@ export default function AdminUsersPage() {
   const [inviteMsg, setInviteMsg] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [importBusy, setImportBusy] = useState(false);
+
+  const [removeTarget, setRemoveTarget] = useState<PortalUser | null>(null);
+  const [removePreview, setRemovePreview] = useState<RemovePreview | null>(null);
+  const [removePreviewing, setRemovePreviewing] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [removing, setRemoving] = useState(false);
+  const [removeMsg, setRemoveMsg] = useState("");
+  const [removedDone, setRemovedDone] = useState<{ fullName: string; promoted: number; deleted: number } | null>(null);
+
+  const openRemove = async (target: PortalUser) => {
+    setRemoveTarget(target);
+    setRemovePreview(null);
+    setConfirmText("");
+    setRemoveMsg("");
+    setRemovedDone(null);
+    setRemovePreviewing(true);
+    try {
+      setRemovePreview(await api<RemovePreview>(`/admin/users/${target.id}/remove-preview`));
+    } catch (err) {
+      setRemoveMsg(err instanceof Error ? err.message : "Could not load removal preview");
+    } finally {
+      setRemovePreviewing(false);
+    }
+  };
+
+  const closeRemove = () => {
+    if (removing) return;
+    setRemoveTarget(null);
+    setRemovePreview(null);
+    setConfirmText("");
+    setRemoveMsg("");
+    setRemovedDone(null);
+  };
+
+  const removeUser = async () => {
+    if (!removeTarget) return;
+    setRemoving(true);
+    setRemoveMsg("");
+    try {
+      const res = await apiPost<{ removed: boolean; fullName: string; promotedTeams: number; deletedTeams: number }>(
+        `/admin/users/${removeTarget.id}/remove`,
+        { confirm: confirmText.trim() },
+      );
+      setRemovedDone({ fullName: res.fullName, promoted: res.promotedTeams, deleted: res.deletedTeams });
+      setRemoveTarget(null);
+      setRemovePreview(null);
+      setConfirmText("");
+      void reload();
+    } catch (err) {
+      setRemoveMsg(err instanceof Error ? err.message : "Removal failed");
+    } finally {
+      setRemoving(false);
+    }
+  };
 
   const students = users.filter((u) => u.platformRole === "student");
   const industry = users.filter((u) => u.platformRole === "industry_mentor");
@@ -428,11 +509,176 @@ export default function AdminUsersPage() {
               ),
             },
             { label: "Email", render: (u) => <span className="font-mono text-brand-muted">{u.email}</span> },
-            { label: "Role", render: (u) => u.platformRole },
+            { label: "Role", render: (u) => ROLE_LABEL[u.platformRole] ?? u.platformRole },
             { label: "Institute", render: (u) => u.institute ?? "—" },
             { label: "Department", render: (u) => u.department ?? "—" },
+            {
+              label: "Actions",
+              render: (u) =>
+                u.id === session?.userId ? (
+                  <span className="text-[11px] font-medium text-neutral-400">You</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void openRemove(u)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] font-bold text-red-600 transition-all hover:border-red-300 hover:bg-red-100"
+                  >
+                    <TrashIcon className="h-3.5 w-3.5" />
+                    Remove
+                  </button>
+                ),
+            },
           ]}
         />
+
+        {removeTarget ? (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+            <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl">
+              <div className="flex items-start justify-between gap-3 border-b border-neutral-100 bg-red-50/60 px-6 py-4">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
+                    <AlertTriangleIcon className="h-5 w-5 text-red-600" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-bold text-neutral-900">Remove user from platform</h3>
+                    <p className="mt-0.5 text-xs text-neutral-500">
+                      {removeTarget.fullName} · {removeTarget.email}
+                    </p>
+                  </div>
+                </div>
+                <button type="button" onClick={closeRemove} disabled={removing} className="rounded-lg p-1 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-40">
+                  <XIcon className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="max-h-[45vh] overflow-y-auto px-6 py-5">
+                {removedDone ? (
+                  <div>
+                    <p className="text-sm font-semibold text-neutral-800">
+                      <span className="font-bold text-red-600">{removedDone.fullName}</span> has been permanently removed from the platform.
+                    </p>
+                    <ul className="mt-3 space-y-1 text-xs text-neutral-600">
+                      <li>• {removedDone.promoted} team(s) had leadership transferred to the earliest-joined accepted member.</li>
+                      <li>• {removedDone.deleted} team(s) were deleted along with their data.</li>
+                      <li>• The account is gone. Audit logs referencing this user are retained.</li>
+                    </ul>
+                    <button
+                      type="button"
+                      onClick={closeRemove}
+                      className="mt-5 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-700"
+                    >
+                      Done
+                    </button>
+                  </div>
+                ) : removePreviewing ? (
+                  <p className="py-6 text-center text-xs text-neutral-500">Analysing impact…</p>
+                ) : removePreview ? (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 text-[11px] font-semibold text-neutral-600">
+                        {ROLE_LABEL[removePreview.platformRole] ?? removePreview.platformRole}
+                      </span>
+                      {removePreview.teams.length === 0 ? (
+                        <span className="rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-[11px] font-semibold text-green-700">
+                          Leads no teams
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {removePreview.teams.length > 0 ? (
+                      <div>
+                        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-neutral-500">Impact on led teams</p>
+                        <ul className="space-y-2">
+                          {removePreview.teams.map((t) => (
+                            <li key={t.teamId} className="rounded-xl border border-neutral-200 bg-neutral-50/60 px-3 py-2.5">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="truncate text-xs font-bold text-neutral-800">{t.name}</p>
+                                  <p className="text-[11px] text-neutral-500">{t.memberCount} member(s)</p>
+                                </div>
+                                {t.outcome === "promote" ? (
+                                  <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-700">
+                                    Leadership transferred
+                                  </span>
+                                ) : (
+                                  <span className="shrink-0 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-[10px] font-bold text-red-600">
+                                    Team deleted
+                                  </span>
+                                )}
+                              </div>
+                              {t.outcome === "promote" ? (
+                                <p className="mt-1 text-[11px] text-neutral-500">
+                                  New leader: the earliest-joined accepted member.
+                                </p>
+                              ) : (
+                                <p className="mt-1 text-[11px] text-neutral-500">
+                                  No accepted member remains — this team will be permanently deleted.
+                                </p>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    <div className="rounded-xl border border-red-200 bg-red-50/70 px-3.5 py-3 text-[11px] leading-relaxed text-red-700">
+                      This is permanent and cannot be undone. The account, membership records, notifications and personal
+                      data are deleted immediately. Historical audit logs are retained. If the user re-registers, they
+                      start fresh.
+                    </div>
+                  </div>
+                ) : null}
+
+                {removeMsg && !removedDone ? <p className="mt-3 text-xs font-medium text-red-600">{removeMsg}</p> : null}
+              </div>
+
+              {!removePreviewing && !removedDone && removePreview ? (
+                <div className="border-t border-neutral-100 bg-neutral-50/60 px-6 py-4">
+                  <label className={LABEL_CLS} htmlFor="confirm-remove">
+                    Type <span className="rounded bg-neutral-200 px-1.5 py-0.5 font-mono text-[10px] font-bold">CONFIRM</span> to permanently remove this user
+                  </label>
+                  <input
+                    id="confirm-remove"
+                    type="text"
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    placeholder="CONFIRM"
+                    autoComplete="off"
+                    className={INPUT_CLS}
+                  />
+                  <div className="mt-3 flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={closeRemove}
+                      disabled={removing}
+                      className="rounded-xl px-4 py-2.5 text-sm font-semibold text-neutral-600 transition hover:bg-neutral-100 disabled:opacity-40"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={removing || confirmText.trim() !== "CONFIRM"}
+                      onClick={() => void removeUser()}
+                      className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-red-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {removing ? (
+                        <>
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/60 border-t-white" />
+                          Removing…
+                        </>
+                      ) : (
+                        <>
+                          <TrashIcon className="h-4 w-4" />
+                          Remove permanently
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </div>
     </AdminShell>
   );

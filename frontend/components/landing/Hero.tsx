@@ -19,7 +19,7 @@ const features = [
   },
   {
     title: "Admin Evaluation Console",
-    desc: "Stage & rubric configuration, mentor allocation, broadcasts, and aggregated platform reports.",
+    desc: "Stage & rubric configuration, mentor allocation, and aggregated platform reports.",
   },
 ];
 

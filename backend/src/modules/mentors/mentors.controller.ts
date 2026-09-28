@@ -75,6 +75,12 @@ export class MentorsController {
     return this.mentors.reassign(user, assignmentId, (body as { mentorUserId: string }).mentorUserId);
   }
 
+  @Post(':assignmentId/unassign')
+  @Roles(PlatformRole.admin)
+  unassign(@CurrentUser() user: AuthUser, @Param('assignmentId') assignmentId: string) {
+    return this.mentors.unassign(user, assignmentId);
+  }
+
   @Get('me/teams')
   @Roles(PlatformRole.institute_mentor, PlatformRole.industry_mentor, PlatformRole.admin)
   myTeams(@CurrentUser() user: AuthUser) {

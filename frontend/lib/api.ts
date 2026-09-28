@@ -163,18 +163,3 @@ export function apiPatch<T>(path: string, body: unknown) {
 export function apiDelete<T>(path: string) {
   return api<T>(path, { method: "DELETE" });
 }
-
-export async function apiBlob(path: string) {
-  const session = readSession();
-  const headers = new Headers();
-  const bearer = getAccessToken() || session?.accessToken || session?.clerkToken;
-  if (bearer) headers.set("authorization", `Bearer ${bearer}`);
-  else if (session?.userId) headers.set("x-dev-user-id", session.userId);
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...withTimeoutSignal(REQUEST_TIMEOUT_MS),
-    headers,
-    cache: "no-store",
-  });
-  if (!res.ok) throw new ApiError(res.status, res.statusText);
-  return res.blob();
-}

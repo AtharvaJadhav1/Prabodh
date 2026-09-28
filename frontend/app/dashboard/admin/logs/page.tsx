@@ -9,12 +9,14 @@ import { FileSpreadsheetIcon, RefreshIcon, SearchIcon } from "../../../../compon
 type AuditActor = { id: string; email: string; fullName: string; platformRole: string };
 type AuditRow = {
   id: string;
-  actorUserId: string;
+  actorUserId: string | null;
   action: string;
   entityType: string;
   entityId: string;
   createdAt: string;
   actor: AuditActor | null;
+  actorName?: string | null;
+  actorEmail?: string | null;
   actorRole: string | null;
   teamName: string | null;
   teamCode: string | null;
@@ -55,6 +57,7 @@ const ACTION_LABELS: Record<string, string> = {
   "evaluation.submitted": "Evaluation Submitted",
   "evaluation.publish": "Results Published",
   "broadcast.send": "Broadcast Sent",
+  "user.remove": "User Removed",
 };
 
 const ACTION_BADGES: Record<string, string> = {
@@ -72,6 +75,7 @@ const ACTION_BADGES: Record<string, string> = {
   "evaluation.submitted": "bg-teal-50 text-teal-700 border-teal-200",
   "evaluation.publish": "bg-teal-50 text-teal-700 border-teal-200",
   "broadcast.send": "bg-slate-50 text-slate-700 border-slate-200",
+  "user.remove": "bg-red-50 text-red-700 border-red-200",
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -181,8 +185,8 @@ export default function AdminLogsPage() {
       [
         new Date(r.createdAt).toISOString(),
         r.action,
-        r.actor?.fullName ?? "",
-        r.actor?.email ?? "",
+        r.actor?.fullName ?? r.actorName ?? "",
+        r.actor?.email ?? r.actorEmail ?? "",
         r.actorRole ?? "",
         r.teamCode ? `${r.teamName} (${r.teamCode})` : r.teamName ?? "",
         r.summary ?? "",
@@ -299,6 +303,23 @@ export default function AdminLogsPage() {
                             <div className="font-medium text-neutral-800">{row.actor.fullName}</div>
                             <div className="mt-0.5 flex items-center gap-1.5">
                               <span className="text-[11px] text-neutral-400">{row.actor.email}</span>
+                              {row.actorRole ? (
+                                <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${ROLE_PILLS[row.actorRole] ?? "bg-neutral-100 text-neutral-600"}`}>
+                                  {ROLE_LABELS[row.actorRole] ?? row.actorRole}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : row.actorName ? (
+                          <div>
+                            <div className="font-medium text-neutral-800">
+                              {row.actorName}
+                              <span className="ml-1.5 rounded-md bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-600">
+                                removed
+                              </span>
+                            </div>
+                            <div className="mt-0.5 flex items-center gap-1.5">
+                              <span className="text-[11px] text-neutral-400">{row.actorEmail}</span>
                               {row.actorRole ? (
                                 <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${ROLE_PILLS[row.actorRole] ?? "bg-neutral-100 text-neutral-600"}`}>
                                   {ROLE_LABELS[row.actorRole] ?? row.actorRole}

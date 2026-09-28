@@ -33,6 +33,9 @@ async function main() {
     `ALTER TABLE "teams" ADD CONSTRAINT "teams_industrial_mentor_id_fkey" FOREIGN KEY ("industrial_mentor_id") REFERENCES "industrial_mentors"("id") ON DELETE SET NULL ON UPDATE CASCADE`,
     `ALTER TABLE "mentor_assignments" DROP CONSTRAINT IF EXISTS "mentor_assignments_industrial_mentor_id_fkey"`,
     `ALTER TABLE "mentor_assignments" ADD CONSTRAINT "mentor_assignments_industrial_mentor_id_fkey" FOREIGN KEY ("industrial_mentor_id") REFERENCES "industrial_mentors"("id") ON DELETE SET NULL ON UPDATE CASCADE`,
+    `ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "actor_name" TEXT`,
+    `ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "actor_email" TEXT`,
+    `ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "actor_role" TEXT`,
   ];
 
   for (const sql of statements) {

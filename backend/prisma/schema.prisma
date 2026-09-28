@@ -561,7 +561,10 @@ model Comment {
 
 model AuditLog {
   id          String   @id @default(uuid())
-  actorUserId String   @map("actor_user_id")
+  actorUserId String?  @map("actor_user_id")
+  actorName   String?  @map("actor_name")
+  actorEmail  String?  @map("actor_email")
+  actorRole   String?  @map("actor_role")
   action      String
   entityType  String   @map("entity_type")
   entityId    String   @map("entity_id")
@@ -569,7 +572,7 @@ model AuditLog {
   after       Json?
   createdAt   DateTime @default(now()) @map("created_at")
 
-  actor User @relation(fields: [actorUserId], references: [id])
+  actor User? @relation(fields: [actorUserId], references: [id])
 
   @@index([entityType, entityId])
   @@index([actorUserId])

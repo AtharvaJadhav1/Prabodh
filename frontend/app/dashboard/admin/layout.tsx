@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     template: "Prabodh | %s",
   },
   description:
-    "Platform Administration — manage users, mentor allocation, stages and rubrics, and broadcasts.",
+    "Platform Administration — manage users, mentor allocation, stages and rubrics, and platform reports.",
 };
 
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {

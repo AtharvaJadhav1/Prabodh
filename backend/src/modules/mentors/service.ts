@@ -141,6 +141,28 @@ export class MentorsService {
     return next;
   }
 
+  async unassign(admin: AuthUser, assignmentId: string) {
+    const current = await this.repo.findById(assignmentId);
+    if (!current) throw new NotFoundException('Assignment not found');
+    if (!current.active) throw new BadRequestException('Assignment is already inactive');
+    const updated = await this.repo.deactivate(assignmentId);
+    await this.syncTeamMentorPointers(this.prisma, current.teamId);
+    await writeAudit(this.prisma, {
+      actorUserId: admin.id,
+      action: 'mentor.unassign',
+      entityType: 'mentor_assignment',
+      entityId: assignmentId,
+      before: {
+        mentorUserId: current.mentorUserId,
+        mentorType: current.mentorType,
+        teamId: current.teamId,
+        teamName: current.team.name,
+      },
+      after: { active: false },
+    });
+    return updated;
+  }
+
   async myTeams(user: AuthUser) {
     const assignments = await this.repo.teamsForMentor(user.id);
     const pendingInvites = await this.prisma.mentorInvite.findMany({
