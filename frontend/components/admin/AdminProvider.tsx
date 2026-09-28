@@ -8,11 +8,28 @@ import type { PortalUser } from "../../lib/types";
 
 export type LiveMentor = { id: string; name: string; title: string };
 
+export type StageFunnel = {
+  id: string;
+  name: string;
+  sequence: number;
+  deliverables: number;
+  tracked: number;
+};
+
+export type OverviewDashboard = {
+  teamsByStatus: Array<{ status: string; count: number }>;
+  ideaSubmissions: Array<{ status: string; count: number }>;
+  activeMentorAssignments: number;
+  stageFunnel: StageFunnel[];
+  recentTeams: Array<{ id: string; name: string; teamCode: string; track: string; status: string; createdAt: string }>;
+};
+
 type AdminContextValue = {
   allocations: AdminAllocation[];
   assignTeam: (teamId: string, mentorId: string) => void;
   assignIndustryMentor: (teamId: string, mentorId: string) => void;
   metrics: ReturnType<typeof platformMetrics>;
+  overview: OverviewDashboard;
   mentors: LiveMentor[];
   industryMentorOptions: LiveMentor[];
   users: PortalUser[];
@@ -28,6 +45,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [industryMentorOptions, setIndustryMentorOptions] = useState<LiveMentor[]>([]);
   const [metricsLive, setMetricsLive] = useState<ReturnType<typeof platformMetrics> | null>(null);
   const [users, setUsers] = useState<PortalUser[]>([]);
+  const [overview, setOverview] = useState<OverviewDashboard>({
+    teamsByStatus: [],
+    ideaSubmissions: [],
+    activeMentorAssignments: 0,
+    stageFunnel: [],
+    recentTeams: [],
+  });
 
   const load = useCallback(async () => {
     if (!session || session.platformRole !== "admin") return;
@@ -36,7 +60,16 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         dashboard: {
           totalTeams: number;
           teamsMissingMentor: number;
-          stageFunnel: Array<{ name: string }>;
+          teamsByStatus: Array<{ status: string; _count: number }>;
+          ideaSubmissions: Array<{ status: string; _count: number }>;
+          activeMentorAssignments: number;
+          stageFunnel: Array<{
+            id: string;
+            name: string;
+            sequence: number;
+            deliverables: number;
+            tracked: number;
+          }>;
         };
         teams:
           | Array<{
@@ -44,6 +77,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
               name: string;
               teamCode: string;
               theme?: string | null;
+              status?: string;
+              createdAt?: string;
               mentorAssignments: Array<{
                 id: string;
                 mentorUserId: string;
@@ -58,6 +93,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
                 name: string;
                 teamCode: string;
                 theme?: string | null;
+                status?: string;
+                createdAt?: string;
                 mentorAssignments: Array<{
                   id: string;
                   mentorUserId: string;
@@ -82,6 +119,21 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         activeStage: res.dashboard.stageFunnel[0]?.name ?? "—",
       });
       setUsers(res.users ?? []);
+
+      setOverview({
+        teamsByStatus: (res.dashboard.teamsByStatus ?? []).map((r) => ({ status: r.status, count: r._count })),
+        ideaSubmissions: (res.dashboard.ideaSubmissions ?? []).map((r) => ({ status: r.status, count: r._count })),
+        activeMentorAssignments: res.dashboard.activeMentorAssignments ?? 0,
+        stageFunnel: res.dashboard.stageFunnel ?? [],
+        recentTeams: teamRows.map((t) => ({
+          id: t.id,
+          name: t.name,
+          teamCode: t.teamCode,
+          track: t.theme ?? t.teamCode,
+          status: t.status ?? "forming",
+          createdAt: t.createdAt ?? "",
+        })),
+      });
 
       const instMentors = res.mentors.filter((m) => m.platformRole === "institute_mentor");
       setMentors(instMentors.map((m) => ({ id: m.id, name: m.fullName, title: m.email })));
@@ -183,6 +235,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         assignTeam,
         assignIndustryMentor,
         metrics,
+        overview,
         mentors,
         industryMentorOptions,
         users,
