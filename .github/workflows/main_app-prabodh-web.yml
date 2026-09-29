@@ -24,7 +24,9 @@ jobs:
           node-version: '22.x'
 
       - name: npm install, build, and test
+        # 1. ADDED 'cd' COMMAND HERE
         run: |
+          cd YOUR_FOLDER_NAME
           npm install
           npm run build --if-present
           npm run test --if-present
@@ -33,7 +35,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          # 2. CHANGED PATH TO YOUR SPECIFIC FOLDER
+          path: YOUR_FOLDER_NAME
 
   deploy:
     runs-on: ubuntu-latest
@@ -62,4 +65,3 @@ jobs:
           app-name: 'app-prabodh-web'
           slot-name: 'Production'
           package: .
-          
