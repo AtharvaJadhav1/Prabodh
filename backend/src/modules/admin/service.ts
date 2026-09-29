@@ -868,7 +868,7 @@ export class AdminService {
           auditLogsRetained: true,
         },
       });
-    });
+    }, { timeout: 120_000 });
 
     const clerk = getClerkClient();
     if (clerk && target.clerkUserId && !target.clerkUserId.startsWith('local:')) {
