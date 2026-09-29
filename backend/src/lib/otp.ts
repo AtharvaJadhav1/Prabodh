@@ -1,5 +1,5 @@
 import { createHash, randomInt } from 'crypto';
-import { getRedis } from './queue';
+import { getCacheRedis } from './queue';
 import { resolveOtpFromAddress, sendTransactionalEmail } from './resend';
 
 const OTP_TTL_SEC = Number(process.env.OTP_TTL_SEC ?? 600);
@@ -40,7 +40,7 @@ export async function sendOtp(opts: {
 }): Promise<{ devCode?: string }> {
   const email = opts.email.trim().toLowerCase();
   const code = generateCode();
-  const redis = getRedis();
+  const redis = getCacheRedis();
   const key = otpKey(opts.purpose, email);
 
   await redis.set(
@@ -112,7 +112,7 @@ export async function verifyOtp(opts: {
   code: string;
 }): Promise<{ ok: true; profile?: PendingRegistration } | { ok: false; reason: string }> {
   const email = opts.email.trim().toLowerCase();
-  const redis = getRedis();
+  const redis = getCacheRedis();
   const key = otpKey(opts.purpose, email);
   const raw = await redis.get(key);
 

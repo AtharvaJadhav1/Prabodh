@@ -1,9 +1,9 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { getRedis } from './queue';
+import { getCacheRedis } from './queue';
 
 export async function consumeToken(key: string, limitPerMin: number) {
   try {
-    const redis = getRedis();
+    const redis = getCacheRedis();
     const bucket = `rl:${key}:${Math.floor(Date.now() / 60000)}`;
     // Single RTT: incr + expire together (expire is a no-op after first set via TTL refresh).
     const results = await redis.multi().incr(bucket).expire(bucket, 70).exec();
