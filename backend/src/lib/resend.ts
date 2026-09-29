@@ -33,7 +33,7 @@ export function resolveOtpFromAddress() {
   return 'Prabodh <otp@prabodh.app>';
 }
 
-const INVITE_TEMPLATES = new Set(['team_invite', 'mentor_allocation']);
+const INVITE_TEMPLATES = new Set(['team_invite', 'mentor_allocation', 'staff_credentials']);
 
 export function resolveFromForTemplate(template: string) {
   if (INVITE_TEMPLATES.has(template)) return resolveInviteFromAddress();

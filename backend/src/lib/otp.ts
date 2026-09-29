@@ -1,6 +1,7 @@
 import { createHash, randomInt } from 'crypto';
 import { getCacheRedis } from './queue';
 import { resolveOtpFromAddress, sendTransactionalEmail } from './resend';
+import { renderOtpEmail } from '../modules/notifications/templates/render';
 
 const OTP_TTL_SEC = Number(process.env.OTP_TTL_SEC ?? 600);
 const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS ?? 5);
@@ -55,6 +56,13 @@ export async function sendOtp(opts: {
   }
 
   const minutes = Math.floor(OTP_TTL_SEC / 60);
+  const title =
+    opts.purpose === 'register'
+      ? 'Verify your registration'
+      : opts.purpose === 'reset_password'
+        ? 'Reset your password'
+        : 'Your sign-in code';
+
   const subject =
     opts.purpose === 'register'
       ? 'Verify your Prabodh registration'
@@ -62,32 +70,29 @@ export async function sendOtp(opts: {
         ? 'Reset your Prabodh password'
         : 'Your Prabodh sign-in code';
 
-  const bodyCopy =
+  const introHtml =
     opts.purpose === 'register'
       ? `
-      <p>Hi there,</p>
-      <p>Thank you for registering.</p>
-      <p>Use the one-time verification code (OTP) below to activate your account:</p>
+      <p style="margin:0 0 12px">Hi there,</p>
+      <p style="margin:0 0 12px">Thank you for registering on Prabodh.</p>
+      <p style="margin:0">Use the one-time verification code below to activate your account:</p>
       `
       : opts.purpose === 'reset_password'
         ? `
-      <p>Hi there,</p>
-      <p>Use the one-time verification code (OTP) below to choose a new password:</p>
+      <p style="margin:0 0 12px">Hi there,</p>
+      <p style="margin:0">Use the one-time verification code below to choose a new password:</p>
       `
         : `
-      <p>Hi there,</p>
-      <p>Use the one-time verification code (OTP) below to sign in:</p>
+      <p style="margin:0 0 12px">Hi there,</p>
+      <p style="margin:0">Use the one-time verification code below to sign in:</p>
       `;
 
-  const html = `
-    <div style="font-family:system-ui,sans-serif;line-height:1.5;color:#1a1a1a">
-      <h2 style="color:#5B2E10;margin:0 0 16px">Prabodh</h2>
-      ${bodyCopy}
-      <p style="font-size:28px;font-weight:700;letter-spacing:4px;color:#D96B27;margin:20px 0">${code}</p>
-      <p style="color:#666;margin:0 0 8px">This code expires in ${minutes} minutes. If you did not request this, you can safely ignore this email.</p>
-      <p style="color:#666;margin:16px 0 0">— Prabodh Support Team</p>
-    </div>
-  `;
+  const html = renderOtpEmail({
+    title,
+    introHtml,
+    code,
+    expiresMinutes: minutes,
+  });
 
   try {
     await sendTransactionalEmail({

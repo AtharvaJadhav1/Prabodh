@@ -97,7 +97,18 @@ export function aggregateQueue() {
 }
 
 export type NotificationJob = {
-  template: 'mentor_allocation' | 'team_invite' | 'deadline_reminder' | 'evaluation_published' | 'admin_broadcast' | 'status_change' | 'ps_review' | 'join_request' | 'join_request_outcome';
+  template:
+    | 'mentor_allocation'
+    | 'team_invite'
+    | 'deadline_reminder'
+    | 'evaluation_published'
+    | 'admin_broadcast'
+    | 'status_change'
+    | 'ps_review'
+    | 'join_request'
+    | 'join_request_outcome'
+    | 'otp'
+    | 'staff_credentials';
   recipientUserId: string;
   recipientEmail: string;
   title: string;
