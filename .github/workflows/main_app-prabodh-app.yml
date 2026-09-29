@@ -41,6 +41,9 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      - name: Compile
+        run: npm run compile
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
