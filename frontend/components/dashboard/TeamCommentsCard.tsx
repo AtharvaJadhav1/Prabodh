@@ -46,10 +46,29 @@ export default function TeamCommentsCard() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (team?.id && team.comments === undefined) {
+    if (!team?.id) return;
+    void refreshComments();
+  }, [team?.id, refreshComments]);
+
+  // Keep the thread live for both sides — short poll + refresh when tab becomes visible.
+  useEffect(() => {
+    if (!team?.id) return;
+    const poll = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       void refreshComments();
-    }
-  }, [team?.id, team?.comments, refreshComments]);
+    };
+    const id = window.setInterval(poll, 3000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refreshComments();
+    };
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [team?.id, refreshComments]);
 
   const flatComments = useMemo(() => flattenComments(comments), [comments]);
 
@@ -62,11 +81,18 @@ export default function TeamCommentsCard() {
     setComments((prev) => {
       const byId = new Map<string, PortalComment>();
       for (const c of server) byId.set(c.id, c);
+      // Keep in-flight optimistic bubbles until the server ack replaces them.
       for (const c of prev) {
         if (removedIds.current.has(c.id)) continue;
-        if (!byId.has(c.id)) byId.set(c.id, c);
+        if (!(c.id.startsWith("optimistic-") || c.id.startsWith("local-"))) continue;
+        const alreadyOnServer = [...byId.values()].some(
+          (s) => s.message === c.message && s.author?.id === c.author?.id,
+        );
+        if (!alreadyOnServer) byId.set(c.id, c);
       }
-      return Array.from(byId.values()).filter((c) => !removedIds.current.has(c.id));
+      return Array.from(byId.values())
+        .filter((c) => !removedIds.current.has(c.id))
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     });
   }, [team?.id, team?.comments]);
 

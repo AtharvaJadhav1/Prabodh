@@ -59,20 +59,61 @@ export default function MentorQueriesPage() {
       return;
     }
     let cancelled = false;
-    setLoadingComments(true);
-    setError(null);
-    api<PortalComment[]>(`/teams/${activeTeamId}/comments`)
-      .then((rows) => {
-        if (!cancelled) setComments(rows ?? []);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load query thread");
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingComments(false);
+
+    const mergeComments = (rows: PortalComment[]) => {
+      setComments((prev) => {
+        const byId = new Map<string, PortalComment>();
+        for (const c of rows) byId.set(c.id, c);
+        for (const c of prev) {
+          if (!(c.id.startsWith("optimistic-") || c.id.startsWith("local-"))) continue;
+          const alreadyOnServer = [...byId.values()].some(
+            (s) => s.message === c.message && s.author?.id === c.author?.id,
+          );
+          if (!alreadyOnServer) byId.set(c.id, c);
+        }
+        return Array.from(byId.values()).sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        );
       });
+    };
+
+    const load = (showSpinner: boolean) => {
+      if (showSpinner) setLoadingComments(true);
+      api<PortalComment[]>(`/teams/${activeTeamId}/comments`)
+        .then((rows) => {
+          if (!cancelled) {
+            mergeComments(rows ?? []);
+            setError(null);
+          }
+        })
+        .catch((err) => {
+          if (!cancelled && showSpinner) {
+            setError(err instanceof Error ? err.message : "Could not load query thread");
+          }
+        })
+        .finally(() => {
+          if (!cancelled && showSpinner) setLoadingComments(false);
+        });
+    };
+
+    load(true);
+
+    const poll = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      load(false);
+    };
+    const timer = window.setInterval(poll, 3000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load(false);
+    };
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [activeTeamId]);
 
