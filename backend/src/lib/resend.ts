@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { LOGO_CID, logoAttachmentContent } from '../modules/notifications/templates/render';
 
 export function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -52,11 +53,15 @@ export async function sendTransactionalEmail(opts: {
     throw new Error('RESEND_API_KEY is not set on the backend');
   }
   const from = (opts.from ?? '').trim() || resolveFromAddress();
+  const logo = opts.html.includes(`cid:${LOGO_CID}`) ? logoAttachmentContent() : null;
   const { data, error } = await resend.emails.send({
     from,
     to: opts.to,
     subject: opts.subject,
     html: opts.html,
+    attachments: logo
+      ? [{ filename: 'prabodh-logo.png', content: logo, contentType: 'image/png', inlineContentId: LOGO_CID }]
+      : undefined,
   });
   if (error) {
     console.error('[email] Resend rejected send', { to: opts.to, from, error });

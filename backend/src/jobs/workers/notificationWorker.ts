@@ -8,7 +8,10 @@ const prisma = new PrismaClient();
 
 export async function handleNotificationJob(job: Job<NotificationJob>) {
   const data = job.data;
-  const html = renderEmail(data.template, data.title, data.body);
+  const recipient = data.recipientUserId
+    ? await prisma.user.findUnique({ where: { id: data.recipientUserId }, select: { fullName: true } })
+    : null;
+  const html = renderEmail(data.template, data.title, data.body, undefined, undefined, recipient?.fullName);
   const log = await prisma.notificationLog.create({
     data: {
       recipientUserId: data.recipientUserId,

@@ -36,7 +36,6 @@ export default function MentorQueriesPage() {
   const [comments, setComments] = useState<PortalComment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -125,7 +124,7 @@ export default function MentorQueriesPage() {
 
   const handleSend = async () => {
     const text = message.trim();
-    if (!activeTeamId || !text || busy) return;
+    if (!activeTeamId || !text) return;
     const author: PortalComment["author"] = {
       id: session?.userId ?? "",
       fullName: session?.fullName ?? "You",
@@ -139,7 +138,6 @@ export default function MentorQueriesPage() {
       createdAt: new Date().toISOString(),
       author,
     };
-    setBusy(true);
     setError(null);
     setMessage("");
     setComments((prev) => [...prev, optimistic]);
@@ -150,8 +148,6 @@ export default function MentorQueriesPage() {
       setComments((prev) => prev.filter((c) => c.id !== optimisticId));
       setMessage(text);
       setError(err instanceof Error ? err.message : "Could not send reply");
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -313,16 +309,15 @@ export default function MentorQueriesPage() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder={`Reply to ${activeRow.team.name}…`}
-                  disabled={busy}
-                  className="flex-1 rounded-xl border border-brand-sand bg-white px-3 py-2.5 text-sm outline-none transition-colors focus:border-brand-primary disabled:opacity-60"
+                  className="flex-1 rounded-xl border border-brand-sand bg-white px-3 py-2.5 text-sm outline-none transition-colors focus:border-brand-primary"
                 />
                 <button
                   type="submit"
-                  disabled={busy || !message.trim()}
+                  disabled={!message.trim()}
                   className="flex shrink-0 items-center gap-2 rounded-xl bg-brand-primary px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <SendIcon className="h-4 w-4" />
-                  {busy ? "Sending…" : "Send Reply"}
+                  Send Reply
                 </button>
               </form>
             </>

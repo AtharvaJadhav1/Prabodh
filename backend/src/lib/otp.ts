@@ -70,26 +70,16 @@ export async function sendOtp(opts: {
         ? 'Reset your Prabodh password'
         : 'Your Prabodh sign-in code';
 
-  const introHtml =
+  const lead =
     opts.purpose === 'register'
-      ? `
-      <p style="margin:0 0 12px">Hi there,</p>
-      <p style="margin:0 0 12px">Thank you for registering on Prabodh.</p>
-      <p style="margin:0">Use the one-time verification code below to activate your account:</p>
-      `
+      ? 'Thank you for registering on Prabodh. Use the one-time verification code below to activate your account.'
       : opts.purpose === 'reset_password'
-        ? `
-      <p style="margin:0 0 12px">Hi there,</p>
-      <p style="margin:0">Use the one-time verification code below to choose a new password:</p>
-      `
-        : `
-      <p style="margin:0 0 12px">Hi there,</p>
-      <p style="margin:0">Use the one-time verification code below to sign in:</p>
-      `;
+        ? 'Use the one-time verification code below to choose a new password for your Prabodh account.'
+        : 'Use the one-time verification code below to sign in to your Prabodh account.';
 
   const html = renderOtpEmail({
     title,
-    introHtml,
+    lead,
     code,
     expiresMinutes: minutes,
   });

@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
+
 /**
  * Shared Prabodh transactional email shell.
  * Every outbound email uses this layout so branding, header, and buttons stay uniform.
@@ -34,9 +37,28 @@ export function appOrigin() {
   return raw.split(',')[0].trim().replace(/\/$/, '');
 }
 
+export const LOGO_CID = 'prabodh-logo';
+
+let logoBuffer: Buffer | null | undefined;
+
+/** Logo bytes bundled with the backend (assets/prabodh-logo.png), or null when missing. */
+export function logoAttachmentContent(): Buffer | null {
+  if (logoBuffer !== undefined) return logoBuffer;
+  const candidates = [
+    join(__dirname, '../../../../assets/prabodh-logo.png'),
+    join(process.cwd(), 'assets/prabodh-logo.png'),
+    join(process.cwd(), 'backend/assets/prabodh-logo.png'),
+  ];
+  const found = candidates.find((f) => existsSync(f));
+  logoBuffer = found ? readFileSync(found) : null;
+  return logoBuffer;
+}
+
 function logoUrl() {
-  // Icon mark matches the circular logo in the email sketch.
-  return `${appOrigin()}/images/logo/Prabodh_Icon_Only_Web_1000px.png`;
+  // Full horizontal wordmark — centred at the top of every mail. Embedded inline (CID) so it
+  // always renders; falls back to the hosted copy if the bundled file is unavailable.
+  if (logoAttachmentContent()) return `cid:${LOGO_CID}`;
+  return `${appOrigin()}/images/logo/Prabodh_Horizontal_Logo_Web_1000px.png`;
 }
 
 export function escapeHtml(s: string) {
@@ -74,13 +96,21 @@ export type LayoutOptions = {
   /** Small label under the brand wordmark (e.g. Student Portal). */
   portalLabel?: string;
   footerNote?: string;
+  /** Letter salutation, e.g. "Dear Asha,". Defaults to "Dear User,". Pass false to omit. */
+  greeting?: string | false;
 };
 
 export function layout(opts: LayoutOptions) {
   const portal = opts.portalLabel ?? 'Student Portal';
   const footer =
     opts.footerNote ??
-    'This message was sent by Prabodh. Scores and sensitive evaluation data are only shown after you sign in.';
+    'This message was sent by Prabodh. Scores and sensitive evaluation data are shown only after you sign in.';
+  const greeting =
+    opts.greeting === false ? '' : `<p style="margin:0 0 14px">${escapeHtml(opts.greeting ?? 'Dear User,')}</p>`;
+  const closing = `<tr><td style="padding:28px 32px 0;font-size:15px;line-height:1.65;color:${BRAND.charcoal}">
+            <p style="margin:0">Yours sincerely,</p>
+            <p style="margin:0;font-weight:700;color:${BRAND.deep}">The Prabodh Team</p>
+          </td></tr>`;
   const ctaBlock = opts.cta
     ? `<tr><td align="center" style="padding-top:28px">${emailCtaButton(opts.cta.label, opts.cta.url)}</td></tr>`
     : '';
@@ -100,29 +130,21 @@ export function layout(opts: LayoutOptions) {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.canvas};padding:32px 12px">
       <tr><td align="center">
         <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:${BRAND.white};border-radius:16px;border:1px solid ${BRAND.softline};overflow:hidden">
-          <!-- Header: logo + Prabodh. -->
-          <tr><td style="padding:28px 32px 20px;background:${BRAND.cream}">
-            <table role="presentation" cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="vertical-align:middle;padding-right:12px">
-                  <img src="${logoUrl()}" width="40" height="40" alt="Prabodh" style="display:block;width:40px;height:40px;border-radius:999px;border:1px solid ${BRAND.sand};object-fit:cover" />
-                </td>
-                <td style="vertical-align:middle">
-                  <div style="font-size:22px;font-weight:800;letter-spacing:-0.02em;color:${BRAND.deep};line-height:1.1">Prabodh.</div>
-                  <div style="margin-top:4px;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:${BRAND.muted}">${escapeHtml(portal)}</div>
-                </td>
-              </tr>
-            </table>
+          <!-- Header: Prabodh logo -->
+          <tr><td align="center" style="padding:32px 32px 24px;background:${BRAND.cream}">
+            <img src="${logoUrl()}" width="180" alt="Prabodh" style="display:block;width:180px;max-width:100%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic" />
+            <div style="margin-top:12px;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:${BRAND.muted}">${escapeHtml(portal)}</div>
           </td></tr>
           <!-- Divider -->
           <tr><td style="padding:0 32px"><div style="height:1px;background:${BRAND.softline};line-height:1px;font-size:1px">&nbsp;</div></td></tr>
           <!-- Body -->
           <tr><td style="padding:28px 32px 8px">
             <div style="font-size:20px;font-weight:700;color:${BRAND.deep};line-height:1.3">${escapeHtml(opts.title)}</div>
-            <div style="padding-top:14px;font-size:15px;line-height:1.65;color:${BRAND.charcoal}">${opts.bodyHtml}</div>
+            <div style="padding-top:14px;font-size:15px;line-height:1.65;color:${BRAND.charcoal}">${greeting}${opts.bodyHtml}</div>
           </td></tr>
           ${middleBlock}
           ${ctaBlock}
+          ${closing}
           <!-- Footer -->
           <tr><td style="padding:28px 32px 32px">
             <div style="height:1px;background:${BRAND.softline};line-height:1px;font-size:1px;margin-bottom:18px">&nbsp;</div>
@@ -142,9 +164,10 @@ export function renderEmail(
   body: string,
   ctaLabel?: string,
   ctaUrl?: string,
+  recipientName?: string,
 ) {
   const safe = `<p style="margin:0 0 12px">${escapeHtml(body)}</p>`;
-  return renderEmailHtml(template, title, safe, ctaLabel, ctaUrl);
+  return renderEmailHtml(template, title, safe, ctaLabel, ctaUrl, recipientName);
 }
 
 /** Like renderEmail, but body is trusted HTML (caller must escape user values). */
@@ -154,8 +177,10 @@ export function renderEmailHtml(
   bodyHtml: string,
   ctaLabel?: string,
   ctaUrl?: string,
+  recipientName?: string,
 ) {
   const origin = appOrigin();
+  const greeting = recipientName?.trim() ? `Dear ${recipientName.trim()},` : 'Dear User,';
   const cta = ctaLabel
     ? { label: ctaLabel, url: ctaUrl ?? origin }
     : undefined;
@@ -164,70 +189,81 @@ export function renderEmailHtml(
     case 'team_invite':
       return layout({
         title,
-        bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Use the same email address when you register so your invite is linked automatically.</p>`,
+        greeting,
+        bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Kindly use the same email address when you register so that your invitation is linked automatically.</p>`,
         cta: cta ?? { label: 'Register & join team', url: `${origin}/register` },
         portalLabel: 'Student Portal',
       });
     case 'mentor_allocation':
       return layout({
         title,
-        bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Open Prabodh and sign in with the email above to continue.</p>`,
+        greeting,
+        bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Please sign in to Prabodh with the email address above to continue.</p>`,
         cta: cta ?? { label: 'Open mentor dashboard', url: `${origin}/login` },
         portalLabel: 'Student Portal',
       });
     case 'staff_credentials':
       return layout({
         title,
+        greeting,
         bodyHtml,
         cta: cta ?? { label: 'Sign in to Prabodh', url: `${origin}/login` },
         portalLabel: 'Student Portal',
-        footerNote: 'Keep this password private. You can change it after signing in.',
+        footerNote: 'Please keep this password confidential. You may change it after signing in.',
       });
     case 'deadline_reminder':
       return layout({
         title,
-        bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Submit deliverables before the stage locks.</p>`,
+        greeting,
+        bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Kindly submit your deliverables before the stage locks.</p>`,
         cta: cta ?? { label: 'Open Prabodh', url: origin },
       });
     case 'evaluation_published':
       return layout({
         title,
-        bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Sign in to view scores and feedback. Scores are not included in this email.</p>`,
+        greeting,
+        bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Please sign in to view your scores and feedback. Scores are not included in this email.</p>`,
         cta: cta ?? { label: 'Open Prabodh', url: origin },
       });
     case 'admin_broadcast':
       return layout({
         title,
+        greeting,
         bodyHtml,
         cta: cta ?? { label: 'Read announcement', url: origin },
       });
     case 'status_change':
       return layout({
         title,
-        bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Check the status tracker for the latest stage outcome.</p>`,
+        greeting,
+        bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Please refer to the status tracker for the latest stage outcome.</p>`,
         cta: cta ?? { label: 'Open Prabodh', url: origin },
       });
     case 'ps_review':
       return layout({
         title,
-        bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Open your PS Approvals page to review the ranked preferences and lock one problem statement for this team.</p>`,
+        greeting,
+        bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Kindly open your PS Approvals page to review the ranked preferences and lock one problem statement for this team.</p>`,
         cta: cta ?? { label: 'Open PS Approvals', url: ctaUrl ?? `${origin}/dashboard/mentor` },
       });
     case 'join_request':
       return layout({
         title,
-        bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Open your Group Requests page to accept or reject this request.</p>`,
+        greeting,
+        bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Kindly open your Group Requests page to accept or reject this request.</p>`,
         cta: cta ?? { label: 'Review join request', url: ctaUrl ?? `${origin}/dashboard/student/group-requests` },
       });
     case 'join_request_outcome':
       return layout({
         title,
+        greeting,
         bodyHtml,
         cta: cta ?? { label: 'Open your dashboard', url: ctaUrl ?? origin },
       });
     case 'otp':
       return layout({
         title,
+        greeting,
         bodyHtml,
         middleHtml: undefined,
         portalLabel: 'Student Portal',
@@ -236,28 +272,36 @@ export function renderEmailHtml(
     default:
       return layout({
         title,
+        greeting,
         bodyHtml,
         cta: cta ?? { label: 'Open Prabodh', url: origin },
       });
   }
 }
 
-/** OTP / verification emails — code is the primary button (one-click copy). */
+/**
+ * OTP / verification emails — the only code mail format.
+ * Copy is standardised across every purpose: same greeting, same lead sentence,
+ * same code block, same expiry note, same closing. Callers only supply the lead.
+ */
 export function renderOtpEmail(opts: {
   title: string;
-  introHtml: string;
+  /** One plain sentence describing what the code is for. */
+  lead: string;
   code: string;
   expiresMinutes: number;
+  recipientName?: string;
 }) {
   const bodyHtml = `
-    ${opts.introHtml}
-    <p style="margin:16px 0 0;font-size:14px;color:${BRAND.muted}">This code expires in ${opts.expiresMinutes} minutes.</p>
+    <p style="margin:0 0 12px">${escapeHtml(opts.lead)}</p>
+    <p style="margin:0">Kindly enter this code in Prabodh to continue. Please note that it can be used only once.</p>
   `;
   return layout({
     title: opts.title,
+    greeting: opts.recipientName?.trim() ? `Dear ${opts.recipientName.trim()},` : 'Dear User,',
     bodyHtml,
     middleHtml: emailOtpButton(opts.code),
     portalLabel: 'Student Portal',
-    footerNote: 'If you did not request this code, you can safely ignore this email.',
+    footerNote: `This code expires in ${opts.expiresMinutes} minutes. If you did not request this code, please disregard this email.`,
   });
 }

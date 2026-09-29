@@ -151,6 +151,14 @@ export class NotificationsService {
       },
       include: { author: { select: this.authorSelect } },
     });
+    // Notifications are not needed for the sender's response — fan out in the background.
+    void this.notifyCommentRecipients(user.id, teamId, body.message).catch((err) => {
+      console.error('[comments] notification fan-out failed', err);
+    });
+    return comment;
+  }
+
+  private async notifyCommentRecipients(authorId: string, teamId: string, message: string) {
     const team = await this.prisma.team.findUnique({
       where: { id: teamId },
       select: {
@@ -161,19 +169,17 @@ export class NotificationsService {
     const notifyIds = new Set<string>();
     team?.members.forEach((m) => m.userId && notifyIds.add(m.userId));
     team?.mentorAssignments.forEach((m) => notifyIds.add(m.mentorUserId));
-    notifyIds.delete(user.id);
-    if (notifyIds.size) {
-      await this.prisma.notification.createMany({
-        data: [...notifyIds].map((id) => ({
-          userId: id,
-          type: 'comment' as const,
-          title: 'New comment on your team',
-          body: body.message.slice(0, 140),
-          relatedEntity: `team:${teamId}`,
-        })),
-      });
-    }
-    return comment;
+    notifyIds.delete(authorId);
+    if (!notifyIds.size) return;
+    await this.prisma.notification.createMany({
+      data: [...notifyIds].map((id) => ({
+        userId: id,
+        type: 'comment' as const,
+        title: 'New comment on your team',
+        body: message.slice(0, 140),
+        relatedEntity: `team:${teamId}`,
+      })),
+    });
   }
 
   async listComments(user: AuthUser, teamId: string) {
