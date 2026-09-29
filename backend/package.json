@@ -5,6 +5,7 @@
   "description": "SIH Team & Project Management Portal — Node.js API (BRD FR-01 to FR-27)",
   "scripts": {
     "start": "node dist/main.js",
+    "start:prod": "node dist/main.js",
     "start:dev": "nest start --watch",
     "start:worker": "tsx watch src/worker.ts",
     "build": "node prisma/ensure-columns.cjs && npx prisma db push && tsc -p tsconfig.json",
