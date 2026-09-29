@@ -32,11 +32,16 @@ jobs:
           npm run build --if-present
           npm run test --if-present
 
+      - name: Assemble standalone deployment package
+        run: |
+          cp -r public .next/standalone/public
+          cp -r .next/static .next/standalone/.next/static
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: frontend
+          path: frontend/.next/standalone
 
   deploy:
     runs-on: ubuntu-latest
