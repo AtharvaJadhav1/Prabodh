@@ -11,6 +11,7 @@ function backendOrigin() {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   reactStrictMode: true,
   async rewrites() {
     const origin = backendOrigin();
