@@ -26,11 +26,20 @@ jobs:
         with:
           node-version: '22.x'
 
-      - name: npm install, build, and test
-        run: |
-          npm install
-          npm run build --if-present
-          npm run test --if-present
+      - name: Install dependencies
+        run: npm ci --include=dev --no-audit --no-fund
+
+      - name: Generate Prisma client
+        env:
+          # Placeholder only: `prisma generate` compiles the client and never connects.
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/ci?schema=public
+        run: npx prisma generate
+
+      - name: Test
+        run: npm test
+
+      - name: Typecheck
+        run: npx tsc --noEmit
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
