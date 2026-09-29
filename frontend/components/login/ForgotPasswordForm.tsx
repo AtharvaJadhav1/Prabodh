@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
 import { apiPost } from "../../lib/api";
 import TextField from "./TextField";
 
@@ -73,7 +75,7 @@ export default function ForgotPasswordForm() {
         <div>
           <h1 className="font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">Choose a new password</h1>
           <p className="mt-2 text-sm leading-relaxed text-brand-muted">
-            Enter the 6-digit code sent to <span className="font-semibold text-brand-deep">{email}</span> and your new
+            Enter the code sent to <span className="font-semibold text-brand-deep">{email}</span> and your new
             password.
           </p>
         </div>
@@ -91,11 +93,21 @@ export default function ForgotPasswordForm() {
             inputMode="numeric"
             pattern="\d{6}"
             maxLength={6}
-            placeholder="123456"
+            placeholder="XXXX-XXXX"
             required
             autoComplete="one-time-code"
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            labelAction={
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => void sendResetCode()}
+                className="shrink-0 text-xs font-semibold text-brand-primary transition-colors hover:text-brand-hover disabled:opacity-60"
+              >
+                Resend code
+              </button>
+            }
           />
           <div className="space-y-1.5">
             <label htmlFor="reset-password" className="block text-xs font-bold uppercase tracking-wider text-brand-deep">
@@ -110,14 +122,20 @@ export default function ForgotPasswordForm() {
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-brand-sand bg-white py-3 pl-4 pr-16 text-sm font-medium text-brand-charcoal shadow-sm transition-all placeholder:text-brand-charcoal/50 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                className="w-full rounded-xl border border-brand-sand bg-white py-3 pl-4 pr-11 text-sm font-medium text-brand-charcoal shadow-sm transition-all placeholder:text-brand-charcoal/50 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3.5 rounded p-1 text-xs font-semibold text-brand-muted transition-colors hover:text-brand-deep"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                className="absolute right-3 rounded-lg p-1.5 text-brand-muted transition-colors hover:text-brand-deep focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40"
               >
-                {showPassword ? "Hide" : "Show"}
+                <HugeiconsIcon
+                  icon={showPassword ? ViewOffIcon : ViewIcon}
+                  strokeWidth={1.5}
+                  className="h-5 w-5"
+                />
               </button>
             </div>
           </div>
@@ -129,14 +147,6 @@ export default function ForgotPasswordForm() {
             className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
           >
             {loading ? "Updating…" : "Update password"}
-          </button>
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => void sendResetCode()}
-            className="w-full text-sm font-semibold text-brand-primary hover:text-brand-hover disabled:opacity-60"
-          >
-            Resend code
           </button>
         </form>
         <p className="text-center text-sm text-brand-muted">

@@ -12,8 +12,7 @@ export default function UnifiedLoginForm() {
 
   return (
     <LoginPasswordForm
-      title="Sign in to Prabodh"
-      description="Use the email and temporary password from your invite. Students, mentors, and admins all sign in here — we route you to the right workspace."
+      title="Sign in"
       submitLabel="Sign in"
       footer={
         <div className="space-y-3">
@@ -24,7 +23,6 @@ export default function UnifiedLoginForm() {
             </p>
           ) : null}
           <p className="text-center text-sm text-brand-muted">
-            New student?{" "}
             <a href="/register" className="font-semibold text-brand-primary hover:text-brand-hover">
               Create a student account
             </a>

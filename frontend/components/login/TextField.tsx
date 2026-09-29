@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 type TextFieldProps = {
   id: string;
-  label: string;
+  label: ReactNode;
   type?: string;
   placeholder?: string;
   required?: boolean;
@@ -13,6 +13,7 @@ type TextFieldProps = {
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   trailing?: ReactNode;
+  labelAction?: ReactNode;
 };
 
 export default function TextField({
@@ -28,15 +29,19 @@ export default function TextField({
   value,
   onChange,
   trailing,
+  labelAction,
 }: TextFieldProps) {
   return (
     <div className="space-y-1.5">
-      <label
-        htmlFor={id}
-        className="block text-xs font-bold uppercase tracking-wider text-brand-deep"
-      >
-        {label}
-      </label>
+      <div className="flex items-center justify-between gap-3">
+        <label
+          htmlFor={id}
+          className="block text-xs font-bold uppercase tracking-wider text-brand-deep"
+        >
+          {label}
+        </label>
+        {labelAction}
+      </div>
       <div className="relative flex items-center">
         <input
           id={id}

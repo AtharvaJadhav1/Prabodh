@@ -6,6 +6,8 @@ import { useAuth } from "../auth/AuthProvider";
 import { dashboardForRole } from "../../lib/session";
 import OtpAuthFlow from "./OtpAuthFlow";
 import TextField from "./TextField";
+import PasswordField from "./PasswordField";
+import FilterDropdown from "../admin/FilterDropdown";
 
 export const INSTITUTES = [
   "Vishwashanti Sangeet Kala Academy",
@@ -43,7 +45,9 @@ export default function RegisterForm() {
   const { establishSession } = useAuth();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [institute, setInstitute] = useState("");
   const [draft, setDraft] = useState<RegistrationDraft | null>(null);
 
   if (draft) {
@@ -77,8 +81,7 @@ export default function RegisterForm() {
           Student Registration
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-brand-muted">
-          Create a student account with your email. You will receive an OTP to verify your email before
-          accessing the dashboard.
+          Create your account with your email. We will send a code to verify it.
         </p>
       </div>
       <form
@@ -91,14 +94,20 @@ export default function RegisterForm() {
           const payload: RegistrationDraft = {
             fullName: String(form.get("fullName") ?? ""),
             email: String(form.get("email") ?? ""),
-            password: String(form.get("password") ?? ""),
-            institute: String(form.get("institute") ?? ""),
+            password,
+            institute,
             department: String(form.get("department") ?? ""),
             phone: String(form.get("phone") ?? ""),
           };
           try {
             if (payload.password.length < 8) {
               throw new Error("Password must be at least 8 characters.");
+            }
+            if (password !== confirmPassword) {
+              throw new Error("Passwords do not match.");
+            }
+            if (!payload.institute) {
+              throw new Error("Please select your institute.");
             }
             setDraft(payload);
           } catch (err) {
@@ -117,60 +126,53 @@ export default function RegisterForm() {
           required
           autoComplete="email"
         />
+        <PasswordField
+          id="password"
+          name="password"
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          placeholder="At least 8 characters"
+          required
+          minLength={8}
+        />
+        <PasswordField
+          id="confirmPassword"
+          name="confirmPassword"
+          label="Confirm password"
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          placeholder="Re-enter your password"
+          autoComplete="new-password"
+          required
+          minLength={8}
+        />
         <div className="space-y-1.5">
-          <label htmlFor="password" className="block text-xs font-bold uppercase tracking-wider text-brand-deep">
-            Password
-          </label>
-          <div className="relative flex items-center">
-            <input
-              id="password"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              required
-              minLength={8}
-              autoComplete="new-password"
-              placeholder="At least 8 characters"
-              className="w-full rounded-xl border border-brand-sand bg-white py-3 pl-4 pr-16 text-sm font-medium text-brand-charcoal shadow-sm transition-all placeholder:text-brand-charcoal/50 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-3.5 rounded p-1 text-xs font-semibold text-brand-muted transition-colors hover:text-brand-deep"
-            >
-              {showPassword ? "Hide" : "Show"}
-            </button>
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <label htmlFor="institute" className="block text-xs font-bold uppercase tracking-wider text-brand-deep">
-            Institute
-          </label>
-          <select
-            id="institute"
-            name="institute"
-            required
-            defaultValue=""
-            className="w-full rounded-xl border border-brand-sand bg-white px-4 py-3 text-sm font-medium text-brand-charcoal outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
-          >
-            <option value="" disabled>
-              Select your institute
-            </option>
-            {INSTITUTES.map((institute) => (
-              <option key={institute} value={institute}>
-                {institute}
-              </option>
-            ))}
-          </select>
+          <span className="block text-xs font-bold uppercase tracking-wider text-brand-deep">Institute</span>
+          <FilterDropdown
+            options={INSTITUTES.map((name) => ({ value: name, label: name }))}
+            value={institute}
+            onChange={setInstitute}
+          />
         </div>
         <TextField id="department" label="Department" placeholder="CSE" autoComplete="organization-title" />
-        <TextField id="phone" label="Phone" type="text" placeholder="Optional" autoComplete="tel" />
+        <TextField
+          id="phone"
+          type="text"
+          autoComplete="tel"
+          label={
+            <>
+              Phone <span className="normal-case font-medium text-brand-muted">(Optional)</span>
+            </>
+          }
+        />
         {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
         <button
           type="submit"
           disabled={loading}
           className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
         >
-          {loading ? "Sending verification code…" : "Continue — verify email"}
+          {loading ? "Sending verification code…" : "Verify email"}
         </button>
       </form>
       <p className="text-center text-sm text-brand-muted">

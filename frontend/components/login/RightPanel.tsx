@@ -40,15 +40,10 @@ export default function RightPanel() {
           <br />
           Launch the aircraft.
         </h2>
-        <p className="mt-5 text-sm leading-relaxed text-white/80 sm:text-base">
-          A pilot doesn&apos;t earn their wings by filing a flight manual at the
-          deadline. They log real flight hours alongside seasoned navigators
-          until their vessel clears every checkpoint.
-        </p>
       </div>
 
       <div className="pointer-events-none relative z-10 flex items-center justify-between border-t border-white/10 pt-6 text-xs text-stone-400">
-        <span>Pre‑Incubation &amp; Mentorship Portal · Prabodh Edutech</span>
+        <span>Pre‑Incubation &amp; Mentorship Portal · Prabodh</span>
       </div>
     </section>
   );

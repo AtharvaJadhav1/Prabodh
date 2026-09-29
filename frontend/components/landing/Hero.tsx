@@ -40,8 +40,10 @@ export default function Hero() {
         />
       </div>
 
-      <div className="watermark-text absolute right-[-5%] top-1/4 font-serif text-[20vw] font-black leading-none tracking-tighter text-white/[0.03]">
-        Prabodh
+      <div className="watermark-text pointer-events-none absolute inset-0 z-0 flex items-center justify-center">
+        <span className="font-serif text-[20vw] font-black leading-none tracking-tighter text-white/[0.03]">
+          Prabodh
+        </span>
       </div>
 
       <div className="relative z-10 mx-auto max-w-7xl pointer-events-none">
@@ -65,14 +67,9 @@ export default function Hero() {
         >
           <div className="absolute left-0 right-0 top-0 h-2 bg-gradient-to-r from-brand-deep via-brand-primary to-brand-amber"></div>
 
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <span className="inline-flex items-center rounded-lg border border-brand-primary/20 bg-brand-lightOrange px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-brand-primary">
-              Academic Hackathon Portal
-            </span>
-            <div className="flex items-center gap-2 text-xs font-medium text-brand-charcoal/70">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-brand-approved"></span>
-              <span>2026 Phase: Internal Institute Qualifier Active</span>
-            </div>
+          <div className="mb-6 flex items-center gap-2 text-xs font-medium text-brand-charcoal/70">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-brand-approved"></span>
+            <span>2026 Phase: Internal Institute Qualifier Active</span>
           </div>
 
           <h2 className="mb-3 text-2xl font-extrabold tracking-tight text-brand-deep sm:text-3xl">

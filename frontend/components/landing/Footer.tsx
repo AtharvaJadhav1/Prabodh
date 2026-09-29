@@ -40,7 +40,13 @@ export default function Footer() {
                 <span className="text-brand-amber">Email:</span> support@prabodh.app
               </p>
               <p className="flex items-center gap-2">
-                <span className="text-brand-amber">Phone:</span> +91 (020) 3027 3400 / 3600
+                <span className="text-brand-amber">Phone:</span>
+                <a
+                  href="tel:+917488957189"
+                  className="transition-colors hover:text-brand-amber"
+                >
+                  +91 7488957189
+                </a>
               </p>
             </div>
           </div>
