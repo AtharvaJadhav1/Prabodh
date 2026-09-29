@@ -782,93 +782,112 @@ export class AdminService {
       }
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      for (const p of promotedTeams) {
-        await tx.team.update({ where: { id: p.teamId }, data: { leaderUserId: p.nextLeaderId } });
-      }
-      if (deletedTeamIds.size > 0) {
-        await this.deleteTeams(tx, [...deletedTeamIds]);
-      }
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        for (const p of promotedTeams) {
+          await tx.team.update({ where: { id: p.teamId }, data: { leaderUserId: p.nextLeaderId } });
+        }
+        if (deletedTeamIds.size > 0) {
+          await this.deleteTeams(tx, [...deletedTeamIds]);
+        }
 
-      if (target.industrialMentorProfile) {
-        const profileId = target.industrialMentorProfile.id;
-        await tx.team.updateMany({
-          where: { industrialMentorId: profileId },
-          data: { industrialMentorId: null },
+        if (target.industrialMentorProfile) {
+          const profileId = target.industrialMentorProfile.id;
+          await tx.team.updateMany({
+            where: { industrialMentorId: profileId },
+            data: { industrialMentorId: null },
+          });
+          await tx.mentorAssignment.updateMany({
+            where: { industrialMentorId: profileId },
+            data: { industrialMentorId: null },
+          });
+          await tx.industrialMentor.delete({ where: { id: profileId } });
+        }
+
+        await tx.team.updateMany({ where: { facultyMentorId: target.id }, data: { facultyMentorId: null } });
+
+        const targetAssignments = await tx.mentorAssignment.findMany({
+          where: { mentorUserId: target.id },
+          select: { id: true, teamId: true },
         });
+        const targetAssignmentIds = targetAssignments.map((a) => a.id);
+        if (targetAssignmentIds.length > 0) {
+          await tx.mentorAssignment.updateMany({
+            where: { reassignedFromId: { in: targetAssignmentIds } },
+            data: { reassignedFromId: null },
+          });
+          await tx.mentorAssignment.deleteMany({ where: { id: { in: targetAssignmentIds } } });
+        }
+        for (const teamId of [...new Set(targetAssignments.map((a) => a.teamId))]) {
+          if (!deletedTeamIds.has(teamId)) await syncTeamMentorPointers(tx, teamId);
+        }
         await tx.mentorAssignment.updateMany({
-          where: { industrialMentorId: profileId },
-          data: { industrialMentorId: null },
+          where: { assignedById: target.id },
+          data: { assignedById: actor.id },
         });
-        await tx.industrialMentor.delete({ where: { id: profileId } });
-      }
+        await tx.mentorInvite.deleteMany({ where: { mentorUserId: target.id } });
+        await tx.mentorInvite.deleteMany({ where: { invitedById: target.id } });
 
-      await tx.team.updateMany({ where: { facultyMentorId: target.id }, data: { facultyMentorId: null } });
+        await tx.ideaSubmission.updateMany({ where: { authorUserId: target.id }, data: { authorUserId: null } });
+        await tx.teamPsPreference.updateMany({ where: { decidedById: target.id }, data: { decidedById: null } });
+        await tx.teamPsPreference.deleteMany({ where: { submittedById: target.id } });
+        await tx.notificationLog.updateMany({ where: { recipientUserId: target.id }, data: { recipientUserId: null } });
+        await tx.stageResult.updateMany({ where: { publishedById: target.id }, data: { publishedById: null } });
+        await tx.teamMember.deleteMany({ where: { userId: target.id } });
+        await tx.joinRequest.deleteMany({ where: { studentId: target.id } });
+        await tx.notification.deleteMany({ where: { userId: target.id } });
 
-      const targetAssignments = await tx.mentorAssignment.findMany({
-        where: { mentorUserId: target.id },
-        select: { id: true, teamId: true },
-      });
-      const targetAssignmentIds = targetAssignments.map((a) => a.id);
-      if (targetAssignmentIds.length > 0) {
-        await tx.mentorAssignment.updateMany({
-          where: { reassignedFromId: { in: targetAssignmentIds } },
-          data: { reassignedFromId: null },
+        // Other evaluators' rows can point at the target's via the supersede chain.
+        const targetEvals = await tx.evaluation.findMany({
+          where: { evaluatorUserId: target.id },
+          select: { id: true },
         });
-        await tx.mentorAssignment.deleteMany({ where: { id: { in: targetAssignmentIds } } });
-      }
-      for (const teamId of [...new Set(targetAssignments.map((a) => a.teamId))]) {
-        if (!deletedTeamIds.has(teamId)) await syncTeamMentorPointers(tx, teamId);
-      }
-      await tx.mentorAssignment.updateMany({
-        where: { assignedById: target.id },
-        data: { assignedById: actor.id },
-      });
-      await tx.mentorInvite.deleteMany({ where: { mentorUserId: target.id } });
-      await tx.mentorInvite.deleteMany({ where: { invitedById: target.id } });
+        if (targetEvals.length > 0) {
+          const ids = targetEvals.map((e) => e.id);
+          await tx.evaluation.updateMany({ where: { supersededById: { in: ids } }, data: { supersededById: null } });
+          await tx.evaluation.deleteMany({ where: { id: { in: ids } } });
+        }
+        await tx.broadcast.deleteMany({ where: { adminUserId: target.id } });
 
-      await tx.ideaSubmission.updateMany({ where: { authorUserId: target.id }, data: { authorUserId: null } });
-      await tx.teamPsPreference.updateMany({ where: { decidedById: target.id }, data: { decidedById: null } });
-      await tx.teamPsPreference.deleteMany({ where: { submittedById: target.id } });
-      await tx.notificationLog.updateMany({ where: { recipientUserId: target.id }, data: { recipientUserId: null } });
-      await tx.stageResult.updateMany({ where: { publishedById: target.id }, data: { publishedById: null } });
-      await tx.teamMember.deleteMany({ where: { userId: target.id } });
-      await tx.joinRequest.deleteMany({ where: { studentId: target.id } });
-      await tx.notification.deleteMany({ where: { userId: target.id } });
-      await tx.evaluation.deleteMany({ where: { evaluatorUserId: target.id } });
-      await tx.broadcast.deleteMany({ where: { adminUserId: target.id } });
+        const commentIds = await tx.comment.findMany({
+          where: { authorUserId: target.id },
+          select: { id: true },
+        });
+        if (commentIds.length > 0) {
+          const ids = commentIds.map((c) => c.id);
+          await tx.comment.updateMany({ where: { parentCommentId: { in: ids } }, data: { parentCommentId: null } });
+          await tx.comment.deleteMany({ where: { id: { in: ids } } });
+        }
 
-      const commentIds = await tx.comment.findMany({
-        where: { authorUserId: target.id },
-        select: { id: true },
-      });
-      if (commentIds.length > 0) {
-        const ids = commentIds.map((c) => c.id);
-        await tx.comment.updateMany({ where: { parentCommentId: { in: ids } }, data: { parentCommentId: null } });
-        await tx.comment.deleteMany({ where: { id: { in: ids } } });
-      }
+        await tx.auditLog.updateMany({ where: { actorUserId: target.id }, data: { actorUserId: null } });
+        await tx.user.delete({ where: { id: target.id } });
 
-      await tx.auditLog.updateMany({ where: { actorUserId: target.id }, data: { actorUserId: null } });
-      await tx.user.delete({ where: { id: target.id } });
-
-      await writeAudit(tx, {
-        actorUserId: actor.id,
-        action: 'user.remove',
-        entityType: 'user',
-        entityId: target.id,
-        before: {
-          email: target.email,
-          fullName: target.fullName,
-          platformRole: target.platformRole,
-        },
-        after: {
-          removed: true,
-          promotedTeams: promotedTeams.map((p) => p.name),
-          deletedTeams: deletedTeams.map((d) => d.name),
-          auditLogsRetained: true,
-        },
-      });
-    }, { timeout: 120_000 });
+        await writeAudit(tx, {
+          actorUserId: actor.id,
+          action: 'user.remove',
+          entityType: 'user',
+          entityId: target.id,
+          before: {
+            email: target.email,
+            fullName: target.fullName,
+            platformRole: target.platformRole,
+          },
+          after: {
+            removed: true,
+            promotedTeams: promotedTeams.map((p) => p.name),
+            deletedTeams: deletedTeams.map((d) => d.name),
+            auditLogsRetained: true,
+          },
+        });
+      }, { timeout: 60_000, maxWait: 10_000 });
+    } catch (err: any) {
+      console.error(
+        `[admin.removeUser] failed userId=${target.id} email=${target.email} code=${err?.code ?? '-'}`,
+        err?.meta ?? '',
+        err?.stack ?? err,
+      );
+      throw err;
+    }
 
     const clerk = getClerkClient();
     if (clerk && target.clerkUserId && !target.clerkUserId.startsWith('local:')) {
@@ -913,6 +932,10 @@ export class AdminService {
     });
     await tx.comment.deleteMany({ where: { teamId: { in: teamIds } } });
     await tx.deliverable.deleteMany({ where: { teamId: { in: teamIds } } });
+    await tx.evaluation.updateMany({
+      where: { supersededBy: { teamId: { in: teamIds } } },
+      data: { supersededById: null },
+    });
     await tx.evaluation.deleteMany({ where: { teamId: { in: teamIds } } });
     await tx.ideaSubmission.deleteMany({ where: { teamId: { in: teamIds } } });
     await tx.joinRequest.deleteMany({ where: { teamId: { in: teamIds } } });

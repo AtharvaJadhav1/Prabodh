@@ -2,6 +2,7 @@ import 'reflect-metadata';
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { PrismaExceptionFilter } from './common/prisma-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -18,6 +19,9 @@ async function bootstrap() {
   // place. Node's 5s default keepAliveTimeout keeps the drain inside the 10s
   // kill_timeout set in scripts/ecosystem.config.cjs.
   app.enableShutdownHooks();
+
+  // Prisma errors -> 404/409/503 with a readable message instead of a bare 500.
+  app.useGlobalFilters(new PrismaExceptionFilter());
 
   // Allow PPTX/PDF uploads through the API
   const express = require('express') as {
