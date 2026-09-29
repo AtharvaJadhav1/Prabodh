@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { PlatformRole } from '@prisma/client';
 import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
@@ -24,8 +24,8 @@ export class MentorsController {
 
   @Get('invites')
   @Roles(PlatformRole.institute_mentor, PlatformRole.industry_mentor, PlatformRole.admin)
-  myInvites(@CurrentUser() user: AuthUser) {
-    return this.mentors.pendingInvitesForMentor(user);
+  myInvites(@CurrentUser() user: AuthUser, @Query('history') history?: string) {
+    return this.mentors.pendingInvitesForMentor(user, history === '1' || history === 'true');
   }
 
   @Post('invite')

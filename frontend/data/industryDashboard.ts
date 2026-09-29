@@ -1,4 +1,4 @@
-export type InviteStatus = "pending" | "accepted" | "revoked";
+export type InviteStatus = "pending" | "accepted" | "revoked" | "expired";
 
 export type MentorInvite = {
   id: string;

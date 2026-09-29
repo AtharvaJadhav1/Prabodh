@@ -23,7 +23,7 @@ import {
   PlusIcon,
 } from "../dashboard/icons";
 
-export type TeamDetailsAudience = "admin" | "mentor";
+export type TeamDetailsAudience = "admin" | "mentor" | "industry";
 
 type Props = {
   teamId: string;
@@ -219,6 +219,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
   const canLock = isAdmin || session?.platformRole === "institute_mentor";
   const canDisqualify = isAdmin;
   const isMentor = audience === "mentor";
+  const isIndustry = audience === "industry";
 
   const load = useCallback(() => {
     if (!teamId) return;
@@ -282,7 +283,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
     );
   }
 
-  if (denied && isMentor) {
+  if (denied && (isMentor || isIndustry)) {
     return (
       <div className="flex flex-col gap-6">
         <Link href={backHref} className="text-sm font-medium text-brand-muted hover:text-brand-primary">
@@ -291,7 +292,11 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
         <EmptyState
           icon={<AlertCircleIcon className="h-10 w-10" />}
           heading="Access denied"
-          description="You can only view a team's details once you have accepted their mentor invitation."
+          description={
+            isIndustry
+              ? "You can view a team's details only after you have accepted its mentor invitation."
+              : "You can only view a team's details once you have accepted their mentor invitation."
+          }
         />
       </div>
     );
@@ -493,7 +498,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
                   <PlusIcon className="h-4 w-4" />
                   {pendingInvite ? "Invite pending" : "Invite industrial mentor"}
                 </button>
-              ) : (
+              ) : isIndustry ? null : (
                 <Link
                   href="/dashboard/admin/mentor-allocation"
                   className="mt-1 text-sm font-semibold text-brand-primary hover:underline"

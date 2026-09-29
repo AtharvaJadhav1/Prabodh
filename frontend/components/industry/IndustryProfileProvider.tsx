@@ -91,7 +91,7 @@ function studentsGuidedFrom(cohorts: MentorGroup[]): number {
 
 export function IndustryProfileProvider({ children }: { children: ReactNode }) {
   const { session, refreshMe } = useAuth();
-  const { pendingInvites, visibleTeams } = useIndustryMentor();
+  const { pendingInvites, allTeams: visibleTeams } = useIndustryMentor();
   const [profile, setProfile] = useState<IndustryProfile>(defaultProfile);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [section, setSection] = useState<IndustryEditSection>("profile");

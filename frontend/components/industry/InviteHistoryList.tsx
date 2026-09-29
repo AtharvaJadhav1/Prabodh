@@ -22,8 +22,8 @@ export default function InviteHistoryList({ history }: Props) {
       <table className="w-full text-left text-xs">
         <thead>
           <tr className="border-b border-brand-sand bg-brand-cream/60 text-[10px] uppercase tracking-wider text-brand-muted">
-            <th className="px-4 py-3 font-bold">Institute Mentor</th>
-            <th className="px-4 py-3 font-bold">Teams</th>
+            <th className="px-4 py-3 font-bold">Team / Invited by</th>
+            <th className="px-4 py-3 font-bold">Code</th>
             <th className="px-4 py-3 text-center font-bold">Status</th>
             <th className="px-4 py-3 text-right font-bold">Responded</th>
           </tr>
@@ -35,11 +35,15 @@ export default function InviteHistoryList({ history }: Props) {
                 <div className="text-sm font-bold text-brand-deep">{inv.instituteMentorName}</div>
                 <div className="mt-0.5 text-[11px] text-brand-muted">{inv.instituteMentorTitle}</div>
               </td>
-              <td className="px-4 py-4 text-brand-charcoal">{inv.groupIds.length}</td>
+              <td className="px-4 py-4 font-mono text-brand-charcoal">{inv.groupIds.join(", ")}</td>
               <td className="px-4 py-4 text-center">
                 {inv.status === "accepted" ? (
                   <span className="inline-flex items-center gap-1 rounded-full border border-brand-approved/20 bg-brand-approved/10 px-2.5 py-1 text-[11px] font-semibold text-brand-approved">
                     Accepted
+                  </span>
+                ) : inv.status === "expired" ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-brand-sand bg-brand-cream px-2.5 py-1 text-[11px] font-semibold text-brand-muted">
+                    Expired
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 rounded-full border border-brand-overdue/20 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-brand-overdue">
@@ -47,7 +51,7 @@ export default function InviteHistoryList({ history }: Props) {
                   </span>
                 )}
               </td>
-              <td className="px-4 py-4 text-right text-brand-muted">{inv.respondedAt}</td>
+              <td className="px-4 py-4 text-right text-brand-muted">{inv.respondedAt ?? "—"}</td>
             </tr>
           ))}
         </tbody>

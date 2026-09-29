@@ -2,12 +2,13 @@
 
 import { useState, useMemo } from "react";
 import type { MentorGroup } from "../../data/mentorDashboard";
-import type { MentorInvite } from "../../data/industryDashboard";
+import Link from "next/link";
+import type { AcceptedMentor } from "./IndustryMentorProvider";
 import { SearchIcon } from "../dashboard/icons";
 
 type Props = {
   groups: MentorGroup[];
-  teamMentors: (teamId: string) => MentorInvite[];
+  teamMentors: (teamCode: string) => AcceptedMentor[];
 };
 
 export default function AssignedTeamsTable({ groups, teamMentors }: Props) {
@@ -61,6 +62,7 @@ export default function AssignedTeamsTable({ groups, teamMentors }: Props) {
               <th className="px-4 py-3 font-bold">Project &amp; Domain</th>
               <th className="px-4 py-3 font-bold">Via Institute Mentor(s)</th>
               <th className="px-4 py-3 text-center font-bold">Score</th>
+              <th className="px-4 py-3 text-right font-bold">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-brand-sand">
@@ -92,9 +94,11 @@ export default function AssignedTeamsTable({ groups, teamMentors }: Props) {
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex flex-wrap gap-1.5">
+                      {mentors.length === 0 ? <span className="text-brand-muted">—</span> : null}
                       {mentors.map((m) => (
                         <span
                           key={m.instituteMentorId}
+                          title={m.instituteMentorTitle}
                           className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2.5 py-0.5 text-[11px] font-semibold text-brand-primary"
                         >
                           {m.instituteMentorName}
@@ -113,13 +117,23 @@ export default function AssignedTeamsTable({ groups, teamMentors }: Props) {
                       </span>
                     )}
                   </td>
+                  <td className="px-4 py-4 text-right">
+                    {group.id ? (
+                      <Link
+                        href={`/dashboard/industry/teams/${group.id}`}
+                        className="inline-flex items-center rounded-lg border border-brand-primary/30 bg-brand-lightOrange px-3 py-1.5 text-[11px] font-bold text-brand-primary transition-colors hover:bg-brand-primary hover:text-white"
+                      >
+                        View Team
+                      </Link>
+                    ) : null}
+                  </td>
                 </tr>
               );
             })}
 
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-12 text-center text-xs font-medium text-brand-muted">
+                <td colSpan={5} className="px-4 py-12 text-center text-xs font-medium text-brand-muted">
                   No teams match &ldquo;{search}&rdquo;.
                 </td>
               </tr>

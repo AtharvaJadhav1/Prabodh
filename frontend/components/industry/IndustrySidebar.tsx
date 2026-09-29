@@ -31,7 +31,7 @@ type NavItem = {
 export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
   const router = useRouter();
   const pathname = usePathname();
-  const { pendingCount, visibleTeams } = useIndustryMentor();
+  const { pendingCount, allTeams: visibleTeams } = useIndustryMentor();
   const { session, logout } = useAuth();
   const role = roleLabel(session?.platformRole ?? "industry_mentor");
   const fullName = session?.fullName ?? "Industry Mentor";

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { mentorsForGroup, type MentorInvite } from "../../data/industryDashboard";
+import type { InviteStatus, MentorInvite } from "../../data/industryDashboard";
 import { type MentorGroup } from "../../data/mentorDashboard";
 import { api, apiPost } from "../../lib/api";
 import { useAuth } from "../auth/AuthProvider";
@@ -23,17 +23,14 @@ type IndustryMentorContextValue = {
   selectedMentorIds: string[];
   toggleMentorSelection: (instituteMentorId: string) => void;
   visibleTeams: MentorGroup[];
-  teamMentors: (teamId: string) => MentorInvite[];
-  acceptInvite: (id: string) => void;
-  declineInvite: (id: string) => void;
+  /** Every assigned team, ignoring the mentor filter. */
+  allTeams: MentorGroup[];
+  teamMentors: (teamCode: string) => AcceptedMentor[];
+  acceptInvite: (id: string) => Promise<void>;
+  declineInvite: (id: string) => Promise<void>;
 };
 
 const IndustryMentorContext = createContext<IndustryMentorContextValue | null>(null);
-
-function formatDate(): string {
-  const now = new Date();
-  return `${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}/${now.getFullYear()}`;
-}
 
 function initials(name: string) {
   return name
@@ -68,6 +65,7 @@ type InviteApiRow = {
   inviteStatus: string;
   invitedById: string;
   createdAt: string;
+  updatedAt?: string;
   invitedBy?: { id: string; fullName: string; email: string } | null;
   team: {
     id: string;
@@ -80,6 +78,10 @@ type InviteApiRow = {
 
 function toInvite(row: InviteApiRow): MentorInvite {
   const team = row.team;
+  const status: InviteStatus =
+    row.inviteStatus === "accepted" || row.inviteStatus === "revoked" || row.inviteStatus === "expired"
+      ? row.inviteStatus
+      : "pending";
   return {
     id: row.id,
     instituteMentorId: row.id,
@@ -88,9 +90,9 @@ function toInvite(row: InviteApiRow): MentorInvite {
     instituteMentorTitle: row.invitedBy?.fullName
       ? `Invited by ${row.invitedBy.fullName}`
       : team.leader?.fullName ?? team.teamCode,
-    status: "pending",
+    status,
     invitedAt: new Date(row.createdAt).toLocaleDateString(),
-    respondedAt: null,
+    respondedAt: status === "pending" || !row.updatedAt ? null : new Date(row.updatedAt).toLocaleDateString(),
     groupIds: [team.teamCode ?? team.id],
   };
 }
@@ -146,18 +148,21 @@ export function IndustryMentorProvider({ children }: { children: ReactNode }) {
       );
       setAcceptedMentors([...mentorsById.values()]);
     } catch {
-      setVisibleTeams([]);
-      setAcceptedMentors([]);
+      /* keep the last known teams on transient errors */
     }
   }, [session]);
 
   const loadInvites = useCallback(async () => {
     if (!session) return;
     try {
-      const rows = await api<InviteApiRow[]>("/mentors/invites");
-      setPendingInvites(rows.filter((row) => row.inviteStatus === "pending").map(toInvite));
+      const [pending, history] = await Promise.all([
+        api<InviteApiRow[]>("/mentors/invites"),
+        api<InviteApiRow[]>("/mentors/invites?history=1").catch(() => [] as InviteApiRow[]),
+      ]);
+      setPendingInvites(pending.filter((row) => row.inviteStatus === "pending").map(toInvite));
+      setInviteHistory(history.map(toInvite));
     } catch {
-      setPendingInvites([]);
+      /* keep the last known lists on transient errors */
     }
   }, [session]);
 
@@ -190,53 +195,27 @@ export function IndustryMentorProvider({ children }: { children: ReactNode }) {
   }, [visibleTeams, selectedMentorIds, acceptedMentors]);
 
   const teamMentors = useCallback(
-    (teamId: string) => mentorsForGroup(acceptedInvites, teamId),
-    [acceptedInvites],
+    (teamCode: string) => acceptedMentors.filter((m) => m.groupIds.includes(teamCode)),
+    [acceptedMentors],
   );
 
   const acceptInvite = useCallback(
     async (id: string) => {
-      const target = pendingInvites.find((inv) => inv.id === id);
-      setPendingInvites((prev) => prev.filter((inv) => inv.id !== id));
-      if (target) {
-        setInviteHistory((h) => [
-          ...h.filter((inv) => inv.id !== target.id),
-          { ...target, status: "accepted", respondedAt: formatDate() },
-        ]);
-      }
-      try {
-        await apiPost(`/mentors/invites/${id}/accept`, {});
-        void loadTeams();
-      } catch {
-        if (target) {
-          setPendingInvites((prev) => (prev.some((inv) => inv.id === id) ? prev : [target, ...prev]));
-          setInviteHistory((h) => h.filter((inv) => inv.id !== target.id || inv.status !== "accepted"));
-        }
+      const result = await apiPost<{ accepted?: boolean }>(`/mentors/invites/${id}/accept`, {});
+      await Promise.all([loadInvites(), loadTeams()]);
+      if (result && result.accepted === false) {
+        throw new Error("This team already has an industry mentor (or the invitation expired), so it could not be accepted.");
       }
     },
-    [pendingInvites, loadTeams],
+    [loadTeams, loadInvites],
   );
 
   const declineInvite = useCallback(
     async (id: string) => {
-      const target = pendingInvites.find((inv) => inv.id === id);
-      setPendingInvites((prev) => prev.filter((inv) => inv.id !== id));
-      if (target) {
-        setInviteHistory((h) => [
-          ...h.filter((inv) => inv.id !== target.id),
-          { ...target, status: "revoked", respondedAt: formatDate() },
-        ]);
-      }
-      try {
-        await apiPost(`/mentors/invites/${id}/decline`, {});
-      } catch {
-        if (target) {
-          setPendingInvites((prev) => (prev.some((inv) => inv.id === id) ? prev : [target, ...prev]));
-          setInviteHistory((h) => h.filter((inv) => !(inv.id === target.id && inv.status === "revoked")));
-        }
-      }
+      await apiPost(`/mentors/invites/${id}/decline`, {});
+      await loadInvites();
     },
-    [pendingInvites],
+    [loadInvites],
   );
 
   return (
@@ -250,6 +229,7 @@ export function IndustryMentorProvider({ children }: { children: ReactNode }) {
         selectedMentorIds,
         toggleMentorSelection,
         visibleTeams: filteredTeams,
+        allTeams: visibleTeams,
         teamMentors,
         acceptInvite,
         declineInvite,

@@ -332,12 +332,13 @@ export class MentorsService {
     });
   }
 
-  pendingInvitesForMentor(user: AuthUser) {
+  pendingInvitesForMentor(user: AuthUser, history = false) {
     return this.prisma.mentorInvite.findMany({
       where: {
-        inviteStatus: InviteStatus.pending,
+        inviteStatus: history ? { not: InviteStatus.pending } : InviteStatus.pending,
         OR: [{ mentorUserId: user.id }, { invitedEmail: user.email }],
       },
+      ...(history ? { take: 100 } : {}),
       include: {
         invitedBy: { select: { id: true, fullName: true, email: true } },
         team: {
@@ -352,7 +353,7 @@ export class MentorsService {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: history ? { updatedAt: 'desc' } : { createdAt: 'desc' },
     });
   }
 

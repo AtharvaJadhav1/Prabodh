@@ -6,7 +6,7 @@ import MetricCards from "../../../components/industry/MetricCards";
 import { useIndustryMentor } from "../../../components/industry/IndustryMentorProvider";
 
 export default function IndustryOverviewPage() {
-  const { pendingInvites, acceptedMentors, visibleTeams } = useIndustryMentor();
+  const { pendingInvites, acceptedMentors, allTeams: visibleTeams } = useIndustryMentor();
 
   return (
     <IndustryShell title="Industry Mentor Workspace">

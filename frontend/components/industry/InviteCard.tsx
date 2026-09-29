@@ -12,12 +12,17 @@ type Props = {
 export default function InviteCard({ invite, onAccept, onDecline }: Props) {
   const [confirmDecline, setConfirmDecline] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const run = async (action: () => void | Promise<void>) => {
     if (busy) return;
     setBusy(true);
+    setError(null);
     try {
       await action();
+      setConfirmDecline(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -55,6 +60,10 @@ export default function InviteCard({ invite, onAccept, onDecline }: Props) {
           ))}
         </div>
       </div>
+
+      {error ? (
+        <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{error}</p>
+      ) : null}
 
       {confirmDecline ? (
         <div className="flex items-center justify-between rounded-xl border border-brand-overdue/40 bg-red-50 p-3">
