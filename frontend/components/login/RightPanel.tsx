@@ -2,7 +2,7 @@ import WebThreads from "./WebThreads";
 
 export default function RightPanel() {
   return (
-    <section className="relative flex h-full w-full flex-col justify-between overflow-hidden bg-brand-deep p-12 text-white lg:min-h-screen">
+    <section className="relative flex h-full w-full flex-col justify-between overflow-hidden bg-brand-deep p-12 text-white lg:h-screen">
       <div className="absolute inset-0 z-0 pointer-events-auto">
         <WebThreads
           color1="#E59850"

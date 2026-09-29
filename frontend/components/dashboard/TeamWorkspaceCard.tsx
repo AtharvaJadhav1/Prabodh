@@ -151,6 +151,7 @@ export default function TeamWorkspaceCard() {
         </form>
         <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-brand-softline pt-4">
           <button
+            id="tour-create-team"
             type="button"
             onClick={() => {
               teamNameInputRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -161,6 +162,7 @@ export default function TeamWorkspaceCard() {
             Create a Team
           </button>
           <Link
+            id="tour-join-team"
             href="/dashboard/student/group-requests"
             className="inline-flex items-center gap-2 rounded-xl border border-brand-softline px-4 py-2.5 text-sm font-bold text-brand-deep transition-colors hover:border-brand-primary/40 hover:text-brand-primary"
           >

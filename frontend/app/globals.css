@@ -34,5 +34,16 @@ section[id] {
   background-size: 16px 16px;
 }
 
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 /* brand-approved (#2D7A4F) is the canonical success / verified / locked-good green.
    Use brand-approved, brand-approved/5, brand-approved/10 — never raw green-* for branded surfaces. */
