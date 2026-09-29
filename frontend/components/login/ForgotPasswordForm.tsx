@@ -7,12 +7,14 @@ import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
 import { apiPost } from "../../lib/api";
 import TextField from "./TextField";
 
-type Step = "email" | "reset" | "done";
+type Step = "email" | "code" | "reset" | "done";
 
 export default function ForgotPasswordForm() {
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [devHint, setDevHint] = useState("");
@@ -26,9 +28,24 @@ export default function ForgotPasswordForm() {
     try {
       const res = await apiPost<{ message: string; devCode?: string }>("/auth/password/forgot", { email });
       if (res.devCode) setDevHint(`Dev code: ${res.devCode}`);
-      setStep("reset");
+      setCode("");
+      setStep("code");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send reset code");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function verifyCode() {
+    setError("");
+    setLoading(true);
+    try {
+      const res = await apiPost<{ resetToken: string }>("/auth/password/verify", { email, code });
+      setResetToken(res.resetToken);
+      setStep("reset");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not verify the code");
     } finally {
       setLoading(false);
     }
@@ -41,7 +58,10 @@ export default function ForgotPasswordForm() {
       if (password.length < 8) {
         throw new Error("Password must be at least 8 characters.");
       }
-      await apiPost("/auth/password/reset", { email, code, password });
+      if (password !== confirm) {
+        throw new Error("Passwords do not match.");
+      }
+      await apiPost("/auth/password/reset", { email, resetToken, password });
       setStep("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not reset password");
@@ -69,21 +89,21 @@ export default function ForgotPasswordForm() {
     );
   }
 
-  if (step === "reset") {
+  if (step === "code") {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">Choose a new password</h1>
+          <h1 className="font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">Verify your code</h1>
           <p className="mt-2 text-sm leading-relaxed text-brand-muted">
-            Enter the code sent to <span className="font-semibold text-brand-deep">{email}</span> and your new
-            password.
+            Enter the 6-digit code sent to <span className="font-semibold text-brand-deep">{email}</span>. You will
+            choose a new password after the code is verified.
           </p>
         </div>
         <form
           className="space-y-5"
           onSubmit={(e) => {
             e.preventDefault();
-            void submitNewPassword();
+            void verifyCode();
           }}
         >
           <TextField
@@ -93,7 +113,7 @@ export default function ForgotPasswordForm() {
             inputMode="numeric"
             pattern="\d{6}"
             maxLength={6}
-            placeholder="XXXX-XXXX"
+            placeholder="6-digit code"
             required
             autoComplete="one-time-code"
             value={code}
@@ -109,6 +129,49 @@ export default function ForgotPasswordForm() {
               </button>
             }
           />
+          {devHint ? <p className="text-xs font-mono text-amber-800">{devHint}</p> : null}
+          {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+          <button
+            type="submit"
+            disabled={loading || code.length !== 6}
+            className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
+          >
+            {loading ? "Verifying…" : "Verify code"}
+          </button>
+        </form>
+        <p className="text-center text-sm text-brand-muted">
+          <button
+            type="button"
+            onClick={() => {
+              setError("");
+              setStep("email");
+            }}
+            className="font-semibold text-brand-primary hover:text-brand-hover"
+          >
+            Use a different email
+          </button>
+        </p>
+      </div>
+    );
+  }
+
+  if (step === "reset") {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">Choose a new password</h1>
+          <p className="mt-2 text-sm leading-relaxed text-brand-muted">
+            Code verified for <span className="font-semibold text-brand-deep">{email}</span>. Enter your new
+            password below.
+          </p>
+        </div>
+        <form
+          className="space-y-5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submitNewPassword();
+          }}
+        >
           <div className="space-y-1.5">
             <label htmlFor="reset-password" className="block text-xs font-bold uppercase tracking-wider text-brand-deep">
               New password
@@ -139,11 +202,25 @@ export default function ForgotPasswordForm() {
               </button>
             </div>
           </div>
-          {devHint ? <p className="text-xs font-mono text-amber-800">{devHint}</p> : null}
+          <div className="space-y-1.5">
+            <label htmlFor="reset-confirm" className="block text-xs font-bold uppercase tracking-wider text-brand-deep">
+              Confirm new password
+            </label>
+            <input
+              id="reset-confirm"
+              type={showPassword ? "text" : "password"}
+              required
+              minLength={8}
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              className="w-full rounded-xl border border-brand-sand bg-white px-4 py-3 text-sm font-medium text-brand-charcoal shadow-sm transition-all focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
+            />
+          </div>
           {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
           <button
             type="submit"
-            disabled={loading || code.length !== 6}
+            disabled={loading || password.length < 8 || !confirm}
             className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
           >
             {loading ? "Updating…" : "Update password"}

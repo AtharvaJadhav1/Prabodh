@@ -14,6 +14,7 @@ import {
   otpVerifySchema,
   passwordForgotSchema,
   passwordResetSchema,
+  passwordVerifySchema,
   patchMeSchema,
   registerSchema,
 } from './schema';
@@ -76,9 +77,16 @@ export class IdentityController {
     return this.identity.requestPasswordReset(parsed.email);
   }
 
+  @Post('auth/password/verify')
+  async verifyResetCode(@Body(new ZodPipe(passwordVerifySchema)) body: unknown) {
+    const parsed = body as { email: string; code: string };
+    await consumeToken(`pwd-verify:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 10));
+    return this.identity.verifyPasswordResetCode(parsed);
+  }
+
   @Post('auth/password/reset')
   async resetPassword(@Body(new ZodPipe(passwordResetSchema)) body: unknown) {
-    const parsed = body as { email: string; code: string; password: string };
+    const parsed = body as { email: string; resetToken: string; password: string };
     await consumeToken(`pwd-reset:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 10));
     return this.identity.resetPasswordWithOtp(parsed);
   }

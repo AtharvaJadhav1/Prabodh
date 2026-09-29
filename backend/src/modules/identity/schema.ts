@@ -54,9 +54,14 @@ export const passwordForgotSchema = z.object({
   email: z.string().email(),
 });
 
-export const passwordResetSchema = z.object({
+export const passwordVerifySchema = z.object({
   email: z.string().email(),
   code: z.string().regex(/^\d{6}$/),
+});
+
+export const passwordResetSchema = z.object({
+  email: z.string().email(),
+  resetToken: z.string().min(16).max(128),
   password: z.string().min(8).max(128),
 });
 

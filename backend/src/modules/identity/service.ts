@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { InviteStatus, PlatformRole, Prisma } from '@prisma/client';
 import { signAccessToken } from '../../lib/jwt';
-import { sendOtp, verifyOtp } from '../../lib/otp';
+import { consumeResetToken, issueResetToken, sendOtp, verifyOtp } from '../../lib/otp';
 import { hashPassword, verifyPassword } from '../../lib/password';
 import { mapPool } from '../../lib/async-pool';
 import { PrismaService } from '../../lib/prisma.service';
@@ -193,11 +193,25 @@ export class IdentityService {
     };
   }
 
-  async resetPasswordWithOtp(body: { email: string; code: string; password: string }) {
+  /** Step 2: check the emailed code. Only then is the caller allowed to choose a new password. */
+  async verifyPasswordResetCode(body: { email: string; code: string }) {
     const email = body.email.trim().toLowerCase();
     const check = await verifyOtp({ email, purpose: 'reset_password', code: body.code });
     if (!check.ok) throw new UnauthorizedException(check.reason);
+    const user = await this.repo.findByEmail(email);
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Account not found or disabled.');
+    }
+    return { ok: true, resetToken: await issueResetToken(email) };
+  }
 
+  /** Step 3: set the new password using the token from a verified code. */
+  async resetPasswordWithOtp(body: { email: string; resetToken: string; password: string }) {
+    const email = body.email.trim().toLowerCase();
+    const valid = await consumeResetToken(email, body.resetToken);
+    if (!valid) {
+      throw new UnauthorizedException('Verification expired. Request a new code and verify it again.');
+    }
     const user = await this.repo.findByEmail(email);
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Account not found or disabled.');

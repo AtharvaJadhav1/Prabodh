@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { InviteStatus, MentorType, PlatformRole } from '@prisma/client';
+import { InviteStatus, MentorType, PlatformRole, Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
 import { pickLeastLoadedMentor } from '../../domain/rules';
@@ -9,6 +9,8 @@ import { sendMentorInviteEmail } from '../../lib/invite-email';
 import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { getSettingNumber } from '../../lib/settings';
+import { CATEGORY_ACTIONS, enrichAuditRows } from '../../lib/audit-view';
+import { parsePagination } from '../../common/pagination';
 import { PsPreferencesService } from '../ps-preferences/service';
 import { MentorsRepository } from './repository';
 import { allocateSchema, mentorInviteSchema } from './schema';
@@ -129,7 +131,7 @@ export class MentorsService {
       entityType: 'mentor_assignment',
       entityId: next.id,
       before: { assignmentId, mentorUserId: current.mentorUserId },
-      after: { assignmentId: next.id, mentorUserId },
+      after: { assignmentId: next.id, mentorUserId, teamId: current.teamId },
     });
     await notifyUsers(this.prisma, [next.mentor.id], {
       type: 'allocation',
@@ -158,7 +160,7 @@ export class MentorsService {
         teamId: current.teamId,
         teamName: current.team.name,
       },
-      after: { active: false },
+      after: { active: false, teamId: current.teamId },
     });
     return updated;
   }
@@ -204,6 +206,65 @@ export class MentorsService {
     return [...assignments, ...inviteRows];
   }
 
+  /** Audit trail limited to the teams this mentor is actively assigned to. */
+  async teamAuditLog(
+    user: AuthUser,
+    query: { page?: string; limit?: string; category?: string; search?: string; hours?: string; teamId?: string },
+  ) {
+    const { page, limit, skip, take } = parsePagination(query);
+    const mine = await this.prisma.mentorAssignment.findMany({
+      where: { mentorUserId: user.id, active: true },
+      select: { teamId: true },
+    });
+    let teamIds = [...new Set(mine.map((a) => a.teamId))];
+    if (query.teamId) teamIds = teamIds.filter((id) => id === query.teamId);
+    if (!teamIds.length) return { items: [], total: 0, page, limit, pages: 0 };
+
+    const assignments = await this.prisma.mentorAssignment.findMany({
+      where: { teamId: { in: teamIds } },
+      select: { id: true },
+    });
+    const scope: Prisma.AuditLogWhereInput = {
+      OR: [
+        { entityType: 'team', entityId: { in: teamIds } },
+        { entityType: 'mentor_assignment', entityId: { in: assignments.map((a) => a.id) } },
+        ...teamIds.map((id) => ({ after: { path: ['teamId'], equals: id } })),
+      ],
+    };
+    const actions = query.category ? CATEGORY_ACTIONS[query.category] : undefined;
+    const where: Prisma.AuditLogWhereInput = {
+      AND: [
+        scope,
+        ...(actions ? [{ action: { in: actions } }] : []),
+        ...(query.hours ? [{ createdAt: { gte: new Date(Date.now() - Number(query.hours) * 3_600_000) } }] : []),
+        ...(query.search
+          ? [
+              {
+                OR: [
+                  { actorName: { contains: query.search, mode: 'insensitive' as const } },
+                  { actorEmail: { contains: query.search, mode: 'insensitive' as const } },
+                  { actor: { fullName: { contains: query.search, mode: 'insensitive' as const } } },
+                ],
+              },
+            ]
+          : []),
+      ],
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        include: { actor: { select: { id: true, email: true, fullName: true, platformRole: true } } },
+      }),
+      this.prisma.auditLog.count({ where }),
+    ]);
+    // Raw before/after payloads can hold other people's details — mentors only get the summary.
+    const items = (await enrichAuditRows(this.prisma, rows)).map(({ before: _b, after: _a, ...rest }) => rest);
+    return { items, total, page, limit, pages: Math.ceil(total / limit) };
+  }
+
   listFaculty() {
     return this.prisma.user.findMany({
       where: {
@@ -243,8 +304,8 @@ export class MentorsService {
 
     let mentor: { id: string };
     if (mentorType === 'industry') {
-      const profile = await this.prisma.industrialMentor.findUnique({
-        where: { email },
+      const profile = await this.prisma.industrialMentor.findFirst({
+        where: { email: { equals: email, mode: 'insensitive' } },
         include: { user: { select: { id: true, isActive: true } } },
       });
       if (!profile || !profile.isActive || !profile.user.isActive) {
@@ -260,6 +321,19 @@ export class MentorsService {
         });
         if (activeCount >= cap) {
           throw new BadRequestException(`Team already has ${cap} industrial mentor(s)`);
+        }
+        const otherPending = await this.prisma.mentorInvite.count({
+          where: {
+            teamId: team.id,
+            mentorType: 'industry',
+            inviteStatus: InviteStatus.pending,
+            NOT: { invitedEmail: email },
+          },
+        });
+        if (activeCount + otherPending >= cap) {
+          throw new BadRequestException(
+            'An industrial mentor invitation is already pending for this team. Revoke it before inviting someone else.',
+          );
         }
       }
     } else {

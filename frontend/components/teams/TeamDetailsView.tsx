@@ -221,9 +221,10 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
   const isMentor = audience === "mentor";
   const isIndustry = audience === "industry";
 
-  const load = useCallback(() => {
+  // `silent` refreshes in the background so open modals and the page don't flash to a loader.
+  const load = useCallback((silent = false) => {
     if (!teamId) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError(null);
     Promise.all([api<PortalTeam>(`/teams/${teamId}?view=full`), api<TeamMentors>(`/teams/${teamId}/mentors`)])
       .then(([teamRes, mentorsRes]) => {
@@ -232,18 +233,23 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
         setDenied(false);
       })
       .catch((err) => {
+        if (silent) return;
         if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
           setDenied(true);
         } else {
           setError(err instanceof Error ? err.message : "Failed to load team details.");
         }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
   }, [teamId]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const reloadSilently = useCallback(() => load(true), [load]);
 
   const handleLock = async () => {
     if (!teamId) return;
@@ -252,7 +258,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
     try {
       await apiPost(`/teams/${teamId}/lock`, {});
       setConfirmingLock(false);
-      load();
+      reloadSilently();
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Could not lock this team.");
     } finally {
@@ -267,7 +273,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
     try {
       await apiPost(`/teams/${teamId}/disqualify`, {});
       setConfirmingDisqualify(false);
-      load();
+      reloadSilently();
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Could not disqualify this team.");
     } finally {
@@ -312,7 +318,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
           <span>{error ?? "Team not found."}</span>
           <button
             type="button"
-            onClick={load}
+            onClick={() => load()}
             className="shrink-0 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50"
           >
             Retry
@@ -413,7 +419,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
             )}
           </Card>
 
-          {isMentor && <PsPreferencesSection team={team} onApproved={load} />}
+          {isMentor && <PsPreferencesSection team={team} onApproved={reloadSilently} />}
 
           <Card title="Deliverables">
             {deliverables.length === 0 ? (
@@ -569,7 +575,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
           teamId={team.id}
           teamName={team.name}
           onClose={() => setInviteOpen(false)}
-          onInvited={load}
+          onInvited={reloadSilently}
         />
       )}
     </div>

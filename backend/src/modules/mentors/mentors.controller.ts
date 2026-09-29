@@ -81,6 +81,16 @@ export class MentorsController {
     return this.mentors.unassign(user, assignmentId);
   }
 
+  @Get('me/audit-log')
+  @Roles(PlatformRole.institute_mentor, PlatformRole.industry_mentor)
+  myAuditLog(
+    @CurrentUser() user: AuthUser,
+    @Query()
+    query: { page?: string; limit?: string; category?: string; search?: string; hours?: string; teamId?: string },
+  ) {
+    return this.mentors.teamAuditLog(user, query);
+  }
+
   @Get('me/teams')
   @Roles(PlatformRole.institute_mentor, PlatformRole.industry_mentor, PlatformRole.admin)
   myTeams(@CurrentUser() user: AuthUser) {

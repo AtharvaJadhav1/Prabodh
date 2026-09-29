@@ -1,4 +1,4 @@
-import { createHash, randomInt } from 'crypto';
+import { createHash, randomBytes, randomInt } from 'crypto';
 import { getCacheRedis } from './queue';
 import { resolveOtpFromAddress, sendTransactionalEmail } from './resend';
 import { renderOtpEmail } from '../modules/notifications/templates/render';
@@ -141,4 +141,28 @@ export async function verifyOtp(opts: {
   }
 
   return { ok: true };
+}
+
+const RESET_TOKEN_TTL_SEC = Number(process.env.RESET_TOKEN_TTL_SEC ?? 600);
+
+function resetTokenKey(email: string) {
+  return `otp:reset_token:${email.trim().toLowerCase()}`;
+}
+
+/** Issued only after the reset code has been verified; required to set the new password. */
+export async function issueResetToken(email: string): Promise<string> {
+  const token = randomBytes(24).toString('hex');
+  await getCacheRedis().set(resetTokenKey(email), hashCode(token), 'EX', RESET_TOKEN_TTL_SEC);
+  return token;
+}
+
+/** One-time: the token is deleted whether or not it matches, so it cannot be brute-forced. */
+export async function consumeResetToken(email: string, token: string): Promise<boolean> {
+  const redis = getCacheRedis();
+  const key = resetTokenKey(email);
+  const stored = await redis.get(key);
+  if (!stored) return false;
+  const ok = stored === hashCode(token);
+  if (ok) await redis.del(key);
+  return ok;
 }
