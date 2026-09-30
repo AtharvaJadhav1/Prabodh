@@ -133,20 +133,24 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
             <Link
               href="/dashboard/mentor/profile"
               onClick={onCloseMobile}
-              className={`flex cursor-pointer items-center gap-3 rounded-xl border bg-white p-3 transition-colors hover:bg-amber-50/60 hover:border-amber-200 dark:hover:bg-stone-800/60 ${
-                pathname.endsWith("/profile") ? "border-brand-primary" : "border-brand-softline"
+              className={`group flex cursor-pointer items-center gap-3 rounded-xl border bg-white/80 p-3 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(200,90,23,0.18)] hover:border-amber-400/60 ${
+                pathname.endsWith("/profile")
+                  ? "border-amber-500 ring-2 ring-amber-500/20"
+                  : "border-amber-900/10 hover:bg-white"
               }`}
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold text-white">
                 {initialsFrom(fullName)}
               </div>
               <div className="min-w-0 flex-1">
-                <p title={fullName} className="truncate max-w-full text-sm font-bold text-brand-deep">
+                <p title={fullName} className="truncate max-w-full text-sm font-bold text-[#3C1D06]">
                   {displayName}
                 </p>
-                <p className="text-xs font-medium text-brand-muted">{role}</p>
+                <span className="inline-flex max-w-full items-center truncate text-xs font-semibold bg-amber-100 text-amber-800 rounded-full px-2.5 py-0.5">
+                  {role}
+                </span>
               </div>
-              <ChevronRightIcon className="h-4 w-4 shrink-0 text-stone-400" />
+              <ChevronRightIcon className="h-4 w-4 shrink-0 text-stone-400 group-hover:translate-x-1 group-hover:text-amber-600 transition-transform duration-200" />
             </Link>
             <button
               type="button"

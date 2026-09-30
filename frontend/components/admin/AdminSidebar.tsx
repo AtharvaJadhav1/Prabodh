@@ -152,20 +152,24 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }: Props) {
           <Link
             href="/dashboard/admin/profile"
             onClick={onCloseMobile}
-            className={`mx-3 mb-2 flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-3 shadow-sm transition-colors hover:bg-amber-50/60 hover:border-amber-200 dark:hover:bg-stone-800/60 ${
-              pathname.endsWith("/profile") ? "border-[#c25e24]" : "border-neutral-200/80"
+            className={`group mx-3 mb-2 flex cursor-pointer items-center gap-3 rounded-2xl border bg-white/80 p-3 shadow-sm transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-[0_4px_20px_rgba(200,90,23,0.18)] hover:border-amber-400/60 ${
+              pathname.endsWith("/profile")
+                ? "border-amber-500 ring-2 ring-amber-500/20"
+                : "border-amber-900/10 hover:bg-white"
             }`}
           >
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#3c2415] text-sm font-bold text-[#ffddb8]">
               {initialsFrom(session?.fullName ?? "AD")}
             </div>
             <div className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate text-sm font-semibold leading-tight text-neutral-900">
+              <span className="truncate text-sm font-semibold leading-tight text-[#3C1D06]">
                 {session?.fullName ?? "Platform Administrator"}
               </span>
-              <span className="truncate text-xs text-neutral-500">Nodal Admin</span>
+              <span className="inline-flex items-center truncate text-xs font-semibold rounded-full px-2.5 py-0.5 bg-amber-100 text-amber-800">
+                Nodal Admin
+              </span>
             </div>
-            <ChevronRightIcon className="h-4 w-4 shrink-0 text-stone-400" />
+            <ChevronRightIcon className="h-4 w-4 shrink-0 text-stone-400 group-hover:translate-x-1 group-hover:text-amber-600 transition-transform duration-200" />
           </Link>
           <div className="px-3">
             <button
