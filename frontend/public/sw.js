@@ -144,18 +144,26 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // API calls: never intercept. Letting the browser handle these directly means a
+  // transient network hiccup surfaces as a normal failed fetch() in the page's own
+  // try/catch, instead of an unhandled "FetchEvent resulted in a network error" crash
+  // reported against the service worker.
+  if (url.pathname.startsWith("/api/")) return;
+
   // Never cache server-component payloads or route prefetches.
   if (request.headers.get("next-router-prefetch") === "1" || request.headers.get("rsc") === "1") {
     event.respondWith(fetch(request));
     return;
   }
 
-  // Navigations: auth routes stay network-only; everything else paints from the cached shell instantly (SWR).
+  // Navigations: auth routes bypass the service worker entirely (not just network-only —
+  // an unguarded `fetch(request)` here still lets the browser blame the SW if that fetch
+  // rejects, e.g. "FetchEvent for '/register' resulted in a network error"). Returning
+  // without calling respondWith() hands the request straight to the browser's own fetch,
+  // so a network error surfaces as a normal page load failure instead of a SW crash.
+  // Everything else paints from the cached shell instantly (SWR).
   if (request.mode === "navigate") {
-    if (isAuthRoute(url.pathname)) {
-      event.respondWith(fetch(request));
-      return;
-    }
+    if (isAuthRoute(url.pathname)) return;
     event.respondWith(staleWhileRevalidateNavigation(request));
     return;
   }

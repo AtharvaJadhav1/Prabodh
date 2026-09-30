@@ -102,7 +102,9 @@ export default function OtpAuthFlow({
     <div className="space-y-6">
       <div>
         <h1 className="font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">{title}</h1>
-        <p className="mt-2 text-sm leading-relaxed text-brand-muted">{description}</p>
+        <p className="mt-2 text-sm leading-relaxed text-brand-muted">
+          {step === "otp" ? description : "Enter your email to receive a code."}
+        </p>
       </div>
 
       {step === "email" ? (
