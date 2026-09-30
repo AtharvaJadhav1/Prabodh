@@ -7,7 +7,7 @@ import MentorDropdown from "../../../../components/admin/MentorDropdown";
 import Avatar from "../../../../components/Avatar";
 import { useAdmin } from "../../../../components/admin/AdminProvider";
 import { useAuth } from "../../../../components/auth/AuthProvider";
-import { api, apiPost } from "../../../../lib/api";
+import { api, apiPost, ApiError } from "../../../../lib/api";
 import type { PortalUser } from "../../../../lib/types";
 import {
   UserPlusIcon,
@@ -35,6 +35,31 @@ type RemovePreview = {
     nextLeaderId: string | null;
   }>;
 };
+
+/**
+ * The backend removal pipeline runs one interactive transaction (team cascade,
+ * mentor, evaluation and comment cleanup) plus a Clerk delete, which together can
+ * exceed the shared 12s default in lib/api.ts. Kept above the server's own 60s
+ * transaction budget so the browser is never the component that gives up.
+ */
+const REMOVE_TIMEOUT_MS = 90_000;
+
+type RemovalOutcome = "gone" | "present" | "unknown";
+
+/**
+ * Decide whether a timed-out removal actually committed. The preview endpoint is
+ * the cheapest existence check available: it 404s once the user row is gone and
+ * 200s while they still exist, and it carries none of the cascade's cost.
+ */
+async function probeRemoval(target: PortalUser): Promise<RemovalOutcome> {
+  try {
+    await api(`/admin/users/${target.id}/remove-preview`, {}, { timeoutMs: 15_000 });
+    return "present";
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return "gone";
+    return "unknown";
+  }
+}
 
 const INPUT_CLS =
   "w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-800 placeholder:text-neutral-400 focus:border-[#d95c26] focus:ring-2 focus:ring-[#d95c26]/20 transition-all outline-none";
@@ -115,6 +140,9 @@ export default function AdminUsersPage() {
       const res = await apiPost<{ removed: boolean; fullName: string; promotedTeams: number; deletedTeams: number }>(
         `/admin/users/${removeTarget.id}/remove`,
         { confirm: confirmText.trim() },
+        // The server runs one interactive transaction plus a Clerk delete, and can
+        // legitimately outlive the shared 12s default in lib/api.ts.
+        { timeoutMs: REMOVE_TIMEOUT_MS },
       );
       setRemovedDone({ fullName: res.fullName, promoted: res.promotedTeams, deleted: res.deletedTeams });
       setRemoveTarget(null);
@@ -122,6 +150,28 @@ export default function AdminUsersPage() {
       setConfirmText("");
       void reload();
     } catch (err) {
+      const failed = removeTarget;
+      // Aborting the fetch does NOT cancel the server transaction, so a timeout is
+      // ambiguous: the delete may well have committed after the browser gave up.
+      // Probe the target to find out which actually happened.
+      const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.message.includes("timed out"));
+      if (timedOut && failed) {
+        const outcome = await probeRemoval(failed);
+        if (outcome === "gone") {
+          setRemovedDone({ fullName: failed.fullName, promoted: removePreview?.teams.filter((t) => t.outcome === "promote").length ?? 0, deleted: removePreview?.teams.filter((t) => t.outcome === "delete").length ?? 0 });
+          setRemoveTarget(null);
+          setRemovePreview(null);
+          setConfirmText("");
+          void reload();
+          return;
+        }
+        setRemoveMsg(
+          outcome === "present"
+            ? "The server took too long and the user was not removed. Try again."
+            : "The server took too long to respond and we could not confirm the result. Refresh the list to check.",
+        );
+        return;
+      }
       setRemoveMsg(err instanceof Error ? err.message : "Removal failed");
     } finally {
       setRemoving(false);

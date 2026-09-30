@@ -7,6 +7,7 @@ export const CATEGORY_ACTIONS: Record<string, string[]> = {
   mentor_override: ['mentor.reassign'],
   industry_invites: ['mentor.invite', 'mentor.invite_accepted', 'mentor.assign_industry'],
   milestone_reviews: ['evaluation.submitted', 'evaluation.publish'],
+  user_administration: ['user.remove'],
 };
 
 export type AuditRow = {
@@ -24,13 +25,22 @@ export type AuditRow = {
   actor: { id: string; email: string; fullName: string; platformRole: PlatformRole } | null;
 };
 
-function asRecord(v: Prisma.JsonValue | null | undefined): Record<string, unknown> | null {
+function asRecord(v: unknown): Record<string, unknown> | null {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
   return v as Record<string, unknown>;
 }
 
 function strOf(v: unknown): string | undefined {
   return typeof v === 'string' && v ? v : undefined;
+}
+
+function numOf(v: unknown): number | undefined {
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+}
+
+/** Read an array of plain objects out of a JSON payload field. */
+function recListOf(v: unknown): Record<string, unknown>[] {
+  return Array.isArray(v) ? v.filter((it): it is Record<string, unknown> => !!it && typeof it === 'object') : [];
 }
 
 function capitalize(s: string) {
@@ -211,6 +221,40 @@ function summarizeAudit(input: SummaryInput): string {
       const count = typeof after?.recipientCount === 'number' ? ` to ${after.recipientCount} recipient(s)` : '';
       const title = broadcastTitle ? ` "${broadcastTitle}"` : '';
       return `Sent broadcast${title}${count}`;
+    }
+    case 'user.remove': {
+      // The target user no longer exists, so everything renders from the snapshot.
+      const targetEmail = strOf(after?.targetEmail) ?? strOf(before?.email);
+      const who = strOf(before?.fullName) ?? targetEmail ?? 'a user';
+      const target = who === targetEmail ? who : `${who} (${targetEmail ?? 'unknown email'})`;
+
+      const impact = asRecord(after?.impact);
+      const deleted = recListOf(impact?.deletedTeams);
+      const promoted = recListOf(impact?.promotedTeams);
+      // Historical rows predate `after.impact` and only stored flat name arrays.
+      const legacyDeleted = (Array.isArray(after?.deletedTeams) ? (after?.deletedTeams as unknown[]) : [])
+        .map(strOf)
+        .filter((n): n is string => !!n);
+      const legacyPromoted = (Array.isArray(after?.promotedTeams) ? (after?.promotedTeams as unknown[]) : [])
+        .map(strOf)
+        .filter((n): n is string => !!n);
+
+      const parts: string[] = [];
+      if (deleted.length > 0) {
+        const total = deleted.reduce((sum, d) => sum + (numOf(d.membersAffected) ?? 0), 0);
+        const names = deleted.map((d) => strOf(d.teamName) ?? strOf(d.deletedTeamId) ?? 'a team');
+        const memberText = total > 0 ? `, ${total} member${total === 1 ? '' : 's'} affected` : '';
+        parts.push(`deleted ${deleted.length} team${deleted.length === 1 ? '' : 's'} (${names.join(', ')}${memberText})`);
+      } else if (legacyDeleted.length > 0) {
+        parts.push(`deleted ${legacyDeleted.length} team${legacyDeleted.length === 1 ? '' : 's'} (${legacyDeleted.join(', ')})`);
+      }
+      if (promoted.length > 0) {
+        const names = promoted.map((p) => strOf(p.teamName) ?? strOf(p.teamId) ?? 'a team');
+        parts.push(`promoted a new leader for ${promoted.length} team${promoted.length === 1 ? '' : 's'} (${names.join(', ')})`);
+      } else if (legacyPromoted.length > 0) {
+        parts.push(`promoted a new leader for ${legacyPromoted.length} team${legacyPromoted.length === 1 ? '' : 's'} (${legacyPromoted.join(', ')})`);
+      }
+      return `Permanently removed ${target}${parts.length ? ` — ${parts.join('; ')}` : ''}`;
     }
     default:
       return humanizeAction(action);

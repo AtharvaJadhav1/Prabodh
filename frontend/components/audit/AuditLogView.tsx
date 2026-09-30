@@ -20,6 +20,10 @@ type AuditRow = {
   teamName: string | null;
   teamCode: string | null;
   summary: string;
+  /** Pre-state snapshot. Always returned by the API, previously undeclared here. */
+  before?: unknown;
+  /** Post-state snapshot, including the `impact` block on user removals. */
+  after?: unknown;
 };
 type AuditMeta = { items: AuditRow[]; total: number; page: number; pages: number };
 
@@ -32,6 +36,7 @@ const CATEGORIES: FilterDropdownOption[] = [
   { value: "mentor_override", label: "Mentor Override" },
   { value: "industry_invites", label: "Industry Invites" },
   { value: "milestone_reviews", label: "Milestone Reviews" },
+  { value: "user_administration", label: "User Administration" },
 ];
 
 const DATE_RANGES: FilterDropdownOption[] = [

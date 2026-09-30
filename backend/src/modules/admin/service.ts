@@ -541,10 +541,12 @@ export class AdminService {
     hours?: string;
   }) {
     const { page, limit, skip, take } = parsePagination(query);
+    // An unrecognised category must match nothing. Falling through to `null` here
+    // would spread no action filter at all and silently return every audit row.
     const actionFilter: Prisma.AuditLogWhereInput | null = query.category
       ? CATEGORY_ACTIONS[query.category]
         ? { action: { in: CATEGORY_ACTIONS[query.category] } }
-        : null
+        : { action: { in: [] } }
       : query.action
         ? { action: { contains: query.action } }
         : null;
@@ -742,6 +744,9 @@ export class AdminService {
   }
 
   async removeUser(actor: AuthUser, userId: string, confirm: string) {
+    const startedAt = Date.now();
+    const log = (event: string, extra: Record<string, unknown> = {}) =>
+      console.log(`[ADMIN_REMOVE_USER] ${event}`, { ...extra, elapsedMs: Date.now() - startedAt });
     if (confirm !== 'CONFIRM') {
       throw new BadRequestException('Removal requires the confirmation code CONFIRM');
     }
@@ -758,6 +763,13 @@ export class AdminService {
       },
     });
     if (!target) throw new NotFoundException('User not found');
+    log(`Started by ${actor.email} for user ${target.email}`, {
+      actorUserId: actor.id,
+      actorEmail: actor.email,
+      targetUserId: target.id,
+      targetEmail: target.email,
+      ledTeamCount: target.ledTeams.length,
+    });
     if (target.platformRole === PlatformRole.admin) {
       const otherAdmins = await this.prisma.user.count({
         where: { platformRole: PlatformRole.admin, isActive: true, id: { not: userId } },
@@ -767,8 +779,8 @@ export class AdminService {
       }
     }
 
-    const promotedTeams: Array<{ teamId: string; name: string; nextLeaderId: string }> = [];
-    const deletedTeams: Array<{ teamId: string; name: string }> = [];
+    const promotedTeams: Array<{ teamId: string; name: string; nextLeaderId: string; memberCount: number }> = [];
+    const deletedTeams: Array<{ teamId: string; name: string; memberCount: number }> = [];
     const deletedTeamIds = new Set<string>();
 
     for (const t of target.ledTeams) {
@@ -776,14 +788,38 @@ export class AdminService {
         .filter((m) => m.inviteStatus === InviteStatus.accepted && m.userId !== null && m.userId !== target.id)
         .sort((a, b) => (a.joinedAt?.getTime() ?? 0) - (b.joinedAt?.getTime() ?? 0));
       if (successors.length > 0) {
-        promotedTeams.push({ teamId: t.id, name: t.name, nextLeaderId: successors[0].userId! });
+        promotedTeams.push({
+          teamId: t.id,
+          name: t.name,
+          nextLeaderId: successors[0].userId!,
+          memberCount: t.members.length,
+        });
+        log(`Promoting successor for led team: ${t.id}`, {
+          teamId: t.id,
+          teamName: t.name,
+          nextLeaderId: successors[0].userId,
+          memberCount: t.members.length,
+        });
       } else {
-        deletedTeams.push({ teamId: t.id, name: t.name });
+        deletedTeams.push({ teamId: t.id, name: t.name, memberCount: t.members.length });
         deletedTeamIds.add(t.id);
+        log(`Deleting led team: ${t.id}`, {
+          teamId: t.id,
+          teamName: t.name,
+          membersAffected: t.members.length,
+        });
       }
+    }
+    if (target.ledTeams.length === 0) {
+      log('Target led no teams', { targetUserId: target.id });
     }
 
     try {
+      console.time(`user_removal_pipeline:${target.id}`);
+      log('Transaction starting', {
+        promotedTeamCount: promotedTeams.length,
+        deletedTeamCount: deletedTeams.length,
+      });
       await this.prisma.$transaction(async (tx) => {
         for (const p of promotedTeams) {
           await tx.team.update({ where: { id: p.teamId }, data: { leaderUserId: p.nextLeaderId } });
@@ -863,27 +899,68 @@ export class AdminService {
         await tx.auditLog.updateMany({ where: { actorUserId: target.id }, data: { actorUserId: null } });
         await tx.user.delete({ where: { id: target.id } });
 
+        const membersAffected = deletedTeams.reduce((sum, d) => sum + d.memberCount, 0);
         await writeAudit(tx, {
           actorUserId: actor.id,
           action: 'user.remove',
           entityType: 'user',
           entityId: target.id,
           before: {
+            id: target.id,
             email: target.email,
             fullName: target.fullName,
             platformRole: target.platformRole,
+            wasTeamLeader: target.ledTeams.length > 0,
+            ledTeamCount: target.ledTeams.length,
           },
           after: {
             removed: true,
+            // Duplicated into `after` on purpose: the admin log search only scans
+            // `after` (see listAudit), so the target email has to live there to be
+            // findable once the user row is gone.
+            targetEmail: target.email,
+            wasTeamLeader: target.ledTeams.length > 0,
+            ledTeamCount: target.ledTeams.length,
+            impact: {
+              promotedTeams: promotedTeams.map((p) => ({
+                teamId: p.teamId,
+                teamName: p.name,
+                newLeaderUserId: p.nextLeaderId,
+                memberCount: p.memberCount,
+              })),
+              deletedTeams: deletedTeams.map((d) => ({
+                deletedTeamId: d.teamId,
+                teamName: d.name,
+                membersAffected: d.memberCount,
+              })),
+              membersAffected,
+            },
+            // Retained flat so pre-impact rows and existing readers keep working.
             promotedTeams: promotedTeams.map((p) => p.name),
             deletedTeams: deletedTeams.map((d) => d.name),
             auditLogsRetained: true,
           },
         });
+        log('Audit row written inside transaction', { entityId: target.id, membersAffected });
       }, { timeout: 60_000, maxWait: 10_000 });
+      console.timeEnd(`user_removal_pipeline:${target.id}`);
+      log('Transaction committed', {
+        promotedTeamCount: promotedTeams.length,
+        deletedTeamCount: deletedTeams.length,
+      });
     } catch (err: any) {
+      console.timeEnd(`user_removal_pipeline:${target.id}`);
       console.error(
-        `[admin.removeUser] failed userId=${target.id} email=${target.email} code=${err?.code ?? '-'}`,
+        `[ADMIN_REMOVE_USER_ERROR] failed userId=${target.id} email=${target.email} code=${err?.code ?? '-'}`,
+        {
+          actorUserId: actor.id,
+          actorEmail: actor.email,
+          targetUserId: target.id,
+          targetEmail: target.email,
+          promotedTeamCount: promotedTeams.length,
+          deletedTeamCount: deletedTeams.length,
+          elapsedMs: Date.now() - startedAt,
+        },
         err?.meta ?? '',
         err?.stack ?? err,
       );
@@ -894,10 +971,20 @@ export class AdminService {
     if (clerk && target.clerkUserId && !target.clerkUserId.startsWith('local:')) {
       try {
         await clerk.users.deleteUser(target.clerkUserId);
+        log('Clerk user deleted', { clerkUserId: target.clerkUserId });
       } catch (err) {
-        console.warn(`[admin.removeUser] Clerk delete failed for ${target.email}:`, err);
+        console.warn(`[ADMIN_REMOVE_USER] Clerk delete failed for ${target.email}:`, err);
       }
     }
+
+    log('Completed', {
+      targetUserId: target.id,
+      targetEmail: target.email,
+      promotedTeamCount: promotedTeams.length,
+      deletedTeamCount: deletedTeams.length,
+      membersAffected: deletedTeams.reduce((sum, d) => sum + d.memberCount, 0),
+      totalMs: Date.now() - startedAt,
+    });
 
     return {
       removed: true,
@@ -947,11 +1034,18 @@ export class AdminService {
     await tx.teamPsPreference.deleteMany({ where: { teamId: { in: teamIds } } });
     await tx.teamStageStatus.deleteMany({ where: { teamId: { in: teamIds } } });
     await tx.team.deleteMany({ where: { id: { in: teamIds } } });
+    // Group by psId and decrement once per distinct statement. Two deleted teams
+    // can share a psId, so the per-team multiplicity has to be preserved —
+    // de-duplicating to a Set here would silently under-count teamsSelectedCount.
+    const decrements = new Map<string, number>();
     for (const row of psRows) {
       if (!row.psId) continue;
-      await tx.problemStatement.update({
-        where: { id: row.psId },
-        data: { teamsSelectedCount: { decrement: 1 } },
+      decrements.set(row.psId, (decrements.get(row.psId) ?? 0) + 1);
+    }
+    for (const [psId, count] of decrements) {
+      await tx.problemStatement.updateMany({
+        where: { id: psId },
+        data: { teamsSelectedCount: { decrement: count } },
       });
     }
   }
