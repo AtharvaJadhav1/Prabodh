@@ -6,6 +6,7 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -48,6 +49,8 @@ const STEPS: TourStep[] = [
 
 type Rect = { x: number; y: number; width: number; height: number };
 type Side = "right" | "left" | "bottom" | "top";
+type Spotlight = { rect: Rect; vw: number; vh: number };
+type Band = { key: string; left: number; top: number; width: number; height: number };
 type Layout = {
   left: number;
   top: number;
@@ -62,6 +65,16 @@ const EDGE = 16;
 const SPOTLIGHT_PAD = 8;
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+// Shared so every blur band animates identically.
+function BLUR_FADE(reduceMotion: boolean | null) {
+  return {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+    transition: { duration: reduceMotion ? 0 : 0.25 },
+  };
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), Math.max(min, max));
@@ -133,7 +146,7 @@ export default function StudentOnboardingTour() {
   const maskId = `tour-spotlight-${useId().replace(/:/g, "")}`;
 
   const [step, setStep] = useState(0);
-  const [rect, setRect] = useState<Rect | null>(null);
+  const [spot, setSpot] = useState<Spotlight | null>(null);
   const [layout, setLayout] = useState<Layout | null>(null);
 
   const cardRef = useRef<HTMLDivElement>(null);
@@ -145,19 +158,19 @@ export default function StudentOnboardingTour() {
     if (typeof document === "undefined") return;
     const el = document.getElementById(STEPS[stepRef.current].targetId);
     if (!el) {
-      setRect(null);
+      setSpot(null);
       setLayout(null);
       return;
     }
     const box = el.getBoundingClientRect();
     const next: Rect = { x: box.left, y: box.top, width: box.width, height: box.height };
-    setRect(next);
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    setSpot({ rect: next, vw, vh });
 
     const card = cardRef.current;
     if (!card) return;
-    setLayout(
-      computeLayout(next, card.offsetWidth, card.offsetHeight, window.innerWidth, window.innerHeight),
-    );
+    setLayout(computeLayout(next, card.offsetWidth, card.offsetHeight, vw, vh));
   }, []);
 
   // Measure on open, on step change, and while the page moves.
@@ -183,10 +196,10 @@ export default function StudentOnboardingTour() {
 
   // Retry until the workspace card finishes rendering and the target exists.
   useEffect(() => {
-    if (!open || rect) return;
+    if (!open || spot) return;
     const id = window.setInterval(sync, 150);
     return () => window.clearInterval(id);
-  }, [open, rect, sync]);
+  }, [open, spot, sync]);
 
   // Lock background scrolling + focus while the walkthrough is up.
   useEffect(() => {
@@ -206,7 +219,7 @@ export default function StudentOnboardingTour() {
   useEffect(() => {
     if (!open) {
       setStep(0);
-      setRect(null);
+      setSpot(null);
       setLayout(null);
     }
   }, [open]);
@@ -252,6 +265,30 @@ export default function StudentOnboardingTour() {
   }, [open, finish]);
 
   const isLast = step === STEPS.length - 1;
+  const rect = spot?.rect ?? null;
+
+  // The clear region: the target padded out to the ring. Shared by the blur bands and
+  // the scrim mask so the two cut-outs line up and the target is never dimmed or blurred.
+  const { hole, bands } = useMemo<{ hole: Rect | null; bands: Band[] | null }>(() => {
+    if (!spot) return { hole: null, bands: null };
+    const { vw, vh } = spot;
+    const x = clamp(spot.rect.x - SPOTLIGHT_PAD, 0, vw);
+    const y = clamp(spot.rect.y - SPOTLIGHT_PAD, 0, vh);
+    const right = Math.min(x + spot.rect.width + SPOTLIGHT_PAD * 2, vw);
+    const bottom = Math.min(y + spot.rect.height + SPOTLIGHT_PAD * 2, vh);
+    const cut: Rect = { x, y, width: right - x, height: bottom - y };
+    return {
+      hole: cut,
+      // Four bands covering the viewport minus the cut-out. Zero-sized bands render nothing.
+      bands: [
+        { key: "top", left: 0, top: 0, width: vw, height: y },
+        { key: "bottom", left: 0, top: bottom, width: vw, height: Math.max(0, vh - bottom) },
+        { key: "left", left: 0, top: y, width: x, height: Math.max(0, bottom - y) },
+        { key: "right", left: right, top: y, width: Math.max(0, vw - right), height: Math.max(0, bottom - y) },
+      ],
+    };
+  }, [spot]);
+
   const ring =
     open && rect
       ? {
@@ -266,15 +303,26 @@ export default function StudentOnboardingTour() {
     <AnimatePresence>
       {open && active ? (
         <div key="student-onboarding-tour" className="fixed inset-0 z-50" role="presentation">
-        {/* Soft blur behind everything, then a masked dim layer that leaves the target clear. */}
-        <motion.div
-          key="blur"
-          className="pointer-events-none fixed inset-0 backdrop-blur-[3px]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: reduceMotion ? 0 : 0.25 }}
-        />
+        {/* Soft blur behind everything, but never over the target. Bands sit around the
+            spotlight cut-out instead of one full-screen layer, since masking a
+            backdrop-filter is unreliable across browsers. Falls back to a full-screen
+            blur while the target is still unmeasured. */}
+        {bands
+          ? bands.map((band) => (
+              <motion.div
+                key={`blur-${band.key}`}
+                {...BLUR_FADE(reduceMotion)}
+                className="pointer-events-none fixed backdrop-blur-[3px]"
+                style={{ left: band.left, top: band.top, width: band.width, height: band.height }}
+              />
+            ))
+          : (
+            <motion.div
+              key="blur"
+              {...BLUR_FADE(reduceMotion)}
+              className="pointer-events-none fixed inset-0 backdrop-blur-[3px]"
+            />
+          )}
         <motion.svg
           key="scrim"
           className="pointer-events-none fixed inset-0 h-full w-full"
@@ -287,13 +335,13 @@ export default function StudentOnboardingTour() {
           <defs>
             <mask id={maskId}>
               <rect x="0" y="0" width="100%" height="100%" fill="#ffffff" />
-              {rect ? (
+              {hole ? (
                 <rect
-                  x={rect.x}
-                  y={rect.y}
-                  width={rect.width}
-                  height={rect.height}
-                  rx={14}
+                  x={hole.x}
+                  y={hole.y}
+                  width={hole.width}
+                  height={hole.height}
+                  rx={16}
                   fill="#000000"
                 />
               ) : null}
