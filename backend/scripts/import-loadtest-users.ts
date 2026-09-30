@@ -83,7 +83,6 @@ async function main() {
     } else {
       const user = await prisma.user.create({
         data: {
-          clerkUserId: `seed:${email}`,
           email,
           fullName: fullNameFromEmail(email),
           platformRole: targetRole,

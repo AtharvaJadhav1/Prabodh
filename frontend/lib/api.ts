@@ -77,7 +77,7 @@ export async function api<T>(path: string, init: RequestInit = {}, options: ApiO
   if (!headers.has("content-type") && init.body && !(init.body instanceof FormData)) {
     headers.set("content-type", "application/json");
   }
-  const bearer = getAccessToken() || session?.accessToken || session?.clerkToken;
+  const bearer = getAccessToken() || session?.accessToken;
   if (bearer) {
     headers.set("authorization", `Bearer ${bearer}`);
   } else if (session?.userId) {
@@ -131,6 +131,8 @@ export async function api<T>(path: string, init: RequestInit = {}, options: ApiO
         invalidateApiCache(/\/notifications(\/|$)/);
       } else if (path.includes("/idea-submissions") || path.includes("/problem-statements")) {
         invalidateApiCache(/\/(teams|problem-statements|idea-submissions)(\/|$)/);
+      } else if (path.includes("/deliverables")) {
+        invalidateApiCache(/\/(teams|stages)(\/|$)/);
       } else {
         invalidateApiCache(/\/(teams|admin)(\/|$)/);
       }

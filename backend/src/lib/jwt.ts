@@ -13,10 +13,7 @@ let cachedSecret: string | null = null;
 
 function secret() {
   if (cachedSecret) return cachedSecret;
-  const key =
-    process.env.AUTH_JWT_SECRET ??
-    process.env.CLERK_SECRET_KEY ??
-    'dev-only-change-me';
+  const key = process.env.AUTH_JWT_SECRET ?? 'dev-only-change-me';
   if (process.env.NODE_ENV === 'production' && key === 'dev-only-change-me') {
     throw new Error('AUTH_JWT_SECRET must be set in production');
   }

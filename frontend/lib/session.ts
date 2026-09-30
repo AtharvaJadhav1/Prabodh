@@ -12,8 +12,6 @@ export type Session = {
   phone?: string | null;
   accessToken?: string;
   profileJson?: Record<string, unknown>;
-  /** @deprecated use accessToken */
-  clerkToken?: string;
 };
 
 export function readSession(): Session | null {

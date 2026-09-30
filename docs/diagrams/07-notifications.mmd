@@ -1,0 +1,35 @@
+erDiagram
+  USER ||--o{ NOTIFICATION : in_app
+  USER |o--o{ NOTIFICATION_LOG : email_log
+  USER ||--o{ BROADCAST : admin_sends
+
+  USER {
+    string id PK
+    string email UK
+  }
+
+  NOTIFICATION {
+    string id PK
+    string user_id FK
+    string type
+    string title
+    string body
+    datetime read_at
+  }
+
+  NOTIFICATION_LOG {
+    string id PK
+    string recipient_user_id FK
+    string recipient_email
+    string template
+    string status
+  }
+
+  BROADCAST {
+    string id PK
+    string admin_user_id FK
+    string title
+    string body
+    int recipient_count
+    datetime sent_at
+  }

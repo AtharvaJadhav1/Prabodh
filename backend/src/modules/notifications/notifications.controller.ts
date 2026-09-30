@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, RawB
 import { PlatformRole } from '@prisma/client';
 import { Webhook } from 'svix';
 import { AuthUser } from '../../common/auth.types';
-import { ClerkAuthGuard } from '../../common/clerk-auth.guard';
+import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
@@ -15,26 +15,26 @@ export class NotificationsController {
   constructor(private readonly notifications: NotificationsService) {}
 
   @Get('notifications')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(JwtAuthGuard)
   list(@CurrentUser() user: AuthUser, @Query('unread') unread?: string) {
     return this.notifications.list(user, unread === 'true');
   }
 
   @Patch('notifications/:id/read')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(JwtAuthGuard)
   markRead(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.notifications.markRead(user, id);
   }
 
   @Post('broadcasts')
-  @UseGuards(ClerkAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(PlatformRole.admin)
   broadcast(@CurrentUser() user: AuthUser, @Body(new ZodPipe(broadcastSchema)) body: unknown) {
     return this.notifications.broadcast(user, body as never);
   }
 
   @Post('teams/:teamId/comments')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(JwtAuthGuard)
   addComment(
     @CurrentUser() user: AuthUser,
     @Param('teamId') teamId: string,
@@ -44,13 +44,13 @@ export class NotificationsController {
   }
 
   @Get('teams/:teamId/comments')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(JwtAuthGuard)
   listComments(@CurrentUser() user: AuthUser, @Param('teamId') teamId: string) {
     return this.notifications.listComments(user, teamId);
   }
 
   @Delete('teams/:teamId/comments/:commentId')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(JwtAuthGuard)
   deleteComment(
     @CurrentUser() user: AuthUser,
     @Param('teamId') teamId: string,

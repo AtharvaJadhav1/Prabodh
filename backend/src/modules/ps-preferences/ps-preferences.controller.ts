@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { PlatformRole } from '@prisma/client';
 import { AuthUser } from '../../common/auth.types';
-import { ClerkAuthGuard } from '../../common/clerk-auth.guard';
+import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
@@ -10,7 +10,7 @@ import { submitPreferencesSchema } from './schema';
 import { PsPreferencesService } from './service';
 
 @Controller('teams/:teamId/ps-preferences')
-@UseGuards(ClerkAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class PsPreferencesController {
   constructor(private readonly service: PsPreferencesService) {}
 

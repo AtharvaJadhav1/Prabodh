@@ -36,6 +36,12 @@ async function main() {
     `ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "actor_name" TEXT`,
     `ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "actor_email" TEXT`,
     `ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "actor_role" TEXT`,
+    // Clerk removed — drop legacy columns if they still exist.
+    `ALTER TABLE "team_members" DROP COLUMN IF EXISTS "clerk_invitation_id"`,
+    `DROP INDEX IF EXISTS "teams_clerk_org_id_key"`,
+    `ALTER TABLE "teams" DROP COLUMN IF EXISTS "clerk_org_id"`,
+    `DROP INDEX IF EXISTS "users_clerk_user_id_key"`,
+    `ALTER TABLE "users" DROP COLUMN IF EXISTS "clerk_user_id"`,
   ];
 
   for (const sql of statements) {

@@ -2,17 +2,15 @@ import { PlatformRole } from '@prisma/client';
 
 export type AuthUser = {
   id: string;
-  clerkUserId: string;
   email: string;
   fullName: string;
   platformRole: PlatformRole;
   institute: string | null;
 };
 
-/** Safe user row loaded by ClerkAuthGuard — reused by GET /me to avoid a second query. */
+/** Safe user row loaded by JwtAuthGuard — reused by GET /me to avoid a second query. */
 export type AuthDbUser = {
   id: string;
-  clerkUserId: string;
   email: string;
   fullName: string;
   platformRole: PlatformRole;
@@ -28,7 +26,6 @@ export type AuthDbUser = {
 
 export const AUTH_USER_SELECT = {
   id: true,
-  clerkUserId: true,
   email: true,
   fullName: true,
   platformRole: true,

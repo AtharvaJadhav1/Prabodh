@@ -1,0 +1,56 @@
+erDiagram
+  USER ||--o| INDUSTRIAL_MENTOR : profile
+  USER ||--o{ AUDIT_LOG : performs
+  USER_IMPORT_BATCH ||--|{ USER_IMPORT_ROW : contains
+
+  USER {
+    string id PK
+    string email UK
+    string full_name
+    string platform_role
+    string password_hash
+    boolean is_active
+  }
+
+  INDUSTRIAL_MENTOR {
+    string id PK
+    string user_id FK
+    string email UK
+    string company_name
+    boolean is_active
+  }
+
+  USER_IMPORT_BATCH {
+    string id PK
+    string admin_user_id
+    string status
+    int row_count
+  }
+
+  USER_IMPORT_ROW {
+    string id PK
+    string batch_id FK
+    string email
+    string platform_role
+    string status
+  }
+
+  PLATFORM_SETTING {
+    string key PK
+    string value
+  }
+
+  AUDIT_LOG {
+    string id PK
+    string actor_user_id FK
+    string action
+    string entity_type
+    string entity_id
+  }
+
+  EXPORT_JOB {
+    string id PK
+    string admin_user_id
+    string status
+    string dataset
+  }

@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/co
 import { PlatformRole } from '@prisma/client';
 import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
-import { ClerkAuthGuard } from '../../common/clerk-auth.guard';
+import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
@@ -13,7 +13,7 @@ import { MentorsService } from './service';
 const reassignSchema = z.object({ mentorUserId: z.string().uuid() });
 
 @Controller('mentors')
-@UseGuards(ClerkAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class MentorsController {
   constructor(private readonly mentors: MentorsService) {}
 

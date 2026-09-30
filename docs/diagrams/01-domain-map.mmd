@@ -1,0 +1,50 @@
+flowchart TB
+  subgraph identity [Identity and Admin]
+    U[User]
+    IM[IndustrialMentor]
+    UIB[UserImportBatch]
+    UIR[UserImportRow]
+    PS_SET[PlatformSetting]
+    AL[AuditLog]
+    EJ[ExportJob]
+  end
+
+  subgraph teams [Teams and Collaboration]
+    T[Team]
+    TM[TeamMember]
+    JR[JoinRequest]
+    C[Comment]
+    MI[MentorInvite]
+  end
+
+  subgraph ps [Problem Statements]
+    PST[ProblemStatement]
+    IS[IdeaSubmission]
+    TPP[TeamPsPreference]
+  end
+
+  subgraph mentors [Mentor Allocation]
+    MA[MentorAssignment]
+  end
+
+  subgraph competition [Stages and Evaluation]
+    ST[Stage]
+    R[Rubric]
+    D[Deliverable]
+    TSS[TeamStageStatus]
+    EV[Evaluation]
+    SR[StageResult]
+  end
+
+  subgraph comms [Notifications]
+    N[Notification]
+    NL[NotificationLog]
+    B[Broadcast]
+  end
+
+  U --> T
+  U --> IM
+  T --> PST
+  T --> MA
+  T --> ST
+  U --> N

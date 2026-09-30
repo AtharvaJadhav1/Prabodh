@@ -12,6 +12,7 @@ import { nextVersion } from '../../domain/rules';
 import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { consumeToken } from '../../lib/rate-limit';
+import { resolveDeliverableRow } from '../../lib/deliverable-url';
 import { createPresignedPutUrl, isS3Configured, normalizeUploadMime, putObjectBuffer } from '../../lib/s3';
 import { requestVirusScan } from '../../lib/scan';
 import { TtlCache } from '../../lib/ttl-cache';
@@ -125,7 +126,10 @@ export class StagesService {
   /** Upload PPTX/PDF through the API so the browser never talks to S3 directly (avoids CORS hangs). */
   async uploadDirect(user: AuthUser, stageId: string, body: z.infer<typeof directUploadSchema>) {
     await consumeToken(`upload:${body.teamId}`, Number(process.env.UPLOAD_RATE_LIMIT_PER_MIN ?? 20));
-    await this.teams.assertTeamAccess(user, body.teamId);
+    const team = await this.teams.assertTeamAccess(user, body.teamId);
+    if (!this.teams.isLeader(user, team)) {
+      throw new ForbiddenException('Only the team leader can upload deliverables');
+    }
     const stage = await this.prisma.stage.findUnique({ where: { id: stageId } });
     if (!stage) throw new NotFoundException('Stage not found');
     if (stage.deadline.getTime() < Date.now()) {
@@ -164,14 +168,18 @@ export class StagesService {
       throw new BadRequestException('File storage is not configured (set S3_BUCKET) for files over 5MB');
     }
 
-    return this.submitDeliverable(user, stageId, {
+    const row = await this.submitDeliverable(user, stageId, {
       teamId: body.teamId,
       pptUrl: fileUrl,
     });
+    return resolveDeliverableRow(row);
   }
 
   async submitDeliverable(user: AuthUser, stageId: string, body: z.infer<typeof deliverableSchema>) {
     const team = await this.teams.assertTeamAccess(user, body.teamId);
+    if (!this.teams.isLeader(user, team)) {
+      throw new ForbiddenException('Only the team leader can submit deliverables');
+    }
     const stage = await this.prisma.stage.findUnique({ where: { id: stageId } });
     if (!stage) throw new NotFoundException('Stage not found');
     if (stage.deadline.getTime() < Date.now()) {
@@ -205,7 +213,7 @@ export class StagesService {
       create: { teamId: team.id, stageId, status: StageProgressStatus.submitted },
       update: { status: StageProgressStatus.submitted },
     });
-    return row;
+    return resolveDeliverableRow(row);
   }
 
   async deleteDeliverable(user: AuthUser, stageId: string, deliverableId: string) {

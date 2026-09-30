@@ -12,6 +12,7 @@ const neverCachePaths = [
   /^\/admin\/(audit-log|logs)/,
   // Chat must stay live — never serve stale comment threads from the 60s API cache.
   /\/comments($|\?)/,
+  /\/deliverables($|\?)/,
 ];
 
 export function cacheKey(userId: string | undefined, method: string, path: string): string {

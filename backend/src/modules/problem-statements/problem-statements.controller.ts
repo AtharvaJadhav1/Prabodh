@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { PlatformRole } from '@prisma/client';
 import { AuthUser } from '../../common/auth.types';
-import { ClerkAuthGuard } from '../../common/clerk-auth.guard';
+import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
@@ -10,7 +10,7 @@ import { createIdeaSchema, createPsSchema, manualIdeaSchema, patchIdeaSchema, pa
 import { ProblemStatementsService } from './service';
 
 @Controller()
-@UseGuards(ClerkAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class ProblemStatementsController {
   constructor(private readonly service: ProblemStatementsService) {}
 

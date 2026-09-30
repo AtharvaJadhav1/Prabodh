@@ -5,6 +5,9 @@ import { API_BASE } from "../../lib/config";
 import { getAccessToken } from "../../lib/auth-token";
 import { readSession } from "../../lib/session";
 import { apiDelete, apiPost, ApiError } from "../../lib/api";
+import { invalidateApiCache } from "../../lib/api-cache";
+import type { PortalDeliverable } from "../../lib/types";
+import { downloadDataUrl } from "../../lib/download-data-url";
 import { useTeam } from "./TeamProvider";
 import { FileCheckIcon, GithubIcon, TrashIcon, UploadCloudIcon, XIcon } from "./icons";
 
@@ -58,7 +61,7 @@ function uploadViaApi<T>(path: string, body: unknown, onProgress: (pct: number) 
     xhr.open("POST", `${API_BASE}${path}`);
     xhr.timeout = 120000;
     xhr.setRequestHeader("content-type", "application/json");
-    const bearer = getAccessToken() || session?.accessToken || session?.clerkToken;
+    const bearer = getAccessToken() || session?.accessToken;
     if (bearer) xhr.setRequestHeader("authorization", `Bearer ${bearer}`);
     else if (session?.userId) xhr.setRequestHeader("x-dev-user-id", session.userId);
 
@@ -91,7 +94,7 @@ function uploadViaApi<T>(path: string, body: unknown, onProgress: (pct: number) 
 }
 
 export default function DeliverablesCard() {
-  const { team, stages, isLead, refreshDeliverables } = useTeam();
+  const { team, stages, isLead, refreshDeliverables, mergeUploadedDeliverable } = useTeam();
   const inputRef = useRef<HTMLInputElement>(null);
   const [githubUrl, setGithubUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -145,7 +148,7 @@ export default function DeliverablesCard() {
       setProgress(5);
       const dataBase64 = await fileToBase64(file);
       setProgress(15);
-      await uploadViaApi(
+      const uploaded = await uploadViaApi<PortalDeliverable>(
         `/stages/${stage.id}/deliverables/upload`,
         {
           teamId: team.id,
@@ -155,6 +158,8 @@ export default function DeliverablesCard() {
         },
         setProgress,
       );
+      invalidateApiCache(/\/deliverables/);
+      mergeUploadedDeliverable(uploaded);
       setMessage("File uploaded successfully.");
       setFile(null);
       await refreshDeliverables();
@@ -312,7 +317,13 @@ export default function DeliverablesCard() {
                 </p>
                 {d.pptUrl ? (
                   d.pptUrl.startsWith("data:") ? (
-                    <p className="text-brand-muted">Presentation file uploaded</p>
+                    <button
+                      type="button"
+                      onClick={() => downloadDataUrl(d.pptUrl!, `deliverable-v${d.version}.pdf`)}
+                      className="font-semibold text-brand-primary hover:underline"
+                    >
+                      Download uploaded file
+                    </button>
                   ) : (
                     <a
                       href={d.pptUrl}

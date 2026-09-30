@@ -1,0 +1,36 @@
+erDiagram
+  USER ||--o| INDUSTRIAL_MENTOR : profile
+  INDUSTRIAL_MENTOR ||--o{ TEAM : industry_slot
+  TEAM ||--o{ MENTOR_ASSIGNMENT : history
+  USER ||--o{ MENTOR_ASSIGNMENT : mentor
+  USER ||--o{ MENTOR_ASSIGNMENT : assigned_by
+  MENTOR_ASSIGNMENT |o--o| MENTOR_ASSIGNMENT : reassign
+
+  USER {
+    string id PK
+    string email UK
+  }
+
+  INDUSTRIAL_MENTOR {
+    string id PK
+    string user_id FK
+    string email UK
+  }
+
+  TEAM {
+    string id PK
+    string faculty_mentor_id FK
+    string industrial_mentor_id FK
+  }
+
+  MENTOR_ASSIGNMENT {
+    string id PK
+    string team_id FK
+    string mentor_user_id FK
+    string assigned_by_id FK
+    string industrial_mentor_id FK
+    string mentor_type
+    string assignment_method
+    string reassigned_from_id FK
+    boolean active
+  }

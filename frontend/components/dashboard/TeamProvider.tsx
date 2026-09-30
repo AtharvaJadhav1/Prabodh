@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { type Member, type JoinRequest, type OutgoingInvite, type StudentRole } from "../../data/studentDashboard";
-import { cacheKey, getCached } from "../../lib/api-cache";
+import { cacheKey, getCached, invalidateApiCache } from "../../lib/api-cache";
 import { api, apiDelete, apiPatch, apiPost } from "../../lib/api";
 import { avatarUrlFrom } from "../../lib/avatar";
 import type { PortalComment, PortalDeliverable, PortalStage, PortalTeam } from "../../lib/types";
@@ -87,6 +87,7 @@ type TeamContextValue = {
   removeCommentLocally: (commentId: string) => void;
   addCommentLocally: (comment: import("../../lib/types").PortalComment) => void;
   refreshDeliverables: () => Promise<void>;
+  mergeUploadedDeliverable: (row: PortalDeliverable) => void;
   refreshComments: () => Promise<void>;
 };
 
@@ -455,9 +456,23 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
+  const mergeUploadedDeliverable = useCallback((row: PortalDeliverable) => {
+    setTeam((prev) => {
+      if (!prev) return prev;
+      const existing = prev.deliverables ?? [];
+      const deliverables = [row, ...existing.filter((d) => d.id !== row.id)].sort(
+        (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
+      );
+      const next = { ...prev, deliverables };
+      teamRef.current = next;
+      return next;
+    });
+  }, []);
+
   const refreshDeliverables = useCallback(async () => {
     const id = teamRef.current?.id;
     if (!id) return;
+    invalidateApiCache(/\/deliverables/);
     try {
       const deliverables = await api<PortalDeliverable[]>(`/teams/${id}/deliverables`);
       setTeam((prev) => {
@@ -697,6 +712,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           });
         },
         refreshDeliverables,
+        mergeUploadedDeliverable,
         refreshComments,
         createTeam: async (name: string) => {
           const institute = session?.institute?.trim() || "Institute";

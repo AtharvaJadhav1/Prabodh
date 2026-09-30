@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { PlatformRole } from '@prisma/client';
 import { AuthUser } from '../../common/auth.types';
-import { ClerkAuthGuard } from '../../common/clerk-auth.guard';
+import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
@@ -10,7 +10,7 @@ import { createEvaluationSchema, publishSchema } from './schema';
 import { EvaluationsService } from './service';
 
 @Controller()
-@UseGuards(ClerkAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class EvaluationsController {
   constructor(private readonly evaluations: EvaluationsService) {}
 

@@ -11,12 +11,12 @@ import { InviteStatus, JoinRequestStatus, NotificationType, Prisma, PsPreference
 import { AuthUser } from '../../common/auth.types';
 import { writeAudit } from '../../lib/audit';
 import { syncTeamMentorPointers } from '../../lib/mentor-pointers';
-import { getClerkClient } from '../../lib/clerk';
 import { createNotifications, notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { sendTeamMemberInviteEmail } from '../../lib/invite-email';
 import { consumeToken } from '../../lib/rate-limit';
 import { getSettingNumber } from '../../lib/settings';
+import { resolveDeliverableRow } from '../../lib/deliverable-url';
 import { generateTeamCode, TeamsRepository } from './repository';
 import { createTeamSchema, inviteSchema, patchTeamSchema } from './schema';
 import { z } from 'zod';
@@ -68,32 +68,9 @@ export class TeamsService {
 
       for (let attempt = 1; attempt <= MAX_TEAM_CODE_ATTEMPTS; attempt++) {
         const teamCode = await generateTeamCode(this.prisma);
-        const clerk = getClerkClient();
-        let clerkOrgId = `local-org-${teamCode}`;
-        if (clerk) {
-          try {
-            const org = await clerk.organizations.createOrganization({
-              name: body.name,
-              createdBy: user.clerkUserId,
-            });
-            clerkOrgId = org.id;
-            try {
-              await clerk.organizations.updateOrganizationMembership({
-                organizationId: org.id,
-                userId: user.clerkUserId,
-                role: 'org:admin',
-              });
-            } catch {
-              // createdBy is already org admin in most Clerk configs
-            }
-          } catch {
-            // Keep a local org id so team creation still works if Clerk orgs are unavailable.
-          }
-        }
 
         try {
           const team = await this.repo.create({
-            clerkOrgId,
             teamCode,
             name: body.name,
             institute: body.institute,
@@ -147,7 +124,7 @@ export class TeamsService {
     const team = await this.repo.findCurrentForUser(user.id);
     if (!team) return null;
     await this.assertCanView(user, team);
-    return team;
+    return await this.withResolvedDeliverables(team);
   }
 
   async get(user: AuthUser, teamId: string, view: 'dashboard' | 'full' = 'dashboard') {
@@ -157,12 +134,22 @@ export class TeamsService {
         : await this.repo.findByIdDashboard(teamId);
     if (!team) throw new NotFoundException('Team not found');
     await this.assertCanView(user, team);
-    return team;
+    return await this.withResolvedDeliverables(team);
   }
 
   async listDeliverables(user: AuthUser, teamId: string) {
     await this.assertTeamAccess(user, teamId);
-    return this.repo.listDeliverables(teamId);
+    const rows = await this.repo.listDeliverables(teamId);
+    return Promise.all(rows.map((row) => resolveDeliverableRow(row)));
+  }
+
+  private async withResolvedDeliverables<T>(team: T): Promise<T> {
+    const raw = team as {
+      deliverables?: Array<{ pptUrl?: string | null; reportUrl?: string | null; videoUrl?: string | null }>;
+    };
+    if (!raw.deliverables?.length) return team;
+    const deliverables = await Promise.all(raw.deliverables.map((d) => resolveDeliverableRow(d)));
+    return { ...team, deliverables };
   }
 
   /** Both mentors of a team (faculty + industrial) with assignment provenance. */
@@ -415,25 +402,6 @@ export class TeamsService {
             inviteStatus: InviteStatus.pending,
           });
 
-    // Clerk + Resend stay off the request critical path so invite/revoke buttons stay snappy.
-    const clerk = getClerkClient();
-    if (clerk && !team.clerkOrgId.startsWith('local-org-')) {
-      void clerk.organizations
-        .createOrganizationInvitation({
-          organizationId: team.clerkOrgId,
-          emailAddress: email,
-          role: 'org:member',
-          inviterUserId: user.clerkUserId,
-        })
-        .then((invitation) =>
-          this.prisma.teamMember.update({
-            where: { id: member.id },
-            data: { clerkInvitationId: invitation.id },
-          }),
-        )
-        .catch(() => undefined);
-    }
-
     void sendTeamMemberInviteEmail({
       to: email,
       teamName: team.name,
@@ -497,17 +465,6 @@ export class TeamsService {
     if (!member) throw new NotFoundException('Invite not found');
     if (member.inviteStatus === InviteStatus.accepted) {
       throw new BadRequestException('Cannot revoke an accepted member; remove them separately');
-    }
-    const clerk = getClerkClient();
-    if (clerk && member.clerkInvitationId && !team.clerkOrgId.startsWith('local-org-')) {
-      try {
-        await clerk.organizations.revokeOrganizationInvitation({
-          organizationId: team.clerkOrgId,
-          invitationId: member.clerkInvitationId,
-        });
-      } catch {
-        // invitation may already be expired in Clerk
-      }
     }
     return this.prisma.teamMember.update({
       where: { id: memberId },
@@ -725,7 +682,7 @@ export class TeamsService {
     }
     const team = await this.prisma.team.findUnique({
       where: { id: request.teamId },
-      select: { id: true, name: true, leaderUserId: true, memberCap: true, clerkOrgId: true },
+      select: { id: true, name: true, leaderUserId: true, memberCap: true },
     });
     if (!team) throw new NotFoundException('Team not found');
     if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {

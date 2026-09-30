@@ -1,7 +1,6 @@
-import { Body, Controller, ForbiddenException, Get, Headers, Inject, Patch, Post, RawBodyRequest, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
-import { Webhook } from 'svix';
+import { Body, Controller, ForbiddenException, Get, Inject, Patch, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../../common/current-user.decorator';
-import { ClerkAuthGuard } from '../../common/clerk-auth.guard';
+import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { AUTH_USER_SELECT, AuthUser } from '../../common/auth.types';
 import { consumeToken } from '../../lib/rate-limit';
 import { PrismaService } from '../../lib/prisma.service';
@@ -112,7 +111,7 @@ export class IdentityController {
   }
 
   @Patch('me')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(JwtAuthGuard)
   patchMe(
     @CurrentUser() user: AuthUser,
     @Body(new ZodPipe(patchMeSchema)) body: unknown,
@@ -121,7 +120,7 @@ export class IdentityController {
   }
 
   @Post('me/avatar')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(JwtAuthGuard)
   uploadAvatar(
     @CurrentUser() user: AuthUser,
     @Body(new ZodPipe(avatarUploadSchema)) body: unknown,
@@ -130,47 +129,15 @@ export class IdentityController {
   }
 
   @Get('me')
-  @UseGuards(ClerkAuthGuard)
+  @UseGuards(JwtAuthGuard)
   async me(
     @CurrentUser() user: AuthUser,
     @Req() req: { authDbUser?: Record<string, unknown> },
   ) {
-    // Guard already loaded the safe user row — reuse it (saves a second round-trip).
     if (req.authDbUser) return req.authDbUser;
     return this.prisma.user.findUnique({
       where: { id: user.id },
       select: AUTH_USER_SELECT,
     });
-  }
-
-  @Post('webhooks/clerk')
-  async clerkWebhook(
-    @Req() req: RawBodyRequest<Request & { rawBody?: Buffer; body: Record<string, unknown> }>,
-    @Headers('svix-id') svixId?: string,
-    @Headers('svix-timestamp') svixTs?: string,
-    @Headers('svix-signature') svixSig?: string,
-  ) {
-    const secret = process.env.CLERK_WEBHOOK_SECRET;
-    const payload = req.rawBody?.toString('utf8') ?? JSON.stringify(req.body);
-    if (secret) {
-      if (!svixId || !svixTs || !svixSig) {
-        throw new UnauthorizedException('Missing Svix headers');
-      }
-      try {
-        const wh = new Webhook(secret);
-        wh.verify(payload, {
-          'svix-id': svixId,
-          'svix-timestamp': svixTs,
-          'svix-signature': svixSig,
-        });
-      } catch {
-        throw new UnauthorizedException('Invalid Clerk webhook signature');
-      }
-    }
-    const body = typeof req.body === 'object' ? req.body : JSON.parse(payload);
-    const type = String(body.type ?? '');
-    const data = (body.data ?? {}) as Record<string, unknown>;
-    const result = await this.identity.handleClerkEvent(type, data);
-    return { ok: true, result };
   }
 }

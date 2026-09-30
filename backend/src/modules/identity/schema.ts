@@ -1,10 +1,5 @@
 import { z } from 'zod';
 
-export const clerkUserWebhookSchema = z.object({
-  type: z.string(),
-  data: z.record(z.unknown()),
-});
-
 export const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(128),

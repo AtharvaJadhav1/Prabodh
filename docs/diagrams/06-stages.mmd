@@ -1,0 +1,70 @@
+erDiagram
+  STAGE ||--|{ RUBRIC : defines
+  TEAM ||--o{ DELIVERABLE : submits
+  STAGE ||--o{ DELIVERABLE : stage
+  STAGE ||--o{ TEAM_STAGE_STATUS : tracks
+  TEAM ||--o{ TEAM_STAGE_STATUS : progress
+  TEAM ||--o{ EVALUATION : receives
+  RUBRIC ||--o{ EVALUATION : scored_on
+  USER ||--o{ EVALUATION : evaluator
+  EVALUATION |o--o| EVALUATION : supersedes
+  TEAM ||--o{ STAGE_RESULT : achieves
+  STAGE ||--o{ STAGE_RESULT : results
+  USER |o--o{ STAGE_RESULT : published_by
+
+  STAGE {
+    string id PK
+    string name
+    int sequence UK
+    datetime deadline
+    boolean is_active
+  }
+
+  RUBRIC {
+    string id PK
+    string stage_id FK
+    string criteria
+    float weightage
+  }
+
+  DELIVERABLE {
+    string id PK
+    string team_id FK
+    string stage_id FK
+    int version
+    boolean locked
+  }
+
+  TEAM_STAGE_STATUS {
+    string id PK
+    string team_id FK
+    string stage_id FK
+    string status
+  }
+
+  EVALUATION {
+    string id PK
+    string team_id FK
+    string stage_id FK
+    string rubric_id FK
+    string evaluator_user_id FK
+    float score
+    string superseded_by_id FK
+  }
+
+  STAGE_RESULT {
+    string id PK
+    string team_id FK
+    string stage_id FK
+    float weighted_score
+    boolean published
+    string published_by_id FK
+  }
+
+  TEAM {
+    string id PK
+  }
+
+  USER {
+    string id PK
+  }

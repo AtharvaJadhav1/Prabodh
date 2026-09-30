@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, StreamableFile, UseGuards } from '@nestjs/common';
 import { PlatformRole } from '@prisma/client';
 import { AuthUser } from '../../common/auth.types';
-import { ClerkAuthGuard } from '../../common/clerk-auth.guard';
+import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { CurrentUser } from '../../common/current-user.decorator';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
@@ -11,7 +11,7 @@ import { AdminService } from './service';
 import { StagesService } from '../stages/service';
 
 @Controller('admin')
-@UseGuards(ClerkAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(PlatformRole.admin)
 export class AdminController {
   constructor(

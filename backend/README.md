@@ -18,24 +18,20 @@ Second terminal: `npm run start:worker`
 
 API: `http://localhost:3001/api` · Health: `GET /api/health`
 
-Local auth without Clerk: `ALLOW_DEV_AUTH=true` and header `x-dev-user-id` (seed prints user ids). Never enable this in production.
+Local dev shortcut: `ALLOW_DEV_AUTH=true` and header `x-dev-user-id` (seed prints user ids). Never enable this in production.
 
 ## Third-party services required
 
 | Service | Purpose | Required? |
 | --- | --- | --- |
-| **Clerk** | Login (email/OTP/SSO), session JWT, Organizations (one per team), team-invite emails, bulk `createUser` | **Yes** for production auth/invites |
 | **PostgreSQL** | System of record (Prisma). Local: Docker. Prod: Neon / RDS / Cloud SQL | **Yes** |
 | **Redis** | BullMQ queues + rate-limit buckets. Local: Docker. Prod: Upstash / Redis Cloud / ElastiCache | **Yes** for email, export, reminders, rate limits |
-| **Resend** | All notification emails except Clerk org invites (allocation, deadlines, eval published, broadcasts) | **Yes** for production email |
+| **Resend** | Auth OTP, password reset, team/mentor invites, allocation, deadlines, eval published, broadcasts | **Yes** for production email |
 | **S3-compatible storage** (Cloudflare R2 or AWS S3) | Milestone files (PPT/video/report) via pre-signed URLs; export files | **Yes** for uploads in production (local export falls back to `storage/exports`) |
-| **Svix** | Bundled via Clerk/Resend webhook signature verification — no separate account | Comes with Clerk + Resend webhooks |
+| **Svix** | Resend webhook signature verification (`/api/webhooks/resend`) | Used with Resend webhooks |
 | **Virus scan webhook** (optional) | POST `SCAN_WEBHOOK_URL` after upload (e.g. S3 event → ClamAV Lambda) | Optional Phase 1 |
-| **Hosting** | API + worker on a Node host (Render / Railway / Fly / ECS). Frontend later on Vercel | **Yes** to go live |
-| **Institute SSO** | Optional SAML/OIDC connection **inside Clerk** (FR-02) | Optional |
-
-Clerk dashboard also needs: allowed email domains, OTP, custom org roles, `publicMetadata.role` in session claims, webhooks to `/api/webhooks/clerk` (`user.*`, `organizationInvitation.accepted`, `organizationMembership.created`). Resend webhook → `/api/webhooks/resend`.
+| **Hosting** | API + worker on a Node host (Render / Railway / Fly / ECS). Frontend on Vercel / Render | **Yes** to go live |
 
 ## Auth in production
 
-`Authorization: Bearer <Clerk session JWT>`. Role from `publicMetadata.role`; team/mentor access is checked in Postgres.
+Email + password (or OTP registration) with app-issued JWT: `Authorization: Bearer <accessToken>`. Set `AUTH_JWT_SECRET` in production. Role is stored on the user row (`platform_role`); team/mentor access is enforced in Postgres.
