@@ -77,4 +77,6 @@ jobs:
           app-name: 'app-prabodh-app'
           slot-name: 'Production'
           package: .
+          # The package ships node_modules + dist and is mounted read-only, so `npm install` must not run.
+          startup-command: node dist/main.js
           

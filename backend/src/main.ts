@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import './lib/env-compat';
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -60,6 +61,7 @@ async function bootstrap() {
       if (host === 'localhost' || host === '127.0.0.1') return true;
       if (host === 'prabodh.app' || host.endsWith('.prabodh.app')) return true;
       if (host.endsWith('.onrender.com')) return true;
+      if (host.endsWith('.azurewebsites.net')) return true;
     } catch {
       return false;
     }
