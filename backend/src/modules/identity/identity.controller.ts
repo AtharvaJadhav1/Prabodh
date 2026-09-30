@@ -64,7 +64,12 @@ export class IdentityController {
 
   @Post('auth/otp/verify')
   async verifyOtp(@Body(new ZodPipe(otpVerifySchema)) body: unknown) {
-    const parsed = body as { email: string; purpose: 'login' | 'register'; code: string };
+    const parsed = body as {
+      email: string;
+      purpose: 'login' | 'register';
+      code: string;
+      portal?: 'student' | 'faculty';
+    };
     await consumeToken(`otp-verify:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 10));
     return this.identity.verifyOtpAndIssueToken(parsed);
   }

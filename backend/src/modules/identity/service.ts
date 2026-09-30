@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -36,7 +37,18 @@ export class IdentityService {
     phone: string | null;
     profileJson?: unknown;
   }) {
-    const accessToken = signAccessToken(user);
+    let accessToken: string;
+    try {
+      accessToken = signAccessToken(user);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('AUTH_JWT_SECRET')) {
+        throw new InternalServerErrorException(
+          'Sign-in is temporarily unavailable (server auth is not configured). Contact support.',
+        );
+      }
+      throw err;
+    }
     return {
       accessToken,
       userId: user.id,
@@ -112,12 +124,6 @@ export class IdentityService {
       return { ok: true, message: 'Verification code sent to your email.', devCode: result.devCode };
     }
 
-    if (accountType !== 'student') {
-      throw new ForbiddenException(
-        'Faculty and staff accounts are created by your administrator. Use the login details sent to your email.',
-      );
-    }
-
     if (user && user.platformRole !== targetRole) {
       throw new BadRequestException('This email is already registered with another role. Sign in instead.');
     }
@@ -142,7 +148,13 @@ export class IdentityService {
         phone: body.phone?.trim(),
       },
     });
-    return { ok: true, message: 'Verification code sent to your email.', devCode: result.devCode };
+    const message =
+      accountType === 'industry'
+        ? 'Verification code sent. Enter the OTP to complete industry mentor registration.'
+        : accountType === 'faculty'
+          ? 'Verification code sent to your email. Enter the OTP to complete faculty registration.'
+          : 'Verification code sent to your email.';
+    return { ok: true, message, devCode: result.devCode };
   }
 
   async verifyOtpAndIssueToken(body: {

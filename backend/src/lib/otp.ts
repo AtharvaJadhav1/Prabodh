@@ -109,7 +109,13 @@ export async function verifyOtp(opts: {
   const email = opts.email.trim().toLowerCase();
   const redis = getCacheRedis();
   const key = otpKey(opts.purpose, email);
-  const raw = await redis.get(key);
+  let raw: string | null;
+  try {
+    raw = await redis.get(key);
+  } catch (err) {
+    console.error('[otp] Redis read failed during verify', err);
+    return { ok: false, reason: 'Verification is temporarily unavailable. Try again in a moment.' };
+  }
 
   if (!raw) return { ok: false, reason: 'Code expired or not requested. Request a new code.' };
 

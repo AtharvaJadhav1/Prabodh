@@ -88,4 +88,4 @@ jobs:
           slot-name: 'Production'
           package: release.zip
           # The package ships node_modules + dist and is mounted read-only, so `npm install` must not run.
-          startup-command: node dist/main.js
+          startup-command: node prisma/ensure-columns.cjs && node dist/main.js

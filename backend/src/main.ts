@@ -6,6 +6,14 @@ import { AppModule } from './app.module';
 import { PrismaExceptionFilter } from './common/prisma-exception.filter';
 
 async function bootstrap() {
+  if (
+    process.env.NODE_ENV === 'production' &&
+    (!process.env.AUTH_JWT_SECRET || process.env.AUTH_JWT_SECRET === 'dev-only-change-me')
+  ) {
+    console.error('FATAL: Set AUTH_JWT_SECRET in production before starting the API.');
+    process.exit(1);
+  }
+
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
     bodyParser: false,
