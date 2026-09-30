@@ -10,6 +10,11 @@ const prisma = new PrismaClient();
 async function removeClerkLegacyColumns() {
   const statements = [
     `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "password_hash" TEXT`,
+    // Drop NOT NULL first: this is pure metadata and can't fail the way DROP COLUMN
+    // can (dependent views/permissions), so it unblocks inserts even if the DROP
+    // COLUMN statements below keep failing for some other reason.
+    `ALTER TABLE "users" ALTER COLUMN "clerk_user_id" DROP NOT NULL`,
+    `ALTER TABLE "teams" ALTER COLUMN "clerk_org_id" DROP NOT NULL`,
     `ALTER TABLE "team_members" DROP COLUMN IF EXISTS "clerk_invitation_id"`,
     `DROP INDEX IF EXISTS "teams_clerk_org_id_key"`,
     `ALTER TABLE "teams" DROP COLUMN IF EXISTS "clerk_org_id"`,
@@ -21,12 +26,20 @@ async function removeClerkLegacyColumns() {
       await prisma.$executeRawUnsafe(sql);
       console.log('[ensure-columns] ok:', sql);
     } catch (err) {
-      console.warn('[ensure-columns] clerk/password step failed (continuing):', sql, err && err.message ? err.message : err);
+      const detail = err && (err.meta?.message || err.message || String(err));
+      console.warn('[ensure-columns] clerk/password step failed (continuing):', sql, detail);
     }
   }
 }
 
 async function main() {
+  try {
+    const dbUrl = new URL(process.env.DATABASE_URL || '');
+    console.log('[ensure-columns] targeting database:', dbUrl.hostname + dbUrl.pathname);
+  } catch {
+    console.warn('[ensure-columns] DATABASE_URL is missing or not a valid URL');
+  }
+
   await removeClerkLegacyColumns();
 
   const statements = [

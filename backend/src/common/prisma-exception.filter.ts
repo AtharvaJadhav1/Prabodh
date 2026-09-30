@@ -38,7 +38,7 @@ export class PrismaExceptionFilter implements ExceptionFilter {
       case 'P2011':
         return [
           HttpStatus.CONFLICT,
-          `Database schema is out of date${meta.constraint ? ` (${String(meta.constraint)})` : ''}. Ask an admin to run database migrations.`,
+          `Database schema is out of date${meta.constraint ? ` (${String(meta.constraint)})` : ''}. Ask an admin to run database migrations (and confirm DATABASE_URL points at the right database).`,
         ];
       case 'P2028':
       case 'P2034':
