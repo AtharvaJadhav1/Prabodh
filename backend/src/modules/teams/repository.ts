@@ -149,7 +149,7 @@ export class TeamsRepository {
           where: { supersededById: null },
           include: {
             rubric: true,
-            stage: { select: { id: true, name: true, sequence: true, deadline: true, isActive: true } },
+            stage: { select: { id: true, name: true, sequence: true, isActive: true } },
             evaluator: { select: this.authorSelect },
           },
           take: 80,

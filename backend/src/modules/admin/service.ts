@@ -175,7 +175,7 @@ export class AdminService {
       this.prisma.ideaSubmission.groupBy({ by: ['status'], _count: true }),
       this.prisma.stage.findMany({
         orderBy: { sequence: 'asc' },
-        select: { id: true, name: true, sequence: true, deadline: true, isActive: true },
+        select: { id: true, name: true, sequence: true, isActive: true },
       }),
       this.prisma.stageResult.findMany({
         where: { published: true },
@@ -402,7 +402,6 @@ export class AdminService {
             id: s.id,
             name: s.name,
             sequence: s.sequence,
-            deadline: s.deadline.toISOString(),
             isActive: s.isActive,
             notStarted: stageMap.get('not_started') ?? 0,
             inProgress: stageMap.get('in_progress') ?? 0,
@@ -586,11 +585,10 @@ export class AdminService {
   }
 
   async overdueReviews() {
-    const now = new Date();
     return this.prisma.teamStageStatus.findMany({
       where: {
         status: { in: ['submitted', 'in_progress'] },
-        stage: { deadline: { lte: now }, isActive: true },
+        stage: { isActive: true },
       },
       include: {
         team: { include: { mentorAssignments: { where: { active: true }, include: { mentor: true } } } },

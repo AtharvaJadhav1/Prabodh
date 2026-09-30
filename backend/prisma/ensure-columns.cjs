@@ -42,6 +42,9 @@ async function main() {
     `ALTER TABLE "teams" DROP COLUMN IF EXISTS "clerk_org_id"`,
     `DROP INDEX IF EXISTS "users_clerk_user_id_key"`,
     `ALTER TABLE "users" DROP COLUMN IF EXISTS "clerk_user_id"`,
+    // Stage deadlines removed — unlock any deliverables that were auto-locked by them.
+    `ALTER TABLE "stages" DROP COLUMN IF EXISTS "deadline"`,
+    `UPDATE "deliverables" SET "locked" = false WHERE "locked" = true`,
   ];
 
   for (const sql of statements) {

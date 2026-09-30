@@ -4,7 +4,6 @@ export type StageConfig = {
   id: string;
   name: string;
   order: number;
-  deadline: string;
   rubricCriteria: RubricCriterion[];
   status: "upcoming" | "active" | "closed";
 };

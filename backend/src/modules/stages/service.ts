@@ -44,7 +44,6 @@ export class StagesService {
         id: true,
         name: true,
         sequence: true,
-        deadline: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -59,7 +58,7 @@ export class StagesService {
 
   async create(body: z.infer<typeof createStageSchema>) {
     const created = await this.prisma.stage.create({
-      data: { name: body.name, sequence: body.sequence, deadline: new Date(body.deadline) },
+      data: { name: body.name, sequence: body.sequence },
     });
     stagesListCache.clear();
     return created;
@@ -73,7 +72,6 @@ export class StagesService {
       data: {
         name: body.name,
         sequence: body.sequence,
-        deadline: body.deadline ? new Date(body.deadline) : undefined,
       },
     });
     stagesListCache.clear();
@@ -110,9 +108,6 @@ export class StagesService {
     await this.teams.assertTeamAccess(user, body.teamId);
     const stage = await this.prisma.stage.findUnique({ where: { id: stageId } });
     if (!stage) throw new NotFoundException('Stage not found');
-    if (stage.deadline.getTime() < Date.now()) {
-      throw new HttpException('Stage is locked after deadline', 423);
-    }
     const contentType = normalizeUploadMime(body.filename, body.contentType);
     const safeName = body.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
     const key = `deliverables/${body.teamId}/${stageId}/${body.kind}/${Date.now()}-${safeName}`;
@@ -132,9 +127,6 @@ export class StagesService {
     }
     const stage = await this.prisma.stage.findUnique({ where: { id: stageId } });
     if (!stage) throw new NotFoundException('Stage not found');
-    if (stage.deadline.getTime() < Date.now()) {
-      throw new HttpException('Stage is locked after deadline', 423);
-    }
 
     const filename = body.filename.trim();
     const ext = filename.includes('.') ? filename.slice(filename.lastIndexOf('.')).toLowerCase() : '';
@@ -182,9 +174,6 @@ export class StagesService {
     }
     const stage = await this.prisma.stage.findUnique({ where: { id: stageId } });
     if (!stage) throw new NotFoundException('Stage not found');
-    if (stage.deadline.getTime() < Date.now()) {
-      throw new HttpException('Stage is locked after deadline', 423);
-    }
     const prev = await this.prisma.deliverable.findFirst({
       where: { teamId: body.teamId, stageId },
       orderBy: { version: 'desc' },
@@ -240,7 +229,6 @@ export class StagesService {
           id: string;
           name: string;
           sequence: number;
-          deadline: Date;
           isActive: boolean;
           createdAt: Date;
           updatedAt: Date;
@@ -284,19 +272,5 @@ export class StagesService {
       relatedEntity: `team:${teamId}`,
     });
     return updated;
-  }
-
-  async lockExpiredStages() {
-    const now = new Date();
-    const stages = await this.prisma.stage.findMany({ where: { deadline: { lte: now }, isActive: true } });
-    let locked = 0;
-    for (const stage of stages) {
-      const res = await this.prisma.deliverable.updateMany({
-        where: { stageId: stage.id, locked: false },
-        data: { locked: true },
-      });
-      locked += res.count;
-    }
-    return { stages: stages.length, deliverablesLocked: locked };
   }
 }

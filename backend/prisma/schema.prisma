@@ -374,7 +374,6 @@ model Stage {
   id        String   @id @default(uuid())
   name      String
   sequence  Int
-  deadline  DateTime
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

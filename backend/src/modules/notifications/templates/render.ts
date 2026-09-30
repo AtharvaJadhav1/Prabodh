@@ -9,7 +9,6 @@ import { join } from 'path';
 export type EmailTemplate =
   | 'mentor_allocation'
   | 'team_invite'
-  | 'deadline_reminder'
   | 'evaluation_published'
   | 'admin_broadcast'
   | 'status_change'
@@ -210,13 +209,6 @@ export function renderEmailHtml(
         cta: cta ?? { label: 'Sign in to Prabodh', url: `${origin}/login` },
         portalLabel: 'Student Portal',
         footerNote: 'Please keep this password confidential. You may change it after signing in.',
-      });
-    case 'deadline_reminder':
-      return layout({
-        title,
-        greeting,
-        bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Kindly submit your deliverables before the stage locks.</p>`,
-        cta: cta ?? { label: 'Open Prabodh', url: origin },
       });
     case 'evaluation_published':
       return layout({

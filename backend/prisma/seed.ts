@@ -253,10 +253,10 @@ async function main() {
   }
 
   const stages = [
-    { name: 'Idea Submission', sequence: 1, deadline: daysFromNow(14) },
-    { name: 'Internal Hackathon', sequence: 2, deadline: daysFromNow(28) },
-    { name: 'Institute Level', sequence: 3, deadline: daysFromNow(45) },
-    { name: 'SIH Finale', sequence: 4, deadline: daysFromNow(90) },
+    { name: 'Idea Submission', sequence: 1 },
+    { name: 'Internal Hackathon', sequence: 2 },
+    { name: 'Institute Level', sequence: 3 },
+    { name: 'SIH Finale', sequence: 4 },
   ];
   for (const s of stages) {
     const existing = await prisma.stage.findUnique({ where: { sequence: s.sequence } });
@@ -380,12 +380,6 @@ async function main() {
     faculty: facultyRows.length,
     defaultPassword: DEFAULT_PASSWORD,
   });
-}
-
-function daysFromNow(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return d;
 }
 
 main()

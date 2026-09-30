@@ -3,7 +3,6 @@ import { z } from 'zod';
 export const createStageSchema = z.object({
   name: z.string().min(2),
   sequence: z.number().int().min(1),
-  deadline: z.string().datetime(),
 });
 
 export const createRubricSchema = z.object({
