@@ -43,6 +43,19 @@ function recListOf(v: unknown): Record<string, unknown>[] {
   return Array.isArray(v) ? v.filter((it): it is Record<string, unknown> => !!it && typeof it === 'object') : [];
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  student: 'student',
+  admin: 'admin',
+  institute_mentor: 'institute mentor',
+  industry_mentor: 'industry mentor',
+  student_expert: 'student expert',
+};
+
+function roleLabel(role?: string | null): string {
+  if (!role) return '';
+  return ROLE_LABELS[role] ?? role.replace(/_/g, ' ');
+}
+
 function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -109,6 +122,20 @@ export async function enrichAuditRows(prisma: PrismaService, rows: AuditRow[]) {
     const afterStageId = strOf(after?.stageId);
     const stageName = afterStageId ? stagesBy.get(afterStageId) ?? null : null;
 
+    // Removal rows must describe a user that no longer exists, so the label is
+    // rebuilt from the stored snapshot. A live lookup would return nothing for
+    // these rows and fall through to a dash. Scoped to `user` entities so team
+    // and stage rows keep using their live-resolved name/code.
+    const targetName = strOf(before?.fullName);
+    const targetEmail = strOf(after?.targetEmail) ?? strOf(before?.email);
+    const targetLabel =
+      it.entityType === 'user'
+        ? (targetName && targetEmail
+            ? `${targetName} (${targetEmail})`
+            : (targetName ?? targetEmail ?? it.entityId))
+        : null;
+    const targetMeta = roleLabel(strOf(before?.platformRole)) || null;
+
     const summary = summarizeAudit({
       action: it.action,
       entityType: it.entityType,
@@ -136,6 +163,8 @@ export async function enrichAuditRows(prisma: PrismaService, rows: AuditRow[]) {
       actorRole: it.actor?.platformRole ?? it.actorRole,
       teamName: team?.name ?? null,
       teamCode: team?.teamCode ?? null,
+      targetLabel,
+      targetMeta,
       summary,
     };
   });
@@ -224,37 +253,51 @@ function summarizeAudit(input: SummaryInput): string {
     }
     case 'user.remove': {
       // The target user no longer exists, so everything renders from the snapshot.
-      const targetEmail = strOf(after?.targetEmail) ?? strOf(before?.email);
-      const who = strOf(before?.fullName) ?? targetEmail ?? 'a user';
-      const target = who === targetEmail ? who : `${who} (${targetEmail ?? 'unknown email'})`;
+      const role = roleLabel(strOf(before?.platformRole));
+      const name = strOf(before?.fullName);
+      const email = strOf(after?.targetEmail) ?? strOf(before?.email);
+      const who = [role, name ?? email].filter(Boolean).join(' ') || 'a user';
+      const subject = name && email ? `${who} (${email})` : who;
 
       const impact = asRecord(after?.impact);
       const deleted = recListOf(impact?.deletedTeams);
       const promoted = recListOf(impact?.promotedTeams);
-      // Historical rows predate `after.impact` and only stored flat name arrays.
-      const legacyDeleted = (Array.isArray(after?.deletedTeams) ? (after?.deletedTeams as unknown[]) : [])
-        .map(strOf)
-        .filter((n): n is string => !!n);
-      const legacyPromoted = (Array.isArray(after?.promotedTeams) ? (after?.promotedTeams as unknown[]) : [])
-        .map(strOf)
-        .filter((n): n is string => !!n);
+      // Rows written before the impact block only stored flat name arrays.
+      const legacyNames = (key: 'deletedTeams' | 'promotedTeams') =>
+        (Array.isArray(after?.[key]) ? (after?.[key] as unknown[]) : [])
+          .map(strOf)
+          .filter((n): n is string => !!n);
 
-      const parts: string[] = [];
+      const sentences: string[] = [];
       if (deleted.length > 0) {
-        const total = deleted.reduce((sum, d) => sum + (numOf(d.membersAffected) ?? 0), 0);
-        const names = deleted.map((d) => strOf(d.teamName) ?? strOf(d.deletedTeamId) ?? 'a team');
-        const memberText = total > 0 ? `, ${total} member${total === 1 ? '' : 's'} affected` : '';
-        parts.push(`deleted ${deleted.length} team${deleted.length === 1 ? '' : 's'} (${names.join(', ')}${memberText})`);
-      } else if (legacyDeleted.length > 0) {
-        parts.push(`deleted ${legacyDeleted.length} team${legacyDeleted.length === 1 ? '' : 's'} (${legacyDeleted.join(', ')})`);
+        // Each team already carries its own count, so no separate total is added.
+        const listed = deleted
+          .map((d) => {
+            const nm = strOf(d.teamName) ?? strOf(d.deletedTeamId) ?? 'a team';
+            const n = numOf(d.membersAffected) ?? 0;
+            return `'${nm}'${n ? ` (${n} member${n === 1 ? '' : 's'})` : ''}`;
+          })
+          .join(', ');
+        sentences.push(`Cascaded deletion: deleted ${deleted.length === 1 ? 'team' : 'teams'} ${listed}.`);
+      } else {
+        const legacy = legacyNames('deletedTeams');
+        if (legacy.length > 0) {
+          sentences.push(
+            `Cascaded deletion: deleted ${legacy.length === 1 ? 'team' : 'teams'} ${legacy.map((n) => `'${n}'`).join(', ')}.`,
+          );
+        }
       }
       if (promoted.length > 0) {
-        const names = promoted.map((p) => strOf(p.teamName) ?? strOf(p.teamId) ?? 'a team');
-        parts.push(`promoted a new leader for ${promoted.length} team${promoted.length === 1 ? '' : 's'} (${names.join(', ')})`);
-      } else if (legacyPromoted.length > 0) {
-        parts.push(`promoted a new leader for ${legacyPromoted.length} team${legacyPromoted.length === 1 ? '' : 's'} (${legacyPromoted.join(', ')})`);
+        for (const p of promoted) {
+          sentences.push(`Promoted a new leader for team '${strOf(p.teamName) ?? strOf(p.teamId) ?? 'a team'}'.`);
+        }
+      } else {
+        const legacy = legacyNames('promotedTeams');
+        if (legacy.length > 0) {
+          for (const n of legacy) sentences.push(`Promoted a new leader for team '${n}'.`);
+        }
       }
-      return `Permanently removed ${target}${parts.length ? ` — ${parts.join('; ')}` : ''}`;
+      return `Removed ${subject}.${sentences.length ? ` ${sentences.join(' ')}` : ''}`;
     }
     default:
       return humanizeAction(action);

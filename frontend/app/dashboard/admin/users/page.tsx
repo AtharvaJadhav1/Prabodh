@@ -105,7 +105,7 @@ export default function AdminUsersPage() {
   const [confirmText, setConfirmText] = useState("");
   const [removing, setRemoving] = useState(false);
   const [removeMsg, setRemoveMsg] = useState("");
-  const [removedDone, setRemovedDone] = useState<{ fullName: string; promoted: number; deleted: number } | null>(null);
+  const [removedDone, setRemovedDone] = useState<{ fullName: string; promoted: number; deleted: number; alreadyRemoved?: boolean } | null>(null);
 
   const openRemove = async (target: PortalUser) => {
     setRemoveTarget(target);
@@ -117,6 +117,13 @@ export default function AdminUsersPage() {
     try {
       setRemovePreview(await api<RemovePreview>(`/admin/users/${target.id}/remove-preview`));
     } catch (err) {
+      // The row is already gone server-side, so a stale table render is the only
+      // explanation. Drop it rather than opening a modal that can only fail.
+      if (err instanceof ApiError && err.status === 404) {
+        setRemovedDone({ fullName: target.fullName, promoted: 0, deleted: 0, alreadyRemoved: true });
+        void reload();
+        return;
+      }
       setRemoveMsg(err instanceof Error ? err.message : "Could not load removal preview");
     } finally {
       setRemovePreviewing(false);
@@ -137,15 +144,28 @@ export default function AdminUsersPage() {
     setRemoving(true);
     setRemoveMsg("");
     try {
-      const res = await apiPost<{ removed: boolean; fullName: string; promotedTeams: number; deletedTeams: number }>(
+      const res = await apiPost<{
+        removed: boolean;
+        alreadyRemoved: boolean;
+        fullName: string | null;
+        promotedTeams: number;
+        deletedTeams: number;
+      }>(
         `/admin/users/${removeTarget.id}/remove`,
         { confirm: confirmText.trim() },
         // The server runs one interactive transaction plus a Clerk delete, and can
         // legitimately outlive the shared 12s default in lib/api.ts.
         { timeoutMs: REMOVE_TIMEOUT_MS },
       );
-      setRemovedDone({ fullName: res.fullName, promoted: res.promotedTeams, deleted: res.deletedTeams });
-      setRemoveTarget(null);
+      // Do not clear removeTarget: the whole modal, including the removedDone
+      // panel, is gated on it. Nulling it here unmounts the confirmation before
+      // it can render. "Done" calls closeRemove to dismiss.
+      setRemovedDone({
+        fullName: res.fullName ?? removeTarget.fullName,
+        promoted: res.promotedTeams,
+        deleted: res.deletedTeams,
+        alreadyRemoved: res.alreadyRemoved,
+      });
       setRemovePreview(null);
       setConfirmText("");
       void reload();
@@ -158,8 +178,11 @@ export default function AdminUsersPage() {
       if (timedOut && failed) {
         const outcome = await probeRemoval(failed);
         if (outcome === "gone") {
-          setRemovedDone({ fullName: failed.fullName, promoted: removePreview?.teams.filter((t) => t.outcome === "promote").length ?? 0, deleted: removePreview?.teams.filter((t) => t.outcome === "delete").length ?? 0 });
-          setRemoveTarget(null);
+          setRemovedDone({
+            fullName: failed.fullName,
+            promoted: removePreview?.teams.filter((t) => t.outcome === "promote").length ?? 0,
+            deleted: removePreview?.teams.filter((t) => t.outcome === "delete").length ?? 0,
+          });
           setRemovePreview(null);
           setConfirmText("");
           void reload();
@@ -605,13 +628,28 @@ export default function AdminUsersPage() {
                 {removedDone ? (
                   <div>
                     <p className="text-sm font-semibold text-neutral-800">
-                      <span className="font-bold text-red-600">{removedDone.fullName}</span> has been permanently removed from the platform.
+                      {removedDone.alreadyRemoved ? (
+                        <>
+                          <span className="font-bold text-neutral-900">{removedDone.fullName}</span> has already been removed from the platform.
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-bold text-red-600">{removedDone.fullName}</span> has been permanently removed from the platform.
+                        </>
+                      )}
                     </p>
-                    <ul className="mt-3 space-y-1 text-xs text-neutral-600">
-                      <li>• {removedDone.promoted} team(s) had leadership transferred to the earliest-joined accepted member.</li>
-                      <li>• {removedDone.deleted} team(s) were deleted along with their data.</li>
-                      <li>• The account is gone. Audit logs referencing this user are retained.</li>
-                    </ul>
+                    {removedDone.alreadyRemoved ? (
+                      <p className="mt-3 text-xs text-neutral-600">
+                        This user no longer exists on the platform, so there was nothing left to remove. Any audit logs
+                        recorded for them are retained.
+                      </p>
+                    ) : (
+                      <ul className="mt-3 space-y-1 text-xs text-neutral-600">
+                        <li>• {removedDone.promoted} team(s) had leadership transferred to the earliest-joined accepted member.</li>
+                        <li>• {removedDone.deleted} team(s) were deleted along with their data.</li>
+                        <li>• The account is gone. Audit logs referencing this user are retained.</li>
+                      </ul>
+                    )}
                     <button
                       type="button"
                       onClick={closeRemove}

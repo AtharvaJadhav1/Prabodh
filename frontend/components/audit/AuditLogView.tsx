@@ -19,6 +19,13 @@ type AuditRow = {
   actorRole: string | null;
   teamName: string | null;
   teamCode: string | null;
+  /**
+   * Entity label rebuilt from the stored snapshot. Present for `user` entities
+   * (e.g. removals) whose target no longer exists to look up; null otherwise.
+   */
+  targetLabel?: string | null;
+  /** Humanized role of that target, e.g. "student". */
+  targetMeta?: string | null;
   summary: string;
   /** Pre-state snapshot. Always returned by the API, previously undeclared here. */
   before?: unknown;
@@ -356,7 +363,12 @@ export default function AuditLogView({ endpoint, teamOptions, csvName = "audit_l
                         )}
                       </td>
                       <td className="whitespace-nowrap px-3 py-4 align-middle">
-                        {row.teamCode ? (
+                        {row.targetLabel ? (
+                          <div>
+                            <div className="font-medium text-neutral-800">{row.targetLabel}</div>
+                            {row.targetMeta ? <div className="text-[11px] text-neutral-400">{row.targetMeta}</div> : null}
+                          </div>
+                        ) : row.teamCode ? (
                           <div>
                             <div className="font-medium text-neutral-800">{row.teamName}</div>
                             <div className="text-[11px] text-neutral-400">{row.teamCode}</div>

@@ -762,7 +762,23 @@ export class AdminService {
         industrialMentorProfile: { select: { id: true } },
       },
     });
-    if (!target) throw new NotFoundException('User not found');
+    // Not an error. A retry after a client-side timeout, a double-click, or a
+    // stale page all land here once the first attempt has already committed, and
+    // the previous attempt already wrote its audit row. Nothing can be orphaned
+    // here: teams.leader_user_id is NOT NULL ON DELETE RESTRICT, and
+    // team_members rows are removed explicitly above, so there is nothing left
+    // to clean up and nothing to cascade.
+    if (!target) {
+      log('Target already removed', { actorUserId: actor.id, actorEmail: actor.email, targetUserId: userId });
+      return {
+        removed: true,
+        alreadyRemoved: true,
+        email: null,
+        fullName: null,
+        promotedTeams: 0,
+        deletedTeams: 0,
+      };
+    }
     log(`Started by ${actor.email} for user ${target.email}`, {
       actorUserId: actor.id,
       actorEmail: actor.email,
@@ -988,6 +1004,7 @@ export class AdminService {
 
     return {
       removed: true,
+      alreadyRemoved: false,
       email: target.email,
       fullName: target.fullName,
       promotedTeams: promotedTeams.length,
