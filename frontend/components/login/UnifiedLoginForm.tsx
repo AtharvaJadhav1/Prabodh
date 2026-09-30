@@ -5,10 +5,19 @@ import { useAuth } from "../auth/AuthProvider";
 import { dashboardForRole } from "../../lib/session";
 import LoginPasswordForm from "./LoginPasswordForm";
 
+function safeNextPath(raw: string | null, role: string) {
+  if (raw && raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("://")) {
+    return raw;
+  }
+  return dashboardForRole(role as never);
+}
+
 export default function UnifiedLoginForm() {
   const searchParams = useSearchParams();
   const { establishSession } = useAuth();
   const notice = searchParams.get("notice");
+  const next = searchParams.get("next");
+  const fromInvite = Boolean(searchParams.get("email"));
 
   return (
     <LoginPasswordForm
@@ -16,10 +25,10 @@ export default function UnifiedLoginForm() {
       submitLabel="Sign in"
       footer={
         <div className="space-y-3">
-          {notice === "faculty-invite-only" ? (
+          {notice === "faculty-invite-only" || fromInvite ? (
             <p className="rounded-xl border border-brand-softline bg-brand-cream px-3 py-2 text-center text-xs text-brand-muted">
-              Faculty and staff accounts are created by your administrator. Check your email for login credentials,
-              then sign in above.
+              Faculty and staff accounts are created by your administrator. Paste the password from your email, then
+              sign in above.
             </p>
           ) : null}
           <p className="text-center text-sm text-brand-muted">
@@ -31,7 +40,7 @@ export default function UnifiedLoginForm() {
       }
       onSuccess={(result) => {
         establishSession(result);
-        window.location.assign(dashboardForRole(result.platformRole));
+        window.location.replace(safeNextPath(next, result.platformRole));
       }}
     />
   );

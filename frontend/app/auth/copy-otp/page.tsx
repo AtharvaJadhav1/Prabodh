@@ -1,16 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 /**
  * One-click copy landing page for OTP / password buttons in transactional emails.
  * The secret lives in the URL hash only (never sent to the server).
  */
-export default function CopyOtpPage() {
+function CopyOtpInner() {
+  const searchParams = useSearchParams();
+  const email = (searchParams.get("email") ?? "").trim();
+  const next = (searchParams.get("next") ?? "").trim();
   const [status, setStatus] = useState<"copying" | "ok" | "empty" | "error">("copying");
   const [value, setValue] = useState("");
+
+  const signInHref = useMemo(() => {
+    const qs = new URLSearchParams();
+    qs.set("switch", "1");
+    if (email) qs.set("email", email);
+    if (next.startsWith("/")) qs.set("next", next);
+    return `/login?${qs.toString()}`;
+  }, [email, next]);
 
   useEffect(() => {
     const raw = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
@@ -57,7 +69,7 @@ export default function CopyOtpPage() {
           <div className="text-left">
             <p className="text-xl font-extrabold tracking-tight text-brand-deep">Prabodh.</p>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-muted">
-              Student Portal
+              Secure copy
             </p>
           </div>
         </div>
@@ -72,7 +84,11 @@ export default function CopyOtpPage() {
             <p className="mt-3 rounded-xl bg-brand-lightOrange px-4 py-3 font-mono text-2xl font-bold tracking-[0.28em] text-brand-primary">
               {value}
             </p>
-            <p className="mt-3 text-sm text-brand-muted">Paste it into the verification field to continue.</p>
+            <p className="mt-3 text-sm text-brand-muted">
+              {email
+                ? "Password copied. Continue to sign in — your email will be filled in."
+                : "Code copied. Continue to sign in and paste it there."}
+            </p>
           </>
         ) : null}
 
@@ -90,12 +106,26 @@ export default function CopyOtpPage() {
         ) : null}
 
         <Link
-          href="/login"
+          href={signInHref}
           className="mt-8 inline-flex rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-hover"
         >
-          Back to sign in
+          Continue to sign in
         </Link>
       </div>
     </main>
+  );
+}
+
+export default function CopyOtpPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-brand-canvas px-4 py-12">
+          <p className="text-sm font-medium text-brand-muted">Loading…</p>
+        </main>
+      }
+    >
+      <CopyOtpInner />
+    </Suspense>
   );
 }

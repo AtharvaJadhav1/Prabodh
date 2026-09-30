@@ -32,8 +32,18 @@ const BRAND = {
 } as const;
 
 export function appOrigin() {
-  const raw = process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_ORIGIN ?? 'http://localhost:3000';
-  return raw.split(',')[0].trim().replace(/\/$/, '');
+  // Prefer configured public web origin. Never fall back to localhost in deployed
+  // emails — that makes Sign-in CTAs unusable for real recipients.
+  const raw =
+    process.env.NEXT_PUBLIC_APP_URL ??
+    process.env.APP_ORIGIN ??
+    process.env.FRONTEND_ORIGIN ??
+    'https://incubation.prabodh.app';
+  const first = raw.split(',')[0].trim().replace(/\/$/, '');
+  if (!first || /localhost|127\.0\.0\.1/i.test(first)) {
+    return 'https://incubation.prabodh.app';
+  }
+  return first;
 }
 
 export const LOGO_CID = 'prabodh-logo';
@@ -78,9 +88,13 @@ export function emailCtaButton(label: string, href: string) {
  * Click opens /auth/copy-otp#CODE (hash never hits the server) and copies in one click.
  * Also uses user-select:all so desktop clients can select the code with a single click.
  */
-export function emailOtpButton(code: string) {
+export function emailOtpButton(code: string, opts?: { email?: string; next?: string }) {
   const safe = escapeHtml(code);
-  const href = `${appOrigin()}/auth/copy-otp#${encodeURIComponent(code)}`;
+  const qs = new URLSearchParams();
+  if (opts?.email) qs.set('email', opts.email);
+  if (opts?.next) qs.set('next', opts.next);
+  const query = qs.toString() ? `?${qs.toString()}` : '';
+  const href = `${appOrigin()}/auth/copy-otp${query}#${encodeURIComponent(code)}`;
   return `<a href="${escapeHtml(href)}" style="background:${BRAND.primary};color:${BRAND.white};text-decoration:none;padding:16px 32px;border-radius:10px;display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:26px;font-weight:700;letter-spacing:0.28em;line-height:1.2;border:0;-webkit-user-select:all;user-select:all;mso-padding-alt:0" title="Click to copy">${safe}</a>
 <p style="margin:10px 0 0;font-size:12px;color:${BRAND.muted}">Click the code to copy it</p>`;
 }
@@ -206,8 +220,8 @@ export function renderEmailHtml(
         title,
         greeting,
         bodyHtml,
-        cta: cta ?? { label: 'Sign in to Prabodh', url: `${origin}/login` },
-        portalLabel: 'Student Portal',
+        cta: cta ?? { label: 'Sign in to Prabodh', url: `${origin}/login?switch=1` },
+        portalLabel: 'Faculty & Mentors',
         footerNote: 'Please keep this password confidential. You may change it after signing in.',
       });
     case 'evaluation_published':

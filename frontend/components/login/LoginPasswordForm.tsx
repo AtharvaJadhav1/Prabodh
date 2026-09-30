@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
 import { friendlyAuthError, loginWithPassword, type AuthResponse } from "../../lib/auth-login";
@@ -32,6 +32,11 @@ export default function LoginPasswordForm({
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Email from invite / credentials links can arrive after the first render (Suspense).
+  useEffect(() => {
+    if (presetEmail) setEmail(presetEmail);
+  }, [presetEmail]);
 
   return (
     <div className="space-y-6">

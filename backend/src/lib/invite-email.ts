@@ -43,6 +43,14 @@ function roleLabel(role: string) {
   return 'Institute Mentor';
 }
 
+function dashboardPathForRole(role: string) {
+  if (role === 'admin') return '/dashboard/admin';
+  if (role === 'industry_mentor') return '/dashboard/industry';
+  if (role === 'student_expert') return '/dashboard/expert';
+  if (role === 'institute_mentor') return '/dashboard/mentor';
+  return '/dashboard/student';
+}
+
 export async function sendStaffCredentialsEmail(opts: {
   to: string;
   fullName: string;
@@ -50,7 +58,11 @@ export async function sendStaffCredentialsEmail(opts: {
   platformRole: string;
 }) {
   const origin = appOrigin();
-  const loginUrl = `${origin}/login?switch=1&email=${encodeURIComponent(opts.to)}`;
+  const next = dashboardPathForRole(opts.platformRole);
+  const loginUrl =
+    `${origin}/login?switch=1` +
+    `&email=${encodeURIComponent(opts.to)}` +
+    `&next=${encodeURIComponent(next)}`;
   const label = roleLabel(opts.platformRole);
   const title = `Your Prabodh ${label} account`;
   const safeEmail = escapeHtml(opts.to);
@@ -59,9 +71,9 @@ export async function sendStaffCredentialsEmail(opts: {
     <p style="margin:16px 0 8px;font-size:13px;color:#706761">Kindly sign in using the credentials below:</p>
     <p style="margin:0 0 4px;font-size:13px;color:#706761">Email</p>
     <p style="margin:0 0 16px;font-family:ui-monospace,Consolas,monospace;font-size:15px;font-weight:700;color:#2B2523">${safeEmail}</p>
-    <p style="margin:0 0 8px;font-size:13px;color:#706761">Your password — click to copy</p>
-    <div style="text-align:center;margin:8px 0 16px">${emailOtpButton(opts.password)}</div>
-    <p style="margin:0;font-size:13px;color:#706761">Please use <strong>Switch account / Sign in</strong> if another Prabodh session is still open in this browser.</p>
+    <p style="margin:0 0 8px;font-size:13px;color:#706761">Your password — click to copy, then continue to sign in</p>
+    <div style="text-align:center;margin:8px 0 16px">${emailOtpButton(opts.password, { email: opts.to, next })}</div>
+    <p style="margin:0;font-size:13px;color:#706761">If another Prabodh session is open in this browser, the sign-in link will switch accounts for you.</p>
   `;
   const html = renderEmailHtml('staff_credentials', title, bodyHtml, 'Sign in to Prabodh', loginUrl, opts.fullName);
   const from = resolveInviteFromAddress();

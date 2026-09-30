@@ -82,6 +82,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     pathname.startsWith("/register");
 
   useLayoutEffect(() => {
+    // Credentials / invite emails use ?switch=1 so an existing browser session does not
+    // immediately bounce the recipient away from the sign-in form.
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("switch") === "1" || params.get("logout") === "1") {
+        clearApiCache();
+        clearSession();
+        setAccessToken(null);
+        setSession(null);
+        params.delete("switch");
+        params.delete("logout");
+        const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
+        window.history.replaceState({}, "", next);
+        setReady(true);
+        return;
+      }
+    }
+
     const cached = readSession();
     if (cached?.userId) {
       setSession(cached);
