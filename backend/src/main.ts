@@ -10,8 +10,9 @@ async function bootstrap() {
     process.env.NODE_ENV === 'production' &&
     (!process.env.AUTH_JWT_SECRET || process.env.AUTH_JWT_SECRET === 'dev-only-change-me')
   ) {
-    console.error('FATAL: Set AUTH_JWT_SECRET in production before starting the API.');
-    process.exit(1);
+    console.error(
+      'WARNING: AUTH_JWT_SECRET is not set — sign-in will fail until you configure it in App Service settings.',
+    );
   }
 
   const app = await NestFactory.create(AppModule, {
