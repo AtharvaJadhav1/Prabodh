@@ -5,6 +5,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { PlatformRole, Prisma } from '@prisma/client';
@@ -25,6 +26,22 @@ export class IdentityService {
 
   loginByEmail(email: string) {
     return this.repo.findByEmail(email.toLowerCase());
+  }
+
+  private mapOtpDeliveryError(err: unknown): never {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/OTP storage|redis|cluster|ECONNREFUSED|ETIMEDOUT|Stream isn't writeable/i.test(msg)) {
+      throw new ServiceUnavailableException(
+        'Verification codes are temporarily unavailable. Wait a minute and try again.',
+      );
+    }
+    if (/RESEND|RESEND_FROM|RESEND_API|email send|verified domain/i.test(msg)) {
+      throw new ServiceUnavailableException(
+        'We could not send the verification email. Confirm your email address or try again later. If this keeps happening, contact support.',
+      );
+    }
+    console.error('[identity] OTP delivery failed', msg);
+    throw new InternalServerErrorException('Could not send verification code. Please try again.');
   }
 
   private issueToken(user: {
@@ -120,12 +137,23 @@ export class IdentityService {
       if (!user || !user.isActive) {
         throw new NotFoundException('No account found for this email. Register first or contact your admin.');
       }
-      const result = await sendOtp({ email, purpose: 'login' });
+      let result: { devCode?: string };
+      try {
+        result = await sendOtp({ email, purpose: 'login' });
+      } catch (err) {
+        this.mapOtpDeliveryError(err);
+      }
       return { ok: true, message: 'Verification code sent to your email.', devCode: result.devCode };
     }
 
     if (user && user.platformRole !== targetRole) {
       throw new BadRequestException('This email is already registered with another role. Sign in instead.');
+    }
+
+    if (user && user.isActive && body.purpose === 'register' && accountType === 'student') {
+      throw new BadRequestException(
+        'This email already has an account. Sign in instead of registering again.',
+      );
     }
 
     if (!body.fullName?.trim()) {
@@ -135,19 +163,24 @@ export class IdentityService {
       throw new BadRequestException('Password must be at least 8 characters.');
     }
 
-    const result = await sendOtp({
-      email,
-      purpose: 'register',
-      profile: {
+    let result: { devCode?: string };
+    try {
+      result = await sendOtp({
         email,
-        fullName: body.fullName.trim(),
-        password: body.password,
-        platformRole: targetRole,
-        institute: body.institute?.trim(),
-        department: body.department?.trim(),
-        phone: body.phone?.trim(),
-      },
-    });
+        purpose: 'register',
+        profile: {
+          email,
+          fullName: body.fullName.trim(),
+          password: body.password,
+          platformRole: targetRole,
+          institute: body.institute?.trim(),
+          department: body.department?.trim(),
+          phone: body.phone?.trim(),
+        },
+      });
+    } catch (err) {
+      this.mapOtpDeliveryError(err);
+    }
     const message =
       accountType === 'industry'
         ? 'Verification code sent. Enter the OTP to complete industry mentor registration.'

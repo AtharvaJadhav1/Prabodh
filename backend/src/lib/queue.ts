@@ -108,9 +108,10 @@ export function getRedis(): RedisLike {
 export function getCacheRedis(): RedisLike {
   if (!cacheClient) {
     cacheClient = createRedis({
-      maxRetriesPerRequest: 1,
+      maxRetriesPerRequest: 2,
       enableOfflineQueue: false,
-      commandTimeout: 2000,
+      // Azure Managed Redis cluster can exceed 2s on cold connections during OTP send/verify.
+      commandTimeout: 10000,
     });
   }
   return cacheClient;
