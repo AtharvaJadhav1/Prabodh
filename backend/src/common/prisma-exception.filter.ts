@@ -35,6 +35,11 @@ export class PrismaExceptionFilter implements ExceptionFilter {
         ];
       case 'P2002':
         return [HttpStatus.CONFLICT, `Duplicate value${meta.target ? ` for ${String(meta.target)}` : ''}`];
+      case 'P2011':
+        return [
+          HttpStatus.CONFLICT,
+          `Database schema is out of date${meta.constraint ? ` (${String(meta.constraint)})` : ''}. Ask an admin to run database migrations.`,
+        ];
       case 'P2028':
       case 'P2034':
         return [HttpStatus.SERVICE_UNAVAILABLE, 'The operation timed out or conflicted with another change. Please retry.'];

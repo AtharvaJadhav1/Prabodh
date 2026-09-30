@@ -6,7 +6,29 @@ const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
 
+/** Must run before user registration — old DBs still require dropped Clerk columns. */
+async function removeClerkLegacyColumns() {
+  const statements = [
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "password_hash" TEXT`,
+    `ALTER TABLE "team_members" DROP COLUMN IF EXISTS "clerk_invitation_id"`,
+    `DROP INDEX IF EXISTS "teams_clerk_org_id_key"`,
+    `ALTER TABLE "teams" DROP COLUMN IF EXISTS "clerk_org_id"`,
+    `DROP INDEX IF EXISTS "users_clerk_user_id_key"`,
+    `ALTER TABLE "users" DROP COLUMN IF EXISTS "clerk_user_id"`,
+  ];
+  for (const sql of statements) {
+    try {
+      await prisma.$executeRawUnsafe(sql);
+      console.log('[ensure-columns] ok:', sql);
+    } catch (err) {
+      console.warn('[ensure-columns] clerk/password step failed (continuing):', sql, err && err.message ? err.message : err);
+    }
+  }
+}
+
 async function main() {
+  await removeClerkLegacyColumns();
+
   const statements = [
     `ALTER TABLE "teams" ADD COLUMN IF NOT EXISTS "mentor_locked_at" TIMESTAMP(3)`,
     `CREATE INDEX IF NOT EXISTS "team_members_invited_email_invite_status_idx" ON "team_members" ("invited_email", "invite_status")`,
@@ -36,12 +58,6 @@ async function main() {
     `ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "actor_name" TEXT`,
     `ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "actor_email" TEXT`,
     `ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "actor_role" TEXT`,
-    // Clerk removed — drop legacy columns if they still exist.
-    `ALTER TABLE "team_members" DROP COLUMN IF EXISTS "clerk_invitation_id"`,
-    `DROP INDEX IF EXISTS "teams_clerk_org_id_key"`,
-    `ALTER TABLE "teams" DROP COLUMN IF EXISTS "clerk_org_id"`,
-    `DROP INDEX IF EXISTS "users_clerk_user_id_key"`,
-    `ALTER TABLE "users" DROP COLUMN IF EXISTS "clerk_user_id"`,
     // Stage deadlines removed — unlock any deliverables that were auto-locked by them.
     `ALTER TABLE "stages" DROP COLUMN IF EXISTS "deadline"`,
     `UPDATE "deliverables" SET "locked" = false WHERE "locked" = true`,

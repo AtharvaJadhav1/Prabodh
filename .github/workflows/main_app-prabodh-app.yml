@@ -89,4 +89,4 @@ jobs:
           package: release.zip
           # The package ships node_modules + dist and is mounted read-only, so `npm install` must not run.
           # Run schema fixes when possible, but always start the API (a failed ensure-columns must not leave the site on 503).
-          startup-command: node prisma/ensure-columns.cjs; node dist/main.js
+          startup-command: node prisma/ensure-columns.cjs; npx prisma migrate deploy; node dist/main.js
