@@ -53,17 +53,40 @@ export default function RepositoryBrowser({ targetRank, usedPsIds, onPick }: Pro
   useEffect(() => {
     const q = search.trim();
     const category = activeFilter === "Software" ? "software" : activeFilter === "Hardware" ? "hardware" : undefined;
+    let cancelled = false;
     const timer = window.setTimeout(() => {
-      const params = new URLSearchParams();
-      if (q) params.set("q", q);
-      if (category) params.set("category", category);
-      void api<{ items: Array<{ id: string; code: string; title: string; theme: string; category: string; organisation: string; description: string }> }>(
-        `/problem-statements?${params.toString()}`,
-      )
-        .then((res) => {
+      void (async () => {
+        try {
+          type PsRow = {
+            id: string;
+            code: string;
+            title: string;
+            theme: string;
+            category: string;
+            organisation: string;
+            description: string;
+          };
+          const collected: PsRow[] = [];
+          let page = 1;
+          let pages = 1;
+          do {
+            const params = new URLSearchParams();
+            params.set("limit", "200");
+            params.set("page", String(page));
+            if (q) params.set("q", q);
+            if (category) params.set("category", category);
+            const res = await api<{ items: PsRow[]; pages: number; total: number }>(
+              `/problem-statements?${params.toString()}`,
+            );
+            collected.push(...(res.items ?? []));
+            pages = Math.max(1, res.pages ?? 1);
+            page += 1;
+          } while (page <= pages && page <= 10);
+
+          if (cancelled) return;
           const nextIds: Record<string, string> = {};
           setRemote(
-            res.items.map((ps) => {
+            collected.map((ps) => {
               nextIds[ps.code] = ps.id;
               return {
                 code: ps.code,
@@ -78,10 +101,15 @@ export default function RepositoryBrowser({ targetRank, usedPsIds, onPick }: Pro
             }),
           );
           setIds(nextIds);
-        })
-        .catch(() => setRemote(null));
+        } catch {
+          if (!cancelled) setRemote(null);
+        }
+      })();
     }, 300);
-    return () => window.clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [search, activeFilter]);
 
   const source = remote ?? [];

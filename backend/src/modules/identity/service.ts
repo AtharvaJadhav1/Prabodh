@@ -586,30 +586,51 @@ export class IdentityService {
       try {
         const email = row.email.toLowerCase();
         const existing = await this.repo.findByEmail(email);
-        if (existing) {
-          await this.prisma.user.update({
-            where: { id: existing.id },
-            data: {
+        const user = existing
+          ? await this.prisma.user.update({
+              where: { id: existing.id },
+              data: {
+                fullName: row.fullName,
+                platformRole: row.platformRole,
+                institute: row.institute ?? existing.institute,
+                department: row.department ?? existing.department,
+                isActive: true,
+                ...(row.password ? { passwordHash: hashPassword(row.password) } : {}),
+              },
+            })
+          : await this.prisma.user.create({
+              data: {
+                email,
+                fullName: row.fullName,
+                platformRole: row.platformRole,
+                institute: row.institute,
+                department: row.department,
+                ...(row.password ? { passwordHash: hashPassword(row.password) } : {}),
+              },
+            });
+
+        // Keep Industrial Mentors directory in sync for CSV + manual bulk imports.
+        if (row.platformRole === PlatformRole.industry_mentor) {
+          await this.prisma.industrialMentor.upsert({
+            where: { userId: user.id },
+            update: {
               fullName: row.fullName,
-              platformRole: row.platformRole,
-              institute: row.institute ?? existing.institute,
-              department: row.department ?? existing.department,
-              isActive: true,
-              ...(row.password ? { passwordHash: hashPassword(row.password) } : {}),
-            },
-          });
-        } else {
-          await this.prisma.user.create({
-            data: {
               email,
+              companyName: row.institute ?? null,
+              designation: row.department ?? null,
+              isActive: true,
+            },
+            create: {
+              userId: user.id,
               fullName: row.fullName,
-              platformRole: row.platformRole,
-              institute: row.institute,
-              department: row.department,
-              ...(row.password ? { passwordHash: hashPassword(row.password) } : {}),
+              email,
+              companyName: row.institute ?? null,
+              designation: row.department ?? null,
+              isActive: true,
             },
           });
         }
+
         return { email: row.email, status: 'created' as const, password: row.password };
       } catch (err) {
         return {
@@ -639,23 +660,78 @@ function extensionForMime(mime: string) {
   return AVATAR_MIME_EXT[mime] ?? '.png';
 }
 
-function parseRole(role: unknown): PlatformRole {
-  if (
-    role === 'admin' ||
-    role === 'institute_mentor' ||
-    role === 'industry_mentor' ||
-    role === 'student' ||
-    role === 'student_expert'
-  ) {
-    return role;
+/** Normalize CSV / form role labels into PlatformRole (never silently collapse mentors to student). */
+export function parseRole(role: unknown): PlatformRole {
+  const raw = String(role ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+  const aliases: Record<string, PlatformRole> = {
+    admin: PlatformRole.admin,
+    nodal_admin: PlatformRole.admin,
+    nodaladmin: PlatformRole.admin,
+    institute_mentor: PlatformRole.institute_mentor,
+    institutementor: PlatformRole.institute_mentor,
+    faculty: PlatformRole.institute_mentor,
+    faculty_mentor: PlatformRole.institute_mentor,
+    facultymentor: PlatformRole.institute_mentor,
+    mentor: PlatformRole.institute_mentor,
+    industry_mentor: PlatformRole.industry_mentor,
+    industrial_mentor: PlatformRole.industry_mentor,
+    industrymentor: PlatformRole.industry_mentor,
+    industrialmentor: PlatformRole.industry_mentor,
+    industry: PlatformRole.industry_mentor,
+    student: PlatformRole.student,
+    student_expert: PlatformRole.student_expert,
+    studentexpert: PlatformRole.student_expert,
+    expert: PlatformRole.student_expert,
+    sih_expert: PlatformRole.student_expert,
+  };
+
+  const hit = aliases[raw];
+  if (hit) return hit;
+  throw new BadRequestException(
+    `Unknown platformRole "${String(role)}". Use student, institute_mentor, industry_mentor, student_expert, or admin.`,
+  );
+}
+
+function splitCsvLine(line: string): string[] {
+  const cols: string[] = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (line[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += c;
+      }
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === ',') {
+      cols.push(field.trim());
+      field = '';
+    } else {
+      field += c;
+    }
   }
-  return 'student';
+  cols.push(field.trim());
+  return cols;
 }
 
 export function parseCsvUsers(csv: string) {
-  const lines = csv.trim().split(/\r?\n/);
+  const lines = csv.replace(/^\uFEFF/, '').trim().split(/\r?\n/);
   if (lines.length < 2) throw new BadRequestException('CSV needs a header and at least one row');
-  const header = lines[0].split(',').map((h) => h.trim().toLowerCase());
+  const header = splitCsvLine(lines[0]).map((h) => h.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'));
   const col = (...names: string[]) => {
     for (const name of names) {
       const idx = header.indexOf(name);
@@ -666,20 +742,29 @@ export function parseCsvUsers(csv: string) {
   const emailIdx = col('email');
   const nameIdx = col('full_name', 'fullname', 'name');
   const roleIdx = col('role', 'platformrole', 'platform_role');
-  const instIdx = col('institute');
-  const deptIdx = col('department');
+  const instIdx = col('institute', 'organisation', 'organization', 'company');
+  const deptIdx = col('department', 'dept', 'designation');
   if (emailIdx < 0 || nameIdx < 0 || roleIdx < 0) {
-    throw new BadRequestException('CSV must include email, fullName/full_name, and platformRole/role columns');
+    throw new BadRequestException(
+      'CSV must include email, fullName/full_name, and platformRole/role columns',
+    );
   }
-  return lines.slice(1).filter((line) => line.trim()).map((line) => {
-    const cols = line.split(',').map((c) => c.trim());
-    const role = parseRole(cols[roleIdx]);
-    return {
-      email: cols[emailIdx],
-      fullName: cols[nameIdx],
-      platformRole: role,
-      institute: instIdx >= 0 ? cols[instIdx] : undefined,
-      department: deptIdx >= 0 ? cols[deptIdx] : undefined,
-    };
-  });
+  return lines
+    .slice(1)
+    .filter((line) => line.trim())
+    .map((line, rowIndex) => {
+      const cols = splitCsvLine(line);
+      const email = (cols[emailIdx] ?? '').trim();
+      const fullName = (cols[nameIdx] ?? '').trim();
+      if (!email || !fullName) {
+        throw new BadRequestException(`CSV row ${rowIndex + 2} is missing email or fullName`);
+      }
+      return {
+        email,
+        fullName,
+        platformRole: parseRole(cols[roleIdx]),
+        institute: instIdx >= 0 ? cols[instIdx] || undefined : undefined,
+        department: deptIdx >= 0 ? cols[deptIdx] || undefined : undefined,
+      };
+    });
 }

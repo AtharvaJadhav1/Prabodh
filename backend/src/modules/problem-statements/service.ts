@@ -26,12 +26,13 @@ export class ProblemStatementsService {
 
   async list(query: { theme?: string; category?: string; organisation?: string; q?: string; page?: string; limit?: string }) {
     const page = Math.max(1, Number(query.page) || 1);
-    const limit = Math.min(100, Math.max(1, Number(query.limit) || 50));
+    // SIH 2026 catalogue is 226 rows — allow a single-page fetch for the student browser.
+    const limit = Math.min(500, Math.max(1, Number(query.limit) || 100));
     const cacheKey = `ps:${page}:${limit}:${query.theme ?? ''}:${query.category ?? ''}:${query.organisation ?? ''}:${query.q ?? ''}`;
     const cached = psListCache.get(cacheKey);
     if (cached) return cached;
     const [items, total] = await this.repo.list(query, (page - 1) * limit, limit);
-    const payload = { items, total, page, limit, pages: Math.ceil(total / limit) };
+    const payload = { items, total, page, limit, pages: Math.max(1, Math.ceil(total / limit)) };
     psListCache.set(cacheKey, payload);
     return payload;
   }

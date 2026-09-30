@@ -234,7 +234,13 @@ export default function AdminUsersPage() {
   };
 
   const downloadTemplate = () => {
-    const content = `${CSV_HEADER}\njane.doe@example.edu,Dr. Jane Doe,institute_mentor,School of Computing,AI & Analytics\nravi.kumar@example.org,Ravi Kumar,industry_mentor,Acme Technologies,Research\npriya.expert@example.edu,Priya Expert,student_expert,School of Computing,Expert Cell`;
+    const content = [
+      CSV_HEADER,
+      "aarav.student@example.edu,Aarav Sharma,student,MIT ADT,CSE",
+      "jane.doe@example.edu,Dr. Jane Doe,institute_mentor,School of Computing,AI & Analytics",
+      "ravi.kumar@example.org,Ravi Kumar,industry_mentor,Acme Technologies,Research",
+      "priya.expert@example.edu,Priya Expert,student_expert,School of Computing,Expert Cell",
+    ].join("\n");
     const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -332,26 +338,35 @@ export default function AdminUsersPage() {
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-neutral-100 pt-5">
             <button
               type="button"
-              disabled={inviteBusy}
+              disabled={inviteBusy || !inviteEmail.trim() || !inviteName.trim()}
               onClick={async () => {
                 setInviteMsg("");
+                const email = inviteEmail.trim();
+                const fullName = inviteName.trim();
+                if (!email || !email.includes("@") || !fullName) {
+                  setInviteMsg("Enter a valid email and full name before inviting.");
+                  return;
+                }
                 setInviteBusy(true);
                 try {
-                  const role = inviteRole;
                   const result = await apiPost<{
                     email: string;
+                    platformRole?: string;
                     emailSent?: boolean;
                     emailError?: string | null;
                   }>("/admin/users/invite", {
-                    email: inviteEmail.trim(),
-                    fullName: inviteName.trim(),
-                    platformRole: role,
+                    email,
+                    fullName,
+                    platformRole: inviteRole,
                     institute: inviteInstitute.trim() || undefined,
                     department: inviteDepartment.trim() || undefined,
                   });
-                  setInviteMsg(`Invited ${result.email}. Credentials email is sending in the background.`);
+                  const roleLabel = ROLE_LABEL[result.platformRole ?? inviteRole] ?? inviteRole;
+                  setInviteMsg(`Created ${result.email} as ${roleLabel}. Credentials email is sending.`);
                   setInviteEmail("");
                   setInviteName("");
+                  setInviteInstitute("");
+                  setInviteDepartment("");
                   void reload();
                 } catch (err) {
                   setInviteMsg(err instanceof Error ? err.message : "Invite failed");
@@ -441,7 +456,9 @@ export default function AdminUsersPage() {
               />
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 bg-neutral-50/60 px-3.5 py-2 text-[11px] text-neutral-400">
                 <span>{rowCount} row{rowCount === 1 ? "" : "s"}</span>
-                <span>One account per row · role in: institute_mentor, industry_mentor, admin</span>
+                <span>
+                  One account per row · role: student, institute_mentor, industry_mentor, student_expert, admin
+                </span>
               </div>
             </div>
           ) : (
