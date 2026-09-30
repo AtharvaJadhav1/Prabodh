@@ -98,6 +98,7 @@ export default function AdminUsersPage() {
   const [inviteMsg, setInviteMsg] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [importBusy, setImportBusy] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
   const [importBatchId, setImportBatchId] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<{
     status: string;
@@ -258,7 +259,167 @@ export default function AdminUsersPage() {
     URL.revokeObjectURL(url);
   };
 
-  const rowCount = csv.trim() ? csv.trim().split(/\r?\n/).filter((line) => line.trim()).length : 0;
+  const dataRowCount = csv
+    .trim()
+    .split(/\r?\n/)
+    .filter((line) => line.trim())
+    .slice(1).length;
+
+  const finishImport = async (batchId: string, status: {
+    status: string;
+    counts: { pending: number; activated: number; failed: number; skipped: number };
+    emailCounts?: { sent: number; failed: number };
+    done?: boolean;
+  }) => {
+    setImportBatchId(batchId);
+    setImportStatus({
+      status: status.status,
+      counts: status.counts,
+      emailCounts: status.emailCounts ?? { sent: 0, failed: 0 },
+      done: status.done ?? (status.status === "activated" || status.status === "rejected"),
+    });
+    const activated = status.counts.activated;
+    const failed = status.counts.failed;
+    const emailFailed = status.emailCounts?.failed ?? 0;
+    if (status.status === "rejected") {
+      setImportMsg(`Import rejected after ${activated} activated / ${failed} failed.`);
+    } else if (failed > 0) {
+      setImportMsg(`Imported ${activated} account(s); ${failed} row(s) failed. Check role values and try again.`);
+    } else if (emailFailed > 0) {
+      setImportMsg(
+        `Imported ${activated} account(s). ${emailFailed} credential email(s) failed — use Retry emails below.`,
+      );
+    } else {
+      setImportMsg(`Imported ${activated} account(s). Credential emails are sending.`);
+    }
+    // Prefer the mentors tab when the CSV is mentor-heavy so results are visible immediately.
+    const lower = csv.toLowerCase();
+    if (lower.includes("industry_mentor") || lower.includes("industrial mentor") || lower.includes("industrial_mentor")) {
+      setTab("industry-mentors");
+    } else if (
+      lower.includes("institute_mentor") ||
+      lower.includes("institute mentor") ||
+      /\bmentor\b/.test(lower) ||
+      lower.includes("faculty")
+    ) {
+      setTab("institute-mentors");
+    } else if (lower.includes("student_expert") || lower.includes("student expert") || lower.includes("expert")) {
+      setTab("student-experts");
+    }
+    await reload();
+  };
+
+  const runImport = async () => {
+    setImportBusy(true);
+    setImportMsg("");
+    setImportStatus(null);
+    setImportBatchId(null);
+    try {
+      const trimmed = csv.trim();
+      if (!trimmed || trimmed.split(/\r?\n/).filter((l) => l.trim()).length < 2) {
+        throw new Error("Paste a CSV header plus at least one data row before importing.");
+      }
+
+      const batch = await apiPost<{ id: string; rowCount: number }>(
+        "/admin/users/import",
+        { csv },
+        { timeoutMs: 120_000 },
+      );
+      setImportBatchId(batch.id);
+      setImportMsg(`Queued ${batch.rowCount} row(s). Activating…`);
+
+      const queued = await apiPost<{
+        id: string;
+        status: string;
+        queued?: boolean;
+        message?: string;
+        counts?: { pending: number; activated: number; failed: number; skipped: number };
+        emailCounts?: { sent: number; failed: number };
+        done?: boolean;
+      }>(`/admin/users/import/${batch.id}/activate`, {}, { timeoutMs: 30_000 });
+
+      if (queued.status === "activated") {
+        await finishImport(batch.id, {
+          status: queued.status,
+          counts: queued.counts ?? {
+            pending: 0,
+            activated: batch.rowCount,
+            failed: 0,
+            skipped: 0,
+          },
+          emailCounts: queued.emailCounts,
+          done: true,
+        });
+        return;
+      }
+
+      const started = Date.now();
+      const maxWaitMs = 15 * 60 * 1000;
+      while (Date.now() - started < maxWaitMs) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const status = await api<{
+          id: string;
+          status: string;
+          rowCount: number;
+          counts: { pending: number; activated: number; failed: number; skipped: number };
+          emailCounts: { sent: number; failed: number };
+          done: boolean;
+        }>(`/admin/users/import/${batch.id}/status`, {}, { timeoutMs: 30_000 });
+
+        setImportStatus({
+          status: status.status,
+          counts: status.counts,
+          emailCounts: status.emailCounts,
+          done: status.done,
+        });
+        setImportMsg(
+          status.status === "processing"
+            ? `Processing… ${status.counts.activated} activated, ${status.counts.failed} failed`
+            : `Status: ${status.status}`,
+        );
+
+        if (status.status === "activated" || status.status === "rejected") {
+          await finishImport(batch.id, status);
+          return;
+        }
+      }
+      throw new Error("Import is still processing — refresh later to check the user list.");
+    } catch (err) {
+      setImportMsg(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setImportBusy(false);
+    }
+  };
+
+  const retryImportEmails = async () => {
+    if (!importBatchId) return;
+    setRetryEmailBusy(true);
+    try {
+      const res = await apiPost<{ retried: number; message?: string }>(
+        `/admin/users/import/${importBatchId}/retry-emails`,
+        {},
+        { timeoutMs: 120_000 },
+      );
+      const status = await api<{
+        id: string;
+        status: string;
+        counts: { pending: number; activated: number; failed: number; skipped: number };
+        emailCounts: { sent: number; failed: number };
+        done: boolean;
+      }>(`/admin/users/import/${importBatchId}/status`, {}, { timeoutMs: 30_000 });
+      setImportStatus({
+        status: status.status,
+        counts: status.counts,
+        emailCounts: status.emailCounts,
+        done: status.done,
+      });
+      setImportMsg(res.message ?? `Retried ${res.retried} credential email(s).`);
+    } catch (err) {
+      setImportMsg(err instanceof Error ? err.message : "Email retry failed");
+    } finally {
+      setRetryEmailBusy(false);
+    }
+  };
 
   return (
     <AdminShell title="Manage Users">
@@ -463,9 +624,9 @@ export default function AdminUsersPage() {
                 className="block w-full resize-y border-0 bg-white p-3.5 font-mono text-xs leading-relaxed text-neutral-800 outline-none placeholder:text-neutral-400"
               />
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 bg-neutral-50/60 px-3.5 py-2 text-[11px] text-neutral-400">
-                <span>{rowCount} row{rowCount === 1 ? "" : "s"}</span>
+                <span>{dataRowCount} data row{dataRowCount === 1 ? "" : "s"}</span>
                 <span>
-                  One account per row · role: student, institute_mentor, industry_mentor, student_expert, admin
+                  Roles: institute_mentor / Mentor, industry_mentor / Industrial Mentor, student_expert, student, admin
                 </span>
               </div>
             </div>
@@ -510,71 +671,55 @@ export default function AdminUsersPage() {
             </div>
           )}
 
-          <div className="mt-4 flex flex-col items-start gap-3 border-t border-neutral-100 pt-3 sm:flex-row sm:items-center">
-            <button
-              type="button"
-              disabled={importBusy}
-              onClick={async () => {
-                setImportBusy(true);
-                try {
-                  const batch = await apiPost<{ id: string; rowCount: number }>(
-                    "/admin/users/import",
-                    { csv },
-                    { timeoutMs: 120_000 },
-                  );
-                  const queued = await apiPost<{
-                    id: string;
-                    status: string;
-                    queued?: boolean;
-                    message?: string;
-                  }>(`/admin/users/import/${batch.id}/activate`, {}, { timeoutMs: 30_000 });
-
-                  if (queued.status === "activated") {
-                    void reload();
-                    return;
-                  }
-
-                  const started = Date.now();
-                  const maxWaitMs = 15 * 60 * 1000;
-                  while (Date.now() - started < maxWaitMs) {
-                    await new Promise((r) => setTimeout(r, 2000));
-                    const status = await api<{
-                      id: string;
-                      status: string;
-                      rowCount: number;
-                      counts: { pending: number; activated: number; failed: number; skipped: number };
-                      done: boolean;
-                    }>(`/admin/users/import/${batch.id}/status`, {}, { timeoutMs: 30_000 });
-
-                    if (status.status === "activated") {
-                      void reload();
-                      return;
-                    }
-                    if (status.status === "rejected") {
-                      throw new Error(
-                        `Import failed after ${status.counts.activated} activated / ${status.counts.failed} failed.`,
-                      );
-                    }
-                  }
-                  throw new Error("Import is still processing — refresh later to check status.");
-                } catch {
-                  setImportBusy(false);
-                }
-              }}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#d95c26] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#c04d1c] active:scale-[0.98] disabled:opacity-60"
-            >
-              {importBusy ? (
-                <>
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/60 border-t-white" />
-                  Importing…
-                </>
-              ) : (
-                <>
-                  <UploadCloudIcon className="h-4 w-4" />
-                  Import and activate
-                </>
-              )}
-            </button>
+          <div className="mt-4 flex flex-col items-start gap-3 border-t border-neutral-100 pt-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={importBusy || dataRowCount === 0}
+                onClick={() => void runImport()}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#d95c26] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#c04d1c] active:scale-[0.98] disabled:opacity-60"
+              >
+                {importBusy ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/60 border-t-white" />
+                    Importing…
+                  </>
+                ) : (
+                  <>
+                    <UploadCloudIcon className="h-4 w-4" />
+                    Import and activate
+                  </>
+                )}
+              </button>
+              {importBatchId && (importStatus?.emailCounts.failed ?? 0) > 0 ? (
+                <button
+                  type="button"
+                  disabled={retryEmailBusy || importBusy}
+                  onClick={() => void retryImportEmails()}
+                  className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 transition-all hover:bg-neutral-50 disabled:opacity-60"
+                >
+                  {retryEmailBusy ? "Retrying emails…" : `Retry ${importStatus?.emailCounts.failed} failed email(s)`}
+                </button>
+              ) : null}
+            </div>
+            {importMsg ? (
+              <p
+                className={`text-sm font-medium ${
+                  importMsg.toLowerCase().includes("fail") || importMsg.toLowerCase().includes("reject")
+                    ? "text-red-700"
+                    : "text-green-700"
+                }`}
+              >
+                {importMsg}
+              </p>
+            ) : null}
+            {importStatus ? (
+              <p className="text-xs text-neutral-500">
+                Batch {importBatchId?.slice(0, 8)}… · activated {importStatus.counts.activated} · failed{" "}
+                {importStatus.counts.failed} · emails sent {importStatus.emailCounts.sent} · email failures{" "}
+                {importStatus.emailCounts.failed}
+              </p>
+            ) : null}
           </div>
         </section>
 

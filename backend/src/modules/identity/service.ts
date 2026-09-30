@@ -370,26 +370,52 @@ export class IdentityService {
         });
 
     if (body.platformRole === PlatformRole.industry_mentor) {
-      await this.prisma.industrialMentor.upsert({
-        where: { userId: user.id },
-        update: {
-          fullName: body.fullName,
-          email,
-          companyName: body.institute ?? null,
-          designation: body.department ?? null,
-          isActive: true,
-        },
-        create: {
-          userId: user.id,
-          fullName: body.fullName,
-          email,
-          companyName: body.institute ?? null,
-          designation: body.department ?? null,
-          isActive: true,
-        },
+      await this.syncIndustrialMentorProfile({
+        userId: user.id,
+        fullName: body.fullName,
+        email,
+        companyName: body.institute,
+        designation: body.department,
       });
     }
     return user;
+  }
+
+  /** Upsert industrial mentor directory row; recover from email/userId unique collisions on re-import. */
+  private async syncIndustrialMentorProfile(opts: {
+    userId: string;
+    fullName: string;
+    email: string;
+    companyName?: string | null;
+    designation?: string | null;
+  }) {
+    const data = {
+      fullName: opts.fullName,
+      email: opts.email,
+      companyName: opts.companyName ?? null,
+      designation: opts.designation ?? null,
+      isActive: true,
+    };
+
+    const byUser = await this.prisma.industrialMentor.findUnique({ where: { userId: opts.userId } });
+    if (byUser) {
+      await this.prisma.industrialMentor.update({ where: { userId: opts.userId }, data });
+      return;
+    }
+
+    const byEmail = await this.prisma.industrialMentor.findUnique({ where: { email: opts.email } });
+    if (byEmail) {
+      // Keep the directory row id (team FKs stay valid) and re-point it at this user.
+      await this.prisma.industrialMentor.update({
+        where: { id: byEmail.id },
+        data: { userId: opts.userId, ...data },
+      });
+      return;
+    }
+
+    await this.prisma.industrialMentor.create({
+      data: { userId: opts.userId, ...data },
+    });
   }
 
   async registerStudent(body: {
@@ -611,23 +637,12 @@ export class IdentityService {
 
         // Keep Industrial Mentors directory in sync for CSV + manual bulk imports.
         if (row.platformRole === PlatformRole.industry_mentor) {
-          await this.prisma.industrialMentor.upsert({
-            where: { userId: user.id },
-            update: {
-              fullName: row.fullName,
-              email,
-              companyName: row.institute ?? null,
-              designation: row.department ?? null,
-              isActive: true,
-            },
-            create: {
-              userId: user.id,
-              fullName: row.fullName,
-              email,
-              companyName: row.institute ?? null,
-              designation: row.department ?? null,
-              isActive: true,
-            },
+          await this.syncIndustrialMentorProfile({
+            userId: user.id,
+            fullName: row.fullName,
+            email,
+            companyName: row.institute,
+            designation: row.department,
           });
         }
 
@@ -679,10 +694,14 @@ export function parseRole(role: unknown): PlatformRole {
     faculty_mentor: PlatformRole.institute_mentor,
     facultymentor: PlatformRole.institute_mentor,
     mentor: PlatformRole.institute_mentor,
+    mentors: PlatformRole.institute_mentor,
+    institute_mentors: PlatformRole.institute_mentor,
     industry_mentor: PlatformRole.industry_mentor,
     industrial_mentor: PlatformRole.industry_mentor,
     industrymentor: PlatformRole.industry_mentor,
     industrialmentor: PlatformRole.industry_mentor,
+    industry_mentors: PlatformRole.industry_mentor,
+    industrial_mentors: PlatformRole.industry_mentor,
     industry: PlatformRole.industry_mentor,
     student: PlatformRole.student,
     student_expert: PlatformRole.student_expert,
@@ -728,10 +747,66 @@ function splitCsvLine(line: string): string[] {
   return cols;
 }
 
+function detectCsvDelimiter(headerLine: string): ',' | ';' {
+  // Excel in many locales exports `;` — prefer the delimiter that yields more columns.
+  let commas = 0;
+  let semis = 0;
+  let inQuotes = false;
+  for (let i = 0; i < headerLine.length; i++) {
+    const c = headerLine[i];
+    if (c === '"') {
+      if (inQuotes && headerLine[i + 1] === '"') {
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+    if (inQuotes) continue;
+    if (c === ',') commas++;
+    if (c === ';') semis++;
+  }
+  return semis > commas ? ';' : ',';
+}
+
+function splitDelimitedLine(line: string, delimiter: ',' | ';'): string[] {
+  if (delimiter === ',') return splitCsvLine(line);
+  const cols: string[] = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (line[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += c;
+      }
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === delimiter) {
+      cols.push(field.trim());
+      field = '';
+    } else {
+      field += c;
+    }
+  }
+  cols.push(field.trim());
+  return cols;
+}
+
 export function parseCsvUsers(csv: string) {
   const lines = csv.replace(/^\uFEFF/, '').trim().split(/\r?\n/);
   if (lines.length < 2) throw new BadRequestException('CSV needs a header and at least one row');
-  const header = splitCsvLine(lines[0]).map((h) => h.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'));
+  const delimiter = detectCsvDelimiter(lines[0]);
+  const header = splitDelimitedLine(lines[0], delimiter).map((h) =>
+    h.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+  );
   const col = (...names: string[]) => {
     for (const name of names) {
       const idx = header.indexOf(name);
@@ -753,7 +828,7 @@ export function parseCsvUsers(csv: string) {
     .slice(1)
     .filter((line) => line.trim())
     .map((line, rowIndex) => {
-      const cols = splitCsvLine(line);
+      const cols = splitDelimitedLine(line, delimiter);
       const email = (cols[emailIdx] ?? '').trim();
       const fullName = (cols[nameIdx] ?? '').trim();
       if (!email || !fullName) {
