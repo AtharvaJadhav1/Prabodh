@@ -12,6 +12,7 @@ import {
   HistoryIcon,
   LogoutIcon,
   XIcon,
+  ChevronRightIcon,
 } from "../dashboard/icons";
 import { useAuth, initialsFrom } from "../auth/AuthProvider";
 import { useAdmin } from "./AdminProvider";
@@ -50,12 +51,6 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }: Props) {
         },
         { label: "Audit Logs", href: "/dashboard/admin/logs", match: "start", icon: HistoryIcon },
         { label: "Reports", href: "/dashboard/admin/reports", match: "start", icon: CompassIcon },
-      ],
-    },
-    {
-      heading: "Account",
-      items: [
-        { label: "My Profile", href: "/dashboard/admin/profile", match: "start", icon: PersonIcon },
       ],
     },
   ];
@@ -154,17 +149,24 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }: Props) {
         </nav>
 
         <div className="mt-auto pb-4">
-          <div className="mx-3 mb-2 flex items-center gap-3 rounded-2xl border border-neutral-200/80 bg-white p-3 shadow-sm">
+          <Link
+            href="/dashboard/admin/profile"
+            onClick={onCloseMobile}
+            className={`mx-3 mb-2 flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-3 shadow-sm transition-colors hover:bg-amber-50/60 hover:border-amber-200 dark:hover:bg-stone-800/60 ${
+              pathname.endsWith("/profile") ? "border-[#c25e24]" : "border-neutral-200/80"
+            }`}
+          >
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#3c2415] text-sm font-bold text-[#ffddb8]">
               {initialsFrom(session?.fullName ?? "AD")}
             </div>
-            <div className="flex min-w-0 flex-col">
+            <div className="flex min-w-0 flex-1 flex-col">
               <span className="truncate text-sm font-semibold leading-tight text-neutral-900">
                 {session?.fullName ?? "Platform Administrator"}
               </span>
               <span className="truncate text-xs text-neutral-500">Nodal Admin</span>
             </div>
-          </div>
+            <ChevronRightIcon className="h-4 w-4 shrink-0 text-stone-400" />
+          </Link>
           <div className="px-3">
             <button
               type="button"

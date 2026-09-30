@@ -12,11 +12,11 @@ import {
   FileCodeIcon,
   UserPlusIcon,
   GradCapIcon,
-  PersonIcon,
   LogoutIcon,
   LockIcon,
   XIcon,
   PencilIcon,
+  ChevronRightIcon,
 } from "./icons";
 
 type SidebarProps = {
@@ -40,7 +40,6 @@ const navItems = [
     icon: UserPlusIcon,
   },
   { label: "Mentors", href: "/dashboard/student/mentors", match: "prefix", chip: "Dual Track", icon: GradCapIcon },
-  { label: "Profile", href: "/dashboard/student/profile", match: "exact", icon: PersonIcon },
 ];
 
 export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
@@ -250,7 +249,13 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
 
         <div className="border-t border-brand-softline px-4 py-4">
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3 rounded-xl border border-brand-softline bg-white p-3">
+            <Link
+              href="/dashboard/student/profile"
+              onClick={onCloseMobile}
+              className={`flex cursor-pointer items-center gap-3 rounded-xl border bg-white p-3 transition-colors hover:bg-amber-50/60 hover:border-amber-200 dark:hover:bg-stone-800/60 ${
+                pathname.endsWith("/profile") ? "border-brand-primary" : "border-brand-softline"
+              }`}
+            >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#FAF7F2] shadow-sm">
                 <img
                   src={profileAvatar}
@@ -258,7 +263,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                   className="h-full w-full object-cover select-none"
                 />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p title={fullName} className="truncate max-w-full text-sm font-bold text-brand-deep">
                   {displayName}
                 </p>
@@ -272,7 +277,8 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                   <p className="text-xs font-medium text-brand-muted">&nbsp;</p>
                 )}
               </div>
-            </div>
+              <ChevronRightIcon className="h-4 w-4 shrink-0 text-stone-400" />
+            </Link>
             <button
               type="button"
               onClick={() => {

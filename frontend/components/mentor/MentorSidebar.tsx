@@ -7,12 +7,12 @@ import {
   DashboardIcon,
   CompassIcon,
   MessageIcon,
-  PersonIcon,
   LogoutIcon,
   XIcon,
   InboxIcon,
   UsersIcon,
   HistoryIcon,
+  ChevronRightIcon,
 } from "../dashboard/icons";
 import { roleLabel, useAuth, initialsFrom } from "../auth/AuthProvider";
 import { useMentorRequests } from "./MentorRequestProvider";
@@ -51,7 +51,6 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
     { label: "PS Approvals", href: "/dashboard/mentor/ps-approvals", match: "start", icon: CompassIcon },
     { label: "Team Queries", href: "/dashboard/mentor/queries", match: "start", icon: MessageIcon, badge: unreadCommentCount > 0 ? String(unreadCommentCount) : undefined },
     { label: "Audit Logs", href: "/dashboard/mentor/audit-logs", match: "start", icon: HistoryIcon },
-    { label: "Profile", href: "/dashboard/mentor/profile", match: "start", icon: PersonIcon },
   ];
 
   return (
@@ -131,17 +130,24 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
 
         <div className="border-t border-brand-softline px-4 py-4">
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-3 rounded-xl border border-brand-softline bg-white p-3">
+            <Link
+              href="/dashboard/mentor/profile"
+              onClick={onCloseMobile}
+              className={`flex cursor-pointer items-center gap-3 rounded-xl border bg-white p-3 transition-colors hover:bg-amber-50/60 hover:border-amber-200 dark:hover:bg-stone-800/60 ${
+                pathname.endsWith("/profile") ? "border-brand-primary" : "border-brand-softline"
+              }`}
+            >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold text-white">
                 {initialsFrom(fullName)}
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p title={fullName} className="truncate max-w-full text-sm font-bold text-brand-deep">
                   {displayName}
                 </p>
                 <p className="text-xs font-medium text-brand-muted">{role}</p>
               </div>
-            </div>
+              <ChevronRightIcon className="h-4 w-4 shrink-0 text-stone-400" />
+            </Link>
             <button
               type="button"
               onClick={() => logout()}
