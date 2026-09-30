@@ -12,7 +12,10 @@ type Props = {
 
 export default function FilterBar({ search, onSearchChange, track, onTrackChange }: Props) {
   return (
-    <div className="mb-6 flex w-full flex-col items-stretch justify-between gap-4 rounded-2xl border border-neutral-200/80 bg-white p-3 shadow-sm sm:flex-row sm:items-center">
+    <div
+      id="tour-mentor-filters"
+      className="mb-6 flex w-full flex-col items-stretch justify-between gap-4 rounded-2xl border border-neutral-200/80 bg-white p-3 shadow-sm sm:flex-row sm:items-center"
+    >
       {/* Left: Search */}
       <div className="relative w-full sm:w-80 md:w-96">
         <SearchIcon className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />

@@ -91,7 +91,7 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4 pt-4">
+        <nav id="tour-mentor-nav" className="flex-1 space-y-1 overflow-y-auto px-3 pb-4 pt-4">
           {navItems.map((item) => {
             const active =
               item.match === "exact"

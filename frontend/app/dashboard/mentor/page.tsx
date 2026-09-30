@@ -8,6 +8,7 @@ import GroupCard from "../../../components/mentor/GroupCard";
 import EmptyState from "../../../components/mentor/EmptyState";
 
 import { useMentorTeams } from "../../../components/mentor/MentorTeamsProvider";
+import MentorOnboardingTour from "../../../components/onboarding/MentorOnboardingTour";
 import { DashboardIcon } from "../../../components/dashboard/icons";
 
 export default function MentorDashboardPage() {
@@ -52,7 +53,9 @@ export default function MentorDashboardPage() {
   }, [groups, search, track]);
 
   return (
-    <MentorShell>
+    <>
+      <MentorOnboardingTour />
+      <MentorShell>
       <MetricCards
         assignedTeams={groups.length}
         totalStudents={groups.reduce((n, g) => n + Number.parseInt(g.capacity.split("/")[0] || "0", 10) || 0, 0)}
@@ -84,7 +87,7 @@ export default function MentorDashboardPage() {
           }
         />
       ) : (
-        <section className="mb-8">
+        <section id="tour-mentor-teams" className="mb-8">
           <div className="flex items-center justify-between mb-3 mt-6">
             <h2 className="text-base font-bold text-brand-deep">Assigned Teams</h2>
           </div>
@@ -95,6 +98,7 @@ export default function MentorDashboardPage() {
           </div>
         </section>
       )}
-    </MentorShell>
+      </MentorShell>
+    </>
   );
 }
