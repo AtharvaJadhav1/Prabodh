@@ -46,7 +46,7 @@ npm run report:smoke
 ### Windows PowerShell (manual env override)
 
 ```powershell
-$env:TARGET = "https://prabodh.onrender.com/api"
+$env:TARGET = "https://app-prabodh-app-ghhkd2h9e0apakez.centralindia-01.azurewebsites.net/api"
 $env:LOGIN_EMAIL = "admin@institute.edu"
 $env:LOGIN_PASSWORD = "Prabodh@123"
 npm run smoke

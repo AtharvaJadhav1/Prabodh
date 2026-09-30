@@ -14,7 +14,7 @@ async function main() {
     // Prisma's db push cannot create partial indexes, so it lives here (and in
     // prisma/migrations/20260919000000_add_join_requests/migration.sql).
     `CREATE UNIQUE INDEX IF NOT EXISTS "join_requests_one_pending_idx" ON "join_requests"("student_id", "team_id") WHERE "status" = 'pending'`,
-    // Industrial mentors community table + team pointer columns (runs before db push on Render).
+    // Industrial mentors community table + team pointer columns (runs before db push).
     `CREATE TABLE IF NOT EXISTS "industrial_mentors" ("id" TEXT NOT NULL, "user_id" TEXT NOT NULL, "full_name" TEXT NOT NULL, "email" TEXT NOT NULL, "phone" TEXT, "company_name" TEXT, "designation" TEXT, "domain_expertise" TEXT[] DEFAULT ARRAY[]::TEXT[] NOT NULL, "is_active" BOOLEAN DEFAULT true NOT NULL, "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP NOT NULL, "updated_at" TIMESTAMP(3) NOT NULL, CONSTRAINT "industrial_mentors_pkey" PRIMARY KEY ("id"))`,
     `CREATE UNIQUE INDEX IF NOT EXISTS "industrial_mentors_user_id_key" ON "industrial_mentors"("user_id")`,
     `CREATE UNIQUE INDEX IF NOT EXISTS "industrial_mentors_email_key" ON "industrial_mentors"("email")`,

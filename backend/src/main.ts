@@ -44,7 +44,6 @@ async function bootstrap() {
     ...(process.env.NEXT_PUBLIC_APP_URL ?? '').split(','),
     'https://incubation.prabodh.app',
     'https://www.incubation.prabodh.app',
-    'https://prabodh-2.onrender.com',
     'http://localhost:3000',
   ]
     .map((s: string) => s.trim().replace(/\/$/, ''))
@@ -60,7 +59,6 @@ async function bootstrap() {
       const host = new URL(origin).hostname;
       if (host === 'localhost' || host === '127.0.0.1') return true;
       if (host === 'prabodh.app' || host.endsWith('.prabodh.app')) return true;
-      if (host.endsWith('.onrender.com')) return true;
       if (host.endsWith('.azurewebsites.net')) return true;
     } catch {
       return false;
@@ -80,8 +78,8 @@ async function bootstrap() {
   });
 
   const port = Number(process.env.PORT ?? 3001);
-
-  await app.listen(port);
+  // Azure App Service reverse-proxy requires binding on all interfaces.
+  await app.listen(port, '0.0.0.0');
 
   console.log(`SIH Portal API listening on port ${port}/api`);
 }

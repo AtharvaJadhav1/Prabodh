@@ -44,11 +44,21 @@ jobs:
       - name: Compile
         run: npm run compile
 
+      # Zip the backend root (not a nested `backend/` folder). Azure runs
+      # `node dist/main.js` from the site root — a nested package yields 503.
+      - name: Zip artifact for deployment
+        run: |
+          zip -r ../release.zip . \
+            -x "*.git*" \
+            -x "*coverage*" \
+            -x "*.env" \
+            -x "*.env.*"
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: backend
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -76,7 +86,6 @@ jobs:
         with:
           app-name: 'app-prabodh-app'
           slot-name: 'Production'
-          package: .
+          package: release.zip
           # The package ships node_modules + dist and is mounted read-only, so `npm install` must not run.
           startup-command: node dist/main.js
-          

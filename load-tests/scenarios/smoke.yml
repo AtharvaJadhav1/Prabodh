@@ -1,5 +1,5 @@
 config:
-  # Override: --target https://prabodh.onrender.com/api
+  # Override: --target https://app-prabodh-app-ghhkd2h9e0apakez.centralindia-01.azurewebsites.net/api
   target: "http://localhost:3001/api"
   phases:
     - duration: 30

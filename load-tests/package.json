@@ -6,9 +6,9 @@
     "smoke": "node scripts/run-with-token.js scenarios/smoke.yml reports/smoke.json",
     "load": "node scripts/run-with-token.js scenarios/load.yml reports/load.json",
     "stress": "node scripts/run-with-token.js scenarios/stress.yml reports/stress.json",
-    "smoke:render": "cross-env TARGET=https://prabodh.onrender.com/api npm run smoke",
-    "load:render": "cross-env TARGET=https://prabodh.onrender.com/api npm run load",
-    "stress:render": "cross-env TARGET=https://prabodh.onrender.com/api npm run stress",
+    "smoke:azure": "cross-env TARGET=https://app-prabodh-app-ghhkd2h9e0apakez.centralindia-01.azurewebsites.net/api npm run smoke",
+    "load:azure": "cross-env TARGET=https://app-prabodh-app-ghhkd2h9e0apakez.centralindia-01.azurewebsites.net/api npm run load",
+    "stress:azure": "cross-env TARGET=https://app-prabodh-app-ghhkd2h9e0apakez.centralindia-01.azurewebsites.net/api npm run stress",
     "report:smoke": "artillery report reports/smoke.json --output reports/smoke.html"
   },
   "devDependencies": {

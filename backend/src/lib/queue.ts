@@ -5,7 +5,7 @@ let redisClient: Redis | null = null;
 let cacheClient: Redis | null = null;
 
 /**
- * Render's dashboard, CI secret stores and `export REDIS_URL="..."` all tend to bake
+ * Hosting dashboards (Azure App Settings), CI secret stores and `export REDIS_URL="..."` all tend to bake
  * the wrapping quotes into the value. A quoted URL makes `new URL()` throw, so ioredis
  * ends up with host/port `undefined` and loops on `connect EINVAL` every 2s — and
  * `startsWith('rediss://')` silently returns false, disabling TLS. Strip the quotes and

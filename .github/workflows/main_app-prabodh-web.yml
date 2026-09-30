@@ -27,6 +27,11 @@ jobs:
           node-version: '22.x'
 
       - name: npm install, build, and test
+        env:
+          # Next.js bakes the /api rewrite target in at build time — point it at the Azure backend.
+          API_URL: https://app-prabodh-app-ghhkd2h9e0apakez.centralindia-01.azurewebsites.net
+          NEXT_PUBLIC_API_URL: https://app-prabodh-app-ghhkd2h9e0apakez.centralindia-01.azurewebsites.net/api
+          NEXT_PUBLIC_APP_URL: https://incubation.prabodh.app
         run: |
           npm install
           npm run build --if-present

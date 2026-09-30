@@ -2,7 +2,7 @@ function backendOrigin() {
   const raw =
     process.env.API_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
-    (process.env.NODE_ENV === "production" ? "https://prabodh.onrender.com" : "http://localhost:3001");
+    (process.env.NODE_ENV === "production" ? "https://app-prabodh-app-ghhkd2h9e0apakez.centralindia-01.azurewebsites.net" : "http://localhost:3001");
   return String(raw)
     .trim()
     .replace(/\/+$/, "")
