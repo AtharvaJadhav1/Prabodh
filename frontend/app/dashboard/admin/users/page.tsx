@@ -98,6 +98,14 @@ export default function AdminUsersPage() {
   const [inviteMsg, setInviteMsg] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [importBusy, setImportBusy] = useState(false);
+  const [importBatchId, setImportBatchId] = useState<string | null>(null);
+  const [importStatus, setImportStatus] = useState<{
+    status: string;
+    counts: { pending: number; activated: number; failed: number; skipped: number };
+    emailCounts: { sent: number; failed: number };
+    done: boolean;
+  } | null>(null);
+  const [retryEmailBusy, setRetryEmailBusy] = useState(false);
 
   const [removeTarget, setRemoveTarget] = useState<PortalUser | null>(null);
   const [removePreview, setRemovePreview] = useState<RemovePreview | null>(null);

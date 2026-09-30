@@ -61,6 +61,10 @@ async function main() {
     // Stage deadlines removed — unlock any deliverables that were auto-locked by them.
     `ALTER TABLE "stages" DROP COLUMN IF EXISTS "deadline"`,
     `UPDATE "deliverables" SET "locked" = false WHERE "locked" = true`,
+    // Track per-row credential email delivery for bulk imports.
+    `ALTER TABLE "user_import_rows" ADD COLUMN IF NOT EXISTS "email_sent" BOOLEAN NOT NULL DEFAULT false`,
+    `ALTER TABLE "user_import_rows" ADD COLUMN IF NOT EXISTS "email_error" TEXT`,
+    `ALTER TABLE "user_import_rows" ADD COLUMN IF NOT EXISTS "email_sent_at" TIMESTAMP(3)`,
   ];
 
   for (const sql of statements) {

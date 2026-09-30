@@ -620,6 +620,9 @@ model UserImportRow {
   department   String?
   status       ImportRowStatus @default(pending)
   error        String?
+  emailSent    Boolean         @default(false) @map("email_sent")
+  emailError   String?         @map("email_error")
+  emailSentAt  DateTime?       @map("email_sent_at")
   createdAt    DateTime        @default(now()) @map("created_at")
   updatedAt    DateTime        @updatedAt @map("updated_at")
 

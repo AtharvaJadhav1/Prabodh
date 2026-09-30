@@ -696,17 +696,103 @@ export class AdminService {
     for (const g of grouped) {
       counts[g.status] = g._count;
     }
+
+    // Email status counts
+    const emailGrouped = await this.prisma.userImportRow.groupBy({
+      by: ['emailSent'],
+      where: { batchId: id, status: 'activated' },
+      _count: true,
+    });
+    const emailCounts = { sent: 0, failed: 0 };
+    for (const g of emailGrouped) {
+      if (g.emailSent) emailCounts.sent = g._count;
+      else emailCounts.failed = g._count;
+    }
+
     return {
       id: batch.id,
       status: batch.status,
       rowCount: batch.rowCount,
       counts,
+      emailCounts,
       done: batch.status === 'activated' || batch.status === 'rejected',
     };
   }
 
   async rejectImport(id: string) {
     return this.prisma.userImportBatch.update({ where: { id }, data: { status: 'rejected' } });
+  }
+
+  async retryFailedEmails(id: string) {
+    const batch = await this.prisma.userImportBatch.findUnique({ where: { id } });
+    if (!batch) throw new NotFoundException('Import batch not found');
+    if (batch.status !== 'activated') {
+      throw new BadRequestException('Can only retry emails for activated batches');
+    }
+
+    const failedRows = await this.prisma.userImportRow.findMany({
+      where: { batchId: id, status: 'activated', emailSent: false },
+    });
+
+    if (failedRows.length === 0) {
+      return { retried: 0, message: 'No failed emails to retry' };
+    }
+
+    const staffRoles = new Set<PlatformRole>([
+      PlatformRole.institute_mentor,
+      PlatformRole.industry_mentor,
+      PlatformRole.admin,
+      PlatformRole.student_expert,
+    ]);
+
+    const credentialJobs = failedRows
+      .filter((r) => staffRoles.has(r.platformRole))
+      .map((r) => ({
+        email: r.email,
+        fullName: r.fullName,
+        password: '', // Will be fetched from user record
+        platformRole: r.platformRole,
+      }));
+
+    if (credentialJobs.length === 0) {
+      return { retried: 0, message: 'No staff roles with failed emails to retry' };
+    }
+
+    // Fetch passwords from user records
+    const users = await this.prisma.user.findMany({
+      where: { email: { in: credentialJobs.map((j) => j.email) } },
+      select: { email: true, passwordHash: true },
+    });
+    const passwordMap = new Map(users.map((u) => [u.email, u.passwordHash]));
+
+    const jobsWithPassword = credentialJobs
+      .map((j) => ({ ...j, password: passwordMap.get(j.email) }))
+      .filter((j) => j.password) as Array<{ email: string; fullName: string; password: string; platformRole: PlatformRole }>;
+
+    let retried = 0;
+    await mapPool(jobsWithPassword, 2, async (job) => {
+      try {
+        await sendStaffCredentialsEmail({
+          to: job.email,
+          fullName: job.fullName,
+          password: job.password,
+          platformRole: job.platformRole,
+        });
+        await this.prisma.userImportRow.updateMany({
+          where: { batchId: id, email: job.email },
+          data: { emailSent: true, emailSentAt: new Date(), emailError: null },
+        });
+        retried++;
+      } catch (err) {
+        console.error('[admin.retryFailedEmails] failed for', job.email, err);
+        await this.prisma.userImportRow.updateMany({
+          where: { batchId: id, email: job.email },
+          data: { emailError: err instanceof Error ? err.message : 'Unknown error' },
+        });
+      }
+    });
+
+    return { retried, message: `Retried ${retried} failed email(s)` };
   }
 
   async removePreview(userId: string) {
@@ -1174,8 +1260,22 @@ export class AdminService {
               password: job.password,
               platformRole: job.platformRole,
             });
+            await this.prisma.userImportRow.updateMany({
+              where: { batchId: id, email: job.email },
+              data: {
+                emailSent: true,
+                emailSentAt: new Date(),
+              },
+            });
           } catch (err) {
             console.error('[admin.bulk-credentials] failed for', job.email, err);
+            await this.prisma.userImportRow.updateMany({
+              where: { batchId: id, email: job.email },
+              data: {
+                emailSent: false,
+                emailError: err instanceof Error ? err.message : 'Unknown error',
+              },
+            });
           }
         });
       });

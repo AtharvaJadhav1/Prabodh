@@ -160,6 +160,11 @@ export class AdminController {
     return this.admin.rejectImport(batchId);
   }
 
+  @Post('users/import/:batchId/retry-emails')
+  retryFailedEmails(@Param('batchId') batchId: string) {
+    return this.admin.retryFailedEmails(batchId);
+  }
+
   @Get('users/:id/remove-preview')
   removePreview(@Param('id') id: string) {
     return this.admin.removePreview(id);
