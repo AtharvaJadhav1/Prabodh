@@ -64,7 +64,7 @@ export default function PreferenceSlotsPanel() {
           title: pref.title ?? "Untitled proposal",
           theme: pref.theme ?? "",
           category: (pref.category as "software" | "hardware") ?? "software",
-          organisation: pref.organisation ?? "Student Innovation",
+          organisation: pref.organisation ?? "Custom",
           description: pref.description ?? "",
         };
       }
