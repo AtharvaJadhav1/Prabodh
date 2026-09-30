@@ -2,6 +2,17 @@
  * Idempotent schema fixes for production DBs that drifted from Prisma migrations.
  * Plain CommonJS so Render can run it with `node` (tsx may be a skipped devDependency).
  */
+// Azure app settings are typed by hand and often case-mismatched (e.g. `Database_Url`).
+// main.ts normalizes this via env-compat.ts, but this script runs as its own process
+// before main.ts ever starts, so it must load the same normalization itself or it
+// never sees DATABASE_URL at all. The compiled file exists by the time this runs —
+// `npm run compile` (tsc) always finishes before this script is invoked in production.
+try {
+  require('../dist/lib/env-compat.js');
+} catch (err) {
+  console.warn('[ensure-columns] env-compat not found (dist not built yet?):', err && err.message ? err.message : err);
+}
+
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
