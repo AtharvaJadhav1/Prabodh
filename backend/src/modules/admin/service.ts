@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InviteStatus, PlatformRole, Prisma } from '@prisma/client';
 import { sendStaffCredentialsEmail } from '../../lib/invite-email';
+import { hashPassword } from '../../lib/password';
 import { generateStaffPassword } from '../../lib/staff-password';
 import { writeAudit } from '../../lib/audit';
 import { CATEGORY_ACTIONS, enrichAuditRows } from '../../lib/audit-view';
@@ -697,17 +698,33 @@ export class AdminService {
       counts[g.status] = g._count;
     }
 
-    // Email status counts
-    const emailGrouped = await this.prisma.userImportRow.groupBy({
-      by: ['emailSent'],
-      where: { batchId: id, status: 'activated' },
-      _count: true,
-    });
-    const emailCounts = { sent: 0, failed: 0 };
-    for (const g of emailGrouped) {
-      if (g.emailSent) emailCounts.sent = g._count;
-      else emailCounts.failed = g._count;
-    }
+    // Credential emails are only sent for staff roles. Students stay emailSent=false
+    // by design and must not be counted as delivery failures.
+    const staffRoles: PlatformRole[] = [
+      PlatformRole.institute_mentor,
+      PlatformRole.industry_mentor,
+      PlatformRole.admin,
+      PlatformRole.student_expert,
+    ];
+    const [sent, failed] = await Promise.all([
+      this.prisma.userImportRow.count({
+        where: {
+          batchId: id,
+          status: 'activated',
+          emailSent: true,
+          platformRole: { in: staffRoles },
+        },
+      }),
+      this.prisma.userImportRow.count({
+        where: {
+          batchId: id,
+          status: 'activated',
+          emailSent: false,
+          platformRole: { in: staffRoles },
+        },
+      }),
+    ]);
+    const emailCounts = { sent, failed };
 
     return {
       id: batch.id,
@@ -730,63 +747,53 @@ export class AdminService {
       throw new BadRequestException('Can only retry emails for activated batches');
     }
 
-    const failedRows = await this.prisma.userImportRow.findMany({
-      where: { batchId: id, status: 'activated', emailSent: false },
-    });
-
-    if (failedRows.length === 0) {
-      return { retried: 0, message: 'No failed emails to retry' };
-    }
-
-    const staffRoles = new Set<PlatformRole>([
+    const staffRoles: PlatformRole[] = [
       PlatformRole.institute_mentor,
       PlatformRole.industry_mentor,
       PlatformRole.admin,
       PlatformRole.student_expert,
-    ]);
+    ];
 
-    const credentialJobs = failedRows
-      .filter((r) => staffRoles.has(r.platformRole))
-      .map((r) => ({
-        email: r.email,
-        fullName: r.fullName,
-        password: '', // Will be fetched from user record
-        platformRole: r.platformRole,
-      }));
+    const failedRows = await this.prisma.userImportRow.findMany({
+      where: {
+        batchId: id,
+        status: 'activated',
+        emailSent: false,
+        platformRole: { in: staffRoles },
+      },
+    });
 
-    if (credentialJobs.length === 0) {
-      return { retried: 0, message: 'No staff roles with failed emails to retry' };
+    if (failedRows.length === 0) {
+      return {
+        retried: 0,
+        message: 'No staff credential emails to retry (students do not receive login emails).',
+      };
     }
 
-    // Fetch passwords from user records
-    const users = await this.prisma.user.findMany({
-      where: { email: { in: credentialJobs.map((j) => j.email) } },
-      select: { email: true, passwordHash: true },
-    });
-    const passwordMap = new Map(users.map((u) => [u.email, u.passwordHash]));
-
-    const jobsWithPassword = credentialJobs
-      .map((j) => ({ ...j, password: passwordMap.get(j.email) }))
-      .filter((j) => j.password) as Array<{ email: string; fullName: string; password: string; platformRole: PlatformRole }>;
-
+    // Plaintext passwords are never stored — mint a fresh one, update the hash, then email it.
     let retried = 0;
-    await mapPool(jobsWithPassword, 2, async (job) => {
+    await mapPool(failedRows, 2, async (row) => {
+      const password = generateStaffPassword();
       try {
+        await this.prisma.user.update({
+          where: { email: row.email.toLowerCase() },
+          data: { passwordHash: hashPassword(password), isActive: true },
+        });
         await sendStaffCredentialsEmail({
-          to: job.email,
-          fullName: job.fullName,
-          password: job.password,
-          platformRole: job.platformRole,
+          to: row.email,
+          fullName: row.fullName,
+          password,
+          platformRole: row.platformRole,
         });
         await this.prisma.userImportRow.updateMany({
-          where: { batchId: id, email: job.email },
+          where: { batchId: id, email: row.email },
           data: { emailSent: true, emailSentAt: new Date(), emailError: null },
         });
         retried++;
       } catch (err) {
-        console.error('[admin.retryFailedEmails] failed for', job.email, err);
+        console.error('[admin.retryFailedEmails] failed for', row.email, err);
         await this.prisma.userImportRow.updateMany({
-          where: { batchId: id, email: job.email },
+          where: { batchId: id, email: row.email },
           data: { emailError: err instanceof Error ? err.message : 'Unknown error' },
         });
       }

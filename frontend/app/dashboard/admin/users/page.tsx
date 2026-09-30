@@ -287,10 +287,12 @@ export default function AdminUsersPage() {
       setImportMsg(`Imported ${activated} account(s); ${failed} row(s) failed. Check role values and try again.`);
     } else if (emailFailed > 0) {
       setImportMsg(
-        `Imported ${activated} account(s). ${emailFailed} credential email(s) failed — use Retry emails below.`,
+        `Imported ${activated} account(s). ${emailFailed} staff credential email(s) failed — use Retry emails below. Students do not get login emails.`,
       );
     } else {
-      setImportMsg(`Imported ${activated} account(s). Credential emails are sending.`);
+      setImportMsg(
+        `Imported ${activated} account(s). Staff credential emails are sending; students are created without a login email.`,
+      );
     }
     // Prefer the mentors tab when the CSV is mentor-heavy so results are visible immediately.
     const lower = csv.toLowerCase();
