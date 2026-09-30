@@ -42,7 +42,6 @@ export type PortalStage = {
   id: string;
   name: string;
   sequence: number;
-  deadline: string;
   isActive: boolean;
   rubrics: Array<{ id: string; criteria: string; weightage: string | number }>;
 };
@@ -134,7 +133,7 @@ export type PortalTeam = {
     description?: string | null;
   }>;
   deliverables?: PortalDeliverable[];
-  stageStatuses?: Array<{ status: string; stage: { id: string; name: string; sequence: number; deadline: string } }>;
+  stageStatuses?: Array<{ status: string; stage: { id: string; name: string; sequence: number; isActive?: boolean } }>;
   comments?: PortalComment[];
   stageResults?: Array<{
     weightedScore: string | number;

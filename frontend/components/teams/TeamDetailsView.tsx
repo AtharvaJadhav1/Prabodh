@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api, apiPost, ApiError } from "../../lib/api";
+import { downloadDataUrl } from "../../lib/download-data-url";
 import type { PortalTeam, TeamMentors } from "../../lib/types";
 import Avatar from "../Avatar";
 import LoadingState from "../LoadingState";
@@ -55,6 +56,7 @@ function InviteStatusBadge({ status }: { status: string }) {
 }
 
 function DeliverableLink({ label, url, icon }: { label: string; url?: string | null; icon: React.ReactNode }) {
+  const isData = Boolean(url?.startsWith("data:"));
   return (
     <div className="flex items-center justify-between gap-2 py-1.5 text-xs">
       <span className="flex items-center gap-1.5 font-medium text-neutral-600">
@@ -62,14 +64,24 @@ function DeliverableLink({ label, url, icon }: { label: string; url?: string | n
         {label}
       </span>
       {url ? (
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-1 font-semibold text-brand-primary hover:underline"
-        >
-          View <ExternalLinkIcon className="h-3 w-3" />
-        </a>
+        isData ? (
+          <button
+            type="button"
+            onClick={() => downloadDataUrl(url, `${label.replace(/\s+/g, "-").toLowerCase()}.bin`)}
+            className="flex items-center gap-1 font-semibold text-brand-primary hover:underline"
+          >
+            Download <ExternalLinkIcon className="h-3 w-3" />
+          </button>
+        ) : (
+          <a
+            href={url}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1 font-semibold text-brand-primary hover:underline"
+          >
+            View <ExternalLinkIcon className="h-3 w-3" />
+          </a>
+        )
       ) : (
         <span className="text-neutral-400">Not submitted</span>
       )}

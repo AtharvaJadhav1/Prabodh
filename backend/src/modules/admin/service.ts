@@ -13,7 +13,6 @@ import { PrismaService } from '../../lib/prisma.service';
 import { exportQueue } from '../../lib/queue';
 import { createPresignedGetUrl } from '../../lib/s3';
 import { upsertSetting } from '../../lib/settings';
-import { getClerkClient } from '../../lib/clerk';
 import { syncTeamMentorPointers } from '../../lib/mentor-pointers';
 import { IdentityService, parseCsvUsers } from '../identity/service';
 import { adminInviteUserSchema, exportSchema, settingsSchema } from './schema';
@@ -176,7 +175,7 @@ export class AdminService {
       this.prisma.ideaSubmission.groupBy({ by: ['status'], _count: true }),
       this.prisma.stage.findMany({
         orderBy: { sequence: 'asc' },
-        select: { id: true, name: true, sequence: true, deadline: true, isActive: true },
+        select: { id: true, name: true, sequence: true, isActive: true },
       }),
       this.prisma.stageResult.findMany({
         where: { published: true },
@@ -403,7 +402,6 @@ export class AdminService {
             id: s.id,
             name: s.name,
             sequence: s.sequence,
-            deadline: s.deadline.toISOString(),
             isActive: s.isActive,
             notStarted: stageMap.get('not_started') ?? 0,
             inProgress: stageMap.get('in_progress') ?? 0,
@@ -587,11 +585,10 @@ export class AdminService {
   }
 
   async overdueReviews() {
-    const now = new Date();
     return this.prisma.teamStageStatus.findMany({
       where: {
         status: { in: ['submitted', 'in_progress'] },
-        stage: { deadline: { lte: now }, isActive: true },
+        stage: { isActive: true },
       },
       include: {
         team: { include: { mentorAssignments: { where: { active: true }, include: { mentor: true } } } },
@@ -983,16 +980,6 @@ export class AdminService {
       throw err;
     }
 
-    const clerk = getClerkClient();
-    if (clerk && target.clerkUserId && !target.clerkUserId.startsWith('local:')) {
-      try {
-        await clerk.users.deleteUser(target.clerkUserId);
-        log('Clerk user deleted', { clerkUserId: target.clerkUserId });
-      } catch (err) {
-        console.warn(`[ADMIN_REMOVE_USER] Clerk delete failed for ${target.email}:`, err);
-      }
-    }
-
     log('Completed', {
       targetUserId: target.id,
       targetEmail: target.email,
@@ -1245,8 +1232,6 @@ export class AdminService {
           { NOT: { email: { in: keepEmails } } },
           {
             OR: [
-              { clerkUserId: { startsWith: 'seed:' } },
-              { clerkUserId: 'dev_admin' },
               { email: { in: seedEmails } },
               { email: { endsWith: '@prabodh.test' } },
               { email: { endsWith: '@institute.edu' } },
@@ -1256,17 +1241,10 @@ export class AdminService {
               { email: { contains: 'bulk.invite.' } },
               { email: { contains: 'ui.bulk.' } },
               { email: { contains: 'probe.async.' } },
-              // Seed faculty/students used @mituniversity.edu.in with seed: clerk ids —
-              // also catch leftover MIT demo accounts that match known seed names.
               {
                 AND: [
                   { email: { endsWith: '@mituniversity.edu.in' } },
-                  {
-                    OR: [
-                      { clerkUserId: { startsWith: 'seed:' } },
-                      { email: { in: seedEmails } },
-                    ],
-                  },
+                  { email: { in: seedEmails } },
                 ],
               },
             ],
@@ -1281,7 +1259,6 @@ export class AdminService {
         OR: [
           { teamCode: { in: seedTeamCodes } },
           { teamCode: { startsWith: 'DEMO' } },
-          { clerkOrgId: { startsWith: 'local-org-DEMO' } },
           ...(seedUserIds.length ? [{ leaderUserId: { in: seedUserIds } }] : []),
         ],
       },

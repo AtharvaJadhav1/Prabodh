@@ -1,0 +1,47 @@
+erDiagram
+  PROBLEM_STATEMENT ||--o{ TEAM : assigned
+  TEAM ||--o{ IDEA_SUBMISSION : submits
+  PROBLEM_STATEMENT ||--o{ IDEA_SUBMISSION : targets
+  USER |o--o{ IDEA_SUBMISSION : authors
+  TEAM ||--|{ TEAM_PS_PREFERENCE : ranks
+  PROBLEM_STATEMENT |o--o{ TEAM_PS_PREFERENCE : references
+  USER ||--o{ TEAM_PS_PREFERENCE : submits
+  USER |o--o{ TEAM_PS_PREFERENCE : decides
+
+  PROBLEM_STATEMENT {
+    string id PK
+    string code UK
+    string title
+    string theme
+    string category
+    string organisation
+    int team_cap
+  }
+
+  TEAM {
+    string id PK
+    string ps_id FK
+  }
+
+  IDEA_SUBMISSION {
+    string id PK
+    string team_id FK
+    string ps_id FK
+    string author_user_id FK
+    string status
+    int version
+  }
+
+  TEAM_PS_PREFERENCE {
+    string id PK
+    string team_id FK
+    int rank
+    string ps_id FK
+    string status
+    string submitted_by_id FK
+    string decided_by_id FK
+  }
+
+  USER {
+    string id PK
+  }

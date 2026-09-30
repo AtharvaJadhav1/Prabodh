@@ -121,7 +121,6 @@ async function upsertUser(data: {
   institute?: string;
   department?: string;
   domainTags?: string[];
-  clerkUserId: string;
 }) {
   const passwordHash = hashPassword(DEFAULT_PASSWORD);
   return prisma.user.upsert({
@@ -150,7 +149,6 @@ async function ensureDemoTeam(opts: {
     where: { teamCode: opts.teamCode },
     update: { name: opts.teamName, institute: INSTITUTE, leaderUserId: opts.leader.id },
     create: {
-      clerkOrgId: `local-org-${opts.teamCode}`,
       teamCode: opts.teamCode,
       name: opts.teamName,
       institute: INSTITUTE,
@@ -186,7 +184,6 @@ async function ensureDemoTeam(opts: {
 
 async function main() {
   const admin = await upsertUser({
-    clerkUserId: 'dev_admin',
     email: 'admin@institute.edu',
     fullName: 'SIH Admin',
     platformRole: PlatformRole.admin,
@@ -195,7 +192,6 @@ async function main() {
   });
 
   const studentExpert = await upsertUser({
-    clerkUserId: 'seed:expert@institute.edu',
     email: 'expert@institute.edu',
     fullName: 'Student Expert',
     platformRole: PlatformRole.student_expert,
@@ -207,7 +203,6 @@ async function main() {
   for (const s of students) {
     studentRows.push(
       await upsertUser({
-        clerkUserId: `seed:${s.email}`,
         email: s.email,
         fullName: s.fullName,
         platformRole: PlatformRole.student,
@@ -221,7 +216,6 @@ async function main() {
   for (const f of faculty) {
     facultyRows.push(
       await upsertUser({
-        clerkUserId: `seed:${f.email}`,
         email: f.email,
         fullName: f.fullName,
         platformRole: f.role,
@@ -259,10 +253,10 @@ async function main() {
   }
 
   const stages = [
-    { name: 'Idea Submission', sequence: 1, deadline: daysFromNow(14) },
-    { name: 'Internal Hackathon', sequence: 2, deadline: daysFromNow(28) },
-    { name: 'Institute Level', sequence: 3, deadline: daysFromNow(45) },
-    { name: 'SIH Finale', sequence: 4, deadline: daysFromNow(90) },
+    { name: 'Idea Submission', sequence: 1 },
+    { name: 'Internal Hackathon', sequence: 2 },
+    { name: 'Institute Level', sequence: 3 },
+    { name: 'SIH Finale', sequence: 4 },
   ];
   for (const s of stages) {
     const existing = await prisma.stage.findUnique({ where: { sequence: s.sequence } });
@@ -302,7 +296,6 @@ async function main() {
       where: { teamCode },
       update: { name: 'Demo SIH Team', institute: INSTITUTE, leaderUserId: leader.id },
       create: {
-        clerkOrgId: `local-org-${teamCode}`,
         teamCode,
         name: 'Demo SIH Team',
         institute: INSTITUTE,
@@ -387,12 +380,6 @@ async function main() {
     faculty: facultyRows.length,
     defaultPassword: DEFAULT_PASSWORD,
   });
-}
-
-function daysFromNow(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return d;
 }
 
 main()

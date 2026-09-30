@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Prabodh ER Diagrams</title>
+  <style>
+    @page { size: A4 landscape; margin: 14mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", Calibri, system-ui, sans-serif;
+      color: #1a1a1a;
+      margin: 0;
+      padding: 20px 28px;
+      background: #fff;
+    }
+    h1 { color: #5B2E10; font-size: 26px; margin: 0 0 6px; }
+    h2 { color: #5B2E10; font-size: 18px; margin: 0 0 8px; border-bottom: 2px solid #D96B27; padding-bottom: 4px; }
+    .meta { color: #555; font-size: 13px; margin-bottom: 18px; }
+    .note { font-size: 12px; color: #444; margin: 0 0 12px; line-height: 1.4; }
+    section { margin-bottom: 24px; }
+    section.page { page-break-before: always; }
+    figure { margin: 0; text-align: center; }
+    img { max-width: 100%; height: auto; border: 1px solid #e8dfd6; border-radius: 6px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 5px 7px; text-align: left; }
+    th { background: #f5f0eb; }
+    .callout {
+      background: #fdf8f4;
+      border-left: 4px solid #D96B27;
+      padding: 10px 14px;
+      margin: 12px 0 20px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Prabodh — Entity Relationship Diagrams</h1>
+  <p class="meta">Source: backend/prisma/schema.prisma · 25 PostgreSQL tables · JWT auth (no Clerk) · 2026-09-29</p>
+  <div class="callout">
+    <strong>Schema note:</strong> Removed clerk_user_id, clerk_org_id, and clerk_invitation_id.
+    Teams use <code>team_code</code>; users authenticate with email + password/OTP and app-issued JWT.
+  </div>
+  
+    <section>
+      <h2>1. High-level domain map</h2>
+      <p class="note">Six bounded contexts: identity, teams, problem statements, mentors, competition stages, and notifications.</p>
+      <figure><img src="diagrams/png/01-domain-map.png" alt="High-level domain map" /></figure>
+    </section>
+
+    <section class="page">
+      <h2>2. Identity and users</h2>
+      <p class="note">Roles: student, institute_mentor, industry_mentor, admin, student_expert. Auth uses password_hash + JWT (no external identity provider).</p>
+      <figure><img src="diagrams/png/02-identity.png" alt="Identity and users" /></figure>
+    </section>
+
+    <section class="page">
+      <h2>3. Teams and membership</h2>
+      <p class="note">Teams identified by team_code. Invites tracked in team_members and mentor_invites; email via Resend.</p>
+      <figure><img src="diagrams/png/03-teams.png" alt="Teams and membership" /></figure>
+    </section>
+
+    <section class="page">
+      <h2>4. Problem statements and ideas</h2>
+      <p class="note">Teams rank PS choices; mentors approve. idea_submissions hold draft/locked ideas per team.</p>
+      <figure><img src="diagrams/png/04-problem-statements.png" alt="Problem statements and ideas" /></figure>
+    </section>
+
+    <section class="page">
+      <h2>5. Mentor allocation</h2>
+      <p class="note">mentor_assignments is the audit trail; faculty and industry mentor slots are denormalized on teams.</p>
+      <figure><img src="diagrams/png/05-mentors.png" alt="Mentor allocation" /></figure>
+    </section>
+
+    <section class="page">
+      <h2>6. Stages, deliverables, and evaluation</h2>
+      <p class="note">Team × stage progress via team_stage_status, deliverables, evaluations, and published stage_results.</p>
+      <figure><img src="diagrams/png/06-stages.png" alt="Stages, deliverables, and evaluation" /></figure>
+    </section>
+
+    <section class="page">
+      <h2>7. Notifications and broadcasts</h2>
+      <p class="note">In-app notifications plus notification_log for email delivery tracking.</p>
+      <figure><img src="diagrams/png/07-notifications.png" alt="Notifications and broadcasts" /></figure>
+    </section>
+
+    <section class="page">
+      <h2>8. External systems</h2>
+      <p class="note">Not stored in PostgreSQL: Redis (OTP, queues), Resend (email), S3/R2 (files).</p>
+      <figure><img src="diagrams/png/08-external.png" alt="External systems" /></figure>
+    </section>
+  <section class="page">
+    <h2>9. All tables (25)</h2>
+    
+<table>
+  <thead><tr><th>#</th><th>Table</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>users</td><td>Accounts, roles, credentials</td></tr>
+    <tr><td>2</td><td>teams</td><td>SIH squads</td></tr>
+    <tr><td>3</td><td>team_members</td><td>Roster and email invites</td></tr>
+    <tr><td>4</td><td>industrial_mentors</td><td>Industry mentor profiles</td></tr>
+    <tr><td>5</td><td>problem_statements</td><td>Official PS catalog</td></tr>
+    <tr><td>6</td><td>team_ps_preferences</td><td>Ranked PS choices</td></tr>
+    <tr><td>7</td><td>idea_submissions</td><td>Team idea drafts</td></tr>
+    <tr><td>8</td><td>join_requests</td><td>Student join requests</td></tr>
+    <tr><td>9</td><td>mentor_assignments</td><td>Mentor allocation history</td></tr>
+    <tr><td>10</td><td>mentor_invites</td><td>Team to mentor invites</td></tr>
+    <tr><td>11</td><td>stages</td><td>Competition milestones</td></tr>
+    <tr><td>12</td><td>rubrics</td><td>Scoring criteria</td></tr>
+    <tr><td>13</td><td>deliverables</td><td>Stage uploads</td></tr>
+    <tr><td>14</td><td>team_stage_status</td><td>Per-team stage progress</td></tr>
+    <tr><td>15</td><td>evaluations</td><td>Mentor scores</td></tr>
+    <tr><td>16</td><td>stage_results</td><td>Published results</td></tr>
+    <tr><td>17</td><td>comments</td><td>Team threads</td></tr>
+    <tr><td>18</td><td>notifications</td><td>In-app alerts</td></tr>
+    <tr><td>19</td><td>notification_log</td><td>Email delivery log</td></tr>
+    <tr><td>20</td><td>broadcasts</td><td>Admin broadcasts</td></tr>
+    <tr><td>21</td><td>audit_log</td><td>Change history</td></tr>
+    <tr><td>22</td><td>export_jobs</td><td>Data exports</td></tr>
+    <tr><td>23</td><td>platform_settings</td><td>Runtime config</td></tr>
+    <tr><td>24</td><td>user_import_batches</td><td>Bulk import batches</td></tr>
+    <tr><td>25</td><td>user_import_rows</td><td>Import batch rows</td></tr>
+  </tbody>
+</table>
+    <h2 style="margin-top:20px">10. Core relationships</h2>
+    
+<table>
+  <thead><tr><th>From</th><th>To</th><th>Card.</th><th>FK / notes</th></tr></thead>
+  <tbody>
+    <tr><td>User</td><td>Team</td><td>1:N</td><td>leader_user_id</td></tr>
+    <tr><td>User</td><td>Team</td><td>0:1</td><td>faculty_mentor_id</td></tr>
+    <tr><td>IndustrialMentor</td><td>Team</td><td>0:1</td><td>industrial_mentor_id</td></tr>
+    <tr><td>Team</td><td>TeamMember</td><td>1:N</td><td>unique team_id + invited_email</td></tr>
+    <tr><td>Team</td><td>ProblemStatement</td><td>N:1</td><td>ps_id optional</td></tr>
+    <tr><td>Team</td><td>Stage</td><td>N:M</td><td>via junction tables</td></tr>
+    <tr><td>MentorAssignment</td><td>MentorAssignment</td><td>chain</td><td>reassigned_from_id</td></tr>
+  </tbody>
+</table>
+  </section>
+</body>
+</html>

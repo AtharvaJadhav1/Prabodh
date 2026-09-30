@@ -50,8 +50,6 @@ async function main() {
         { NOT: { email: { in: [...KEEP_EMAILS] } } },
         {
           OR: [
-            { clerkUserId: { startsWith: 'seed:' } },
-            { clerkUserId: 'dev_admin' },
             { email: { in: SEED_EMAILS } },
             { email: { endsWith: '@prabodh.test' } },
             { email: { endsWith: '@institute.edu' } },
@@ -64,19 +62,14 @@ async function main() {
             {
               AND: [
                 { email: { endsWith: '@mituniversity.edu.in' } },
-                {
-                  OR: [
-                    { clerkUserId: { startsWith: 'seed:' } },
-                    { email: { in: SEED_EMAILS } },
-                  ],
-                },
+                { email: { in: SEED_EMAILS } },
               ],
             },
           ],
         },
       ],
     },
-    select: { id: true, email: true, clerkUserId: true },
+    select: { id: true, email: true },
   });
   const seedUserIds = seedUsers.map((u) => u.id);
 
@@ -85,7 +78,6 @@ async function main() {
       OR: [
         { teamCode: { in: SEED_TEAM_CODES } },
         { teamCode: { startsWith: 'DEMO' } },
-        { clerkOrgId: { startsWith: 'local-org-DEMO' } },
         ...(seedUserIds.length ? [{ leaderUserId: { in: seedUserIds } }] : []),
       ],
     },
@@ -225,7 +217,6 @@ async function main() {
         { NOT: { email: { in: [...KEEP_EMAILS] } } },
         {
           OR: [
-            { clerkUserId: { startsWith: 'seed:' } },
             { email: { in: SEED_EMAILS } },
             { email: { endsWith: '@prabodh.test' } },
             { email: { endsWith: '@institute.edu' } },

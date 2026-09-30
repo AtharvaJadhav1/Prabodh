@@ -6,7 +6,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { InviteStatus, PlatformRole, Prisma } from '@prisma/client';
+import { PlatformRole, Prisma } from '@prisma/client';
 import { signAccessToken } from '../../lib/jwt';
 import { consumeResetToken, issueResetToken, sendOtp, verifyOtp } from '../../lib/otp';
 import { hashPassword, verifyPassword } from '../../lib/password';
@@ -276,7 +276,6 @@ export class IdentityService {
       }
       user = await this.prisma.user.create({
         data: {
-          clerkUserId: `local:${email}`,
           email,
           fullName: body.fullName,
           platformRole: role,
@@ -348,7 +347,6 @@ export class IdentityService {
         })
       : await this.prisma.user.create({
           data: {
-            clerkUserId: `local:${email}`,
             email,
             fullName: body.fullName,
             platformRole: body.platformRole,
@@ -413,7 +411,6 @@ export class IdentityService {
     }
     return this.prisma.user.create({
       data: {
-        clerkUserId: `local:${email}`,
         email,
         fullName: body.fullName,
         platformRole: PlatformRole.student,
@@ -564,97 +561,6 @@ export class IdentityService {
     return { avatarUrl };
   }
 
-  async handleClerkEvent(eventType: string, data: Record<string, unknown>) {
-    if (eventType.startsWith('user.')) {
-      return this.syncClerkUser(eventType, data);
-    }
-    if (
-      eventType === 'organizationInvitation.accepted' ||
-      eventType === 'organizationMembership.created'
-    ) {
-      return this.syncOrgMembership(data);
-    }
-    return { ignored: eventType };
-  }
-
-  async syncClerkUser(eventType: string, data: Record<string, unknown>) {
-    const clerkUserId = String(data.id ?? '');
-    if (!clerkUserId) return null;
-
-    if (eventType === 'user.deleted') {
-      await this.repo.deactivateByClerkId(clerkUserId);
-      return { clerkUserId, deactivated: true };
-    }
-
-    const email = extractPrimaryEmail(data) ?? `${clerkUserId}@unknown.local`;
-    const first = String((data.first_name as string) ?? '');
-    const last = String((data.last_name as string) ?? '');
-    const fullName = `${first} ${last}`.trim() || email;
-    const meta = (data.public_metadata ?? {}) as Record<string, unknown>;
-    const platformRole = parseRole(meta.role);
-    const institute = typeof meta.institute === 'string' ? meta.institute : undefined;
-    const department = typeof meta.department === 'string' ? meta.department : undefined;
-    const phone = typeof meta.phone === 'string' ? meta.phone : undefined;
-
-    const user = await this.repo.upsertFromClerk({
-      clerkUserId,
-      email,
-      fullName,
-      platformRole,
-      institute,
-      department,
-      phone,
-    });
-    return user;
-  }
-
-  async syncOrgMembership(data: Record<string, unknown>) {
-    const orgId = String(
-      (data.organization as { id?: string } | undefined)?.id ?? data.organization_id ?? '',
-    );
-    const email = String(
-      data.email_address ??
-        (data.public_user_data as { identifier?: string } | undefined)?.identifier ??
-        '',
-    ).toLowerCase();
-    const clerkUserId = String(
-      data.user_id ?? (data.public_user_data as { user_id?: string } | undefined)?.user_id ?? '',
-    );
-    const invitationId = String(data.id ?? data.invitation_id ?? '');
-    if (!orgId) return { skipped: true };
-
-    const team = await this.prisma.team.findUnique({ where: { clerkOrgId: orgId } });
-    if (!team) return { skipped: 'unknown_org' };
-
-    const user = clerkUserId
-      ? await this.prisma.user.findUnique({ where: { clerkUserId } })
-      : email
-        ? await this.prisma.user.findUnique({ where: { email } })
-        : null;
-
-    if (invitationId) {
-      await this.prisma.teamMember.updateMany({
-        where: { clerkInvitationId: invitationId },
-        data: {
-          inviteStatus: InviteStatus.accepted,
-          userId: user?.id,
-          joinedAt: new Date(),
-        },
-      });
-    }
-    if (email) {
-      await this.prisma.teamMember.updateMany({
-        where: { teamId: team.id, invitedEmail: email, inviteStatus: InviteStatus.pending },
-        data: {
-          inviteStatus: InviteStatus.accepted,
-          userId: user?.id,
-          joinedAt: new Date(),
-        },
-      });
-    }
-    return { teamId: team.id, email, accepted: true };
-  }
-
   async bulkCreate(rows: Array<{
     email: string;
     fullName: string;
@@ -683,7 +589,6 @@ export class IdentityService {
         } else {
           await this.prisma.user.create({
             data: {
-              clerkUserId: `local:${email}`,
               email,
               fullName: row.fullName,
               platformRole: row.platformRole,
@@ -733,14 +638,6 @@ function parseRole(role: unknown): PlatformRole {
     return role;
   }
   return 'student';
-}
-
-function extractPrimaryEmail(data: Record<string, unknown>): string | null {
-  const addresses = data.email_addresses as Array<{ id: string; email_address: string }> | undefined;
-  const primaryId = data.primary_email_address_id as string | undefined;
-  if (!addresses?.length) return null;
-  const primary = addresses.find((a) => a.id === primaryId) ?? addresses[0];
-  return primary.email_address.toLowerCase();
 }
 
 export function parseCsvUsers(csv: string) {

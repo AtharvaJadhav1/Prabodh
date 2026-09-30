@@ -60,7 +60,6 @@ export type ReportSnapshot = {
       id: string;
       name: string;
       sequence: number;
-      deadline: string;
       isActive: boolean;
       notStarted: number;
       inProgress: number;

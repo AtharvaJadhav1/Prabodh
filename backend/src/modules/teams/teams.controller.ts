@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UseGuard
 import { PlatformRole } from '@prisma/client';
 import { CurrentUser } from '../../common/current-user.decorator';
 import { AuthUser } from '../../common/auth.types';
-import { ClerkAuthGuard } from '../../common/clerk-auth.guard';
+import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
 import { parsePagination } from '../../common/pagination';
@@ -11,7 +11,7 @@ import { assignIndustrialMentorSchema, createTeamSchema, inviteSchema, patchTeam
 import { TeamsService } from './service';
 
 @Controller('teams')
-@UseGuards(ClerkAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class TeamsController {
   constructor(private readonly teams: TeamsService) {}
 

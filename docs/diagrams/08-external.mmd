@@ -1,0 +1,14 @@
+flowchart LR
+  Browser[Browser / Next.js]
+  API[NestJS API]
+  PG[(PostgreSQL)]
+  Redis[(Redis)]
+  Resend[Resend Email]
+  S3[S3 or R2 Storage]
+
+  Browser -->|JWT Bearer| API
+  API --> PG
+  API --> Redis
+  API --> Resend
+  API --> S3
+  Resend -->|webhook| API

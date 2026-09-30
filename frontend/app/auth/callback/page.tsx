@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-/** Legacy Clerk callback — redirect to login. */
+/** Legacy auth callback URL — redirects to the login page. */
 export default function AuthCallbackPage() {
   useEffect(() => {
     window.location.replace("/login");

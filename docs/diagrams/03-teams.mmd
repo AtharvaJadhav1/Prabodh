@@ -1,0 +1,61 @@
+erDiagram
+  USER ||--o{ TEAM : leads
+  USER |o--o{ TEAM : faculty_mentor
+  TEAM ||--|{ TEAM_MEMBER : roster
+  USER |o--o{ TEAM_MEMBER : member
+  USER ||--o{ JOIN_REQUEST : requests
+  TEAM ||--o{ JOIN_REQUEST : receives
+  TEAM ||--o{ COMMENT : thread
+  USER ||--o{ COMMENT : writes
+  COMMENT ||--o{ COMMENT : replies
+  TEAM ||--o{ MENTOR_INVITE : invites
+
+  USER {
+    string id PK
+    string email UK
+    string platform_role
+  }
+
+  TEAM {
+    string id PK
+    string team_code UK
+    string leader_user_id FK
+    string ps_id FK
+    string faculty_mentor_id FK
+    string industrial_mentor_id FK
+    string status
+    int member_cap
+  }
+
+  TEAM_MEMBER {
+    string id PK
+    string team_id FK
+    string user_id FK
+    string invited_email
+    string invite_status
+    datetime joined_at
+  }
+
+  JOIN_REQUEST {
+    string id PK
+    string student_id FK
+    string team_id FK
+    string status
+  }
+
+  COMMENT {
+    string id PK
+    string team_id FK
+    string author_user_id FK
+    string parent_comment_id FK
+    string message
+  }
+
+  MENTOR_INVITE {
+    string id PK
+    string team_id FK
+    string invited_email
+    string mentor_user_id FK
+    string mentor_type
+    string invite_status
+  }

@@ -26,7 +26,6 @@ export class TeamsRepository {
         status: true,
         detailsLockAt: true,
         memberCap: true,
-        clerkOrgId: true,
         members: { select: { userId: true } },
         mentorAssignments: { where: { active: true }, select: { mentorUserId: true } },
       },
@@ -150,7 +149,7 @@ export class TeamsRepository {
           where: { supersededById: null },
           include: {
             rubric: true,
-            stage: { select: { id: true, name: true, sequence: true, deadline: true, isActive: true } },
+            stage: { select: { id: true, name: true, sequence: true, isActive: true } },
             evaluator: { select: this.authorSelect },
           },
           take: 80,
@@ -262,13 +261,6 @@ export class TeamsRepository {
   findMemberByEmail(teamId: string, email: string) {
     return this.prisma.teamMember.findUnique({
       where: { teamId_invitedEmail: { teamId, invitedEmail: email } },
-    });
-  }
-
-  acceptInvite(clerkInvitationId: string, userId: string) {
-    return this.prisma.teamMember.updateMany({
-      where: { clerkInvitationId },
-      data: { inviteStatus: InviteStatus.accepted, userId, joinedAt: new Date() },
     });
   }
 

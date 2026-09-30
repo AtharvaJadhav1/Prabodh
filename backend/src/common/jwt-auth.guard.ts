@@ -15,7 +15,7 @@ type AuthedRequest = {
 };
 
 @Injectable()
-export class ClerkAuthGuard implements CanActivate {
+export class JwtAuthGuard implements CanActivate {
   constructor(private readonly prisma: PrismaService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -65,7 +65,6 @@ function attachUser(req: AuthedRequest, user: AuthDbUser) {
   req.authDbUser = user;
   req.user = {
     id: user.id,
-    clerkUserId: user.clerkUserId,
     email: user.email,
     fullName: user.fullName,
     platformRole: user.platformRole,

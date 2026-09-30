@@ -97,7 +97,6 @@ async function main() {
   const makeTeam = async (code: string) => {
     const team = await prisma.team.create({
       data: {
-        clerkOrgId: `local-${code}`,
         teamCode: code,
         name: `IM E2E ${code}`,
         institute: "Test Institute",
