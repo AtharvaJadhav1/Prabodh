@@ -11,6 +11,8 @@ type AuthResponse = {
   email: string;
   fullName: string;
   platformRole: PlatformRole;
+  additionalRoles?: PlatformRole[];
+  activeRole?: PlatformRole;
   institute?: string | null;
   department?: string | null;
   phone?: string | null;

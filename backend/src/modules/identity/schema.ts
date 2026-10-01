@@ -73,3 +73,7 @@ export const avatarUploadSchema = z.object({
   contentType: z.string().min(1).max(120),
   dataBase64: z.string().min(1, 'Image data is required'),
 });
+
+export const switchRoleSchema = z.object({
+  role: z.enum(['student', 'institute_mentor', 'industry_mentor', 'admin', 'student_expert']),
+});

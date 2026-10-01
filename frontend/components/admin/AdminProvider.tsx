@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { platformMetrics, type AdminAllocation } from "../../data/adminDashboard";
 import { api, apiPost } from "../../lib/api";
+import { holdsRole } from "../../lib/session";
 import { useAuth } from "../auth/AuthProvider";
 import type { PortalUser } from "../../lib/types";
 
@@ -104,7 +105,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
                 }>;
               }>;
             };
-        mentors: Array<{ id: string; fullName: string; platformRole: string; email: string }>;
+        mentors: Array<{ id: string; fullName: string; platformRole: string; additionalRoles?: string[]; email: string }>;
         users: PortalUser[];
       }>("/admin/bootstrap");
 
@@ -113,8 +114,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       setMetricsLive({
         totalTeams: res.dashboard.totalTeams,
         totalStudents: res.users.filter((u) => u.platformRole === "student").length,
-        totalInstituteMentors: res.mentors.filter((m) => m.platformRole === "institute_mentor").length,
-        totalIndustryMentors: res.mentors.filter((m) => m.platformRole === "industry_mentor").length,
+        totalInstituteMentors: res.mentors.filter((m) => holdsRole(m, "institute_mentor")).length,
+        totalIndustryMentors: res.mentors.filter((m) => holdsRole(m, "industry_mentor")).length,
         pendingAllocations: res.dashboard.teamsMissingMentor,
         activeStage: res.dashboard.stageFunnel[0]?.name ?? "—",
       });
@@ -135,10 +136,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         })),
       });
 
-      const instMentors = res.mentors.filter((m) => m.platformRole === "institute_mentor");
+      const instMentors = res.mentors.filter((m) => holdsRole(m, "institute_mentor"));
       setMentors(instMentors.map((m) => ({ id: m.id, name: m.fullName, title: m.email })));
       setIndustryMentorOptions(
-        res.mentors.filter((m) => m.platformRole === "industry_mentor").map((m) => ({ id: m.id, name: m.fullName, title: m.email })),
+        res.mentors.filter((m) => holdsRole(m, "industry_mentor")).map((m) => ({ id: m.id, name: m.fullName, title: m.email })),
       );
 
       setAllocations(

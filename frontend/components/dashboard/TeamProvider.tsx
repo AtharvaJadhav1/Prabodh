@@ -78,6 +78,7 @@ type TeamContextValue = {
     email: string;
     department?: string | null;
     platformRole: string;
+    additionalRoles?: string[];
     domainTags: string[];
   }>;
   loadFacultyDirectory: () => Promise<void>;
@@ -158,6 +159,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       email: string;
       department?: string | null;
       platformRole: string;
+      additionalRoles?: string[];
       domainTags: string[];
     }>
   >([]);
@@ -320,6 +322,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           email: string;
           department?: string | null;
           platformRole: string;
+          additionalRoles?: string[];
           domainTags: string[];
         }>
       >("/mentors/faculty");

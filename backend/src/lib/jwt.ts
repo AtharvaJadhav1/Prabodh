@@ -5,6 +5,10 @@ export type AccessTokenPayload = {
   sub: string;
   email: string;
   role: PlatformRole;
+  /** Every role the account holds (primary first). Old tokens lack this — treat as [role]. */
+  roles?: PlatformRole[];
+  /** Workspace the user is currently acting in. Old tokens lack this — treat as role. */
+  activeRole?: PlatformRole;
   iat: number;
   exp: number;
 };
@@ -35,13 +39,29 @@ function b64urlDecode(input: string) {
   return Buffer.from(normalized, 'base64').toString('utf8');
 }
 
-export function signAccessToken(user: { id: string; email: string; platformRole: PlatformRole }) {
+export function signAccessToken(user: {
+  id: string;
+  email: string;
+  platformRole: PlatformRole;
+  additionalRoles?: PlatformRole[] | null;
+  activeRole?: PlatformRole | null;
+}) {
   const now = Math.floor(Date.now() / 1000);
   const ttlSec = Number(process.env.AUTH_JWT_TTL_SEC ?? 60 * 60 * 24 * 7);
+  const roles = [
+    user.platformRole,
+    ...(Array.isArray(user.additionalRoles) ? user.additionalRoles : []).filter(
+      (r) => r !== user.platformRole,
+    ),
+  ];
+  const activeRole =
+    user.activeRole && roles.includes(user.activeRole) ? user.activeRole : user.platformRole;
   const payload: AccessTokenPayload = {
     sub: user.id,
     email: user.email,
     role: user.platformRole,
+    roles,
+    activeRole,
     iat: now,
     exp: now + ttlSec,
   };

@@ -4,7 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 import LoadingState from "../LoadingState";
-import { dashboardForRole, type PlatformRole } from "../../lib/session";
+import { allRoles, dashboardForRole, type PlatformRole } from "../../lib/session";
 
 const ROUTE_ROLES: Record<string, PlatformRole[]> = {
   "/dashboard/student": ["student"],
@@ -27,8 +27,9 @@ export default function DashboardRoleGuard({ children }: { children: ReactNode }
 
   useEffect(() => {
     if (!ready || !session || !allowed) return;
-    if (!allowed.includes(session.platformRole)) {
-      router.replace(dashboardForRole(session.platformRole));
+    // Dual-role accounts may visit any dashboard one of their held roles owns.
+    if (!allowed.some((r) => allRoles(session).includes(r))) {
+      router.replace(dashboardForRole(session.activeRole ?? session.platformRole));
     }
   }, [ready, session, allowed, router]);
 
@@ -42,7 +43,7 @@ export default function DashboardRoleGuard({ children }: { children: ReactNode }
   }
 
   if (!session) return null;
-  if (allowed && !allowed.includes(session.platformRole)) return null;
+  if (allowed && !allowed.some((r) => allRoles(session).includes(r))) return null;
 
   return children;
 }

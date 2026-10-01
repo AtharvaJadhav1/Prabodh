@@ -5,6 +5,10 @@ export type AuthUser = {
   email: string;
   fullName: string;
   platformRole: PlatformRole;
+  /** Secondary roles (dual-mentor accounts). Empty for single-role users. */
+  additionalRoles: PlatformRole[];
+  /** Workspace the user is currently acting in — always one of allRoles. */
+  activeRole: PlatformRole;
   institute: string | null;
 };
 
@@ -14,6 +18,7 @@ export type AuthDbUser = {
   email: string;
   fullName: string;
   platformRole: PlatformRole;
+  additionalRoles: PlatformRole[];
   institute: string | null;
   department: string | null;
   phone: string | null;
@@ -29,6 +34,7 @@ export const AUTH_USER_SELECT = {
   email: true,
   fullName: true,
   platformRole: true,
+  additionalRoles: true,
   institute: true,
   department: true,
   phone: true,

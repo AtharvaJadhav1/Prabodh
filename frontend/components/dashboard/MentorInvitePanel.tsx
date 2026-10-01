@@ -24,7 +24,10 @@ export default function MentorInvitePanel() {
   const inviteBlocked = instituteLocked;
 
   const filteredDirectory = useMemo(
-    () => facultyDirectory.filter((f) => f.platformRole === "institute_mentor"),
+    () =>
+      facultyDirectory.filter(
+        (f) => f.platformRole === "institute_mentor" || f.additionalRoles?.includes("institute_mentor"),
+      ),
     [facultyDirectory],
   );
 

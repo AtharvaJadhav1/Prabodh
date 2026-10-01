@@ -12,6 +12,7 @@ import EmptyState from "../mentor/EmptyState";
 import PreferenceReviewCard, { type ReviewablePreference } from "../mentor/PreferenceReviewCard";
 import InviteIndustrialMentorModal from "../mentor/InviteIndustrialMentorModal";
 import { useAuth } from "../auth/AuthProvider";
+import { holdsRole } from "../../lib/session";
 import { useMentorTeams } from "../mentor/MentorTeamsProvider";
 import {
   FileTextIcon,
@@ -227,8 +228,8 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
 
-  const isAdmin = session?.platformRole === "admin";
-  const canLock = isAdmin || session?.platformRole === "institute_mentor";
+  const isAdmin = holdsRole(session, "admin");
+  const canLock = isAdmin || holdsRole(session, "institute_mentor");
   const canDisqualify = isAdmin;
   const isMentor = audience === "mentor";
   const isIndustry = audience === "industry";

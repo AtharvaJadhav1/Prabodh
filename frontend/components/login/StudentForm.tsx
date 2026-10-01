@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useAuth } from "../auth/AuthProvider";
-import { dashboardForRole } from "../../lib/session";
+import { dashboardForRole, landingForLogin } from "../../lib/session";
 import LoginPasswordForm from "./LoginPasswordForm";
 
 export default function StudentForm() {
@@ -26,9 +26,9 @@ export default function StudentForm() {
       onSuccess={(result) => {
         establishSession(result);
         router.replace(
-          result.platformRole === "student"
+          result.platformRole === "student" && !result.additionalRoles?.length
             ? "/dashboard/student"
-            : dashboardForRole(result.platformRole),
+            : landingForLogin(result),
         );
       }}
     />

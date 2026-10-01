@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../auth/AuthProvider";
-import { dashboardForRole } from "../../lib/session";
+import { landingForLogin } from "../../lib/session";
 import OtpAuthFlow from "./OtpAuthFlow";
 import TextField from "./TextField";
 import PasswordField from "./PasswordField";
@@ -68,7 +68,7 @@ export default function RegisterForm() {
         }}
         onSuccess={(result) => {
           establishSession(result);
-          router.replace(dashboardForRole(result.platformRole));
+          router.replace(landingForLogin(result));
         }}
       />
     );

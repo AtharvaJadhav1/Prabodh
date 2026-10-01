@@ -134,7 +134,10 @@ export class NotificationsService {
       where: {
         isActive: true,
         ...(filter.institute ? { institute: filter.institute } : {}),
-        ...(filter.role ? { platformRole: filter.role } : {}),
+        // Dual-role accounts match broadcasts for ANY held role.
+        ...(filter.role
+          ? { OR: [{ platformRole: filter.role }, { additionalRoles: { has: filter.role } }] }
+          : {}),
       },
       select: this.recipientSelect,
     });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "../auth/AuthProvider";
-import { dashboardForRole } from "../../lib/session";
+import { landingForLogin } from "../../lib/session";
 import LoginPasswordForm from "./LoginPasswordForm";
 
 export default function FacultyForm() {
@@ -16,7 +16,7 @@ export default function FacultyForm() {
         submitLabel="Sign in"
         onSuccess={(result) => {
           establishSession(result);
-          window.location.assign(dashboardForRole(result.platformRole));
+          window.location.assign(landingForLogin(result));
         }}
       />
       <p className="text-center text-sm text-brand-muted">
