@@ -119,7 +119,9 @@ export default function MentorQueriesPage() {
   const flatComments = useMemo(() => flattenComments(comments), [comments]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    // Scroll only the message list; scrollIntoView would also scroll the whole page.
+    const box = messagesEndRef.current?.parentElement;
+    if (box) box.scrollTo({ top: box.scrollHeight, behavior: "smooth" });
   }, [flatComments.length]);
 
   const handleSend = async () => {

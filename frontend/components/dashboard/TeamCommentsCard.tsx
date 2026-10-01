@@ -72,7 +72,9 @@ export default function TeamCommentsCard() {
   const flatComments = useMemo(() => flattenComments(comments), [comments]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    // Scroll only the chat box; scrollIntoView would also scroll the whole page down to it.
+    const box = bottomRef.current?.parentElement;
+    if (box) box.scrollTo({ top: box.scrollHeight, behavior: "smooth" });
   }, [flatComments.length]);
 
   useEffect(() => {
