@@ -11,11 +11,18 @@ import { downloadDataUrl } from "../../lib/download-data-url";
 import { useTeam } from "./TeamProvider";
 import { FileCheckIcon, GithubIcon, TrashIcon, UploadCloudIcon, XIcon } from "./icons";
 
-const MAX_BYTES = 20 * 1024 * 1024;
-const ALLOWED_EXT = new Set([".pdf", ".ppt", ".pptx"]);
+const MAX_TOTAL_BYTES = 5 * 1024 * 1024;
+
+type Kind = "ppt" | "report";
+
+const SLOTS: Record<Kind, { label: string; exts: string[]; hint: string }> = {
+  ppt: { label: "Presentation", exts: [".ppt", ".pptx"], hint: "PPT or PPTX" },
+  report: { label: "Report", exts: [".pdf", ".docx"], hint: "PDF or DOCX" },
+};
 
 const MIME_BY_EXT: Record<string, string> = {
   ".pdf": "application/pdf",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   ".ppt": "application/vnd.ms-powerpoint",
   ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 };
@@ -26,13 +33,13 @@ function getExt(name: string) {
 }
 
 function getMime(file: File) {
-  return MIME_BY_EXT[getExt(file.name)] || file.type || "application/pdf";
+  return MIME_BY_EXT[getExt(file.name)] || file.type || "application/octet-stream";
 }
 
-function validatePresentation(file: File): string | null {
-  if (file.size > MAX_BYTES) return "File exceeds the 20MB limit.";
-  if (!ALLOWED_EXT.has(getExt(file.name))) return "Only PDF or PPTX files are supported.";
-  return null;
+function dataUrlBytes(url?: string | null) {
+  if (!url || !url.startsWith("data:")) return 0;
+  const b64 = url.slice(url.indexOf(",") + 1);
+  return Math.floor((b64.length * 3) / 4);
 }
 
 function formatBytes(n: number) {
@@ -88,21 +95,22 @@ function uploadViaApi<T>(path: string, body: unknown, onProgress: (pct: number) 
       reject(new ApiError(xhr.status, message, data));
     };
     xhr.onerror = () => reject(new Error("Network error while uploading"));
-    xhr.ontimeout = () => reject(new Error("Upload timed out — try a smaller PDF/PPTX"));
+    xhr.ontimeout = () => reject(new Error("Upload timed out — please try again"));
     xhr.send(JSON.stringify(body));
   });
 }
 
 export default function DeliverablesCard() {
   const { team, stages, isLead, refreshDeliverables, mergeUploadedDeliverable } = useTeam();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRefs = useRef<Record<Kind, HTMLInputElement | null>>({ ppt: null, report: null });
   const [githubUrl, setGithubUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [files, setFiles] = useState<Record<Kind, File | null>>({ ppt: null, report: null });
+  const [uploadingKind, setUploadingKind] = useState<Kind | null>(null);
   const [progress, setProgress] = useState(0);
-  const [dragOver, setDragOver] = useState(false);
+  const [dragOver, setDragOver] = useState<Kind | null>(null);
+  const uploading = uploadingKind !== null;
   const stage = stages.find((s) => s.isActive) ?? stages[0];
   const deliverables = team?.deliverables ?? [];
   const deliverablesLoading = Boolean(team?.id) && team?.deliverables === undefined;
@@ -112,19 +120,30 @@ export default function DeliverablesCard() {
     void refreshDeliverables();
   }, [team?.id, team?.deliverables, refreshDeliverables]);
 
-  const pickFile = (next?: File | null) => {
+  const current = deliverables.find((d) => d.pptUrl || d.reportUrl) ?? deliverables[0];
+
+  // Bytes already stored for each slot (known client-side only for data URLs; the server is authoritative).
+  const storedBytes = (kind: Kind) => dataUrlBytes(kind === "ppt" ? current?.pptUrl : current?.reportUrl);
+
+  const pickFile = (kind: Kind, next?: File | null) => {
     if (!next) return;
-    const invalid = validatePresentation(next);
-    if (invalid) {
-      setMessage(invalid);
-      setFile(null);
+    const slot = SLOTS[kind];
+    if (!slot.exts.includes(getExt(next.name))) {
+      setMessage(`${slot.label} must be ${slot.hint}.`);
+      return;
+    }
+    const other: Kind = kind === "ppt" ? "report" : "ppt";
+    const otherBytes = files[other]?.size ?? storedBytes(other);
+    if (next.size + otherBytes > MAX_TOTAL_BYTES) {
+      setMessage("Presentation and report together must not exceed 5MB.");
       return;
     }
     setMessage("");
-    setFile(next);
+    setFiles((f) => ({ ...f, [kind]: next }));
   };
 
-  const uploadFile = async () => {
+  const uploadFile = async (kind: Kind) => {
+    const file = files[kind];
     if (!team) {
       setMessage("Create or join a team before uploading.");
       return;
@@ -134,13 +153,8 @@ export default function DeliverablesCard() {
       return;
     }
     if (!file) return;
-    const invalid = validatePresentation(file);
-    if (invalid) {
-      setMessage(invalid);
-      return;
-    }
 
-    setUploading(true);
+    setUploadingKind(kind);
     setBusy(true);
     setProgress(0);
     setMessage("");
@@ -155,18 +169,19 @@ export default function DeliverablesCard() {
           filename: file.name,
           contentType: getMime(file),
           dataBase64,
+          kind,
         },
         setProgress,
       );
       invalidateApiCache(/\/deliverables/);
       mergeUploadedDeliverable(uploaded);
-      setMessage("File uploaded successfully.");
-      setFile(null);
+      setMessage(`${SLOTS[kind].label} uploaded successfully.`);
+      setFiles((f) => ({ ...f, [kind]: null }));
       await refreshDeliverables();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Upload failed");
     } finally {
-      setUploading(false);
+      setUploadingKind(null);
       setBusy(false);
       setProgress(0);
     }
@@ -218,86 +233,109 @@ export default function DeliverablesCard() {
         </span>
       </div>
       <p className="mt-1.5 text-sm text-brand-muted">
-        Upload your presentation as <span className="font-semibold text-brand-deep">PDF or PPTX</span> (max 20MB).
+        Upload your <span className="font-semibold text-brand-deep">presentation (PPT/PPTX)</span> and{" "}
+        <span className="font-semibold text-brand-deep">report (PDF/DOCX)</span>. Max 5MB combined.
       </p>
 
       {isLead ? (
-        <div className="mt-5">
-          {file ? (
-            <div className="rounded-xl border border-brand-softline p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-brand-deep">{file.name}</p>
-                  <p className="text-xs text-brand-muted">
-                    {formatBytes(file.size)} · {getExt(file.name).replace(".", "").toUpperCase()}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={uploading}
-                    onClick={() => setFile(null)}
-                    className="rounded-lg p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-50"
-                    aria-label="Remove selected file"
-                    title="Remove"
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          {(["ppt", "report"] as Kind[]).map((kind) => {
+            const slot = SLOTS[kind];
+            const file = files[kind];
+            const uploaded = Boolean(kind === "ppt" ? current?.pptUrl : current?.reportUrl);
+            const isUploading = uploadingKind === kind;
+            return (
+              <div key={kind}>
+                <p className="mb-1.5 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-muted">
+                  {slot.label}
+                  {uploaded ? (
+                    <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-green-700">
+                      Uploaded
+                    </span>
+                  ) : null}
+                </p>
+                {file ? (
+                  <div className="rounded-xl border border-brand-softline p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-brand-deep">{file.name}</p>
+                        <p className="text-xs text-brand-muted">
+                          {formatBytes(file.size)} · {getExt(file.name).replace(".", "").toUpperCase()}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={uploading}
+                          onClick={() => setFiles((f) => ({ ...f, [kind]: null }))}
+                          className="rounded-lg p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                          aria-label="Remove selected file"
+                          title="Remove"
+                        >
+                          <XIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={uploading}
+                          onClick={() => void uploadFile(kind)}
+                          className="rounded-xl bg-[#C25E26] px-4 py-2 text-sm font-semibold text-white hover:bg-[#A04A1B] disabled:opacity-60"
+                        >
+                          {isUploading ? "Uploading…" : "Upload"}
+                        </button>
+                      </div>
+                    </div>
+                    {isUploading ? (
+                      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-brand-softline">
+                        <div className="h-full bg-[#C25E26] transition-all" style={{ width: `${progress}%` }} />
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => inputRefs.current[kind]?.click()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") inputRefs.current[kind]?.click();
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragOver(kind);
+                    }}
+                    onDragLeave={() => setDragOver(null)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragOver(null);
+                      pickFile(kind, e.dataTransfer.files?.[0]);
+                    }}
+                    className={`cursor-pointer rounded-xl border-2 border-dashed p-5 text-center transition-all ${
+                      dragOver === kind
+                        ? "border-brand-primary/60 bg-brand-primary/[0.05]"
+                        : "border-brand-primary/30 bg-brand-primary/[0.02] hover:border-brand-primary/60"
+                    }`}
                   >
-                    <XIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={uploading}
-                    onClick={() => void uploadFile()}
-                    className="rounded-xl bg-[#C25E26] px-4 py-2 text-sm font-semibold text-white hover:bg-[#A04A1B] disabled:opacity-60"
-                  >
-                    {uploading ? "Uploading…" : "Upload File"}
-                  </button>
-                </div>
+                    <UploadCloudIcon className="mx-auto h-8 w-8 text-brand-primary/70" />
+                    <p className="mt-2 text-sm font-medium text-brand-deep">
+                      {uploaded ? `Replace ${slot.label.toLowerCase()}` : `Click or drag ${slot.hint} here`}
+                    </p>
+                    <p className="mt-1 text-xs text-brand-muted">{slot.hint} only · 5MB combined</p>
+                    <input
+                      ref={(el) => {
+                        inputRefs.current[kind] = el;
+                      }}
+                      type="file"
+                      accept={slot.exts.join(",")}
+                      className="hidden"
+                      onChange={(e) => {
+                        pickFile(kind, e.target.files?.[0]);
+                        e.target.value = "";
+                      }}
+                    />
+                  </div>
+                )}
               </div>
-              {uploading ? (
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-brand-softline">
-                  <div className="h-full bg-[#C25E26] transition-all" style={{ width: `${progress}%` }} />
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => inputRef.current?.click()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
-              }}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOver(false);
-                pickFile(e.dataTransfer.files?.[0]);
-              }}
-              className={`cursor-pointer rounded-xl border-2 border-dashed p-5 text-center transition-all ${
-                dragOver
-                  ? "border-brand-primary/60 bg-brand-primary/[0.05]"
-                  : "border-brand-primary/30 bg-brand-primary/[0.02] hover:border-brand-primary/60"
-              }`}
-            >
-              <UploadCloudIcon className="mx-auto h-8 w-8 text-brand-primary/70" />
-              <p className="mt-2 text-sm font-medium text-brand-deep">Click or drag PDF / PPTX here</p>
-              <p className="mt-1 text-xs text-brand-muted">PDF or PPTX only · up to 20MB</p>
-              <input
-                ref={inputRef}
-                type="file"
-                accept=".pdf,.ppt,.pptx,application/pdf,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation"
-                className="hidden"
-                onChange={(e) => {
-                  pickFile(e.target.files?.[0]);
-                  e.target.value = "";
-                }}
-              />
-            </div>
-          )}
+            );
+          })}
         </div>
       ) : (
         <p className="mt-4 text-xs text-brand-muted">Only the team lead can upload deliverables.</p>
@@ -315,27 +353,33 @@ export default function DeliverablesCard() {
                 <p className="font-semibold text-brand-deep">
                   v{d.version} · {new Date(d.submittedAt).toLocaleString()}
                 </p>
-                {d.pptUrl ? (
-                  d.pptUrl.startsWith("data:") ? (
-                    <button
-                      type="button"
-                      onClick={() => downloadDataUrl(d.pptUrl!, `deliverable-v${d.version}.pdf`)}
-                      className="font-semibold text-brand-primary hover:underline"
-                    >
-                      Download uploaded file
-                    </button>
-                  ) : (
-                    <a
-                      href={d.pptUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-semibold text-brand-primary hover:underline"
-                    >
-                      Open uploaded file
-                    </a>
-                  )
-                ) : null}
-                {d.reportUrl ? <p className="text-brand-muted">Report uploaded</p> : null}
+                {([
+                  ["Presentation", d.pptUrl, "ppt"],
+                  ["Report", d.reportUrl, "report"],
+                ] as const).map(([label, url, tag]) =>
+                  url ? (
+                    url.startsWith("data:") ? (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => downloadDataUrl(url, `${tag}-v${d.version}`)}
+                        className="block font-semibold text-brand-primary hover:underline"
+                      >
+                        Download {label.toLowerCase()}
+                      </button>
+                    ) : (
+                      <a
+                        key={tag}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block font-semibold text-brand-primary hover:underline"
+                      >
+                        Open {label.toLowerCase()}
+                      </a>
+                    )
+                  ) : null,
+                )}
                 {d.githubUrl ? (
                   <a href={d.githubUrl} target="_blank" rel="noreferrer" className="text-brand-primary hover:underline">
                     GitHub repo

@@ -12,8 +12,14 @@ import { nextVersion } from '../../domain/rules';
 import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { consumeToken } from '../../lib/rate-limit';
-import { resolveDeliverableRow } from '../../lib/deliverable-url';
-import { createPresignedPutUrl, isS3Configured, normalizeUploadMime, putObjectBuffer } from '../../lib/s3';
+import { objectKeyFromStoredUrl, resolveDeliverableRow } from '../../lib/deliverable-url';
+import {
+  createPresignedPutUrl,
+  headObjectSize,
+  isS3Configured,
+  normalizeUploadMime,
+  putObjectBuffer,
+} from '../../lib/s3';
 import { requestVirusScan } from '../../lib/scan';
 import { TtlCache } from '../../lib/ttl-cache';
 import { TeamsService } from '../teams/service';
@@ -27,6 +33,18 @@ import {
 } from './schema';
 
 const stagesListCache = new TtlCache<unknown>(30_000);
+
+const MAX_DELIVERABLE_TOTAL_BYTES = 5 * 1024 * 1024;
+
+/** Size in bytes of a stored deliverable (data URL or S3 object); 0 when unknown/absent. */
+async function storedFileSize(stored: string | null | undefined): Promise<number> {
+  if (!stored) return 0;
+  if (stored.startsWith('data:')) {
+    return Buffer.from(stored.slice(stored.indexOf(',') + 1), 'base64').length;
+  }
+  const key = objectKeyFromStoredUrl(stored);
+  return key ? ((await headObjectSize(key)) ?? 0) : 0;
+}
 
 @Injectable()
 export class StagesService {
@@ -128,10 +146,14 @@ export class StagesService {
     const stage = await this.prisma.stage.findUnique({ where: { id: stageId } });
     if (!stage) throw new NotFoundException('Stage not found');
 
+    const kind = body.kind;
     const filename = body.filename.trim();
     const ext = filename.includes('.') ? filename.slice(filename.lastIndexOf('.')).toLowerCase() : '';
-    if (!['.pdf', '.ppt', '.pptx'].includes(ext)) {
-      throw new BadRequestException('Only PDF or PPTX files are allowed');
+    const allowedExt = kind === 'ppt' ? ['.ppt', '.pptx'] : ['.pdf', '.docx'];
+    if (!allowedExt.includes(ext)) {
+      throw new BadRequestException(
+        kind === 'ppt' ? 'Presentation must be a PPT or PPTX file' : 'Report must be a PDF or DOCX file',
+      );
     }
 
     const contentType = normalizeUploadMime(filename, body.contentType);
@@ -143,27 +165,43 @@ export class StagesService {
       throw new BadRequestException('Invalid file payload');
     }
     if (!buffer.length) throw new BadRequestException('Empty file');
-    if (buffer.length > 20 * 1024 * 1024) {
-      throw new BadRequestException('File exceeds the 20MB upload limit');
+
+    // One deliverable row per stage holds both documents; the 5MB cap applies to the pair.
+    const existing = await this.prisma.deliverable.findFirst({
+      where: { teamId: body.teamId, stageId },
+      orderBy: { version: 'desc' },
+    });
+    if (existing?.locked) {
+      throw new HttpException('Deliverables are locked for this stage', 423);
+    }
+    const otherSize = await storedFileSize(kind === 'ppt' ? existing?.reportUrl : existing?.pptUrl);
+    if (buffer.length + otherSize > MAX_DELIVERABLE_TOTAL_BYTES) {
+      throw new BadRequestException(
+        `Presentation and report together must not exceed 5MB (${(otherSize / (1024 * 1024)).toFixed(1)}MB already uploaded)`,
+      );
     }
 
     const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const key = `deliverables/${body.teamId}/${stageId}/ppt/${Date.now()}-${safeName}`;
+    const key = `deliverables/${body.teamId}/${stageId}/${kind}/${Date.now()}-${safeName}`;
     let fileUrl: string;
     if (isS3Configured()) {
       const stored = await putObjectBuffer(key, buffer, contentType);
       fileUrl = stored.publicUrl;
-    } else if (buffer.length <= 5 * 1024 * 1024) {
-      // Local/dev fallback when object storage is not configured.
-      fileUrl = `data:${contentType};base64,${buffer.toString('base64')}`;
     } else {
-      throw new BadRequestException('File storage is not configured (set S3_BUCKET) for files over 5MB');
+      // Local/dev fallback when object storage is not configured (total is capped at 5MB).
+      fileUrl = `data:${contentType};base64,${buffer.toString('base64')}`;
     }
 
-    const row = await this.submitDeliverable(user, stageId, {
-      teamId: body.teamId,
-      pptUrl: fileUrl,
-    });
+    const urls = kind === 'ppt' ? { pptUrl: fileUrl } : { reportUrl: fileUrl };
+    if (existing) {
+      const scanStatus = await requestVirusScan(fileUrl);
+      const row = await this.prisma.deliverable.update({
+        where: { id: existing.id },
+        data: { ...urls, scanStatus, submittedAt: new Date() },
+      });
+      return resolveDeliverableRow(row);
+    }
+    const row = await this.submitDeliverable(user, stageId, { teamId: body.teamId, ...urls });
     return resolveDeliverableRow(row);
   }
 

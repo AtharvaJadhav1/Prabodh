@@ -1,4 +1,4 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 function s3() {
@@ -105,6 +105,17 @@ export async function putObjectBuffer(key: string, body: Buffer, contentType: st
     }),
   );
   return { key, publicUrl: publicObjectUrl(key) };
+}
+
+export async function headObjectSize(key: string): Promise<number | null> {
+  const bucket = process.env.S3_BUCKET;
+  if (!bucket) return null;
+  try {
+    const out = await s3().send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    return out.ContentLength ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export function isS3Configured() {

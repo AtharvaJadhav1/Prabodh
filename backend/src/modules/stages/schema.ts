@@ -36,4 +36,6 @@ export const directUploadSchema = z.object({
   filename: z.string().min(1),
   contentType: z.string().min(3).optional(),
   dataBase64: z.string().min(1),
+  /** ppt slot: .ppt/.pptx — report slot: .pdf/.docx. */
+  kind: z.enum(['ppt', 'report']).default('ppt'),
 });
