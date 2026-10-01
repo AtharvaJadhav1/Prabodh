@@ -3,11 +3,28 @@
 import { useState } from "react";
 import { isDualMentor, type PlatformRole } from "../../lib/session";
 import { roleLabel, useAuth } from "./AuthProvider";
+import { LandmarkIcon, BriefcaseIcon, ChevronsUpDownIcon } from "../dashboard/icons";
 
 const SWITCH_TARGETS: PlatformRole[] = ["institute_mentor", "industry_mentor"];
 
+interface RoleConfig {
+  icon: React.FC<{ className?: string }>;
+  label: string;
+}
+
+const ROLE_CONFIG: Record<Exclude<PlatformRole, "student" | "admin" | "student_expert">, RoleConfig> = {
+  institute_mentor: {
+    icon: LandmarkIcon,
+    label: "Institute Mentor",
+  },
+  industry_mentor: {
+    icon: BriefcaseIcon,
+    label: "Industry Mentor",
+  },
+};
+
 /**
- * Dual-role workspace switcher. Renders ONLY for accounts holding both
+ * Premium Notion-style workspace switcher. Renders ONLY for accounts holding both
  * institute_mentor and industry_mentor — everyone else sees nothing.
  */
 export default function RoleSwitcher() {
@@ -19,28 +36,50 @@ export default function RoleSwitcher() {
   const current = session?.activeRole ?? session?.platformRole;
   const other = SWITCH_TARGETS.find((r) => r !== current) ?? "institute_mentor";
 
+  const currentConfig = ROLE_CONFIG[current as keyof typeof ROLE_CONFIG];
+  const otherConfig = ROLE_CONFIG[other as keyof typeof ROLE_CONFIG];
+  const CurrentIcon = currentConfig?.icon ?? LandmarkIcon;
+  const OtherIcon = otherConfig?.icon ?? BriefcaseIcon;
+
+  const handleSwitch = async () => {
+    setBusy(true);
+    try {
+      await switchRole(other);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <div className="rounded-xl border border-brand-softline bg-white p-3">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-brand-muted">
-        Workspace Role
-      </p>
-      <p className="mt-1 truncate text-sm font-extrabold text-brand-deep">
-        {roleLabel(current ?? "institute_mentor")}
+    <div className="px-3 py-2">
+      <p className="text-[10px] font-semibold text-brand-muted uppercase tracking-widest mb-1.5 px-1">
+        Workspace
       </p>
       <button
         type="button"
+        onClick={handleSwitch}
         disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          try {
-            await switchRole(other);
-          } finally {
-            setBusy(false);
-          }
-        }}
-        className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-deep px-4 py-2 text-xs font-bold tracking-wide text-white transition-all duration-200 hover:bg-brand-primary disabled:opacity-60"
+        aria-label={`Switch to ${otherConfig?.label ?? roleLabel(other)}`}
+        className="group w-full flex items-center justify-between p-2 rounded-lg border border-transparent hover:border-brand-softline hover:bg-brand-cream/80 hover:shadow-sm transition-all duration-200 ease-in-out text-left disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {busy ? "Switching…" : `Switch to ${roleLabel(other)}`}
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center justify-center w-8 h-8 rounded-md bg-brand-deep/10 text-brand-deep">
+            <CurrentIcon className="w-4 h-4" aria-hidden="true" />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-semibold text-brand-deep leading-none truncate">
+              {currentConfig?.label ?? roleLabel(current ?? "institute_mentor")}
+            </span>
+            <span className="text-xs text-brand-muted mt-0.5 truncate">
+              Click to switch
+            </span>
+          </div>
+        </div>
+
+        {/* Hover-revealed swap icon */}
+        <div className="text-brand-muted group-hover:text-brand-deep transition-colors duration-200 flex-shrink-0">
+          <ChevronsUpDownIcon className="w-4 h-4" aria-hidden="true" />
+        </div>
       </button>
     </div>
   );
