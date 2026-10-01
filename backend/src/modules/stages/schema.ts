@@ -14,6 +14,8 @@ export const deliverableSchema = z.object({
   teamId: z.string().uuid(),
   pptUrl: z.string().optional(),
   reportUrl: z.string().optional(),
+  pptFileName: z.string().optional(),
+  reportFileName: z.string().optional(),
   videoUrl: z.string().url().optional(),
   githubUrl: z.string().url().optional(),
 });

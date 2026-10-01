@@ -412,6 +412,8 @@ model Deliverable {
   stageId     String   @map("stage_id")
   pptUrl      String?  @map("ppt_url")
   reportUrl   String?  @map("report_url")
+  pptFileName    String?  @map("ppt_file_name")
+  reportFileName String?  @map("report_file_name")
   videoUrl    String?  @map("video_url")
   githubUrl   String?  @map("github_url")
   version     Int      @default(1)

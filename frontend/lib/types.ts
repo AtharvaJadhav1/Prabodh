@@ -32,6 +32,8 @@ export type PortalDeliverable = {
   version: number;
   pptUrl?: string | null;
   reportUrl?: string | null;
+  pptFileName?: string | null;
+  reportFileName?: string | null;
   videoUrl?: string | null;
   githubUrl?: string | null;
   submittedAt: string;

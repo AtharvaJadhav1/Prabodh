@@ -178,7 +178,10 @@ export class StagesService {
       fileUrl = `data:${contentType};base64,${buffer.toString('base64')}`;
     }
 
-    const urls = kind === 'ppt' ? { pptUrl: fileUrl } : { reportUrl: fileUrl };
+    const urls =
+      kind === 'ppt'
+        ? { pptUrl: fileUrl, pptFileName: filename }
+        : { reportUrl: fileUrl, reportFileName: filename };
     if (existing) {
       const scanStatus = await requestVirusScan(fileUrl);
       const row = await this.prisma.deliverable.update({
@@ -214,6 +217,8 @@ export class StagesService {
         stageId,
         pptUrl: body.pptUrl,
         reportUrl: body.reportUrl,
+        pptFileName: body.pptFileName,
+        reportFileName: body.reportFileName,
         videoUrl: body.videoUrl,
         githubUrl: body.githubUrl,
         version: nextVersion(prev?.version),

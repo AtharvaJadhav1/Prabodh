@@ -331,63 +331,90 @@ export default function DeliverablesCard() {
       )}
 
       {deliverables.length > 0 ? (
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 space-y-3">
           <p className="text-xs font-bold uppercase tracking-wider text-brand-muted">Uploaded files</p>
-          {deliverables.map((d) => (
-            <div
-              key={d.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-softline p-3 text-xs"
-            >
-              <div className="min-w-0 space-y-1">
-                <p className="font-semibold text-brand-deep">
-                  v{d.version} · {new Date(d.submittedAt).toLocaleString()}
-                </p>
-                {([
-                  ["Presentation", d.pptUrl, "ppt"],
-                  ["Report", d.reportUrl, "report"],
-                ] as const).map(([label, url, tag]) =>
-                  url ? (
-                    url.startsWith("data:") ? (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => downloadDataUrl(url, `${tag}-v${d.version}`)}
-                        className="block font-semibold text-brand-primary hover:underline"
-                      >
-                        Download {label.toLowerCase()}
-                      </button>
+          {current && (current.pptUrl || current.reportUrl) ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(
+                [
+                  ["ppt", current.pptUrl, current.pptFileName],
+                  ["report", current.reportUrl, current.reportFileName],
+                ] as const
+              ).map(([kind, url, name]) => {
+                const label = SLOTS[kind].label;
+                const fileName = name || label;
+                return (
+                  <div key={kind} className="rounded-xl border border-brand-softline p-3 text-xs">
+                    <p className="font-bold uppercase tracking-wider text-brand-muted">{label}</p>
+                    {url ? (
+                      <>
+                        <p className="mt-1.5 break-all text-sm font-semibold text-brand-deep" title={fileName}>
+                          {fileName}
+                        </p>
+                        <p className="mt-0.5 text-brand-muted">
+                          v{current.version} · {new Date(current.submittedAt).toLocaleString()}
+                        </p>
+                        {url.startsWith("data:") ? (
+                          <button
+                            type="button"
+                            onClick={() => downloadDataUrl(url, fileName)}
+                            className="mt-2 font-semibold text-brand-primary hover:underline"
+                          >
+                            Download
+                          </button>
+                        ) : (
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-2 inline-block font-semibold text-brand-primary hover:underline"
+                          >
+                            Open file
+                          </a>
+                        )}
+                      </>
                     ) : (
-                      <a
-                        key={tag}
-                        href={url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block font-semibold text-brand-primary hover:underline"
-                      >
-                        Open {label.toLowerCase()}
-                      </a>
-                    )
-                  ) : null,
-                )}
-                {d.githubUrl ? (
-                  <a href={d.githubUrl} target="_blank" rel="noreferrer" className="text-brand-primary hover:underline">
-                    GitHub repo
-                  </a>
+                      <p className="mt-1.5 text-brand-muted">Not uploaded yet</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+          {deliverables
+            .filter((d) => d.githubUrl || d.id === current?.id)
+            .map((d) => (
+              <div
+                key={d.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-softline p-3 text-xs"
+              >
+                <div className="min-w-0">
+                  {d.githubUrl ? (
+                    <a
+                      href={d.githubUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="break-all font-semibold text-brand-primary hover:underline"
+                    >
+                      GitHub: {d.githubUrl}
+                    </a>
+                  ) : (
+                    <span className="text-brand-muted">Submission v{d.version}</span>
+                  )}
+                </div>
+                {isLead && !d.locked ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void deleteDeliverable(d.id)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                  >
+                    <TrashIcon className="h-3.5 w-3.5" />
+                    {d.githubUrl && !(d.pptUrl || d.reportUrl) ? "Delete" : "Delete submission"}
+                  </button>
                 ) : null}
               </div>
-              {isLead && !d.locked ? (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void deleteDeliverable(d.id)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50"
-                >
-                  <TrashIcon className="h-3.5 w-3.5" />
-                  Delete
-                </button>
-              ) : null}
-            </div>
-          ))}
+            ))}
         </div>
       ) : null}
 

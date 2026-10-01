@@ -11,6 +11,8 @@ async function main() {
     `ALTER TABLE "teams" ADD COLUMN IF NOT EXISTS "mentor_locked_at" TIMESTAMP(3)`,
     // Dual-role accounts (20261001000000): secondary roles live in an enum array.
     `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "additional_roles" "PlatformRole"[] NOT NULL DEFAULT '{}'`,
+    `ALTER TABLE "deliverables" ADD COLUMN IF NOT EXISTS "ppt_file_name" TEXT`,
+    `ALTER TABLE "deliverables" ADD COLUMN IF NOT EXISTS "report_file_name" TEXT`,
     // Partial unique index — one pending join request per student per team.
     // Prisma's db push cannot create partial indexes, so it lives here (and in
     // prisma/migrations/20260919000000_add_join_requests/migration.sql).
