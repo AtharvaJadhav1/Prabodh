@@ -12,10 +12,9 @@ import { nextVersion } from '../../domain/rules';
 import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { consumeToken } from '../../lib/rate-limit';
-import { objectKeyFromStoredUrl, resolveDeliverableRow } from '../../lib/deliverable-url';
+import { resolveDeliverableRow } from '../../lib/deliverable-url';
 import {
   createPresignedPutUrl,
-  headObjectSize,
   isS3Configured,
   normalizeUploadMime,
   putObjectBuffer,
@@ -34,17 +33,7 @@ import {
 
 const stagesListCache = new TtlCache<unknown>(30_000);
 
-const MAX_DELIVERABLE_TOTAL_BYTES = 5 * 1024 * 1024;
-
-/** Size in bytes of a stored deliverable (data URL or S3 object); 0 when unknown/absent. */
-async function storedFileSize(stored: string | null | undefined): Promise<number> {
-  if (!stored) return 0;
-  if (stored.startsWith('data:')) {
-    return Buffer.from(stored.slice(stored.indexOf(',') + 1), 'base64').length;
-  }
-  const key = objectKeyFromStoredUrl(stored);
-  return key ? ((await headObjectSize(key)) ?? 0) : 0;
-}
+const MAX_DELIVERABLE_FILE_BYTES = 5 * 1024 * 1024;
 
 @Injectable()
 export class StagesService {
@@ -166,7 +155,7 @@ export class StagesService {
     }
     if (!buffer.length) throw new BadRequestException('Empty file');
 
-    // One deliverable row per stage holds both documents; the 5MB cap applies to the pair.
+    // One deliverable row per stage holds both documents; each is capped at 5MB.
     const existing = await this.prisma.deliverable.findFirst({
       where: { teamId: body.teamId, stageId },
       orderBy: { version: 'desc' },
@@ -174,11 +163,8 @@ export class StagesService {
     if (existing?.locked) {
       throw new HttpException('Deliverables are locked for this stage', 423);
     }
-    const otherSize = await storedFileSize(kind === 'ppt' ? existing?.reportUrl : existing?.pptUrl);
-    if (buffer.length + otherSize > MAX_DELIVERABLE_TOTAL_BYTES) {
-      throw new BadRequestException(
-        `Presentation and report together must not exceed 5MB (${(otherSize / (1024 * 1024)).toFixed(1)}MB already uploaded)`,
-      );
+    if (buffer.length > MAX_DELIVERABLE_FILE_BYTES) {
+      throw new BadRequestException('Each file must not exceed 5MB');
     }
 
     const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -188,7 +174,7 @@ export class StagesService {
       const stored = await putObjectBuffer(key, buffer, contentType);
       fileUrl = stored.publicUrl;
     } else {
-      // Local/dev fallback when object storage is not configured (total is capped at 5MB).
+      // Local/dev fallback when object storage is not configured (each file is capped at 5MB).
       fileUrl = `data:${contentType};base64,${buffer.toString('base64')}`;
     }
 

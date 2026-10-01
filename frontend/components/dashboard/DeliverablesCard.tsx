@@ -11,7 +11,7 @@ import { downloadDataUrl } from "../../lib/download-data-url";
 import { useTeam } from "./TeamProvider";
 import { FileCheckIcon, GithubIcon, TrashIcon, UploadCloudIcon, XIcon } from "./icons";
 
-const MAX_TOTAL_BYTES = 5 * 1024 * 1024;
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 type Kind = "ppt" | "report";
 
@@ -34,12 +34,6 @@ function getExt(name: string) {
 
 function getMime(file: File) {
   return MIME_BY_EXT[getExt(file.name)] || file.type || "application/octet-stream";
-}
-
-function dataUrlBytes(url?: string | null) {
-  if (!url || !url.startsWith("data:")) return 0;
-  const b64 = url.slice(url.indexOf(",") + 1);
-  return Math.floor((b64.length * 3) / 4);
 }
 
 function formatBytes(n: number) {
@@ -122,9 +116,6 @@ export default function DeliverablesCard() {
 
   const current = deliverables.find((d) => d.pptUrl || d.reportUrl) ?? deliverables[0];
 
-  // Bytes already stored for each slot (known client-side only for data URLs; the server is authoritative).
-  const storedBytes = (kind: Kind) => dataUrlBytes(kind === "ppt" ? current?.pptUrl : current?.reportUrl);
-
   const pickFile = (kind: Kind, next?: File | null) => {
     if (!next) return;
     const slot = SLOTS[kind];
@@ -132,10 +123,8 @@ export default function DeliverablesCard() {
       setMessage(`${slot.label} must be ${slot.hint}.`);
       return;
     }
-    const other: Kind = kind === "ppt" ? "report" : "ppt";
-    const otherBytes = files[other]?.size ?? storedBytes(other);
-    if (next.size + otherBytes > MAX_TOTAL_BYTES) {
-      setMessage("Presentation and report together must not exceed 5MB.");
+    if (next.size > MAX_FILE_BYTES) {
+      setMessage(`${slot.label} exceeds the 5MB limit.`);
       return;
     }
     setMessage("");
@@ -234,7 +223,7 @@ export default function DeliverablesCard() {
       </div>
       <p className="mt-1.5 text-sm text-brand-muted">
         Upload your <span className="font-semibold text-brand-deep">presentation (PPT/PPTX)</span> and{" "}
-        <span className="font-semibold text-brand-deep">report (PDF/DOCX)</span>. Max 5MB combined.
+        <span className="font-semibold text-brand-deep">report (PDF/DOCX)</span>. Max 5MB each.
       </p>
 
       {isLead ? (
@@ -318,7 +307,7 @@ export default function DeliverablesCard() {
                     <p className="mt-2 text-sm font-medium text-brand-deep">
                       {uploaded ? `Replace ${slot.label.toLowerCase()}` : `Click or drag ${slot.hint} here`}
                     </p>
-                    <p className="mt-1 text-xs text-brand-muted">{slot.hint} only · 5MB combined</p>
+                    <p className="mt-1 text-xs text-brand-muted">{slot.hint} only · up to 5MB each</p>
                     <input
                       ref={(el) => {
                         inputRefs.current[kind] = el;
