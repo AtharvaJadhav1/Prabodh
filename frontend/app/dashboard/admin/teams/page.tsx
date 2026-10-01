@@ -9,6 +9,7 @@ import { api } from "../../../../lib/api";
 import { SearchIcon, UsersIcon, ChevronRightIcon } from "../../../../components/dashboard/icons";
 import StatusPill, { STATUS_BADGES, type TeamStatus } from "../../../../components/admin/StatusPill";
 import type { ReactNode } from "react";
+import BatchesCard from "../../../../components/admin/batches/BatchesCard";
 
 type AdminTeam = {
   id: string;
@@ -160,6 +161,7 @@ export default function AdminTeamsPage() {
 
   return (
     <AdminShell title="Teams">
+      <BatchesCard />
       {error ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm font-medium text-red-600">{error}</div>
       ) : loading ? (

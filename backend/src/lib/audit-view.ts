@@ -219,6 +219,20 @@ function summarizeAudit(input: SummaryInput): string {
       const type = mentorTypeLabel(assignment?.mentorType ?? after?.mentorType);
       return `Reassigned ${nextName} as ${type} mentor, replacing ${prevName}, for ${teamLabel ?? 'the team'}`;
     }
+    case 'batch.create': {
+      const n = typeof after?.teamCount === 'number' ? ` with ${after.teamCount} team(s)` : '';
+      return `Created batch "${String(after?.name ?? '')}"${n}`;
+    }
+    case 'batch.update':
+      return `Updated batch${after?.name ? ` "${String(after.name)}"` : ''}`;
+    case 'batch.add_teams': {
+      const n = Array.isArray(after?.teamIds) ? after.teamIds.length : 0;
+      return `Added ${n} team(s) to a batch`;
+    }
+    case 'batch.remove_team':
+      return 'Removed a team from a batch';
+    case 'batch.delete':
+      return `Deleted batch "${String(before?.name ?? '')}"`;
     case 'mentor.unassign': {
       const mentorName = nameOf(before?.mentorUserId) ?? 'a mentor';
       const type = mentorTypeLabel(before?.mentorType ?? assignment?.mentorType);

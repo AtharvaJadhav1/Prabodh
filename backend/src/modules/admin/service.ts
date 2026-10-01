@@ -70,6 +70,7 @@ export class AdminService {
     mentor?: string;
     status?: string;
     department?: string;
+    unbatched?: string;
     page?: string;
     limit?: string;
   }) {
@@ -78,6 +79,7 @@ export class AdminService {
       ...(query.theme ? { theme: { contains: query.theme, mode: 'insensitive' } } : {}),
       ...(query.institute ? { institute: { contains: query.institute, mode: 'insensitive' } } : {}),
       ...(query.status ? { status: query.status as never } : {}),
+      ...(query.unbatched === 'true' || query.unbatched === '1' ? { batchId: null } : {}),
       ...(query.mentor
         ? { mentorAssignments: { some: { active: true, mentor: { fullName: { contains: query.mentor, mode: 'insensitive' } } } } }
         : {}),

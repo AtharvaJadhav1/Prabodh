@@ -131,6 +131,7 @@ model User {
   updatedAt    DateTime     @updatedAt @map("updated_at")
 
   ledTeams                Team[]             @relation("TeamLeader")
+  batchesCreated          Batch[]            @relation("BatchCreator")
   facultyTeams            Team[]             @relation("TeamFacultyMentor")
   industrialMentorProfile IndustrialMentor?
   memberships             TeamMember[]
@@ -169,9 +170,11 @@ model Team {
   mentorLockedAt     DateTime?  @map("mentor_locked_at")
   facultyMentorId    String?    @map("faculty_mentor_id")
   industrialMentorId String?    @map("industrial_mentor_id")
+  batchId            String?    @map("batch_id")
   createdAt          DateTime   @default(now()) @map("created_at")
   updatedAt          DateTime   @updatedAt @map("updated_at")
 
+  batch                Batch?             @relation(fields: [batchId], references: [id], onDelete: SetNull)
   leader               User               @relation("TeamLeader", fields: [leaderUserId], references: [id])
   facultyMentor        User?              @relation("TeamFacultyMentor", fields: [facultyMentorId], references: [id])
   industrialMentor     IndustrialMentor?  @relation(fields: [industrialMentorId], references: [id])
@@ -194,7 +197,23 @@ model Team {
   @@index([leaderUserId])
   @@index([facultyMentorId])
   @@index([industrialMentorId])
+  @@index([batchId])
   @@map("teams")
+}
+
+/// Admin-managed grouping of teams. A team belongs to at most one batch.
+model Batch {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdById String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  createdBy User   @relation("BatchCreator", fields: [createdById], references: [id])
+  teams     Team[]
+
+  @@map("batches")
 }
 
 model IndustrialMentor {

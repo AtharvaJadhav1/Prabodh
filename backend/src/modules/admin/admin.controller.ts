@@ -55,6 +55,7 @@ export class AdminController {
       mentor?: string;
       status?: string;
       department?: string;
+      unbatched?: string;
       page?: string;
       limit?: string;
     },
