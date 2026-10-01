@@ -8,6 +8,7 @@ import Avatar from "../../../../components/Avatar";
 import { useAdmin } from "../../../../components/admin/AdminProvider";
 import { useAuth } from "../../../../components/auth/AuthProvider";
 import { api, apiPost, ApiError } from "../../../../lib/api";
+import { holdsRole } from "../../../../lib/session";
 import type { PortalUser } from "../../../../lib/types";
 import {
   UserPlusIcon,
@@ -97,6 +98,7 @@ export default function AdminUsersPage() {
   const [inviteDepartment, setInviteDepartment] = useState("");
   const [inviteMsg, setInviteMsg] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteReset, setInviteReset] = useState(false);
   const [importBusy, setImportBusy] = useState(false);
   const [importMsg, setImportMsg] = useState("");
   const [importBatchId, setImportBatchId] = useState<string | null>(null);
@@ -211,9 +213,9 @@ export default function AdminUsersPage() {
   };
 
   const students = users.filter((u) => u.platformRole === "student");
-  const industry = users.filter((u) => u.platformRole === "industry_mentor");
-  const institute = users.filter((u) => u.platformRole === "institute_mentor");
-  const experts = users.filter((u) => u.platformRole === "student_expert");
+  const industry = users.filter((u) => holdsRole(u, "industry_mentor"));
+  const institute = users.filter((u) => holdsRole(u, "institute_mentor"));
+  const experts = users.filter((u) => holdsRole(u, "student_expert"));
 
   const tabs: { key: Tab; label: string; count: number }[] = [
     { key: "students", label: "Students", count: students.length },
@@ -504,6 +506,15 @@ export default function AdminUsersPage() {
                 className={INPUT_CLS}
               />
             </div>
+            <label className="flex items-center gap-2 text-xs font-medium text-neutral-600 md:col-span-2">
+              <input
+                type="checkbox"
+                checked={inviteReset}
+                onChange={(e) => setInviteReset(e.target.checked)}
+                className="h-4 w-4 rounded border-neutral-300"
+              />
+              Reset password (also for existing accounts — otherwise they keep their current password)
+            </label>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-neutral-100 pt-5">
@@ -523,6 +534,7 @@ export default function AdminUsersPage() {
                   const result = await apiPost<{
                     email: string;
                     platformRole?: string;
+                    additionalRoles?: string[];
                     emailSent?: boolean;
                     emailError?: string | null;
                   }>("/admin/users/invite", {
@@ -531,13 +543,22 @@ export default function AdminUsersPage() {
                     platformRole: inviteRole,
                     institute: inviteInstitute.trim() || undefined,
                     department: inviteDepartment.trim() || undefined,
+                    ...(inviteReset ? { resetPassword: true } : {}),
                   });
                   const roleLabel = ROLE_LABEL[result.platformRole ?? inviteRole] ?? inviteRole;
-                  setInviteMsg(`Created ${result.email} as ${roleLabel}. Credentials email is sending.`);
+                  const extraRoles = (result.additionalRoles ?? []).filter((r) => r !== result.platformRole);
+                  const extraLabel = extraRoles.length > 0 ? ` (+${extraRoles.map((r) => ROLE_LABEL[r] ?? r).join(", ")})` : "";
+                  setInviteMsg(
+                    `Saved ${result.email} as ${roleLabel}${extraLabel}. ` +
+                      (inviteReset || !extraRoles.length
+                        ? "Credentials email is sending."
+                        : "Existing password kept — role-added email is sending."),
+                  );
                   setInviteEmail("");
                   setInviteName("");
                   setInviteInstitute("");
                   setInviteDepartment("");
+                  setInviteReset(false);
                   void reload();
                 } catch (err) {
                   setInviteMsg(err instanceof Error ? err.message : "Invite failed");
@@ -572,6 +593,8 @@ export default function AdminUsersPage() {
               <h2 className="text-lg font-bold text-neutral-900">CSV Bulk Import</h2>
               <p className="mt-1 text-xs text-neutral-500">
                 Import many faculty and staff accounts at once — paste raw CSV or upload a file.
+                For a dual-role account (one email as both mentors), include two rows with the same
+                email and different roles — they merge into one account with one password.
               </p>
             </div>
           </div>
@@ -754,7 +777,16 @@ export default function AdminUsersPage() {
               ),
             },
             { label: "Email", render: (u) => <span className="font-mono text-brand-muted">{u.email}</span> },
-            { label: "Role", render: (u) => ROLE_LABEL[u.platformRole] ?? u.platformRole },
+            {
+              label: "Role",
+              render: (u) => {
+                const extras = (u.additionalRoles ?? []).filter((r) => r !== u.platformRole);
+                const base = ROLE_LABEL[u.platformRole] ?? u.platformRole;
+                return extras.length > 0
+                  ? `${base} + ${extras.map((r) => ROLE_LABEL[r] ?? r).join(", ")}`
+                  : base;
+              },
+            },
             { label: "Institute", render: (u) => u.institute ?? "—" },
             { label: "Department", render: (u) => u.department ?? "—" },
             {

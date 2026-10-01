@@ -15,6 +15,7 @@ import {
   ChevronRightIcon,
 } from "../dashboard/icons";
 import { roleLabel, useAuth, initialsFrom } from "../auth/AuthProvider";
+import RoleSwitcher from "../auth/RoleSwitcher";
 import { useMentorRequests } from "./MentorRequestProvider";
 
 type Props = {
@@ -34,7 +35,7 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
   const pathname = usePathname();
   const { pendingCount, unreadCommentCount } = useMentorRequests();
   const { session, logout } = useAuth();
-  const role = roleLabel(session?.platformRole ?? "institute_mentor");
+  const role = roleLabel(session?.activeRole ?? session?.platformRole ?? "institute_mentor");
   const fullName = session?.fullName ?? "Mentor";
   const displayName = fullName.length > 16 ? fullName.split(" ")[0] : fullName;
 
@@ -130,6 +131,7 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
 
         <div className="border-t border-brand-softline px-4 py-4">
           <div className="flex flex-col gap-3">
+            <RoleSwitcher />
             <Link
               href="/dashboard/mentor/profile"
               onClick={onCloseMobile}

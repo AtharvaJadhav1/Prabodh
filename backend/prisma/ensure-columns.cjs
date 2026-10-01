@@ -89,6 +89,8 @@ async function main() {
     `ALTER TABLE "user_import_rows" ADD COLUMN IF NOT EXISTS "email_sent" BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE "user_import_rows" ADD COLUMN IF NOT EXISTS "email_error" TEXT`,
     `ALTER TABLE "user_import_rows" ADD COLUMN IF NOT EXISTS "email_sent_at" TIMESTAMP(3)`,
+    // Dual-role accounts: secondary roles in an enum array (platform_role stays primary).
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "additional_roles" "PlatformRole"[] NOT NULL DEFAULT '{}'`,
   ];
 
   for (const sql of statements) {

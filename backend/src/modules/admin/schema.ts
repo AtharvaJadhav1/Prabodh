@@ -6,6 +6,8 @@ export const adminInviteUserSchema = z.object({
   platformRole: z.enum(['institute_mentor', 'industry_mentor', 'admin', 'student_expert']),
   institute: z.string().min(2).max(200).optional(),
   department: z.string().max(120).optional(),
+  /** Rotate the password even when the account already exists (default: keep). */
+  resetPassword: z.boolean().optional(),
 });
 
 export const exportSchema = z.object({

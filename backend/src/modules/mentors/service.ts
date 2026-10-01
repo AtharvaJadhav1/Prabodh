@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { InviteStatus, MentorType, PlatformRole, Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
+import { hasRole } from '../../lib/roles';
 import { pickLeastLoadedMentor } from '../../domain/rules';
 import { writeAudit } from '../../lib/audit';
 import { syncTeamMentorPointers } from '../../lib/mentor-pointers';
@@ -266,10 +267,15 @@ export class MentorsService {
   }
 
   listFaculty() {
+    // Faculty directory: anyone holding institute_mentor (primary OR secondary),
+    // so industry-primary dual accounts appear as invitable faculty too.
     return this.prisma.user.findMany({
       where: {
         isActive: true,
-        platformRole: { in: [PlatformRole.institute_mentor, PlatformRole.industry_mentor] },
+        OR: [
+          { platformRole: PlatformRole.institute_mentor },
+          { additionalRoles: { has: PlatformRole.institute_mentor } },
+        ],
       },
       select: {
         id: true,
@@ -279,6 +285,7 @@ export class MentorsService {
         institute: true,
         domainTags: true,
         platformRole: true,
+        additionalRoles: true,
       },
       orderBy: { fullName: 'asc' },
     });
@@ -338,7 +345,7 @@ export class MentorsService {
       }
     } else {
       const found = await this.prisma.user.findUnique({ where: { email } });
-      if (!found || !found.isActive || found.platformRole !== PlatformRole.institute_mentor) {
+      if (!found || !found.isActive || !hasRole(found, PlatformRole.institute_mentor)) {
         throw new BadRequestException(
           'No faculty account exists for this email. Ask your nodal admin to create their Prabodh login first.',
         );

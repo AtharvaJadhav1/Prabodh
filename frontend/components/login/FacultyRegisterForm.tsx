@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
 import { useAuth } from "../auth/AuthProvider";
-import { dashboardForRole } from "../../lib/session";
+import { landingForLogin } from "../../lib/session";
 import OtpAuthFlow from "./OtpAuthFlow";
 import TextField from "./TextField";
 import { INSTITUTES } from "./RegisterForm";
@@ -54,7 +54,7 @@ export default function FacultyRegisterForm() {
         }}
         onSuccess={(result) => {
           establishSession(result);
-          router.replace(dashboardForRole(result.platformRole));
+          router.replace(landingForLogin(result));
         }}
       />
     );

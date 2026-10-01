@@ -94,8 +94,12 @@ export class MentorsRepository {
 
   mentorsByType(mentorType: MentorType) {
     const role = mentorType === 'institute' ? 'institute_mentor' : 'industry_mentor';
+    // Dual-role accounts appear under both directories: match primary OR secondary.
     return this.prisma.user.findMany({
-      where: { platformRole: role, isActive: true },
+      where: {
+        OR: [{ platformRole: role }, { additionalRoles: { has: role } }],
+        isActive: true,
+      },
     });
   }
 

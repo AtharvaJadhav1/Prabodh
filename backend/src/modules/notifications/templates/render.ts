@@ -16,7 +16,8 @@ export type EmailTemplate =
   | 'join_request'
   | 'join_request_outcome'
   | 'otp'
-  | 'staff_credentials';
+  | 'staff_credentials'
+  | 'role_granted';
 
 const BRAND = {
   deep: '#5B2E10',
@@ -223,6 +224,15 @@ export function renderEmailHtml(
         cta: cta ?? { label: 'Sign in to Prabodh', url: `${origin}/login?switch=1` },
         portalLabel: 'Faculty & Mentors',
         footerNote: 'Please keep this password confidential. You may change it after signing in.',
+      });
+    case 'role_granted':
+      return layout({
+        title,
+        greeting,
+        bodyHtml,
+        cta: cta ?? { label: 'Sign in to Prabodh', url: `${origin}/login?switch=1` },
+        portalLabel: 'Faculty & Mentors',
+        footerNote: 'Your existing password keeps working — no change needed unless you use Forgot password.',
       });
     case 'evaluation_published':
       return layout({

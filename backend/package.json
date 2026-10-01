@@ -15,7 +15,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
-    "test": "tsx --test src/domain/rules.spec.ts src/lib/staff-password.spec.ts"
+    "test": "tsx --test src/domain/rules.spec.ts src/lib/staff-password.spec.ts src/lib/roles.spec.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

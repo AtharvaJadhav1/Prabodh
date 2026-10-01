@@ -12,13 +12,16 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { api } from "../../lib/api";
+import { api, apiPost } from "../../lib/api";
 import { setAccessToken } from "../../lib/auth-token";
 import { clearApiCache } from "../../lib/api-cache";
 import {
+  allRoles,
   clearSession,
   dashboardForRole,
+  readLastActiveRole,
   readSession,
+  writeLastActiveRole,
   writeSession,
   type PlatformRole,
   type Session,
@@ -33,6 +36,8 @@ type AuthContextValue = {
     email: string;
     fullName: string;
     platformRole: PlatformRole;
+    additionalRoles?: PlatformRole[] | null;
+    activeRole?: PlatformRole | null;
     institute?: string | null;
     department?: string | null;
     phone?: string | null;
@@ -40,6 +45,8 @@ type AuthContextValue = {
   }) => void;
   logout: () => void;
   refreshMe: () => Promise<void>;
+  /** Switch a dual-role account to another held workspace (persists + redirects). */
+  switchRole: (role: PlatformRole) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -50,17 +57,35 @@ function toSession(user: {
   email: string;
   fullName: string;
   platformRole: PlatformRole;
+  additionalRoles?: PlatformRole[] | null;
+  activeRole?: PlatformRole | null;
   institute?: string | null;
   department?: string | null;
   phone?: string | null;
   accessToken?: string;
   profileJson?: Record<string, unknown> | null;
 }): Session {
+  const userId = user.userId ?? user.id ?? "";
+  const extras = Array.isArray(user.additionalRoles)
+    ? user.additionalRoles.filter((r) => r !== user.platformRole)
+    : [];
+  const held: PlatformRole[] = [user.platformRole, ...extras];
+  // Honor an explicit activeRole (server-issued after a switch); otherwise
+  // restore the last-used workspace for this account; else primary.
+  const stored = readLastActiveRole(userId);
+  const activeRole =
+    user.activeRole && held.includes(user.activeRole)
+      ? user.activeRole
+      : stored && held.includes(stored)
+        ? stored
+        : user.platformRole;
   return {
-    userId: user.userId ?? user.id ?? "",
+    userId,
     email: user.email,
     fullName: user.fullName,
     platformRole: user.platformRole,
+    additionalRoles: extras,
+    activeRole,
     institute: user.institute,
     department: user.department,
     phone: user.phone,
@@ -117,6 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: string;
       fullName: string;
       platformRole: PlatformRole;
+      additionalRoles?: PlatformRole[] | null;
       institute?: string | null;
       department?: string | null;
       phone?: string | null;
@@ -163,7 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!session) return;
-    router.replace(dashboardForRole(session.platformRole));
+    router.replace(dashboardForRole(session.activeRole ?? session.platformRole));
   }, [ready, session, isAuthEntry, pathname, router]);
 
   const establishSession = useCallback(
@@ -173,6 +199,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: string;
       fullName: string;
       platformRole: PlatformRole;
+      additionalRoles?: PlatformRole[] | null;
+      activeRole?: PlatformRole | null;
       institute?: string | null;
       department?: string | null;
       phone?: string | null;
@@ -181,11 +209,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const next = toSession(payload);
       clearApiCache();
       writeSession(next);
+      writeLastActiveRole(next.userId, next.activeRole);
       setAccessToken(payload.accessToken);
       setSession(next);
     },
     [],
   );
+
+  const switchRole = useCallback(async (role: PlatformRole) => {
+    const cached = readSession();
+    if (!cached?.userId || !cached?.accessToken) return;
+    if (!allRoles(cached).includes(role)) return;
+    // Persist server-side (cross-device memory + audit attribution); the
+    // response carries a fresh token bound to the chosen workspace.
+    setAccessToken(cached.accessToken);
+    try {
+      const res = await apiPost<{
+        accessToken: string;
+        userId: string;
+        email: string;
+        fullName: string;
+        platformRole: PlatformRole;
+        additionalRoles?: PlatformRole[] | null;
+        activeRole?: PlatformRole | null;
+      }>("/me/active-role", { role });
+      const next = toSession({ ...res, accessToken: res.accessToken });
+      clearApiCache();
+      writeSession(next);
+      writeLastActiveRole(next.userId, next.activeRole);
+      setAccessToken(next.accessToken ?? null);
+      setSession(next);
+      window.location.assign(dashboardForRole(next.activeRole));
+    } catch {
+      // Offline fallback: flip workspace locally; server syncs on next refresh.
+      const next: Session = { ...cached, activeRole: role };
+      writeSession(next);
+      writeLastActiveRole(next.userId, role);
+      setSession(next);
+      window.location.assign(dashboardForRole(role));
+    }
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -193,7 +256,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ready,
       establishSession,
       logout: () => {
-        const role = session?.platformRole;
         clearApiCache();
         clearSession();
         setAccessToken(null);
@@ -201,8 +263,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         window.location.assign("/login");
       },
       refreshMe,
+      switchRole,
     }),
-    [session, ready, establishSession, refreshMe],
+    [session, ready, establishSession, refreshMe, switchRole],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

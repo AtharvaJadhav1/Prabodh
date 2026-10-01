@@ -14,6 +14,7 @@ import {
   HistoryIcon,
 } from "../dashboard/icons";
 import { roleLabel, useAuth, initialsFrom } from "../auth/AuthProvider";
+import RoleSwitcher from "../auth/RoleSwitcher";
 import { useIndustryMentor } from "./IndustryMentorProvider";
 
 type Props = {
@@ -34,7 +35,7 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
   const pathname = usePathname();
   const { pendingCount, allTeams: visibleTeams } = useIndustryMentor();
   const { session, logout } = useAuth();
-  const role = roleLabel(session?.platformRole ?? "industry_mentor");
+  const role = roleLabel(session?.activeRole ?? session?.platformRole ?? "industry_mentor");
   const fullName = session?.fullName ?? "Industry Mentor";
   const displayName = fullName.length > 16 ? fullName.split(" ")[0] : fullName;
 
@@ -146,6 +147,7 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
 
         <div className="border-t border-brand-softline px-4 py-4">
           <div className="flex flex-col gap-3">
+            <RoleSwitcher />
             <div className="flex items-center gap-3 rounded-xl border border-brand-softline bg-white p-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold text-white">
                 {initialsFrom(fullName)}

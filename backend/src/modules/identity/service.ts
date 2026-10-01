@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { PlatformRole, Prisma } from '@prisma/client';
 import { signAccessToken } from '../../lib/jwt';
+import { allRoles, hasAnyRole, hasRole, unionAdditionalRoles } from '../../lib/roles';
 import { consumeResetToken, issueResetToken, sendOtp, verifyOtp } from '../../lib/otp';
 import { hashPassword, verifyPassword } from '../../lib/password';
 import { mapPool } from '../../lib/async-pool';
@@ -44,19 +45,23 @@ export class IdentityService {
     throw new InternalServerErrorException('Could not send verification code. Please try again.');
   }
 
-  private issueToken(user: {
-    id: string;
-    email: string;
-    fullName: string;
-    platformRole: PlatformRole;
-    institute: string | null;
-    department: string | null;
-    phone: string | null;
-    profileJson?: unknown;
-  }) {
+  private issueToken(
+    user: {
+      id: string;
+      email: string;
+      fullName: string;
+      platformRole: PlatformRole;
+      additionalRoles?: PlatformRole[] | null;
+      institute: string | null;
+      department: string | null;
+      phone: string | null;
+      profileJson?: unknown;
+    },
+    activeRole?: PlatformRole | null,
+  ) {
     let accessToken: string;
     try {
-      accessToken = signAccessToken(user);
+      accessToken = signAccessToken({ ...user, activeRole });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('AUTH_JWT_SECRET')) {
@@ -66,12 +71,15 @@ export class IdentityService {
       }
       throw err;
     }
+    const roles = allRoles(user);
     return {
       accessToken,
       userId: user.id,
       email: user.email,
       fullName: user.fullName,
       platformRole: user.platformRole,
+      additionalRoles: roles.filter((r) => r !== user.platformRole),
+      activeRole: activeRole && roles.includes(activeRole) ? activeRole : user.platformRole,
       institute: user.institute,
       department: user.department,
       phone: user.phone,
@@ -79,16 +87,20 @@ export class IdentityService {
     };
   }
 
-  private assertPortal(role: PlatformRole, portal: 'student' | 'faculty') {
+  private assertPortal(
+    user: { platformRole: PlatformRole; additionalRoles?: PlatformRole[] | null },
+    portal: 'student' | 'faculty',
+  ) {
     const facultyRoles: PlatformRole[] = [
       PlatformRole.admin,
       PlatformRole.institute_mentor,
       PlatformRole.industry_mentor,
     ];
-    if (portal === 'student' && role !== PlatformRole.student) {
+    // Dual-role accounts pass any portal one of their held roles belongs to.
+    if (portal === 'student' && !hasRole(user, PlatformRole.student)) {
       throw new ForbiddenException('This account is not a student. Use the faculty login portal.');
     }
-    if (portal === 'faculty' && !facultyRoles.includes(role)) {
+    if (portal === 'faculty' && !hasAnyRole(user, facultyRoles)) {
       throw new ForbiddenException('This account is not faculty or admin. Use the student login portal.');
     }
   }
@@ -108,7 +120,7 @@ export class IdentityService {
       throw new UnauthorizedException('Invalid email or password.');
     }
     if (body.portal) {
-      this.assertPortal(user.platformRole, body.portal);
+      this.assertPortal(user, body.portal);
     }
     return this.issueToken(user);
   }
@@ -146,8 +158,16 @@ export class IdentityService {
       return { ok: true, message: 'Verification code sent to your email.', devCode: result.devCode };
     }
 
-    if (user && user.platformRole !== targetRole) {
-      throw new BadRequestException('This email is already registered with another role. Sign in instead.');
+    // Cross-role registration rules. Mentor↔mentor is allowed (dual-role grant
+    // completed on OTP verify); student↔staff mixing stays blocked.
+    if (user && !hasRole(user, targetRole)) {
+      const targetIsMentor =
+        targetRole === PlatformRole.institute_mentor || targetRole === PlatformRole.industry_mentor;
+      const userIsMentor =
+        hasRole(user, PlatformRole.institute_mentor) || hasRole(user, PlatformRole.industry_mentor);
+      if (!(targetIsMentor && userIsMentor)) {
+        throw new BadRequestException('This email is already registered with another role. Sign in instead.');
+      }
     }
 
     if (user && user.isActive && body.purpose === 'register' && accountType === 'student') {
@@ -210,7 +230,7 @@ export class IdentityService {
     }
 
     if (body.purpose === 'login' && body.portal) {
-      this.assertPortal(user.platformRole, body.portal);
+      this.assertPortal(user, body.portal);
     }
 
     return this.issueToken(user);
@@ -301,9 +321,11 @@ export class IdentityService {
     const existing = await this.repo.findByEmail(email);
     let user;
     if (existing) {
-      if (existing.platformRole !== role) {
-        throw new BadRequestException('This email is already registered with another role. Sign in instead.');
+      if (existing.platformRole === PlatformRole.student) {
+        throw new BadRequestException('This email is already registered as a student. Sign in instead.');
       }
+      // Same-role re-register OR cross-mentor dual grant: merge, never clobber.
+      const additionalRoles = unionAdditionalRoles(existing, role);
       user = await this.prisma.user.update({
         where: { id: existing.id },
         data: {
@@ -311,6 +333,7 @@ export class IdentityService {
           institute: body.institute ?? existing.institute,
           department: body.department ?? existing.department,
           phone: body.phone ?? existing.phone,
+          additionalRoles: additionalRoles.length > 0 ? additionalRoles : undefined,
           isActive: true,
           ...(body.password ? { passwordHash: hashPassword(body.password) } : {}),
         },
@@ -356,14 +379,23 @@ export class IdentityService {
     return user;
   }
 
-  async createStaffAccount(body: {
-    email: string;
-    password: string;
-    fullName: string;
-    platformRole: PlatformRole;
-    institute?: string;
-    department?: string;
-  }) {
+  /**
+   * Admin single-invite / grant. Existing accounts are MERGED (role union),
+   * never overwritten. Password is only (re)set for brand-new accounts or
+   * when `resetPassword` is explicitly requested — a later role grant keeps
+   * the current password so active sessions survive.
+   */
+  async createStaffAccount(
+    body: {
+      email: string;
+      password?: string;
+      fullName: string;
+      platformRole: PlatformRole;
+      institute?: string;
+      department?: string;
+    },
+    opts?: { resetPassword?: boolean },
+  ) {
     const allowed: PlatformRole[] = [
       PlatformRole.institute_mentor,
       PlatformRole.industry_mentor,
@@ -377,30 +409,61 @@ export class IdentityService {
     }
     const email = body.email.toLowerCase();
     const existing = await this.repo.findByEmail(email);
-    const passwordHash = hashPassword(body.password);
-    const user = existing
-      ? await this.prisma.user.update({
-          where: { id: existing.id },
-          data: {
-            fullName: body.fullName,
-            platformRole: body.platformRole,
-            institute: body.institute ?? existing.institute,
-            department: body.department ?? existing.department,
-            passwordHash,
-            isActive: true,
-          },
-        })
-      : await this.prisma.user.create({
-          data: {
-            email,
-            fullName: body.fullName,
-            platformRole: body.platformRole,
-            institute: body.institute,
-            department: body.department,
-            passwordHash,
-            isActive: true,
-          },
+    if (existing) {
+      if (existing.platformRole === PlatformRole.student) {
+        throw new BadRequestException(
+          'This email is already registered as a student and cannot be converted to staff.',
+        );
+      }
+      const alreadyHeld = hasRole(existing, body.platformRole);
+      const additionalRoles = unionAdditionalRoles(existing, body.platformRole);
+      // Password rule: a role grant never rotates the password by itself —
+      // rotation happens only when the admin explicitly requests a reset.
+      const rotatePassword = Boolean(body.password) && opts?.resetPassword === true;
+      const user = await this.prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          fullName: body.fullName,
+          institute: body.institute ?? existing.institute,
+          department: body.department ?? existing.department,
+          additionalRoles: additionalRoles.length > 0 ? additionalRoles : undefined,
+          ...(rotatePassword ? { passwordHash: hashPassword(body.password as string) } : {}),
+          isActive: true,
+        },
+      });
+      if (
+        body.platformRole === PlatformRole.industry_mentor ||
+        hasRole(user, PlatformRole.industry_mentor)
+      ) {
+        await this.syncIndustrialMentorProfile({
+          userId: user.id,
+          fullName: body.fullName,
+          email,
+          companyName: body.institute,
+          designation: body.department,
         });
+      }
+      return {
+        user,
+        created: false,
+        granted: !alreadyHeld,
+        passwordRotated: rotatePassword,
+      };
+    }
+    if (!body.password) {
+      throw new BadRequestException('Password is required for a new staff account.');
+    }
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        fullName: body.fullName,
+        platformRole: body.platformRole,
+        institute: body.institute,
+        department: body.department,
+        passwordHash: hashPassword(body.password),
+        isActive: true,
+      },
+    });
 
     if (body.platformRole === PlatformRole.industry_mentor) {
       await this.syncIndustrialMentorProfile({
@@ -411,7 +474,7 @@ export class IdentityService {
         designation: body.department,
       });
     }
-    return user;
+    return { user, created: true, granted: true, passwordRotated: true };
   }
 
   /** Upsert industrial mentor directory row; recover from email/userId unique collisions on re-import. */
@@ -632,62 +695,176 @@ export class IdentityService {
     return { avatarUrl };
   }
 
+  /**
+   * Bulk upsert for CSV activation. Rows are grouped by email FIRST so two rows
+   * for one address (different roles) merge into a single dual-role account
+   * instead of racing/overwriting each other in the concurrent pool.
+   * Passwords are only set for brand-new accounts (or explicit resets) —
+   * existing accounts keep their hash on a pure role grant.
+   */
   async bulkCreate(rows: Array<{
     email: string;
     fullName: string;
     platformRole: PlatformRole;
     institute?: string;
     department?: string;
-    /** When set, stores a password hash (used for staff credential emails). */
+    /** When set AND the account is new (or resetPassword), stores a password hash. */
     password?: string;
+    /** Explicit admin-requested rotation for an existing account. */
+    resetPassword?: boolean;
   }>) {
-    return mapPool(rows, 8, async (row) => {
-      try {
-        const email = row.email.toLowerCase();
-        const existing = await this.repo.findByEmail(email);
-        const user = existing
-          ? await this.prisma.user.update({
-              where: { id: existing.id },
-              data: {
-                fullName: row.fullName,
-                platformRole: row.platformRole,
-                institute: row.institute ?? existing.institute,
-                department: row.department ?? existing.department,
-                isActive: true,
-                ...(row.password ? { passwordHash: hashPassword(row.password) } : {}),
-              },
-            })
-          : await this.prisma.user.create({
-              data: {
-                email,
-                fullName: row.fullName,
-                platformRole: row.platformRole,
-                institute: row.institute,
-                department: row.department,
-                ...(row.password ? { passwordHash: hashPassword(row.password) } : {}),
-              },
-            });
+    // Group by email: union roles, first non-empty profile wins, first password wins.
+    const grouped = new Map<
+      string,
+      {
+        email: string;
+        fullName: string;
+        roles: PlatformRole[];
+        institute?: string;
+        department?: string;
+        password?: string;
+        resetPassword?: boolean;
+      }
+    >();
+    for (const row of rows) {
+      const key = row.email.toLowerCase();
+      const slot = grouped.get(key);
+      if (!slot) {
+        grouped.set(key, {
+          email: row.email,
+          fullName: row.fullName,
+          roles: [row.platformRole],
+          institute: row.institute,
+          department: row.department,
+          password: row.password,
+          resetPassword: row.resetPassword,
+        });
+      } else {
+        if (!slot.roles.includes(row.platformRole)) slot.roles.push(row.platformRole);
+        if (!slot.password && row.password) slot.password = row.password;
+        if (row.resetPassword) slot.resetPassword = true;
+        if (!slot.institute && row.institute) slot.institute = row.institute;
+        if (!slot.department && row.department) slot.department = row.department;
+      }
+    }
 
-        // Keep Industrial Mentors directory in sync for CSV + manual bulk imports.
-        if (row.platformRole === PlatformRole.industry_mentor) {
+    return mapPool([...grouped.values()], 8, async (slot) => {
+      try {
+        const email = slot.email.toLowerCase();
+        const existing = await this.repo.findByEmail(email);
+        const [primary, ...rest] = slot.roles;
+        if (existing) {
+          if (existing.platformRole === PlatformRole.student && slot.roles.some((r) => r !== PlatformRole.student)) {
+            throw new BadRequestException(
+              'This email is already registered as a student and cannot be converted to staff.',
+            );
+          }
+          let additionalRoles = Array.isArray(existing.additionalRoles)
+            ? [...existing.additionalRoles]
+            : [];
+          for (const role of slot.roles) {
+            additionalRoles = unionAdditionalRoles(
+              { platformRole: existing.platformRole, additionalRoles },
+              role,
+            );
+          }
+          const rotatePassword = Boolean(slot.password) && slot.resetPassword === true;
+          const user = await this.prisma.user.update({
+            where: { id: existing.id },
+            data: {
+              fullName: slot.fullName,
+              institute: slot.institute ?? existing.institute,
+              department: slot.department ?? existing.department,
+              additionalRoles: additionalRoles.length > 0 ? additionalRoles : undefined,
+              isActive: true,
+              ...(rotatePassword ? { passwordHash: hashPassword(slot.password as string) } : {}),
+            },
+          });
+          const heldAfter = allRoles(user);
+          const granted = slot.roles.filter((r) => r !== existing.platformRole &&
+            !(existing.additionalRoles ?? []).includes(r));
+
+          if (heldAfter.includes(PlatformRole.industry_mentor)) {
+            await this.syncIndustrialMentorProfile({
+              userId: user.id,
+              fullName: slot.fullName,
+              email,
+              companyName: slot.institute,
+              designation: slot.department,
+            });
+          }
+
+          return {
+            email: slot.email,
+            status: 'created' as const,
+            // Only newly-set plaintext is ever returned (for the credential email).
+            password: rotatePassword ? slot.password : undefined,
+            isNewUser: false,
+            grantedRoles: granted,
+            roles: heldAfter,
+          };
+        }
+        const user = await this.prisma.user.create({
+          data: {
+            email,
+            fullName: slot.fullName,
+            platformRole: primary,
+            ...(rest.length > 0 ? { additionalRoles: rest } : {}),
+            institute: slot.institute,
+            department: slot.department,
+            ...(slot.password ? { passwordHash: hashPassword(slot.password) } : {}),
+          },
+        });
+
+        if (slot.roles.includes(PlatformRole.industry_mentor)) {
           await this.syncIndustrialMentorProfile({
             userId: user.id,
-            fullName: row.fullName,
+            fullName: slot.fullName,
             email,
-            companyName: row.institute,
-            designation: row.department,
+            companyName: slot.institute,
+            designation: slot.department,
           });
         }
 
-        return { email: row.email, status: 'created' as const, password: row.password };
+        return {
+          email: slot.email,
+          status: 'created' as const,
+          password: slot.password,
+          isNewUser: true,
+          grantedRoles: slot.roles,
+          roles: allRoles(user),
+        };
       } catch (err) {
         return {
-          email: row.email,
+          email: slot.email,
           status: 'failed' as const,
           error: err instanceof Error ? err.message : 'unknown',
         };
       }
     });
+  }
+
+  /**
+   * Switch the workspace a dual-role account is acting in. Persists the choice
+   * (cross-device memory) and re-issues a token carrying it for audit attribution.
+   */
+  async switchActiveRole(userId: string, role: PlatformRole) {
+    const existing = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!existing || !existing.isActive) {
+      throw new UnauthorizedException('Account not found or disabled.');
+    }
+    if (!allRoles(existing).includes(role)) {
+      throw new ForbiddenException('This account does not hold that role.');
+    }
+    const profile = ((existing.profileJson as Record<string, unknown> | null) ?? {}) as Record<
+      string,
+      unknown
+    >;
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { profileJson: { ...profile, lastActiveRole: role } as Prisma.InputJsonValue },
+    });
+    return this.issueToken(updated, role);
   }
 }
 

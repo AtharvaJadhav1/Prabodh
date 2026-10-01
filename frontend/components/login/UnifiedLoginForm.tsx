@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "../auth/AuthProvider";
-import { dashboardForRole } from "../../lib/session";
+import { dashboardForRole, landingForLogin } from "../../lib/session";
 import LoginPasswordForm from "./LoginPasswordForm";
 
 function safeNextPath(raw: string | null, role: string) {
@@ -40,7 +40,7 @@ export default function UnifiedLoginForm() {
       }
       onSuccess={(result) => {
         establishSession(result);
-        window.location.replace(safeNextPath(next, result.platformRole));
+        window.location.assign(landingForLogin(result));
       }}
     />
   );

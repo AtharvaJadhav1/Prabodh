@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InviteStatus, PlatformRole, Prisma } from '@prisma/client';
-import { sendStaffCredentialsEmail } from '../../lib/invite-email';
+import { sendRoleAddedEmail, sendStaffCredentialsEmail } from '../../lib/invite-email';
+import { allRoles } from '../../lib/roles';
 import { hashPassword } from '../../lib/password';
 import { generateStaffPassword } from '../../lib/staff-password';
 import { writeAudit } from '../../lib/audit';
@@ -440,13 +441,17 @@ export class AdminService {
     return this.prisma.user.findMany({
       where: {
         isActive: true,
-        platformRole: { in: ['institute_mentor', 'industry_mentor'] },
+        OR: [
+          { platformRole: { in: ['institute_mentor', 'industry_mentor'] } },
+          { additionalRoles: { hasSome: ['institute_mentor', 'industry_mentor'] } },
+        ],
       },
       select: {
         id: true,
         fullName: true,
         email: true,
         platformRole: true,
+        additionalRoles: true,
         domainTags: true,
         institute: true,
       },
@@ -465,6 +470,7 @@ export class AdminService {
         fullName: true,
         email: true,
         platformRole: true,
+        additionalRoles: true,
         institute: true,
         department: true,
         profileJson: true,
@@ -477,6 +483,7 @@ export class AdminService {
         fullName: u.fullName,
         email: u.email,
         platformRole: u.platformRole,
+        additionalRoles: u.additionalRoles,
         institute: u.institute,
         department: u.department,
         avatarUrl: avatarUrlOf(u.profileJson),
@@ -616,28 +623,58 @@ export class AdminService {
   }
 
   async inviteStaff(admin: AuthUser, body: z.infer<typeof adminInviteUserSchema>) {
-    const password = generateStaffPassword();
-    const user = await this.identity.createStaffAccount({
-      email: body.email,
-      password,
-      fullName: body.fullName,
-      platformRole: body.platformRole as PlatformRole,
-      institute: body.institute,
-      department: body.department,
+    const existing = await this.prisma.user.findUnique({
+      where: { email: body.email.toLowerCase() },
     });
+    // New accounts get a fresh password; existing accounts keep theirs unless
+    // the admin explicitly ticks reset (a role grant must not lock them out).
+    const password = !existing || body.resetPassword ? generateStaffPassword() : undefined;
+    const result = await this.identity.createStaffAccount(
+      {
+        email: body.email,
+        ...(password ? { password } : {}),
+        fullName: body.fullName,
+        platformRole: body.platformRole as PlatformRole,
+        institute: body.institute,
+        department: body.department,
+      },
+      { resetPassword: body.resetPassword },
+    );
+    const { user } = result;
     // Email after DB write — do not block the admin UI on Resend latency.
-    void sendStaffCredentialsEmail({
-      to: user.email,
-      fullName: user.fullName,
-      password,
-      platformRole: user.platformRole,
-    }).catch((err) => {
-      console.error('[admin.inviteStaff] email failed for', user.email, err);
-    });
+    if (result.created || result.passwordRotated) {
+      void sendStaffCredentialsEmail({
+        to: user.email,
+        fullName: user.fullName,
+        password: password as string,
+        platformRole: user.platformRole,
+        additionalRoles: user.additionalRoles,
+      }).catch((err) => {
+        console.error('[admin.inviteStaff] email failed for', user.email, err);
+      });
+    } else if (result.granted) {
+      void sendRoleAddedEmail({
+        to: user.email,
+        fullName: user.fullName,
+        grantedRole: body.platformRole,
+        allRoles: allRoles(user),
+      }).catch((err) => {
+        console.error('[admin.inviteStaff] role-added email failed for', user.email, err);
+      });
+    }
+    await writeAudit(this.prisma, {
+      actorUserId: admin.id,
+      actorRole: admin.activeRole,
+      action: result.created ? 'staff_invited' : result.granted ? 'role_granted' : 'staff_reinvited',
+      entityType: 'user',
+      entityId: user.id,
+      after: { email: user.email, roles: allRoles(user), resetPassword: body.resetPassword ?? false },
+    }).catch(() => undefined);
     return {
       userId: user.id,
       email: user.email,
       platformRole: user.platformRole,
+      additionalRoles: user.additionalRoles,
       emailSent: true,
       emailError: null,
     };
@@ -771,8 +808,19 @@ export class AdminService {
     }
 
     // Plaintext passwords are never stored — mint a fresh one, update the hash, then email it.
+    // Group by email: one password + one email per address even when a batch
+    // holds two rows for a dual-role account.
+    const retryGroups = new Map<string, typeof failedRows>();
+    for (const row of failedRows) {
+      const key = row.email.toLowerCase();
+      const slot = retryGroups.get(key);
+      if (slot) slot.push(row);
+      else retryGroups.set(key, [row]);
+    }
     let retried = 0;
-    await mapPool(failedRows, 2, async (row) => {
+    await mapPool([...retryGroups.values()], 2, async (rowsForEmail) => {
+      const row = rowsForEmail[0];
+      const ids = rowsForEmail.map((r) => r.id);
       const password = generateStaffPassword();
       try {
         await this.prisma.user.update({
@@ -786,14 +834,14 @@ export class AdminService {
           platformRole: row.platformRole,
         });
         await this.prisma.userImportRow.updateMany({
-          where: { batchId: id, email: row.email },
+          where: { id: { in: ids } },
           data: { emailSent: true, emailSentAt: new Date(), emailError: null },
         });
         retried++;
       } catch (err) {
         console.error('[admin.retryFailedEmails] failed for', row.email, err);
         await this.prisma.userImportRow.updateMany({
-          where: { batchId: id, email: row.email },
+          where: { id: { in: ids } },
           data: { emailError: err instanceof Error ? err.message : 'Unknown error' },
         });
       }
@@ -1194,35 +1242,105 @@ export class AdminService {
       PlatformRole.student_expert,
     ]);
 
+    // Group rows by email FIRST (across the whole batch, before chunking) so
+    // two rows for one address (different roles) merge into a single dual-role
+    // account with ONE password and ONE email — instead of overwriting.
+    type RowGroup = {
+      email: string;
+      fullName: string;
+      roles: PlatformRole[];
+      rowIds: string[];
+      institute?: string;
+      department?: string;
+    };
+    const groups = new Map<string, RowGroup>();
+    for (const r of batch.rows) {
+      const key = r.email.toLowerCase();
+      const slot = groups.get(key);
+      if (!slot) {
+        groups.set(key, {
+          email: key,
+          fullName: r.fullName,
+          roles: [r.platformRole],
+          rowIds: [r.id],
+          institute: r.institute ?? undefined,
+          department: r.department ?? undefined,
+        });
+      } else {
+        if (!slot.roles.includes(r.platformRole)) slot.roles.push(r.platformRole);
+        slot.rowIds.push(r.id);
+        if (!slot.institute && r.institute) slot.institute = r.institute;
+        if (!slot.department && r.department) slot.department = r.department;
+      }
+    }
+
+    // Exact duplicates (same email + same role twice): keep the first row,
+    // mark the extras skipped so the admin sees what happened.
+    const duplicateRowIds = new Set<string>();
+    for (const r of batch.rows) {
+      const group = groups.get(r.email.toLowerCase());
+      if (!group) continue;
+      const firstIdx = batch.rows.findIndex(
+        (o) => o.email.toLowerCase() === r.email.toLowerCase() && o.platformRole === r.platformRole,
+      );
+      if (batch.rows[firstIdx]?.id !== r.id) duplicateRowIds.add(r.id);
+    }
+    if (duplicateRowIds.size > 0) {
+      await this.prisma.userImportRow.updateMany({
+        where: { id: { in: [...duplicateRowIds] } },
+        data: { status: 'skipped', error: 'Duplicate row: same email and role appears twice' },
+      });
+    }
+    const actionable = [...groups.values()];
+
     const credentialJobs: Array<{
       email: string;
       fullName: string;
       password: string;
-      platformRole: PlatformRole;
+      roles: PlatformRole[];
     }> = [];
+    const roleGrantJobs: Array<{
+      email: string;
+      fullName: string;
+      grantedRoles: PlatformRole[];
+      roles: PlatformRole[];
+    }> = [];
+    // Row ids per email for precise per-row status updates.
+    const rowIdsByEmail = new Map(actionable.map((g) => [g.email, g.rowIds]));
 
     try {
       const chunkSize = 50;
-      for (let i = 0; i < batch.rows.length; i += chunkSize) {
-        const slice = batch.rows.slice(i, i + chunkSize);
-        const prepared = slice.map((r) => {
-          const needsCredentials = staffRoles.has(r.platformRole);
+      for (let i = 0; i < actionable.length; i += chunkSize) {
+        const slice = actionable.slice(i, i + chunkSize);
+        const prepared = slice.map((g) => {
+          const needsCredentials = g.roles.some((r) => staffRoles.has(r));
+          // ONE password per email (not per row). Existing accounts ignore it —
+          // bulkCreate only stores it for brand-new users.
           const password = needsCredentials ? generateStaffPassword() : undefined;
           return {
-            email: r.email,
-            fullName: r.fullName,
-            platformRole: r.platformRole,
-            institute: r.institute ?? undefined,
-            department: r.department ?? undefined,
+            email: g.email,
+            fullName: g.fullName,
+            // bulkCreate groups by email internally and unions roles; pass the
+            // primary here and the rest via platformRoles below.
+            platformRole: g.roles[0],
+            platformRoles: g.roles,
+            institute: g.institute ?? undefined,
+            department: g.department ?? undefined,
             password,
           };
         });
 
-        const results = await this.identity.bulkCreate(prepared);
+        const results = await this.identity.bulkCreate(
+          prepared.flatMap((p) =>
+            p.platformRoles.map((role) => ({ ...p, platformRole: role })),
+          ),
+        );
 
         await mapPool(results, 10, async (result) => {
+          const ids = rowIdsByEmail.get(result.email.toLowerCase()) ?? [];
+          if (ids.length === 0) return;
           await this.prisma.userImportRow.updateMany({
-            where: { batchId: id, email: result.email.toLowerCase() },
+            where: { id: { in: ids } },
             data: {
               status: result.status === 'created' ? 'activated' : 'failed',
               error: 'error' in result ? result.error : undefined,
@@ -1231,15 +1349,25 @@ export class AdminService {
         });
 
         for (const result of results) {
-          if (result.status !== 'created' || !result.password) continue;
-          const src = prepared.find((p) => p.email.toLowerCase() === result.email.toLowerCase());
-          if (!src?.password) continue;
-          credentialJobs.push({
-            email: result.email.toLowerCase(),
-            fullName: src.fullName,
-            password: src.password,
-            platformRole: src.platformRole,
-          });
+          if (result.status !== 'created') continue;
+          if (result.isNewUser && result.password) {
+            const src = prepared.find((p) => p.email.toLowerCase() === result.email.toLowerCase());
+            if (!src) continue;
+            credentialJobs.push({
+              email: result.email.toLowerCase(),
+              fullName: src.fullName,
+              password: result.password,
+              roles: result.roles,
+            });
+          } else if (!result.isNewUser && result.grantedRoles && result.grantedRoles.length > 0) {
+            const src = prepared.find((p) => p.email.toLowerCase() === result.email.toLowerCase());
+            roleGrantJobs.push({
+              email: result.email.toLowerCase(),
+              fullName: src?.fullName ?? result.email,
+              grantedRoles: result.grantedRoles,
+              roles: result.roles,
+            });
+          }
         }
       }
 
@@ -1256,19 +1384,21 @@ export class AdminService {
       throw err;
     }
 
-    if (credentialJobs.length) {
+    if (credentialJobs.length || roleGrantJobs.length) {
       // Slow email drain after DB work — keeps Resend from melting the API process.
       fireAndForget(`admin.bulk-credentials:${id}`, async () => {
         await mapPool(credentialJobs, 2, async (job) => {
+          const ids = rowIdsByEmail.get(job.email) ?? [];
           try {
             await sendStaffCredentialsEmail({
               to: job.email,
               fullName: job.fullName,
               password: job.password,
-              platformRole: job.platformRole,
+              platformRole: job.roles[0],
+              additionalRoles: job.roles.slice(1),
             });
             await this.prisma.userImportRow.updateMany({
-              where: { batchId: id, email: job.email },
+              where: { id: { in: ids } },
               data: {
                 emailSent: true,
                 emailSentAt: new Date(),
@@ -1277,7 +1407,35 @@ export class AdminService {
           } catch (err) {
             console.error('[admin.bulk-credentials] failed for', job.email, err);
             await this.prisma.userImportRow.updateMany({
-              where: { batchId: id, email: job.email },
+              where: { id: { in: ids } },
+              data: {
+                emailSent: false,
+                emailError: err instanceof Error ? err.message : 'Unknown error',
+              },
+            });
+          }
+        });
+        // Later grants for existing accounts: "new access added" email, no password.
+        await mapPool(roleGrantJobs, 2, async (job) => {
+          const ids = rowIdsByEmail.get(job.email) ?? [];
+          try {
+            await sendRoleAddedEmail({
+              to: job.email,
+              fullName: job.fullName,
+              grantedRole: job.grantedRoles[0],
+              allRoles: job.roles,
+            });
+            await this.prisma.userImportRow.updateMany({
+              where: { id: { in: ids } },
+              data: {
+                emailSent: true,
+                emailSentAt: new Date(),
+              },
+            });
+          } catch (err) {
+            console.error('[admin.bulk-role-granted] failed for', job.email, err);
+            await this.prisma.userImportRow.updateMany({
+              where: { id: { in: ids } },
               data: {
                 emailSent: false,
                 emailError: err instanceof Error ? err.message : 'Unknown error',

@@ -7,8 +7,9 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InviteStatus, JoinRequestStatus, NotificationType, Prisma, PsPreferenceStatus, TeamStatus } from '@prisma/client';
+import { InviteStatus, JoinRequestStatus, NotificationType, PlatformRole, Prisma, PsPreferenceStatus, TeamStatus } from '@prisma/client';
 import { AuthUser } from '../../common/auth.types';
+import { hasAnyRole, hasRole } from '../../lib/roles';
 import { writeAudit } from '../../lib/audit';
 import { syncTeamMentorPointers } from '../../lib/mentor-pointers';
 import { createNotifications, notifyUsers } from '../../lib/notify';
@@ -25,7 +26,7 @@ const MAX_TEAM_CODE_ATTEMPTS = 3;
 
 /** Freezing a team is limited to admins and the team's faculty mentor. */
 function canFreezeTeam(user: AuthUser): boolean {
-  return user.platformRole === 'admin' || user.platformRole === 'institute_mentor';
+  return hasRole(user, PlatformRole.admin) || hasRole(user, PlatformRole.institute_mentor);
 }
 
 /**
@@ -300,7 +301,7 @@ export class TeamsService {
     if (user.platformRole === 'admin') {
       return this.list(page, limit);
     }
-    if (user.platformRole === 'institute_mentor' || user.platformRole === 'industry_mentor') {
+    if (hasAnyRole(user, [PlatformRole.institute_mentor, PlatformRole.industry_mentor])) {
       const assignments = await this.prisma.mentorAssignment.findMany({
         where: { mentorUserId: user.id, active: true },
         select: {

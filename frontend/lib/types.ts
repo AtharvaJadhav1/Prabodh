@@ -3,6 +3,7 @@ export type PortalUser = {
   fullName: string;
   email: string;
   platformRole: string;
+  additionalRoles?: string[];
   institute?: string | null;
   department?: string | null;
   phone?: string | null;

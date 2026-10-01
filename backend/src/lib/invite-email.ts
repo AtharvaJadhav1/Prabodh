@@ -43,6 +43,10 @@ function roleLabel(role: string) {
   return 'Institute Mentor';
 }
 
+export function roleLabels(roles: string[]) {
+  return roles.map(roleLabel).join(' + ');
+}
+
 function dashboardPathForRole(role: string) {
   if (role === 'admin') return '/dashboard/admin';
   if (role === 'industry_mentor') return '/dashboard/industry';
@@ -56,6 +60,7 @@ export async function sendStaffCredentialsEmail(opts: {
   fullName: string;
   password: string;
   platformRole: string;
+  additionalRoles?: string[] | null;
 }) {
   const origin = appOrigin();
   const next = dashboardPathForRole(opts.platformRole);
@@ -63,7 +68,8 @@ export async function sendStaffCredentialsEmail(opts: {
     `${origin}/login?switch=1` +
     `&email=${encodeURIComponent(opts.to)}` +
     `&next=${encodeURIComponent(next)}`;
-  const label = roleLabel(opts.platformRole);
+  const roles = [opts.platformRole, ...(opts.additionalRoles ?? []).filter((r) => r !== opts.platformRole)];
+  const label = roleLabels(roles);
   const title = `Your Prabodh ${label} account`;
   const safeEmail = escapeHtml(opts.to);
   const bodyHtml = `
@@ -76,6 +82,36 @@ export async function sendStaffCredentialsEmail(opts: {
     <p style="margin:0;font-size:13px;color:#706761">If another Prabodh session is open in this browser, the sign-in link will switch accounts for you.</p>
   `;
   const html = renderEmailHtml('staff_credentials', title, bodyHtml, 'Sign in to Prabodh', loginUrl, opts.fullName);
+  const from = resolveInviteFromAddress();
+  return sendTransactionalEmail({ to: opts.to, subject: title, html, from });
+}
+
+/**
+ * Later role grant for an existing account: no password inside (the current
+ * password keeps working) — just tells them about the new workspace and the
+ * sidebar switcher.
+ */
+export async function sendRoleAddedEmail(opts: {
+  to: string;
+  fullName: string;
+  grantedRole: string;
+  allRoles: string[];
+}) {
+  const origin = appOrigin();
+  const next = dashboardPathForRole(opts.grantedRole);
+  const loginUrl =
+    `${origin}/login?switch=1` +
+    `&email=${encodeURIComponent(opts.to)}` +
+    `&next=${encodeURIComponent(next)}`;
+  const granted = roleLabel(opts.grantedRole);
+  const all = roleLabels(opts.allRoles);
+  const title = `You now have ${granted} access on Prabodh`;
+  const bodyHtml = `
+    <p style="margin:0 0 12px">Your administrator has added <strong>${escapeHtml(granted)}</strong> access to your Prabodh account. Nothing you already had was removed — your account now covers <strong>${escapeHtml(all)}</strong>.</p>
+    <p style="margin:16px 0 8px;font-size:13px;color:#706761">Kindly sign in with the <strong>same password</strong> you already use. After signing in, a role switcher in the sidebar lets you move between your workspaces.</p>
+    <p style="margin:0;font-size:13px;color:#706761">If you have forgotten your password, use Forgot password on the sign-in page to set a new one.</p>
+  `;
+  const html = renderEmailHtml('role_granted', title, bodyHtml, 'Sign in to Prabodh', loginUrl, opts.fullName);
   const from = resolveInviteFromAddress();
   return sendTransactionalEmail({ to: opts.to, subject: title, html, from });
 }

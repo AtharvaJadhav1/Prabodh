@@ -29,7 +29,7 @@ export class JwtAuthGuard implements CanActivate {
           select: AUTH_USER_SELECT,
         });
         if (!user || !user.isActive) throw new UnauthorizedException('Unknown or inactive user');
-        attachUser(req, user);
+        attachUser(req, user, null);
         return true;
       }
     }
@@ -56,18 +56,32 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid session');
     }
 
-    attachUser(req, user);
+    attachUser(req, user, payload.activeRole ?? null);
     return true;
   }
 }
 
-function attachUser(req: AuthedRequest, user: AuthDbUser) {
+function attachUser(
+  req: AuthedRequest,
+  user: AuthDbUser,
+  tokenActiveRole: string | null,
+) {
   req.authDbUser = user;
+  const held = [user.platformRole, ...(user.additionalRoles ?? []).filter(
+    (r) => r !== user.platformRole,
+  )];
+  // Honor the workspace chosen via POST /me/active-role when still held;
+  // otherwise fall back to the primary role (e.g. after an admin revokes).
+  const activeRole = held.includes(tokenActiveRole as (typeof held)[number])
+    ? (tokenActiveRole as (typeof held)[number])
+    : held[0];
   req.user = {
     id: user.id,
     email: user.email,
     fullName: user.fullName,
     platformRole: user.platformRole,
+    additionalRoles: user.additionalRoles ?? [],
+    activeRole,
     institute: user.institute,
   };
 }
