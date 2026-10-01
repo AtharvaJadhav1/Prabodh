@@ -44,7 +44,6 @@ export default function TeamWorkspaceCard() {
   const [revokingInviteId, setRevokingInviteId] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const teamNameInputRef = useRef<HTMLInputElement | null>(null);
-  const percent = Math.round((filledCount / Math.max(capacity, 1)) * 100);
   const confirmedMembers = members.filter((m) => m.status === "Verified");
   const totalOccupied = confirmedMembers.length + invites.length;
   const slotsLeft = capacity - totalOccupied;
@@ -188,15 +187,21 @@ export default function TeamWorkspaceCard() {
       </div>
 
       <div className="mt-6">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-bold text-brand-deep">Team Strength Progress</span>
-          <span className="text-xs font-bold text-brand-primary">{percent}%</span>
-        </div>
-        <div className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-[#F6D5BD]">
-          <div
-            className="h-full rounded-full bg-[#D96B27] transition-all duration-300"
-            style={{ width: `${percent}%` }}
-          />
+        <span className="text-xs font-bold tracking-tight text-brand-deep">Roster Capacity</span>
+        <div className="mt-2 flex w-44 items-center gap-1.5 sm:w-56">
+          {Array.from({ length: capacity }).map((_, idx) => {
+            const isFilled = idx < confirmedMembers.length;
+            const isPending = !isFilled && idx < confirmedMembers.length + invites.length;
+            return (
+              <div
+                key={idx}
+                className={`h-2 flex-1 rounded-full transition-all duration-300 ${
+                  isFilled ? "bg-[#C25E26]" : isPending ? "animate-pulse bg-amber-300" : "bg-brand-softline/60"
+                }`}
+                title={`Slot ${idx + 1}: ${isFilled ? "Confirmed" : isPending ? "Pending Invite" : "Open Slot"}`}
+              />
+            );
+          })}
         </div>
       </div>
 
@@ -315,7 +320,7 @@ export default function TeamWorkspaceCard() {
                         autoFocus
                         required
                         placeholder="student@institution.edu.in"
-                        aria-label="Teammate's institutional email address"
+                        aria-label="Teammate's email address"
                         value={inviteEmail}
                         onChange={(e) => {
                           setInviteEmail(e.target.value);
@@ -340,7 +345,7 @@ export default function TeamWorkspaceCard() {
                       </p>
                     ) : null}
                     <p className="text-[11px] leading-relaxed text-brand-muted">
-                      We'll email them an invite link. Teammates must join using their invited institutional email
+                      We'll email them an invite link. Teammates must join using their invited email
                       address.
                     </p>
                   </form>
