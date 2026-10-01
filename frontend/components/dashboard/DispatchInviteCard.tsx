@@ -78,8 +78,9 @@ export default function DispatchInviteCard() {
                   handleSend();
                 }
               }}
-              placeholder="teammate@mituniversity.edu.in"
-              className="h-10 w-full px-3 py-2 text-xs rounded-xl border border-brand-softline bg-brand-cream font-medium text-brand-charcoal transition-all placeholder:text-brand-charcoal/45 focus:border-brand-primary focus:bg-white focus:ring-2 focus:ring-brand-primary/20 outline-none sm:h-11"
+              placeholder="student@institution.edu.in"
+              aria-label="Teammate's institutional email address"
+              className="h-10 w-full px-3 py-2 text-xs rounded-xl border border-brand-softline bg-brand-cream font-medium text-brand-charcoal transition-all placeholder:text-brand-charcoal/45 focus:border-transparent focus:ring-2 focus:ring-brand-primary/30 focus:bg-white outline-none sm:h-11"
             />
             <button
               type="button"

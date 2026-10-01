@@ -314,13 +314,14 @@ export default function TeamWorkspaceCard() {
                         type="email"
                         autoFocus
                         required
-                        placeholder="teammate@mituniversity.edu.in"
+                        placeholder="student@institution.edu.in"
+                        aria-label="Teammate's institutional email address"
                         value={inviteEmail}
                         onChange={(e) => {
                           setInviteEmail(e.target.value);
                           setInviteError("");
                         }}
-                        className="h-10 flex-1 rounded-xl border border-brand-softline bg-white px-3.5 py-2 text-xs font-medium text-brand-charcoal outline-none transition-all placeholder:text-brand-charcoal/45 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20"
+                        className="h-10 flex-1 rounded-xl border border-brand-softline bg-white px-3.5 py-2 text-xs font-medium text-brand-charcoal outline-none transition-all placeholder:text-brand-charcoal/45 focus:border-transparent focus:ring-2 focus:ring-brand-primary/30"
                       />
                       <button
                         type="submit"
