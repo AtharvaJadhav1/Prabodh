@@ -7,6 +7,11 @@ export function mentorTypeForRole(role: PlatformRole | null | undefined): Mentor
   return undefined;
 }
 
+/** The platform role required to take a seat of this mentor type. */
+export function mentorRoleFor(type: MentorType): PlatformRole {
+  return type === MentorType.institute ? PlatformRole.institute_mentor : PlatformRole.industry_mentor;
+}
+
 /** Accepts the `?mentorType=` query value; anything else means "no workspace filter". */
 export function parseMentorTypeQuery(value: string | undefined): MentorType | undefined {
   return value === 'institute' || value === 'industry' ? (value as MentorType) : undefined;

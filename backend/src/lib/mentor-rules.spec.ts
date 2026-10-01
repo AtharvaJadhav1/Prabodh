@@ -84,3 +84,23 @@ describe('dual mentor — self invites', () => {
     assert.equal(isSelfInvite('u1', 'u2'), false);
   });
 });
+
+describe('admin override — role required for each seat', () => {
+  it('institute seat needs institute_mentor, industry seat needs industry_mentor', async () => {
+    const { mentorRoleFor } = await import('./mentor-rules');
+    assert.equal(mentorRoleFor(MentorType.institute), PlatformRole.institute_mentor);
+    assert.equal(mentorRoleFor(MentorType.industry), PlatformRole.industry_mentor);
+  });
+
+  it('a dual mentor qualifies for either seat, a single-role mentor only for their own', () => {
+    assert.equal(hasRole(DUAL_INSTITUTE_PRIMARY, PlatformRole.industry_mentor), true);
+    assert.equal(hasRole({ platformRole: PlatformRole.institute_mentor }, PlatformRole.industry_mentor), false);
+  });
+
+  it('replacing the current seat holder is not a conflict once that seat is excluded', () => {
+    const seatBeingReplaced = { mentorUserId: 'dual', mentorType: MentorType.institute, active: true };
+    // Without excluding it, the same-type seat would block; with it removed the list is empty.
+    assert.notEqual(seatConflict([seatBeingReplaced], 'dual', MentorType.institute), null);
+    assert.equal(seatConflict([], 'dual', MentorType.institute), null);
+  });
+});

@@ -2,11 +2,11 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { InviteStatus, MentorType, PlatformRole, Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
-import { hasRole } from '../../lib/roles';
 import { pickLeastLoadedMentor } from '../../domain/rules';
 import { writeAudit } from '../../lib/audit';
 import { syncTeamMentorPointers } from '../../lib/mentor-pointers';
-import { isSelfInvite, seatConflict } from '../../lib/mentor-rules';
+import { isSelfInvite, mentorRoleFor, seatConflict } from '../../lib/mentor-rules';
+import { hasRole } from '../../lib/roles';
 import { sendMentorInviteEmail } from '../../lib/invite-email';
 import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
@@ -30,6 +30,7 @@ export class MentorsService {
     if (existing) {
       throw new BadRequestException('Team already has an active mentor of this type; use reassign');
     }
+    await this.assertSeatEligible(body.teamId, body.mentorUserId, body.mentorType as MentorType);
     const capKey = body.mentorType === 'institute' ? 'institute_mentor_cap' : 'industry_mentor_cap';
     const cap = await getSettingNumber(this.prisma, capKey);
     const activeOfType = await this.prisma.mentorAssignment.count({
@@ -78,6 +79,36 @@ export class MentorsService {
     return assignment;
   }
 
+  /**
+   * Admin override guard: the person must be active, hold the matching mentor role, and not already
+   * hold the OTHER seat on this team (dual-role accounts). `ignoreAssignmentId` = the seat being replaced.
+   */
+  private async assertSeatEligible(
+    teamId: string,
+    mentorUserId: string,
+    mentorType: MentorType,
+    ignoreAssignmentId?: string,
+  ) {
+    const candidate = await this.prisma.user.findUnique({
+      where: { id: mentorUserId },
+      select: { id: true, isActive: true, platformRole: true, additionalRoles: true },
+    });
+    if (!candidate || !candidate.isActive) throw new BadRequestException('That mentor account is not active.');
+    if (!hasRole(candidate, mentorRoleFor(mentorType))) {
+      throw new BadRequestException(
+        mentorType === 'institute'
+          ? 'That person is not an institute (faculty) mentor.'
+          : 'That person is not an industry mentor.',
+      );
+    }
+    const seats = await this.prisma.mentorAssignment.findMany({
+      where: { teamId, active: true, ...(ignoreAssignmentId ? { id: { not: ignoreAssignmentId } } : {}) },
+      select: { mentorUserId: true, mentorType: true, active: true },
+    });
+    const conflict = seatConflict(seats, mentorUserId, mentorType);
+    if (conflict) throw new BadRequestException(conflict);
+  }
+
   async autoAllocate(admin: AuthUser, mentorType: MentorType) {
     if (mentorType === 'industry') {
       throw new BadRequestException(
@@ -107,7 +138,12 @@ export class MentorsService {
   async reassign(admin: AuthUser, assignmentId: string, mentorUserId: string) {
     const current = await this.repo.findById(assignmentId);
     if (!current) throw new NotFoundException('Assignment not found');
-    await this.repo.deactivate(assignmentId);
+    if (!current.active) throw new BadRequestException('That assignment is no longer active. Refresh and try again.');
+    if (current.mentorUserId === mentorUserId) {
+      throw new BadRequestException('That mentor is already assigned to this team.');
+    }
+    // The seat being replaced doesn't count as a conflict for the incoming mentor.
+    await this.assertSeatEligible(current.teamId, mentorUserId, current.mentorType, assignmentId);
     const industrialMentorId =
       current.mentorType === 'industry'
         ? (
@@ -117,14 +153,21 @@ export class MentorsService {
             })
           )?.id ?? null
         : null;
-    const next = await this.repo.create({
-      team: { connect: { id: current.teamId } },
-      mentor: { connect: { id: mentorUserId } },
-      assignedBy: { connect: { id: admin.id } },
-      mentorType: current.mentorType,
-      assignmentMethod: 'manual',
-      reassignedFrom: { connect: { id: assignmentId } },
-      ...(industrialMentorId ? { industrialMentor: { connect: { id: industrialMentorId } } } : {}),
+    // Deactivate + create in one transaction so a failed create never leaves the team without a mentor.
+    const next = await this.prisma.$transaction(async (tx) => {
+      await tx.mentorAssignment.update({ where: { id: assignmentId }, data: { active: false } });
+      return tx.mentorAssignment.create({
+        data: {
+          team: { connect: { id: current.teamId } },
+          mentor: { connect: { id: mentorUserId } },
+          assignedBy: { connect: { id: admin.id } },
+          mentorType: current.mentorType,
+          assignmentMethod: 'manual',
+          reassignedFrom: { connect: { id: assignmentId } },
+          ...(industrialMentorId ? { industrialMentor: { connect: { id: industrialMentorId } } } : {}),
+        },
+        include: { mentor: true, team: true },
+      });
     });
     await this.syncTeamMentorPointers(this.prisma, current.teamId);
     await writeAudit(this.prisma, {

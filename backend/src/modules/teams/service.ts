@@ -1,3 +1,4 @@
+import { seatConflict } from '../../lib/mentor-rules';
 import {
   BadRequestException,
   ConflictException,
@@ -255,6 +256,13 @@ export class TeamsService {
     const activeAssignments = await this.prisma.mentorAssignment.findMany({
       where: { teamId, mentorType: 'industry', active: true },
     });
+    // A dual-role account can't be both the faculty and the industrial mentor of one team.
+    const facultySeats = await this.prisma.mentorAssignment.findMany({
+      where: { teamId, mentorType: 'institute', active: true },
+      select: { mentorUserId: true, mentorType: true, active: true },
+    });
+    const seatProblem = seatConflict(facultySeats, profile.user.id, 'industry');
+    if (seatProblem) throw new BadRequestException(seatProblem);
     const alreadyActive = activeAssignments.some((a) => a.industrialMentorId === profile.id);
     if (!alreadyActive && activeAssignments.length >= cap) {
       throw new BadRequestException(`Team already has ${cap} industrial mentor(s)`);

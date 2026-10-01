@@ -13,7 +13,7 @@ type Props = {
 };
 
 export default function AllocationTable({ allocations, onAssignInstitute, onAssignIndustry }: Props) {
-  const { mentors, industryMentorOptions } = useAdmin();
+  const { mentors, industryMentorOptions, allocationError, clearAllocationError, pendingTeams } = useAdmin();
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
@@ -43,6 +43,18 @@ export default function AllocationTable({ allocations, onAssignInstitute, onAssi
         </div>
       </div>
 
+      {allocationError ? (
+        <div
+          role="alert"
+          className="mt-4 flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700"
+        >
+          <span>{allocationError}</span>
+          <button type="button" onClick={clearAllocationError} className="shrink-0 font-bold hover:underline">
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
@@ -68,7 +80,7 @@ export default function AllocationTable({ allocations, onAssignInstitute, onAssi
                     {bothAssigned ? (
                       <span className="inline-flex items-center gap-1 rounded-full border border-brand-approved/20 bg-brand-approved/10 px-2.5 py-1 text-[11px] font-semibold text-brand-approved">
                         <CheckIcon className="h-3 w-3" />
-                        Paid
+                        Assigned
                       </span>
                     ) : a.assignedMentorId || a.assignedIndustryMentorId ? (
                       <span className="inline-flex items-center gap-1 rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2.5 py-1 text-[11px] font-semibold text-brand-primary">
@@ -86,6 +98,7 @@ export default function AllocationTable({ allocations, onAssignInstitute, onAssi
                       options={mentors.map((m) => ({ id: m.id, name: m.name, subtext: m.title }))}
                       selectedId={a.assignedMentorId ?? undefined}
                       placeholder="Select Institute Mentor..."
+                      disabled={pendingTeams.has(a.teamId)}
                       allowClear
                       onSelect={(id) => onAssignInstitute(a.teamId, id)}
                     />
@@ -95,6 +108,7 @@ export default function AllocationTable({ allocations, onAssignInstitute, onAssi
                       options={industryMentorOptions.map((m) => ({ id: m.id, name: m.name, subtext: m.title }))}
                       selectedId={a.assignedIndustryMentorId ?? undefined}
                       placeholder="Select Industrial Mentor..."
+                      disabled={pendingTeams.has(a.teamId)}
                       allowClear
                       onSelect={(id) => onAssignIndustry(a.teamId, id)}
                     />

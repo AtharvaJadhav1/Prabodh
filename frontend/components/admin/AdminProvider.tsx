@@ -29,6 +29,11 @@ type AdminContextValue = {
   allocations: AdminAllocation[];
   assignTeam: (teamId: string, mentorId: string) => void;
   assignIndustryMentor: (teamId: string, mentorId: string) => void;
+  /** Last allocation failure, shown above the table. */
+  allocationError: string | null;
+  clearAllocationError: () => void;
+  /** Teams with an allocation change in flight (their dropdowns are locked). */
+  pendingTeams: Set<string>;
   metrics: ReturnType<typeof platformMetrics>;
   overview: OverviewDashboard;
   mentors: LiveMentor[];
@@ -170,19 +175,47 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     void load();
   }, [load]);
 
+  const [allocationError, setAllocationError] = useState<string | null>(null);
+  const [pendingTeams, setPendingTeams] = useState<Set<string>>(new Set());
+
+  /** Run one allocation change: lock the row, show failures, and always re-sync from the server. */
+  const runAllocation = useCallback(
+    async (teamId: string, optimistic: (a: AdminAllocation) => AdminAllocation, action: () => Promise<unknown>) => {
+      setAllocationError(null);
+      setPendingTeams((prev) => new Set(prev).add(teamId));
+      setAllocations((prev) => prev.map((a) => (a.teamId === teamId ? optimistic(a) : a)));
+      try {
+        await action();
+      } catch (err) {
+        setAllocationError(err instanceof Error && err.message ? err.message : "Could not update the mentor allocation.");
+      } finally {
+        await load();
+        setPendingTeams((prev) => {
+          const next = new Set(prev);
+          next.delete(teamId);
+          return next;
+        });
+      }
+    },
+    [load],
+  );
+
   const assignTeam = useCallback(
     (teamId: string, mentorId: string) => {
       const current = allocations.find((a) => a.teamId === teamId);
-      void (async () => {
-        try {
+      if (!current || pendingTeams.has(teamId)) return;
+      const name = mentors.find((m) => m.id === mentorId)?.name ?? null;
+      void runAllocation(
+        teamId,
+        (a) => ({ ...a, assignedMentorId: mentorId || null, assignedMentorName: mentorId ? name : null }),
+        async () => {
           if (!mentorId) {
-            if (current?.assignedMentorAssignmentId) {
+            if (current.assignedMentorAssignmentId) {
               await apiPost(`/mentors/${current.assignedMentorAssignmentId}/unassign`, {});
             }
-            await load();
             return;
           }
-          if (current?.assignedMentorAssignmentId) {
+          if (current.assignedMentorAssignmentId) {
             await apiPost(`/mentors/${current.assignedMentorAssignmentId}/reassign`, { mentorUserId: mentorId });
           } else {
             await apiPost("/mentors/allocate", {
@@ -192,35 +225,36 @@ export function AdminProvider({ children }: { children: ReactNode }) {
               assignmentMethod: "manual",
             });
           }
-          await load();
-        } catch {
-          /* ignore */
-        }
-      })();
+        },
+      );
     },
-    [allocations, load],
+    [allocations, mentors, pendingTeams, runAllocation],
   );
 
   const assignIndustryMentor = useCallback(
     (teamId: string, mentorUserId: string) => {
       const current = allocations.find((a) => a.teamId === teamId);
-      void (async () => {
-        try {
+      if (!current || pendingTeams.has(teamId)) return;
+      const name = industryMentorOptions.find((m) => m.id === mentorUserId)?.name ?? null;
+      void runAllocation(
+        teamId,
+        (a) => ({
+          ...a,
+          assignedIndustryMentorId: mentorUserId || null,
+          assignedIndustryMentorName: mentorUserId ? name : null,
+        }),
+        async () => {
           if (!mentorUserId) {
-            if (current?.assignedIndustryMentorAssignmentId) {
+            if (current.assignedIndustryMentorAssignmentId) {
               await apiPost(`/mentors/${current.assignedIndustryMentorAssignmentId}/unassign`, {});
             }
-            await load();
             return;
           }
           await apiPost(`/teams/${teamId}/assign-industrial-mentor`, { userId: mentorUserId });
-          await load();
-        } catch {
-          /* ignore */
-        }
-      })();
+        },
+      );
     },
-    [allocations, load],
+    [allocations, industryMentorOptions, pendingTeams, runAllocation],
   );
 
   const metrics = useMemo(() => {
@@ -235,6 +269,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         allocations,
         assignTeam,
         assignIndustryMentor,
+        allocationError,
+        clearAllocationError: () => setAllocationError(null),
+        pendingTeams,
         metrics,
         overview,
         mentors,
