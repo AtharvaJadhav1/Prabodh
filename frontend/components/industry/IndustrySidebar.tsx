@@ -12,6 +12,7 @@ import {
   LogoutIcon,
   XIcon,
   HistoryIcon,
+  ChevronRightIcon,
 } from "../dashboard/icons";
 import { roleLabel, useAuth, initialsFrom } from "../auth/AuthProvider";
 import RoleSwitcher from "../auth/RoleSwitcher";
@@ -51,7 +52,6 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
     { label: "My Mentors", href: "/dashboard/industry/mentors", match: "start", icon: BriefcaseIcon },
     { label: "Assigned Teams", href: "/dashboard/industry/teams", match: "start", icon: FileCheckIcon },
     { label: "Audit Logs", href: "/dashboard/industry/audit-logs", match: "start", icon: HistoryIcon },
-    { label: "Profile", href: "/dashboard/industry/profile", match: "start", icon: PersonIcon },
   ];
 
   return (
@@ -148,17 +148,28 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
         <div className="border-t border-brand-softline px-4 py-4">
           <div className="flex flex-col gap-3">
             <RoleSwitcher />
-            <div className="flex items-center gap-3 rounded-xl border border-brand-softline bg-white p-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold text-white">
-                {initialsFrom(fullName)}
+            <Link
+              href="/dashboard/industry/profile"
+              onClick={onCloseMobile}
+              className="group flex items-center justify-between p-3 bg-white border border-brand-softline rounded-xl shadow-sm hover:border-brand-softline hover:bg-brand-cream/80 hover:shadow-md transition-all duration-200 w-full cursor-pointer"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-brand-deep text-white font-bold">
+                  {initialsFrom(fullName)}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-sm font-bold text-brand-deep leading-tight truncate">
+                    {displayName}
+                  </span>
+                  <span className="text-xs text-brand-muted font-medium truncate">
+                    {role}
+                  </span>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p title={fullName} className="truncate max-w-full text-sm font-bold text-brand-deep">
-                  {displayName}
-                </p>
-                <p className="truncate text-xs font-medium text-brand-muted">{role}</p>
+              <div className="text-brand-muted group-hover:text-brand-deep transition-colors duration-200 flex-shrink-0">
+                <ChevronRightIcon className="w-5 h-5" />
               </div>
-            </div>
+            </Link>
             <button
               type="button"
               onClick={() => {
