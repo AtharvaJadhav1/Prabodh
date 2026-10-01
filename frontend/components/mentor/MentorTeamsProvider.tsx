@@ -68,7 +68,7 @@ export function MentorTeamsProvider({ children }: { children: ReactNode }) {
       if (!session) return;
       if (!soft) setLoading(true);
       try {
-        const rows = await api<MentorTeamRow[]>("/mentors/me/teams");
+        const rows = await api<MentorTeamRow[]>("/mentors/me/teams?mentorType=institute");
         setTeams(rows);
         setError(null);
       } catch (err) {

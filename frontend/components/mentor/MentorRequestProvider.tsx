@@ -65,7 +65,7 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
   const reload = useCallback(async () => {
     if (!session) return;
     try {
-      const rows = await api<MentorInviteRow[]>("/mentors/invites");
+      const rows = await api<MentorInviteRow[]>("/mentors/invites?mentorType=institute");
       setPendingRequests(rows.map(mapInvite));
     } catch {
       setPendingRequests([]);
@@ -125,8 +125,15 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
       const target = pendingRequests.find((r) => r.id === id);
       setProcessingId(id);
       setPendingRequests((prev) => prev.filter((r) => r.id !== id));
-      void apiPost(`/mentors/invites/${id}/accept`, {})
-        .then(() => {
+      void apiPost<{ accepted?: boolean } | null>(`/mentors/invites/${id}/accept`, {})
+        .then((result) => {
+          // The server expires the invite (team already has a mentor, locked, or you already hold a
+          // seat on it) and answers accepted:false — that is not an acceptance.
+          if (result && result.accepted === false) {
+            void reload();
+            void refreshMentorTeams(true);
+            return;
+          }
           void refreshMentorTeams(true);
           if (target) {
             setRequestHistory((h) => [

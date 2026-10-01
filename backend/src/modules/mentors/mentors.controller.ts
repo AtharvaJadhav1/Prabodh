@@ -7,6 +7,7 @@ import { CurrentUser } from '../../common/current-user.decorator';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
 import { ZodPipe } from '../../common/zod.pipe';
+import { parseMentorTypeQuery } from '../../lib/mentor-rules';
 import { allocateSchema, autoAllocateSchema, mentorInviteSchema } from './schema';
 import { MentorsService } from './service';
 
@@ -24,8 +25,16 @@ export class MentorsController {
 
   @Get('invites')
   @Roles(PlatformRole.institute_mentor, PlatformRole.industry_mentor, PlatformRole.admin)
-  myInvites(@CurrentUser() user: AuthUser, @Query('history') history?: string) {
-    return this.mentors.pendingInvitesForMentor(user, history === '1' || history === 'true');
+  myInvites(
+    @CurrentUser() user: AuthUser,
+    @Query('history') history?: string,
+    @Query('mentorType') mentorType?: string,
+  ) {
+    return this.mentors.pendingInvitesForMentor(
+      user,
+      history === '1' || history === 'true',
+      parseMentorTypeQuery(mentorType),
+    );
   }
 
   @Post('invite')
@@ -86,14 +95,14 @@ export class MentorsController {
   myAuditLog(
     @CurrentUser() user: AuthUser,
     @Query()
-    query: { page?: string; limit?: string; category?: string; search?: string; hours?: string; teamId?: string },
+    query: { page?: string; limit?: string; category?: string; search?: string; hours?: string; teamId?: string; mentorType?: string },
   ) {
-    return this.mentors.teamAuditLog(user, query);
+    return this.mentors.teamAuditLog(user, { ...query, mentorType: parseMentorTypeQuery(query.mentorType) });
   }
 
   @Get('me/teams')
   @Roles(PlatformRole.institute_mentor, PlatformRole.industry_mentor, PlatformRole.admin)
-  myTeams(@CurrentUser() user: AuthUser) {
-    return this.mentors.myTeams(user);
+  myTeams(@CurrentUser() user: AuthUser, @Query('mentorType') mentorType?: string) {
+    return this.mentors.myTeams(user, parseMentorTypeQuery(mentorType));
   }
 }

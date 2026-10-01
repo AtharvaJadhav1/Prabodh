@@ -33,7 +33,7 @@ export default function IndustryMentorsPage() {
           }>;
         };
       }>
-    >("/mentors/me/teams")
+    >("/mentors/me/teams?mentorType=institute")
       .then((rows) => {
         const nextGroups: MentorGroup[] = [];
         const byId = new Map<string, IndustryMentor>();

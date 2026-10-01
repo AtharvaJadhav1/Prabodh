@@ -190,7 +190,7 @@ export default function AuditLogView({ endpoint, teamOptions, csvName = "audit_l
       if (hours) params.set("hours", hours);
       if (q) params.set("search", q);
       if (teamId) params.set("teamId", teamId);
-      const res = await api<AuditMeta>(`${endpoint}?${params.toString()}`);
+      const res = await api<AuditMeta>(`${endpoint}${endpoint.includes("?") ? "&" : "?"}${params.toString()}`);
       setRows(res.items ?? []);
       setTotal(res.total ?? 0);
       setPages(res.pages ?? 0);

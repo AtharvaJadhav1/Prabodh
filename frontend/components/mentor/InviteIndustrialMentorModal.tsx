@@ -52,6 +52,8 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
       const params = new URLSearchParams();
       if (q) params.set("q", q);
       if (d) params.set("domain", d);
+      // Hides the signed-in mentor (dual-role accounts) and anyone already seated on this team.
+      params.set("teamId", teamId);
       const rows = await api<IndustrialMentorProfile[]>(`/industrial-mentors${params.size ? `?${params.toString()}` : ""}`);
       setResults(rows.filter((m) => m.isActive));
     } catch {
@@ -60,7 +62,7 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [teamId]);
 
   useEffect(() => {
     if (!open) return;

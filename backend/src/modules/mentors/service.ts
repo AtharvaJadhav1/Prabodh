@@ -6,6 +6,7 @@ import { hasRole } from '../../lib/roles';
 import { pickLeastLoadedMentor } from '../../domain/rules';
 import { writeAudit } from '../../lib/audit';
 import { syncTeamMentorPointers } from '../../lib/mentor-pointers';
+import { isSelfInvite, seatConflict } from '../../lib/mentor-rules';
 import { sendMentorInviteEmail } from '../../lib/invite-email';
 import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
@@ -166,11 +167,17 @@ export class MentorsService {
     return updated;
   }
 
-  async myTeams(user: AuthUser) {
-    const assignments = await this.repo.teamsForMentor(user.id);
+  /**
+   * `mentorType` scopes the result to one workspace. Dual-role accounts (institute + industry) must
+   * not see the teams they mentor as faculty inside the Industry workspace, or the reverse.
+   */
+  async myTeams(user: AuthUser, mentorType?: MentorType) {
+    const allAssignments = await this.repo.teamsForMentor(user.id);
+    const assignments = mentorType ? allAssignments.filter((a) => a.mentorType === mentorType) : allAssignments;
     const pendingInvites = await this.prisma.mentorInvite.findMany({
       where: {
         inviteStatus: InviteStatus.pending,
+        ...(mentorType ? { mentorType } : {}),
         OR: [{ mentorUserId: user.id }, { invitedEmail: user.email }],
       },
       include: {
@@ -210,11 +217,19 @@ export class MentorsService {
   /** Audit trail limited to the teams this mentor is actively assigned to. */
   async teamAuditLog(
     user: AuthUser,
-    query: { page?: string; limit?: string; category?: string; search?: string; hours?: string; teamId?: string },
+    query: {
+      page?: string;
+      limit?: string;
+      category?: string;
+      search?: string;
+      hours?: string;
+      teamId?: string;
+      mentorType?: MentorType;
+    },
   ) {
     const { page, limit, skip, take } = parsePagination(query);
     const mine = await this.prisma.mentorAssignment.findMany({
-      where: { mentorUserId: user.id, active: true },
+      where: { mentorUserId: user.id, active: true, ...(query.mentorType ? { mentorType: query.mentorType } : {}) },
       select: { teamId: true },
     });
     let teamIds = [...new Set(mine.map((a) => a.teamId))];
@@ -360,6 +375,16 @@ export class MentorsService {
       }
     }
 
+    if (isSelfInvite(user.id, mentor.id)) {
+      throw new BadRequestException('You cannot invite yourself as a mentor.');
+    }
+    const seats = await this.prisma.mentorAssignment.findMany({
+      where: { teamId: team.id, active: true },
+      select: { mentorUserId: true, mentorType: true, active: true },
+    });
+    const conflict = seatConflict(seats, mentor.id, mentorType);
+    if (conflict) throw new BadRequestException(conflict);
+
     const invite = await this.upsertMentorInvite({
       teamId: team.id,
       email,
@@ -413,10 +438,11 @@ export class MentorsService {
     });
   }
 
-  pendingInvitesForMentor(user: AuthUser, history = false) {
+  pendingInvitesForMentor(user: AuthUser, history = false, mentorType?: MentorType) {
     return this.prisma.mentorInvite.findMany({
       where: {
         inviteStatus: history ? { not: InviteStatus.pending } : InviteStatus.pending,
+        ...(mentorType ? { mentorType } : {}),
         OR: [{ mentorUserId: user.id }, { invitedEmail: user.email }],
       },
       ...(history ? { take: 100 } : {}),
@@ -474,6 +500,18 @@ export class MentorsService {
         where: { teamId: team.id, mentorType: fresh.mentorType, active: true },
       });
       const facultyLocked = fresh.mentorType === 'institute' && team.mentorLockedAt !== null;
+      const seats = await tx.mentorAssignment.findMany({
+        where: { teamId: team.id, active: true },
+        select: { mentorUserId: true, mentorType: true, active: true },
+      });
+      // A dual-role account may not take a second seat (faculty AND industrial) on the same team.
+      if (seatConflict(seats, user.id, fresh.mentorType)) {
+        await tx.mentorInvite.update({
+          where: { id: fresh.id },
+          data: { inviteStatus: InviteStatus.expired },
+        });
+        return { accepted: false };
+      }
       if (facultyLocked || active) {
         await tx.mentorInvite.update({
           where: { id: fresh.id },
@@ -592,10 +630,24 @@ export class MentorsService {
     return syncTeamMentorPointers(db, teamId);
   }
 
-  listIndustrialMentors(query: { domain?: string; q?: string }) {
+  async listIndustrialMentors(
+    query: { domain?: string; q?: string; teamId?: string },
+    requester?: AuthUser,
+  ) {
+    // Never offer the requester themself, nor anyone already holding a mentor seat on this team.
+    const excludeUserIds = new Set<string>();
+    if (requester) excludeUserIds.add(requester.id);
+    if (query.teamId) {
+      const seated = await this.prisma.mentorAssignment.findMany({
+        where: { teamId: query.teamId, active: true },
+        select: { mentorUserId: true },
+      });
+      seated.forEach((s) => excludeUserIds.add(s.mentorUserId));
+    }
     return this.prisma.industrialMentor.findMany({
       where: {
         isActive: true,
+        ...(excludeUserIds.size ? { userId: { notIn: [...excludeUserIds] } } : {}),
         ...(query.domain ? { domainExpertise: { has: query.domain } } : {}),
         ...(query.q
           ? {

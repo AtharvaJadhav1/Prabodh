@@ -108,7 +108,7 @@ export function IndustryMentorProvider({ children }: { children: ReactNode }) {
   const loadTeams = useCallback(async () => {
     if (!session) return;
     try {
-      const rows = await api<TeamApiRow[]>("/mentors/me/teams");
+      const rows = await api<TeamApiRow[]>("/mentors/me/teams?mentorType=industry");
       const mentorsById = new Map<string, AcceptedMentor>();
       setVisibleTeams(
         rows
@@ -156,8 +156,8 @@ export function IndustryMentorProvider({ children }: { children: ReactNode }) {
     if (!session) return;
     try {
       const [pending, history] = await Promise.all([
-        api<InviteApiRow[]>("/mentors/invites"),
-        api<InviteApiRow[]>("/mentors/invites?history=1").catch(() => [] as InviteApiRow[]),
+        api<InviteApiRow[]>("/mentors/invites?mentorType=industry"),
+        api<InviteApiRow[]>("/mentors/invites?history=1&mentorType=industry").catch(() => [] as InviteApiRow[]),
       ]);
       setPendingInvites(pending.filter((row) => row.inviteStatus === "pending").map(toInvite));
       setInviteHistory(history.map(toInvite));
