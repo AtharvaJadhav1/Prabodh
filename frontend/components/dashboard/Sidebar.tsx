@@ -40,7 +40,7 @@ const navItems = [
     badge: true,
     icon: UserPlusIcon,
   },
-  { label: "Mentors", href: "/dashboard/student/mentors", match: "prefix", chip: "Dual Track", icon: GradCapIcon },
+  { label: "Mentors", href: "/dashboard/student/mentors", match: "prefix", icon: GradCapIcon },
   // Mobile only: on desktop the discussion lives on the dashboard itself.
   {
     label: "Discussion",
@@ -218,7 +218,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 : pendingRequestCount > 0
                   ? pendingRequestCount
                   : 0;
-            const chip = item.badge && groupBadge > 0 ? String(groupBadge) : item.chip;
+            const chip = item.badge && groupBadge > 0 ? String(groupBadge) : null;
 
             return (
               <Link

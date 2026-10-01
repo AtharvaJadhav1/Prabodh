@@ -221,11 +221,6 @@ export default function DeliverablesCard() {
           {stage?.name ?? "No active stage"}
         </span>
       </div>
-      <p className="mt-1.5 text-sm text-brand-muted">
-        Upload your <span className="font-semibold text-brand-deep">presentation (PPT/PPTX)</span> and{" "}
-        <span className="font-semibold text-brand-deep">report (PDF/DOCX)</span>. Max 5MB each.
-      </p>
-
       {isLead ? (
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           {(["ppt", "report"] as Kind[]).map((kind) => {
