@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import AdminShell from "../../../../../../components/admin/AdminShell";
 import AddTeamsModal from "../../../../../../components/admin/batches/AddTeamsModal";
+import BulkLeadersModal from "../../../../../../components/admin/batches/BulkLeadersModal";
 import StatusPill from "../../../../../../components/admin/StatusPill";
 import { ApiError, apiPost } from "../../../../../../lib/api";
 import { PlusIcon, XIcon } from "../../../../../../components/dashboard/icons";
@@ -16,6 +17,7 @@ export default function CreateBatchPage() {
   const [description, setDescription] = useState("");
   const [teams, setTeams] = useState<BatchTeam[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -88,14 +90,23 @@ export default function CreateBatchPage() {
               <h2 className="text-xs font-bold uppercase tracking-wider text-brand-deep">
                 Teams in this batch ({teams.length})
               </h2>
-              <button
-                type="button"
-                onClick={() => setPickerOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-brand-primary/30 bg-brand-lightOrange px-3.5 py-2 text-xs font-bold text-brand-primary transition-colors hover:bg-brand-primary hover:text-white"
-              >
-                <PlusIcon className="h-4 w-4" />
-                Add teams
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBulkOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 bg-white px-3.5 py-2 text-xs font-bold text-brand-deep transition-colors hover:bg-neutral-50"
+                >
+                  Bulk add by leader email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-brand-primary/30 bg-brand-lightOrange px-3.5 py-2 text-xs font-bold text-brand-primary transition-colors hover:bg-brand-primary hover:text-white"
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Add teams
+                </button>
+              </div>
             </div>
 
             {teams.length === 0 ? (
@@ -149,6 +160,14 @@ export default function CreateBatchPage() {
         </form>
       </div>
 
+      <BulkLeadersModal
+        open={bulkOpen}
+        batchName={name.trim() || "the new batch"}
+        onClose={() => setBulkOpen(false)}
+        onResolved={(found) =>
+          setTeams((prev) => [...prev, ...found.filter((t) => !prev.some((p) => p.id === t.id))])
+        }
+      />
       <AddTeamsModal
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}

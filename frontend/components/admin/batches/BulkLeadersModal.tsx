@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { ApiError, apiPost } from "../../../lib/api";
 import { XIcon } from "../../dashboard/icons";
-import type { BatchDetail } from "./types";
+import type { BatchDetail, BatchTeam } from "./types";
 
 type Status = "added" | "already_in_batch" | "in_other_batch" | "no_account" | "not_a_leader";
 
@@ -15,7 +15,9 @@ type Result = {
 };
 
 type Response = {
-  batch: BatchDetail;
+  batch?: BatchDetail;
+  /** Draft mode only: teams that are free to join. */
+  teams?: BatchTeam[];
   results: Result[];
   summary: {
     requested: number;
@@ -30,11 +32,14 @@ type Response = {
 
 type Props = {
   open: boolean;
-  batchId: string;
+  /** Omit on the Create Batch form: emails are resolved to teams and handed to `onResolved` instead. */
+  batchId?: string;
   batchName: string;
   onClose: () => void;
-  /** Called after teams were added so the page can refresh. */
-  onDone: () => void;
+  /** Existing batch: called after teams were added so the page can refresh. */
+  onDone?: () => void;
+  /** Create form: called with the teams found for the pasted leader emails. */
+  onResolved?: (teams: BatchTeam[]) => void;
 };
 
 const EMAIL_RE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
@@ -69,7 +74,8 @@ export function parseEmails(raw: string): { valid: string[]; invalid: string[] }
   return { valid, invalid };
 }
 
-export default function BulkLeadersModal({ open, batchId, batchName, onClose, onDone }: Props) {
+export default function BulkLeadersModal({ open, batchId, batchName, onClose, onDone, onResolved }: Props) {
+  const draft = !batchId;
   const [text, setText] = useState("");
   const [notify, setNotify] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -82,7 +88,7 @@ export default function BulkLeadersModal({ open, batchId, batchName, onClose, on
 
   const close = () => {
     if (busy) return;
-    if (response && response.summary.teamsAdded > 0) onDone();
+    if (response && response.summary.teamsAdded > 0) onDone?.();
     setText("");
     setResponse(null);
     setError("");
@@ -105,12 +111,15 @@ export default function BulkLeadersModal({ open, batchId, batchName, onClose, on
     setError("");
     setBusy(true);
     try {
-      const res = await apiPost<Response>(`/admin/batches/${batchId}/leaders`, {
-        emails: parsed.valid,
-        notify,
-      });
+      const res = draft
+        ? await apiPost<Response>("/admin/batches/resolve-leaders", { emails: parsed.valid })
+        : await apiPost<Response>(`/admin/batches/${batchId}/leaders`, { emails: parsed.valid, notify });
       setResponse(res);
-      if (res.summary.teamsAdded > 0) onDone();
+      if (draft) {
+        if (res.teams?.length) onResolved?.(res.teams);
+      } else if (res.summary.teamsAdded > 0) {
+        onDone?.();
+      }
     } catch (err) {
       setError(err instanceof ApiError || err instanceof Error ? err.message : "Bulk add failed. Try again.");
     } finally {
@@ -132,7 +141,13 @@ export default function BulkLeadersModal({ open, batchId, batchName, onClose, on
           <div>
             <h3 className="text-lg font-bold text-brand-deep">Bulk add by leader email</h3>
             <p className="mt-0.5 text-xs text-brand-muted">
-              Each leader&apos;s team is added straight into <span className="font-semibold">{batchName}</span>.
+              {draft ? (
+                <>Each leader&apos;s team is added to the list for the new batch. Nothing is saved until you click Create batch.</>
+              ) : (
+                <>
+                  Each leader&apos;s team is added straight into <span className="font-semibold">{batchName}</span>.
+                </>
+              )}
             </p>
           </div>
           <button
@@ -191,6 +206,7 @@ export default function BulkLeadersModal({ open, batchId, batchName, onClose, on
                 {tooMany ? <span className="text-red-600">Maximum {MAX_EMAILS} emails at a time</span> : null}
               </div>
 
+              {draft ? null : (
               <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-neutral-200 p-3 text-xs">
                 <input
                   type="checkbox"
@@ -205,12 +221,13 @@ export default function BulkLeadersModal({ open, batchId, batchName, onClose, on
                   </span>
                 </span>
               </label>
+              )}
             </>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {[
-                  { label: "Teams added", value: response.summary.teamsAdded, cls: "text-emerald-700" },
+                  { label: draft ? "Teams found" : "Teams added", value: response.summary.teamsAdded, cls: "text-emerald-700" },
                   { label: "Already in batch", value: response.summary.alreadyInBatch, cls: "text-sky-700" },
                   { label: "In another batch", value: response.summary.inOtherBatch, cls: "text-amber-700" },
                   {
@@ -240,7 +257,7 @@ export default function BulkLeadersModal({ open, batchId, batchName, onClose, on
                     <span
                       className={`inline-block shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${STATUS_UI[r.status].cls}`}
                     >
-                      {STATUS_UI[r.status].label}
+                      {draft && r.status === "added" ? "Added to list" : STATUS_UI[r.status].label}
                     </span>
                   </li>
                 ))}
@@ -267,7 +284,7 @@ export default function BulkLeadersModal({ open, batchId, batchName, onClose, on
                 onClick={() => void send()}
                 className="rounded-xl bg-brand-primary px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {busy ? "Adding…" : `Add teams for ${parsed.valid.length} leader${parsed.valid.length === 1 ? "" : "s"}`}
+                {busy ? "Checking…" : `Add teams for ${parsed.valid.length} leader${parsed.valid.length === 1 ? "" : "s"}`}
               </button>
             </>
           ) : (

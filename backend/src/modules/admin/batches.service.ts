@@ -26,6 +26,10 @@ export const batchLeadersSchema = z.object({
   notify: z.boolean().default(true),
 });
 
+export const batchResolveSchema = z.object({
+  emails: z.array(z.string().trim().toLowerCase().email()).min(1).max(500),
+});
+
 export type LeaderInviteStatus =
   | 'added'
   | 'already_in_batch'
@@ -150,53 +154,7 @@ export class BatchesService {
   async inviteLeaders(admin: AuthUser, id: string, body: z.infer<typeof batchLeadersSchema>) {
     const batch = await this.get(id);
     const emails = [...new Set(body.emails)];
-
-    const users = await this.prisma.user.findMany({
-      where: { OR: emails.map((email) => ({ email: { equals: email, mode: 'insensitive' as const } })) },
-      select: {
-        id: true,
-        email: true,
-        ledTeams: {
-          select: { id: true, name: true, teamCode: true, batchId: true, batch: { select: { name: true } } },
-        },
-      },
-    });
-    const byEmail = new Map(users.map((u) => [u.email.toLowerCase(), u]));
-
-    const results: LeaderInviteResult[] = [];
-    const toAdd: string[] = [];
-    const leaderForTeam = new Map<string, string>();
-
-    for (const email of emails) {
-      const user = byEmail.get(email);
-      if (!user) {
-        results.push({ email, status: 'no_account', teams: [] });
-        continue;
-      }
-      if (!user.ledTeams.length) {
-        results.push({ email, status: 'not_a_leader', teams: [] });
-        continue;
-      }
-      const free = user.ledTeams.filter((t) => !t.batchId);
-      const here = user.ledTeams.filter((t) => t.batchId === id);
-      const elsewhere = user.ledTeams.filter((t) => t.batchId && t.batchId !== id);
-      if (free.length) {
-        free.forEach((t) => {
-          toAdd.push(t.id);
-          leaderForTeam.set(t.id, user.id);
-        });
-        results.push({ email, status: 'added', teams: free.map(({ id: tid, name, teamCode }) => ({ id: tid, name, teamCode })) });
-      } else if (here.length) {
-        results.push({ email, status: 'already_in_batch', teams: here.map(({ id: tid, name, teamCode }) => ({ id: tid, name, teamCode })) });
-      } else {
-        results.push({
-          email,
-          status: 'in_other_batch',
-          teams: elsewhere.map(({ id: tid, name, teamCode }) => ({ id: tid, name, teamCode })),
-          otherBatch: elsewhere[0]?.batch?.name,
-        });
-      }
-    }
+    const { results, toAdd, leaderForTeam } = await this.classifyLeaders(emails, id);
 
     if (toAdd.length) {
       try {
@@ -223,20 +181,89 @@ export class BatchesService {
       }
     }
 
-    const count = (s: LeaderInviteStatus) => results.filter((r) => r.status === s).length;
     return {
       batch: await this.get(id),
       results,
-      summary: {
-        requested: emails.length,
-        added: count('added'),
-        teamsAdded: toAdd.length,
-        alreadyInBatch: count('already_in_batch'),
-        inOtherBatch: count('in_other_batch'),
-        noAccount: count('no_account'),
-        notALeader: count('not_a_leader'),
-      },
+      summary: this.summarize(results, emails.length, toAdd.length),
     };
+  }
+
+  /**
+   * Preview for the Create Batch form (no batch exists yet): resolve leader emails to teams that are
+   * free to join. Nothing is saved and nobody is notified until the batch is created.
+   */
+  async resolveLeaders(emails: string[]) {
+    const unique = [...new Set(emails)];
+    const { results, toAdd } = await this.classifyLeaders(unique, null);
+    const teams = toAdd.length
+      ? await this.prisma.team.findMany({ where: { id: { in: toAdd } }, select: TEAM_SUMMARY, orderBy: { teamCode: 'asc' } })
+      : [];
+    return { results, teams, summary: this.summarize(results, unique.length, toAdd.length) };
+  }
+
+  private summarize(results: LeaderInviteResult[], requested: number, teamsAdded: number) {
+    const count = (s: LeaderInviteStatus) => results.filter((r) => r.status === s).length;
+    return {
+      requested,
+      added: count('added'),
+      teamsAdded,
+      alreadyInBatch: count('already_in_batch'),
+      inOtherBatch: count('in_other_batch'),
+      noAccount: count('no_account'),
+      notALeader: count('not_a_leader'),
+    };
+  }
+
+  /** Map each leader email to the teams it can add. `batchId` null = a batch that doesn't exist yet. */
+  private async classifyLeaders(emails: string[], batchId: string | null) {
+    const users = await this.prisma.user.findMany({
+      where: { OR: emails.map((email) => ({ email: { equals: email, mode: 'insensitive' as const } })) },
+      select: {
+        id: true,
+        email: true,
+        ledTeams: {
+          select: { id: true, name: true, teamCode: true, batchId: true, batch: { select: { name: true } } },
+        },
+      },
+    });
+    const byEmail = new Map(users.map((u) => [u.email.toLowerCase(), u]));
+    const ref = (t: { id: string; name: string; teamCode: string }) => ({ id: t.id, name: t.name, teamCode: t.teamCode });
+
+    const results: LeaderInviteResult[] = [];
+    const toAdd: string[] = [];
+    const leaderForTeam = new Map<string, string>();
+
+    for (const email of emails) {
+      const user = byEmail.get(email);
+      if (!user) {
+        results.push({ email, status: 'no_account', teams: [] });
+        continue;
+      }
+      if (!user.ledTeams.length) {
+        results.push({ email, status: 'not_a_leader', teams: [] });
+        continue;
+      }
+      const free = user.ledTeams.filter((t) => !t.batchId);
+      const here = batchId ? user.ledTeams.filter((t) => t.batchId === batchId) : [];
+      const elsewhere = user.ledTeams.filter((t) => t.batchId && t.batchId !== batchId);
+      if (free.length) {
+        free.forEach((t) => {
+          toAdd.push(t.id);
+          leaderForTeam.set(t.id, user.id);
+        });
+        results.push({ email, status: 'added', teams: free.map(ref) });
+      } else if (here.length) {
+        results.push({ email, status: 'already_in_batch', teams: here.map(ref) });
+      } else {
+        results.push({
+          email,
+          status: 'in_other_batch',
+          teams: elsewhere.map(ref),
+          otherBatch: elsewhere[0]?.batch?.name,
+        });
+      }
+    }
+    return { results, toAdd, leaderForTeam };
   }
 
   async removeTeam(admin: AuthUser, id: string, teamId: string) {

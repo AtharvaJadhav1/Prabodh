@@ -10,6 +10,7 @@ import {
   BatchesService,
   batchCreateSchema,
   batchLeadersSchema,
+  batchResolveSchema,
   batchTeamsSchema,
   batchUpdateSchema,
 } from './batches.service';
@@ -24,6 +25,12 @@ export class BatchesController {
   @Get()
   list() {
     return this.batches.list();
+  }
+
+  /** Create-form preview: leader emails -> teams that are free to join (declared before `:id` routes). */
+  @Post('resolve-leaders')
+  resolveLeaders(@Body(new ZodPipe(batchResolveSchema)) body: unknown) {
+    return this.batches.resolveLeaders((body as { emails: string[] }).emails);
   }
 
   @Get(':id')
