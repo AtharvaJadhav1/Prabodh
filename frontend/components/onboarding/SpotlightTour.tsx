@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import {
   useCallback,
   useEffect,
@@ -38,6 +38,8 @@ const EDGE = 16;
 const SPOTLIGHT_PAD = 8;
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const MAX_SYNC_RETRIES = 20;
+const SYNC_RETRY_INTERVAL = 150;
 
 function blurFade(reduceMotion: boolean | null) {
   return {
@@ -128,6 +130,7 @@ export default function SpotlightTour({ open, finish, steps, presentationKey }: 
   const [step, setStep] = useState(0);
   const [spot, setSpot] = useState<Spotlight | null>(null);
   const [layout, setLayout] = useState<Layout | null>(null);
+  const [syncRetries, setSyncRetries] = useState(0);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const stepRef = useRef(0);
@@ -135,6 +138,14 @@ export default function SpotlightTour({ open, finish, steps, presentationKey }: 
   const stepsRef = useRef(steps);
   stepsRef.current = steps;
   const active = steps[step];
+
+  const previousOverflowRef = useRef<string | null>(null);
+
+  const restoreBodyOverflow = useCallback(() => {
+    if (typeof document === "undefined" || previousOverflowRef.current === null) return;
+    document.body.style.overflow = previousOverflowRef.current;
+    previousOverflowRef.current = null;
+  }, []);
 
   const sync = useCallback(() => {
     if (typeof document === "undefined") return;
@@ -155,6 +166,7 @@ export default function SpotlightTour({ open, finish, steps, presentationKey }: 
     const card = cardRef.current;
     if (!card) return;
     setLayout(computeLayout(next, card.offsetWidth, card.offsetHeight, vw, vh));
+    setSyncRetries(0);
   }, []);
 
   useLayoutEffect(() => {
@@ -179,41 +191,33 @@ export default function SpotlightTour({ open, finish, steps, presentationKey }: 
 
   useEffect(() => {
     if (!open || spot) return;
-    const id = window.setInterval(sync, 150);
+    const id = window.setInterval(() => {
+      sync();
+      setSyncRetries((r) => r + 1);
+    }, SYNC_RETRY_INTERVAL);
     return () => window.clearInterval(id);
   }, [open, spot, sync]);
 
   useEffect(() => {
-    if (!open) return;
-    const previous = document.body.style.overflow;
+    if (!open) {
+      restoreBodyOverflow();
+      setStep(0);
+      setSpot(null);
+      setLayout(null);
+      setSyncRetries(0);
+      return;
+    }
+    previousOverflowRef.current = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = previous;
+      restoreBodyOverflow();
     };
-  }, [open]);
+  }, [open, restoreBodyOverflow]);
 
   useEffect(() => {
     if (!open) return;
     cardRef.current?.focus({ preventScroll: true });
   }, [open, step]);
-
-  useEffect(() => {
-    if (!open) {
-      setStep(0);
-      setSpot(null);
-      setLayout(null);
-    }
-  }, [open]);
-
-  const goNext = useCallback(() => {
-    if (stepRef.current >= stepsRef.current.length - 1) {
-      finish();
-      return;
-    }
-    setStep((s) => s + 1);
-  }, [finish]);
-
-  const goBack = useCallback(() => setStep((s) => Math.max(0, s - 1)), []);
 
   useEffect(() => {
     if (!open) return;
@@ -276,10 +280,35 @@ export default function SpotlightTour({ open, finish, steps, presentationKey }: 
         }
       : null;
 
+  const goNext = useCallback(() => {
+    if (stepRef.current >= stepsRef.current.length - 1) {
+      finish();
+      return;
+    }
+    setStep((s) => s + 1);
+  }, [finish]);
+
+  const goBack = useCallback(() => setStep((s) => Math.max(0, s - 1)), []);
+
+  const handleFinish = useCallback(() => {
+    restoreBodyOverflow();
+    finish();
+  }, [finish, restoreBodyOverflow]);
+
   return (
-    <AnimatePresence>
+    // No AnimatePresence: its exit never completed here, leaving an invisible full-screen layer that
+    // swallowed every click after the tour ended. Unmounting immediately avoids that.
+    <>
       {open && active ? (
-        <div key={presentationKey} className="fixed inset-0 z-50" role="presentation">
+        <motion.div
+          key={presentationKey}
+          className="fixed inset-0 z-50"
+          role="presentation"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: reduceMotion ? 0 : 0.25 }}
+        >
           {bands
             ? bands.map((band) => (
                 <motion.div
@@ -290,12 +319,12 @@ export default function SpotlightTour({ open, finish, steps, presentationKey }: 
                 />
               ))
             : (
-              <motion.div
-                key="blur"
-                {...blurFade(reduceMotion)}
-                className="pointer-events-none fixed inset-0 backdrop-blur-[3px]"
-              />
-            )}
+                <motion.div
+                  key="blur"
+                  {...blurFade(reduceMotion)}
+                  className="pointer-events-none fixed inset-0 backdrop-blur-[3px]"
+                />
+              )}
           <motion.svg
             key="scrim"
             className="pointer-events-none fixed inset-0 h-full w-full"
@@ -323,7 +352,7 @@ export default function SpotlightTour({ open, finish, steps, presentationKey }: 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: reduceMotion ? 0 : 0.2 }}
-            onClick={(event) => event.preventDefault()}
+            onClick={handleFinish}
             aria-hidden="true"
           />
 
@@ -333,9 +362,7 @@ export default function SpotlightTour({ open, finish, steps, presentationKey }: 
               className="pointer-events-none fixed z-[53] rounded-[16px] border-2 border-brand-primary shadow-[0_0_0_4px_rgba(217,107,39,0.18),0_10px_36px_rgba(217,107,39,0.35)]"
               style={ring}
               initial={{ opacity: 0, scale: 0.94 }}
-              animate={
-                reduceMotion ? { opacity: 1, scale: 1 } : { opacity: 1, scale: [1, 1.015, 1] }
-              }
+              animate={reduceMotion ? { opacity: 1, scale: 1 } : { opacity: 1, scale: [1, 1.015, 1] }}
               exit={{ opacity: 0, scale: 0.96 }}
               transition={
                 reduceMotion
@@ -385,7 +412,7 @@ export default function SpotlightTour({ open, finish, steps, presentationKey }: 
               </span>
               <button
                 type="button"
-                onClick={finish}
+                onClick={handleFinish}
                 className="-mr-1 -mt-1 rounded-lg p-1.5 text-brand-muted transition-colors hover:bg-brand-lightOrange hover:text-brand-deep"
                 aria-label="Skip walkthrough"
               >
@@ -414,7 +441,7 @@ export default function SpotlightTour({ open, finish, steps, presentationKey }: 
             <div className="mt-4 flex items-center justify-between gap-2">
               <button
                 type="button"
-                onClick={finish}
+                onClick={handleFinish}
                 className="rounded-xl px-3 py-2 text-xs font-bold text-brand-muted transition-colors hover:bg-brand-cream hover:text-brand-deep"
               >
                 Skip
@@ -441,8 +468,8 @@ export default function SpotlightTour({ open, finish, steps, presentationKey }: 
               </div>
             </div>
           </motion.div>
-        </div>
+        </motion.div>
       ) : null}
-    </AnimatePresence>
+    </>
   );
 }
