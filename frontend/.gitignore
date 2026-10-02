@@ -28,5 +28,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-
-frontend\env.download
+# local env dump — never commit
+/env.download

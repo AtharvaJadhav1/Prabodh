@@ -4,4 +4,5 @@ dist
 *.log
 storage
 
-backend\env
+# local env dump — contains live RESEND_API_KEY / DATABASE_URL, never commit
+/env
