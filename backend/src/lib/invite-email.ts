@@ -1,6 +1,6 @@
 import {
   appOrigin,
-  emailOtpButton,
+  emailCodeBlock,
   escapeHtml,
   renderEmail,
   renderEmailHtml,
@@ -77,8 +77,8 @@ export async function sendStaffCredentialsEmail(opts: {
     <p style="margin:16px 0 8px;font-size:13px;color:#706761">Kindly sign in using the credentials below:</p>
     <p style="margin:0 0 4px;font-size:13px;color:#706761">Email</p>
     <p style="margin:0 0 16px;font-family:ui-monospace,Consolas,monospace;font-size:15px;font-weight:700;color:#2B2523">${safeEmail}</p>
-    <p style="margin:0 0 8px;font-size:13px;color:#706761">Your password — click to copy, then continue to sign in</p>
-    <div style="text-align:center;margin:8px 0 16px">${emailOtpButton(opts.password, { email: opts.to, next })}</div>
+    <p style="margin:0 0 8px;font-size:13px;color:#706761">Your password — copy it, then continue to sign in</p>
+    ${emailCodeBlock(opts.password, { caption: 'Copy this password and paste it on the sign-in page' })}
     <p style="margin:0;font-size:13px;color:#706761">If another Prabodh session is open in this browser, the sign-in link will switch accounts for you.</p>
   `;
   const html = renderEmailHtml('staff_credentials', title, bodyHtml, 'Sign in to Prabodh', loginUrl, opts.fullName);

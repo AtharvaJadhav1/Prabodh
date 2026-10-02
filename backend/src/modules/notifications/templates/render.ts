@@ -85,27 +85,31 @@ export function emailCtaButton(label: string, href: string) {
 }
 
 /**
- * OTP / secret code button.
- * Click opens /auth/copy-otp#CODE (hash never hits the server) and copies in one click.
- * Also uses user-select:all so desktop clients can select the code with a single click.
+ * OTP / secret code block — plain selectable text, deliberately not a link.
+ * Email clients execute no JavaScript and block clipboard access, so an <a> wrapper
+ * could only ever redirect the reader off the mail instead of copying anything.
+ * Outlook's Word engine ignores `display:inline-block` and `user-select`, so it gets a
+ * padded table via conditional comments; every other client gets the selectable div.
+ * Generous padding keeps drag-selection forgiving, since the code has to be
+ * selected by hand. Note `letter-spacing` makes Outlook append a trailing space on
+ * copy, which callers already tolerate (OtpAuthFlow strips non-digits, LoginPasswordForm trims).
  */
-export function emailOtpButton(code: string, opts?: { email?: string; next?: string }) {
-  const safe = escapeHtml(code);
-  const qs = new URLSearchParams();
-  if (opts?.email) qs.set('email', opts.email);
-  if (opts?.next) qs.set('next', opts.next);
-  const query = qs.toString() ? `?${qs.toString()}` : '';
-  const href = `${appOrigin()}/auth/copy-otp${query}#${encodeURIComponent(code)}`;
-  return `<a href="${escapeHtml(href)}" style="background:${BRAND.primary};color:${BRAND.white};text-decoration:none;padding:16px 32px;border-radius:10px;display:inline-block;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:26px;font-weight:700;letter-spacing:0.28em;line-height:1.2;border:0;-webkit-user-select:all;user-select:all;mso-padding-alt:0" title="Click to copy">${safe}</a>
-<p style="margin:10px 0 0;font-size:12px;color:${BRAND.muted}">Click the code to copy it</p>`;
+export function emailCodeBlock(secret: string, opts?: { caption?: string }) {
+  const safe = escapeHtml(secret);
+  const caption = escapeHtml(opts?.caption ?? 'Copy this code to continue');
+  return `<div style="text-align:center;margin:8px 0 16px">
+<!--[if mso]><table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto"><tr><td align="center" style="padding:16px 28px;background:${BRAND.cream};border:1px solid ${BRAND.sand};font-family:'Courier New',Courier,monospace;font-size:26px;font-weight:bold;letter-spacing:0.28em;color:${BRAND.charcoal};line-height:1.2;mso-line-height-rule:exactly">${safe}</td></tr></table><![endif]-->
+<!--[if !mso]><!--><div style="display:inline-block;padding:16px 28px;background:${BRAND.cream};border:1px solid ${BRAND.sand};border-radius:10px;-webkit-user-select:all;user-select:all;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:26px;font-weight:700;letter-spacing:0.28em;line-height:1.2;color:${BRAND.charcoal}">${safe}</div><!--<![endif]-->
+<p style="margin:10px 0 0;font-size:12px;color:${BRAND.muted}">${caption}</p>
+</div>`;
 }
 
 export type LayoutOptions = {
   title: string;
   bodyHtml: string;
-  /** Primary action button (omitted for OTP-only mails that embed their own button). */
+  /** Primary action button (omitted for OTP-only mails that embed their own code block). */
   cta?: { label: string; url: string };
-  /** Extra block rendered between body and CTA (e.g. OTP button). */
+  /** Extra block rendered between body and CTA (e.g. the OTP code block). */
   middleHtml?: string;
   /** Small label under the brand wordmark (e.g. Student Portal). */
   portalLabel?: string;
@@ -316,7 +320,7 @@ export function renderOtpEmail(opts: {
     title: opts.title,
     greeting: opts.recipientName?.trim() ? `Dear ${opts.recipientName.trim()},` : 'Dear User,',
     bodyHtml,
-    middleHtml: emailOtpButton(opts.code),
+    middleHtml: emailCodeBlock(opts.code, { caption: 'Enter this code on the verification page' }),
     portalLabel: 'Student Portal',
     footerNote: `This code expires in ${opts.expiresMinutes} minutes. If you did not request this code, please disregard this email.`,
   });
