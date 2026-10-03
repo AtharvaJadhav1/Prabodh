@@ -23,13 +23,23 @@ export default function MentorInvitePanel() {
   const instituteLocked = mentorLocked || hasInstitute;
   const inviteBlocked = instituteLocked;
 
-  const filteredDirectory = useMemo(
+  const facultyOnly = useMemo(
     () =>
       facultyDirectory.filter(
         (f) => f.platformRole === "institute_mentor" || f.additionalRoles?.includes("institute_mentor"),
       ),
     [facultyDirectory],
   );
+
+  // What the lead types in the box also searches the directory (name, email, department, institute).
+  const query = email.trim().toLowerCase();
+  const filteredDirectory = useMemo(() => {
+    if (!query) return facultyOnly;
+    return facultyOnly.filter((f) =>
+      [f.fullName, f.email, f.department ?? "", f.institute ?? ""].some((v) => v.toLowerCase().includes(query)),
+    );
+  }, [facultyOnly, query]);
+  const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(query);
 
   useEffect(() => {
     if (isLead) void loadFacultyDirectory();
@@ -140,33 +150,53 @@ export default function MentorInvitePanel() {
             </div>
           ) : (
             <>
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <form
+                className="mt-3 flex flex-col gap-2 sm:flex-row"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void handleSend();
+                }}
+              >
                 <input
-                  type="email"
+                  type="text"
+                  inputMode="email"
+                  autoComplete="off"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="faculty.email@mituniversity.edu.in"
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setError("");
+                    setSuccess("");
+                  }}
+                  aria-label="Search faculty by name or email, or enter a full email to invite"
+                  placeholder="Search by name or email, e.g. neha.kulkarni@mituniversity.edu.in"
                   className="h-10 w-full rounded-xl border border-brand-softline bg-brand-cream px-3 py-2 text-sm text-brand-deep outline-none focus:border-brand-primary focus:bg-white sm:h-11"
                 />
                 <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void handleSend()}
-                  className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white disabled:opacity-60 sm:h-11"
+                  type="submit"
+                  disabled={busy || !looksLikeEmail}
+                  title={looksLikeEmail ? "Send invite" : "Enter a full email address, or pick someone from the list below"}
+                  className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60 sm:h-11"
                 >
                   <SendIcon className="h-4 w-4" /> Send
                 </button>
-              </div>
+              </form>
               {error ? <p className="mt-2 text-xs font-semibold text-red-700">{error}</p> : null}
               {success ? <p className="mt-2 text-xs font-bold text-brand-approved">{success}</p> : null}
 
-              <h4 className="mt-6 text-xs font-bold uppercase tracking-wider text-brand-muted">
-                Faculty directory
+              <h4 className="mt-6 flex items-center justify-between gap-2 text-xs font-bold uppercase tracking-wider text-brand-muted">
+                <span>Faculty directory</span>
+                <span className="font-semibold normal-case tracking-normal">
+                  {query ? `${filteredDirectory.length} of ${facultyOnly.length} match` : `${facultyOnly.length} registered`}
+                </span>
               </h4>
               <ul className="mt-3 divide-y divide-brand-softline rounded-xl border border-brand-softline">
                 {filteredDirectory.length === 0 ? (
                   <li className="px-4 py-3 text-xs text-brand-muted">
-                    No registered faculty yet.
+                    {facultyOnly.length === 0
+                      ? "No registered faculty yet."
+                      : looksLikeEmail
+                        ? "No registered faculty with that email in the list — you can still send the invite to it."
+                        : "No faculty match your search."}
                   </li>
                 ) : (
                   filteredDirectory.map((f) => (

@@ -76,6 +76,7 @@ type TeamContextValue = {
     id: string;
     fullName: string;
     email: string;
+    institute?: string | null;
     department?: string | null;
     platformRole: string;
     additionalRoles?: string[];
@@ -157,6 +158,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       id: string;
       fullName: string;
       email: string;
+      institute?: string | null;
       department?: string | null;
       platformRole: string;
       additionalRoles?: string[];
@@ -320,6 +322,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           id: string;
           fullName: string;
           email: string;
+          institute?: string | null;
           department?: string | null;
           platformRole: string;
           additionalRoles?: string[];
