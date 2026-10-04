@@ -44,8 +44,7 @@ export default function ProblemStatementCard() {
         <p className="text-xs font-bold uppercase tracking-wider text-brand-muted">Selected Problem Statement</p>
         <h3 className="mt-2 text-lg font-bold text-brand-deep">None locked yet</h3>
         <p className="mt-2 text-sm text-brand-muted">
-          Rank problem statement preferences on the Problem Statements page. Your mentor will lock the final choice here
-          after review.
+          Rank your preferences on the Problem Statements page.
         </p>
       </section>
     );

@@ -215,7 +215,7 @@ export default function DeliverablesCard() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-base font-bold text-brand-deep">
           <FileCheckIcon className="h-5 w-5 text-brand-primary" />
-          Active Deliverable Submission
+          Submission Required
         </h2>
         <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-3 py-1 text-xs font-bold text-brand-primary">
           {stage?.name ?? "No active stage"}
@@ -292,7 +292,7 @@ export default function DeliverablesCard() {
                       setDragOver(null);
                       pickFile(kind, e.dataTransfer.files?.[0]);
                     }}
-                    className={`cursor-pointer rounded-xl border-2 border-dashed p-5 text-center transition-all ${
+                    className={`cursor-pointer rounded-xl border-2 border-dashed px-5 py-4 text-center transition-all ${
                       dragOver === kind
                         ? "border-brand-primary/60 bg-brand-primary/[0.05]"
                         : "border-brand-primary/30 bg-brand-primary/[0.02] hover:border-brand-primary/60"
@@ -300,9 +300,9 @@ export default function DeliverablesCard() {
                   >
                     <UploadCloudIcon className="mx-auto h-8 w-8 text-brand-primary/70" />
                     <p className="mt-2 text-sm font-medium text-brand-deep">
-                      {uploaded ? `Replace ${slot.label.toLowerCase()}` : `Click or drag ${slot.hint} here`}
+                      {uploaded ? `Replace ${slot.label.toLowerCase()}` : `Upload ${slot.hint}`}
                     </p>
-                    <p className="mt-1 text-xs text-brand-muted">{slot.hint} only · up to 5MB each</p>
+                    <p className="mt-1 text-xs text-brand-muted">Max 5MB</p>
                     <input
                       ref={(el) => {
                         inputRefs.current[kind] = el;

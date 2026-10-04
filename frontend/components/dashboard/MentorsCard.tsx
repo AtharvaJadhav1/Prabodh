@@ -77,8 +77,7 @@ export default function MentorsCard() {
             </>
           ) : (
             <>
-              <p className="mt-1 text-sm text-brand-muted">No faculty mentor assigned yet.</p>
-              <p className="text-xs text-brand-muted">Team leaders can invite an institute faculty mentor.</p>
+              <p className="mt-1 text-sm text-brand-muted">No faculty mentor assigned</p>
             </>
           )}
         </div>
@@ -115,8 +114,7 @@ export default function MentorsCard() {
             </>
           ) : (
             <>
-              <p className="mt-1 text-sm text-brand-muted">No industry mentor assigned yet.</p>
-              <p className="text-xs text-brand-muted">Your faculty mentor will invite an industry expert.</p>
+              <p className="mt-1 text-sm text-brand-muted">No industry mentor assigned</p>
             </>
           )}
         </div>
@@ -126,8 +124,7 @@ export default function MentorsCard() {
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-muted">
             <PersonIcon className="h-3.5 w-3.5" /> Student Mentor
           </p>
-          <p className="mt-1 text-sm text-brand-muted">No student mentor assigned yet.</p>
-          <p className="text-xs text-brand-muted">A senior student mentor can be assigned to guide your team.</p>
+          <p className="mt-1 text-sm text-brand-muted">No student mentor assigned</p>
         </div>
       </div>
 
