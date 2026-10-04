@@ -12,6 +12,13 @@ type Props = {
   targetRank: number;
   usedPsIds: string[];
   onPick: (pref: CatalogPreference) => void;
+  /**
+   * What the card button means on this render:
+   * - "preference": lead with a team, so the button fills numbered slot `targetRank`.
+   * - "gate": no team, so the button opens the create-team flow instead of assigning a slot.
+   * - "readonly": on a team but not the lead, so the button stays disabled.
+   */
+  intent?: "preference" | "gate" | "readonly";
 };
 
 type FilterCategory = "All" | "Software" | "Hardware" | "Hybrid" | "FinTech" | "AgriTech";
@@ -42,13 +49,15 @@ function matchesFilter(s: SiStatement, f: FilterCategory): boolean {
   return true;
 }
 
-export default function RepositoryBrowser({ targetRank, usedPsIds, onPick }: Props) {
+export default function RepositoryBrowser({ targetRank, usedPsIds, onPick, intent = "preference" }: Props) {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("All");
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [remote, setRemote] = useState<SiStatement[] | null>(null);
   const [ids, setIds] = useState<Record<string, string>>({});
   const { isLead } = useTeam();
+  const gating = intent === "gate";
+  const actionable = intent === "readonly" ? false : gating || isLead;
 
   useEffect(() => {
     const q = search.trim();
@@ -272,10 +281,10 @@ export default function RepositoryBrowser({ targetRank, usedPsIds, onPick }: Pro
                 </div>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-2 pt-3 sm:pt-0">
-                {isLead ? (
+                {actionable ? (
                   <button
                     type="button"
-                    disabled={!ids[stmt.code] || usedPsIds.includes(ids[stmt.code])}
+                    disabled={!ids[stmt.code] || (!gating && usedPsIds.includes(ids[stmt.code]))}
                     onClick={() => {
                       const psId = ids[stmt.code];
                       if (!psId) return;
@@ -293,7 +302,11 @@ export default function RepositoryBrowser({ targetRank, usedPsIds, onPick }: Pro
                     className="inline-flex items-center gap-1.5 rounded-xl bg-brand-primary px-3 py-2 text-xs font-bold text-white shadow-md shadow-brand-primary/25 transition-all duration-150 hover:bg-brand-hover active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <CheckIcon className="h-4 w-4" />
-                    {usedPsIds.includes(ids[stmt.code] ?? "") ? "Already added" : `Add to Preference #${targetRank}`}
+                    {gating
+                      ? "Select for Team"
+                      : usedPsIds.includes(ids[stmt.code] ?? "")
+                        ? "Already added"
+                        : `Add to Preference #${targetRank}`}
                   </button>
                 ) : (
                   <button

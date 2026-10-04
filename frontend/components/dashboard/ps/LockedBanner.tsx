@@ -4,14 +4,17 @@ import { useTeam } from "../TeamProvider";
 import { ShieldCheckIcon, LockIcon } from "../icons";
 
 export default function LockedBanner() {
-  const { team } = useTeam();
+  const { team, role } = useTeam();
   const idea = team?.ideaSubmissions?.[0];
   const locked = idea?.status === "locked" || Boolean(team?.problemStatement);
+  const hasTeam = Boolean(team?.id) && role !== "NO_TEAM";
 
   if (!locked) {
     return (
       <div className="rounded-2xl border border-brand-softline bg-white p-4 text-sm text-brand-muted">
-        No problem statement is locked yet. Rank your preferences below and submit them for mentor review.
+        {hasTeam
+          ? "No problem statement is locked yet. Rank your preferences below and submit them for mentor review."
+          : "No problem statement is locked yet. Browse the catalog below — you'll need a team before you can rank preferences."}
       </div>
     );
   }

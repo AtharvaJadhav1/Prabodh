@@ -7,6 +7,7 @@ import Avatar from "../Avatar";
 import LoadingState from "../LoadingState";
 import { getUserAvatarUrl } from "../../lib/avatar";
 import InteractiveTeamAvatar from "./InteractiveTeamAvatar";
+import { CreateTeamForm } from "./CreateTeamModal";
 import {
   UserPlusIcon,
   LockIcon,
@@ -26,13 +27,11 @@ export default function TeamWorkspaceCard() {
     teamCode,
     teamName,
     teamId,
-    createTeam,
     loading,
     revokeInvite,
     sendInvite,
     role,
   } = useTeam();
-  const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [isInviting, setIsInviting] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -41,7 +40,7 @@ export default function TeamWorkspaceCard() {
   const [inviteSuccess, setInviteSuccess] = useState("");
   const [revokingInviteId, setRevokingInviteId] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const teamNameInputRef = useRef<HTMLInputElement | null>(null);
+  const teamNameWrapRef = useRef<HTMLDivElement | null>(null);
   const confirmedMembers = members.filter((m) => m.status === "Verified");
   const totalOccupied = confirmedMembers.length + invites.length;
 
@@ -102,52 +101,19 @@ export default function TeamWorkspaceCard() {
         <p className="mt-1 text-sm text-brand-muted">
           You're not on a team yet — create one or wait for an invite.
         </p>
-        <form
-          className="mt-4 flex flex-col gap-3"
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const form = e.currentTarget;
-            const name = String(new FormData(form).get("team-name") ?? "").trim();
-            if (!name || creating) return;
-            setCreateError(null);
-            setCreating(true);
-            try {
-              await createTeam(name);
-            } catch (err) {
-              setCreateError(
-                err instanceof Error ? err.message : "Unable to create team. Please try again.",
-              );
-            } finally {
-              setCreating(false);
-            }
-          }}
-        >
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <input
-              ref={teamNameInputRef}
-              name="team-name"
-              required
-              disabled={creating}
-              placeholder="Team name"
-              className="w-full rounded-xl border border-brand-softline px-3 py-2.5 text-sm text-brand-deep outline-none focus:border-brand-primary disabled:opacity-60"
-            />
-            <button
-              type="submit"
-              disabled={creating}
-              className="shrink-0 rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-brand-hover disabled:opacity-60"
-            >
-              {creating ? "Creating…" : "Create team"}
-            </button>
-          </div>
-          {createError ? <p className="text-sm font-medium text-red-700">{createError}</p> : null}
-        </form>
+        <div className="mt-4" ref={teamNameWrapRef}>
+          <CreateTeamForm onError={setCreateError} />
+          {createError ? <p className="mt-2 text-sm font-medium text-red-700">{createError}</p> : null}
+        </div>
         <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-brand-softline pt-4">
           <button
             id="tour-create-team"
             type="button"
             onClick={() => {
-              teamNameInputRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
-              teamNameInputRef.current?.focus();
+              teamNameWrapRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+              teamNameWrapRef.current
+                ?.querySelector<HTMLInputElement>('input[name="team-name"]')
+                ?.focus();
             }}
             className="inline-flex items-center gap-2 rounded-xl bg-brand-cream px-4 py-2.5 text-sm font-bold text-brand-primary transition-colors hover:bg-brand-primary/15"
           >
