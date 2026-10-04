@@ -15,6 +15,7 @@ import { consumeToken } from '../../lib/rate-limit';
 import { resolveDeliverableRow } from '../../lib/deliverable-url';
 import {
   createPresignedPutUrl,
+  getObjectSize,
   isS3Configured,
   normalizeUploadMime,
   putObjectBuffer,
@@ -34,6 +35,7 @@ import {
 const stagesListCache = new TtlCache<unknown>(30_000);
 
 const MAX_DELIVERABLE_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_DELIVERABLE_TOTAL_BYTES = 10 * 1024 * 1024;
 
 @Injectable()
 export class StagesService {
@@ -166,6 +168,25 @@ export class StagesService {
     }
     if (buffer.length > MAX_DELIVERABLE_FILE_BYTES) {
       throw new BadRequestException('Each file must not exceed 5MB');
+    }
+
+    // Check combined total if the other file already exists
+    if (existing) {
+      const otherKey = kind === 'ppt'
+        ? `deliverables/${body.teamId}/${stageId}/report/${existing.reportUrl?.split('/').pop() ?? ''}`
+        : `deliverables/${body.teamId}/${stageId}/ppt/${existing.pptUrl?.split('/').pop() ?? ''}`;
+      let otherSize = 0;
+      if (isS3Configured() && existing.reportUrl) {
+        otherSize = await getObjectSize(otherKey) ?? 0;
+      } else if (!isS3Configured() && existing.reportUrl) {
+        // For data URLs, extract base64 length
+        const base64 = existing.reportUrl?.split(',')[1] ?? '';
+        otherSize = Math.floor(base64.length * 0.75);
+      }
+      const totalSize = buffer.length + otherSize;
+      if (totalSize > MAX_DELIVERABLE_TOTAL_BYTES) {
+        throw new BadRequestException('Combined upload size would exceed 10MB limit');
+      }
     }
 
     const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');

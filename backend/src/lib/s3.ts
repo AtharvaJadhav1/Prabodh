@@ -1,6 +1,7 @@
 import {
   DeleteObjectsCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
@@ -111,6 +112,18 @@ export async function putObjectBuffer(key: string, body: Buffer, contentType: st
     }),
   );
   return { key, publicUrl: publicObjectUrl(key) };
+}
+
+/** Returns the object size in bytes, or null if not found. */
+export async function getObjectSize(key: string): Promise<number | null> {
+  const bucket = process.env.S3_BUCKET;
+  if (!bucket) return null;
+  try {
+    const res = await s3().send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    return res.ContentLength ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /** Delete every object under `prefix` (e.g. a disqualified team's uploads). Returns how many were removed. */

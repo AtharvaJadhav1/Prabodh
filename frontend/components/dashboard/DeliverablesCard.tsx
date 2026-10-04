@@ -12,6 +12,7 @@ import { useTeam } from "./TeamProvider";
 import { FileCheckIcon, GithubIcon, TrashIcon, UploadCloudIcon, XIcon } from "./icons";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
 
 type Kind = "ppt" | "report";
 
@@ -101,6 +102,7 @@ export default function DeliverablesCard() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<Record<Kind, File | null>>({ ppt: null, report: null });
+  const [fileSizes, setFileSizes] = useState<Record<Kind, number>>({ ppt: 0, report: 0 });
   const [uploadingKind, setUploadingKind] = useState<Kind | null>(null);
   const [progress, setProgress] = useState(0);
   const [dragOver, setDragOver] = useState<Kind | null>(null);
@@ -127,8 +129,16 @@ export default function DeliverablesCard() {
       setMessage(`${slot.label} exceeds the 5MB limit.`);
       return;
     }
+    // Check combined total
+    const otherKind: Kind = kind === "ppt" ? "report" : "ppt";
+    const totalSize = next.size + fileSizes[otherKind];
+    if (totalSize > MAX_TOTAL_BYTES) {
+      setMessage(`Combined upload size would exceed 10MB limit (current: ${formatBytes(totalSize)}).`);
+      return;
+    }
     setMessage("");
     setFiles((f) => ({ ...f, [kind]: next }));
+    setFileSizes((s) => ({ ...s, [kind]: next.size }));
   };
 
   const uploadFile = async (kind: Kind) => {
@@ -166,6 +176,7 @@ export default function DeliverablesCard() {
       mergeUploadedDeliverable(uploaded);
       setMessage(`${SLOTS[kind].label} uploaded successfully.`);
       setFiles((f) => ({ ...f, [kind]: null }));
+      setFileSizes((s) => ({ ...s, [kind]: 0 }));
       await refreshDeliverables();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Upload failed");
@@ -251,7 +262,10 @@ export default function DeliverablesCard() {
                         <button
                           type="button"
                           disabled={uploading}
-                          onClick={() => setFiles((f) => ({ ...f, [kind]: null }))}
+                          onClick={() => {
+                            setFiles((f) => ({ ...f, [kind]: null }));
+                            setFileSizes((s) => ({ ...s, [kind]: 0 }));
+                          }}
                           className="rounded-lg p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-50"
                           aria-label="Remove selected file"
                           title="Remove"
