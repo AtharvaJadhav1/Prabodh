@@ -115,9 +115,14 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-deep/50 p-4 backdrop-blur-sm overflow-y-auto">
-      <div className="my-8 w-full max-w-2xl overflow-hidden rounded-2xl border border-brand-sand bg-white shadow-2xl">
-        <div className="border-b border-brand-sand bg-brand-cream p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-deep/50 p-4 backdrop-blur-sm">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Invite an industrial mentor"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-brand-sand bg-white shadow-2xl"
+      >
+        <div className="shrink-0 border-b border-brand-sand bg-brand-cream p-6">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-lightOrange text-brand-primary">
@@ -142,7 +147,9 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
           </div>
         </div>
 
-        <div className="space-y-4 p-6">
+        <div className="flex min-h-0 flex-1 flex-col">
+        {/* Search, filters and count stay put; only the list below scrolls. */}
+        <div className="shrink-0 space-y-4 border-b border-neutral-100 px-6 pb-4 pt-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative flex-1">
               <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-muted" />
@@ -204,7 +211,9 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
             </div>
           ) : null}
 
-          <div className="space-y-2">
+        </div>
+
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-6 py-4">
             {loading ? (
               <div className="py-4">
                 <LoadingState compact fontSize={13} label="Loading directory" steps={["Searching industrial mentors"]} />
@@ -288,7 +297,7 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
             )}
           </div>
 
-          <p className="text-[11px] text-brand-muted">
+          <p className="shrink-0 border-t border-neutral-100 px-6 py-3 text-[11px] text-brand-muted">
             Inviting a mentor for <span className="font-bold text-brand-deep">{teamName}</span>. Only the team&apos;s
             assigned faculty mentor can send these invitations.
           </p>
