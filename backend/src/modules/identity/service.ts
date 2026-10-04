@@ -13,6 +13,7 @@ import { signAccessToken } from '../../lib/jwt';
 import { writeAudit } from '../../lib/audit';
 import {
   confirmationMatches,
+  invalidSuccessor,
   partitionLedTeams,
   selfDeleteBlockers,
   SOLE_ADMIN_BLOCKER,
@@ -837,7 +838,16 @@ export class IdentityService {
         where: { id: actor.id },
         include: {
           ledTeams: {
-            include: { members: { select: { userId: true, inviteStatus: true } } },
+            include: {
+              members: {
+                select: {
+                  userId: true,
+                  inviteStatus: true,
+                  joinedAt: true,
+                  user: { select: { id: true, fullName: true, email: true } },
+                },
+              },
+            },
           },
         },
       }),
@@ -875,7 +885,26 @@ export class IdentityService {
       fullName: target.fullName,
       blockers,
       teamsToDelete: soloTeams.map((t) => ({ id: t.id, name: t.name, memberCount: t.members.length })),
-      teamsBlocking: blockingTeams.map((t) => ({ id: t.id, name: t.name, memberCount: t.members.length })),
+      teamsBlocking: blockingTeams.map((t) => {
+        // `partitionLedTeams` narrows `members` to the pure LedTeam shape, so look the richer
+        // row back up by id to get `joinedAt`/`user` for the successor list.
+        const full = target.ledTeams.find((lt) => lt.id === t.id)!;
+        return {
+          id: t.id,
+          name: t.name,
+          memberCount: t.members.length,
+          // Eligible successors, earliest-joined first, so the frontend can suggest a default
+          // while still letting the lead pick a different teammate.
+          members: full.members
+            .filter((m) => m.inviteStatus === InviteStatus.accepted && m.userId !== null && m.userId !== target.id)
+            .sort((a, b) => (a.joinedAt?.getTime() ?? 0) - (b.joinedAt?.getTime() ?? 0))
+            .map((m) => ({
+              userId: m.userId as string,
+              fullName: m.user?.fullName ?? '',
+              email: m.user?.email ?? '',
+            })),
+        };
+      }),
       mentorAssignmentsActive: activeAssignments,
       // Memberships on teams that survive. Every membership is removed by the cascade, so this
       // is the count behind the "you will be removed from your teams" line. Memberships on
@@ -891,16 +920,17 @@ export class IdentityService {
 
   /**
    * Self-service account removal. Same relational cascade as the admin path
-   * (`AdminService.removeUser`) but with different pre-conditions: a Team Lead of a team
-   * with teammates is blocked outright instead of having a successor promoted, since quietly
-   * handing their team to someone else is not what they asked for.
+   * (`AdminService.removeUser`) but with a different succession rule: a Team Lead of a team
+   * with teammates must supply `successors[teamId]` naming who takes over, rather than having
+   * the earliest-joined member auto-promoted — quietly handing their team to someone else is
+   * not what they asked for.
    *
    * Evaluators are scrubbed rather than deleted. `Evaluation.evaluatorUserId` is NOT NULL
    * with no cascade, so deleting the row would either need a migration or would destroy the
    * scores those teams were given. The User row survives with the identity fields cleared and
    * `isActive` false, which keeps those evaluations intact and still blocks sign-in.
    */
-  async deleteOwnAccount(actor: AuthUser, confirm: string) {
+  async deleteOwnAccount(actor: AuthUser, confirm: string, successors?: Record<string, string>) {
     if (!confirmationMatches(confirm, actor.email)) {
       throw new BadRequestException('Type DELETE or your email address to confirm account deletion.');
     }
@@ -932,11 +962,13 @@ export class IdentityService {
       if (otherAdmins === 0) throw new BadRequestException(SOLE_ADMIN_BLOCKER);
     }
 
-    // Block rather than promote: the admin path promotes a successor here, but handing someone's
-    // team to a teammate behind their back is not what deleting their own account asked for.
+    // The lead picks a successor rather than having one auto-promoted: the admin path picks the
+    // earliest-joined teammate automatically, but handing someone's team to a teammate behind
+    // their back is not what deleting their own account asked for.
     const { solo: teamsToDelete, blocking } = partitionLedTeams(target.ledTeams, target.id);
-    if (blocking.length > 0) {
-      throw new BadRequestException(teamLeadBlocker(blocking[0].name));
+    const unresolved = blocking.filter((t) => invalidSuccessor(t, successors?.[t.id], target.id));
+    if (unresolved.length > 0) {
+      throw new BadRequestException(unresolved.map((t) => teamLeadBlocker(t.name)).join('; '));
     }
 
     const evaluationCount = await this.prisma.evaluation.count({
@@ -975,6 +1007,10 @@ export class IdentityService {
     const deletedTeamIds = teamsToDelete.map((t) => t.id);
     const mentoredTeamIds = await this.prisma.$transaction(
       async (tx) => {
+        // Move leadership off the caller before their own teamMember row is removed below.
+        for (const t of blocking) {
+          await tx.team.update({ where: { id: t.id }, data: { leaderUserId: successors![t.id] } });
+        }
         if (deletedTeamIds.length > 0) {
           await deleteTeams(tx, deletedTeamIds);
         }
@@ -1042,6 +1078,11 @@ export class IdentityService {
               })),
               membersAffected: teamsToDelete.reduce((sum, d) => sum + d.members.length, 0),
               evaluationsRetained: evaluationCount,
+              promotedTeams: blocking.map((t) => ({
+                teamId: t.id,
+                teamName: t.name,
+                newLeaderUserId: successors![t.id],
+              })),
             },
             deletedTeams: teamsToDelete.map((d) => d.name),
             auditLogsRetained: true,

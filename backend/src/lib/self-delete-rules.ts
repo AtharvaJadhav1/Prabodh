@@ -16,7 +16,7 @@ export const SOLE_ADMIN_BLOCKER =
   'You are the only active admin. Promote another admin before deleting your account.';
 
 export function teamLeadBlocker(teamName: string): string {
-  return `You are the Team Lead of ${teamName}. Please transfer Team Lead ownership to another teammate or disband the team before deleting your account.`;
+  return `You are the Team Lead of ${teamName}. Choose a teammate to take over as Team Lead before deleting your account.`;
 }
 
 /** Accepted teammates on a team, excluding the lead themself. A team with none is solo. */
@@ -45,9 +45,21 @@ export function partitionLedTeams(ledTeams: LedTeam[], selfId: string) {
 }
 
 /**
- * Full blocker list for a self-delete, in the order they should be shown. Deliberately a hard
- * block on multi-member teams: the admin path promotes a successor instead, but silently handing
- * someone's team to a teammate is not what they asked for when they delete their own account.
+ * Whether `chosenUserId` is a valid successor for `team`: an accepted member other than the
+ * lead themself. Used to validate a caller-supplied pick rather than auto-selecting one, since
+ * self-delete lets the lead choose instead of silently promoting the earliest-joined member.
+ */
+export function invalidSuccessor(team: LedTeam, chosenUserId: string | undefined, selfId: string): boolean {
+  if (!chosenUserId) return true;
+  return !team.members.some(
+    (m) => m.userId === chosenUserId && m.userId !== selfId && m.inviteStatus === InviteStatus.accepted,
+  );
+}
+
+/**
+ * Full blocker list for a self-delete, in the order they should be shown. A multi-member team
+ * only blocks until the lead picks a valid successor for it (`successors[team.id]`); the admin
+ * path auto-promotes instead, but self-delete lets the lead choose who takes over.
  */
 export function selfDeleteBlockers(opts: {
   isAdmin: boolean;
@@ -55,13 +67,17 @@ export function selfDeleteBlockers(opts: {
   otherActiveAdmins?: number;
   ledTeams: LedTeam[];
   selfId: string;
+  /** Caller-chosen successor per blocking team id. Omitted teams are treated as unresolved. */
+  successors?: Record<string, string>;
 }): string[] {
   const blockers: string[] = [];
   if (opts.isAdmin && (opts.otherActiveAdmins ?? 0) === 0) {
     blockers.push(SOLE_ADMIN_BLOCKER);
   }
   for (const t of partitionLedTeams(opts.ledTeams, opts.selfId).blocking) {
-    blockers.push(teamLeadBlocker(t.name));
+    if (invalidSuccessor(t, opts.successors?.[t.id], opts.selfId)) {
+      blockers.push(teamLeadBlocker(t.name));
+    }
   }
   return blockers;
 }

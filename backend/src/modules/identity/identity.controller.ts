@@ -150,8 +150,11 @@ export class IdentityController {
    */
   @Post('me/delete')
   @UseGuards(JwtAuthGuard)
-  deleteAccount(@CurrentUser() user: AuthUser, @Body() body: { confirm?: string }) {
-    return this.identity.deleteOwnAccount(user, String(body?.confirm ?? ''));
+  deleteAccount(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { confirm?: string; successors?: Record<string, string> },
+  ) {
+    return this.identity.deleteOwnAccount(user, String(body?.confirm ?? ''), body?.successors);
   }
 
   @Get('me/delete-preview')

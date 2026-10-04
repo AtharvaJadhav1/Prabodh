@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { apiPatch } from "../../../../lib/api";
 import { useAuth } from "../../../../components/auth/AuthProvider";
+import DangerZoneDeleteAccount from "../../../../components/account/DangerZoneDeleteAccount";
 
 export default function ExpertProfilePage() {
   const { session, ready, refreshMe } = useAuth();
@@ -149,6 +150,8 @@ export default function ExpertProfilePage() {
           {saving ? "Saving…" : "Save profile"}
         </button>
       </form>
+
+      <DangerZoneDeleteAccount />
     </div>
   );
 }

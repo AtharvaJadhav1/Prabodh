@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   acceptedOthers,
   confirmationMatches,
+  invalidSuccessor,
   partitionLedTeams,
   selfDeleteBlockers,
   SOLE_ADMIN_BLOCKER,
@@ -93,6 +94,39 @@ describe('selfDeleteBlockers', () => {
     );
   });
 
+  it('still blocks a multi-member team when no successor has been chosen', () => {
+    const blockers = selfDeleteBlockers({
+      isAdmin: false,
+      otherActiveAdmins: 1,
+      ledTeams: [{ id: 't1', name: 'Team One', members: [accepted(ME), accepted('a')] }],
+      selfId: ME,
+      successors: {},
+    });
+    assert.deepEqual(blockers, [teamLeadBlocker('Team One')]);
+  });
+
+  it('still blocks a multi-member team when the chosen successor is not an accepted member', () => {
+    const blockers = selfDeleteBlockers({
+      isAdmin: false,
+      otherActiveAdmins: 1,
+      ledTeams: [{ id: 't1', name: 'Team One', members: [accepted(ME), accepted('a'), pending('c')] }],
+      selfId: ME,
+      successors: { t1: 'c' },
+    });
+    assert.deepEqual(blockers, [teamLeadBlocker('Team One')]);
+  });
+
+  it('clears the block once a valid successor is chosen', () => {
+    const blockers = selfDeleteBlockers({
+      isAdmin: false,
+      otherActiveAdmins: 1,
+      ledTeams: [{ id: 't1', name: 'Team One', members: [accepted(ME), accepted('a')] }],
+      selfId: ME,
+      successors: { t1: 'a' },
+    });
+    assert.deepEqual(blockers, []);
+  });
+
   it('reports the admin blocker first, then each blocking team', () => {
     const blockers = selfDeleteBlockers({
       isAdmin: true,
@@ -106,6 +140,26 @@ describe('selfDeleteBlockers', () => {
     assert.equal(blockers.length, 3);
     assert.equal(blockers[0], SOLE_ADMIN_BLOCKER);
     assert.deepEqual(blockers.slice(1), [teamLeadBlocker('Busy One'), teamLeadBlocker('Busy Two')]);
+  });
+});
+
+describe('invalidSuccessor', () => {
+  const team = { id: 't1', name: 'Team One', members: [accepted(ME), accepted('a'), pending('b')] };
+
+  it('rejects an undefined choice', () => {
+    assert.equal(invalidSuccessor(team, undefined, ME), true);
+  });
+
+  it('rejects the lead themself', () => {
+    assert.equal(invalidSuccessor(team, ME, ME), true);
+  });
+
+  it('rejects a member who has not accepted', () => {
+    assert.equal(invalidSuccessor(team, 'b', ME), true);
+  });
+
+  it('accepts a valid accepted teammate', () => {
+    assert.equal(invalidSuccessor(team, 'a', ME), false);
   });
 });
 
