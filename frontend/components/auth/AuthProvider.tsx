@@ -43,6 +43,7 @@ type AuthContextValue = {
     department?: string | null;
     phone?: string | null;
     profileJson?: Record<string, unknown> | null;
+    mustChangePassword?: boolean;
   }) => void;
   logout: () => void;
   refreshMe: () => Promise<void>;
@@ -92,6 +93,7 @@ function toSession(user: {
   accessToken?: string;
   linkedinUrl?: string | null;
   profileJson?: Record<string, unknown> | null;
+  mustChangePassword?: boolean;
 }): Session {
   const userId = user.userId ?? user.id ?? "";
   const extras = Array.isArray(user.additionalRoles)
@@ -120,6 +122,7 @@ function toSession(user: {
     accessToken: user.accessToken,
     linkedinUrl: user.linkedinUrl ?? null,
     profileJson: user.profileJson ?? undefined,
+    mustChangePassword: user.mustChangePassword === true,
   };
 }
 
@@ -177,6 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       phone?: string | null;
       linkedinUrl?: string | null;
       profileJson?: Record<string, unknown> | null;
+      mustChangePassword?: boolean;
     }>("/me");
     const next = toSession({ ...me, userId: me.id, accessToken: cached.accessToken, profileJson: me.profileJson });
     writeSession(next);
@@ -219,8 +223,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     if (!session) return;
+    if (session.mustChangePassword) {
+      router.replace("/change-password");
+      return;
+    }
     router.replace(dashboardForRole(session.activeRole ?? session.platformRole));
   }, [ready, session, isAuthEntry, pathname, router]);
+
+  // Admin-issued password: nothing else is usable until the user picks their own.
+  useEffect(() => {
+    if (!ready || !session?.mustChangePassword) return;
+    if (pathname !== "/change-password") router.replace("/change-password");
+  }, [ready, session?.mustChangePassword, pathname, router]);
 
   const establishSession = useCallback(
     (payload: {
@@ -235,6 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       department?: string | null;
       phone?: string | null;
       profileJson?: Record<string, unknown> | null;
+      mustChangePassword?: boolean;
     }) => {
       const next = toSession(payload);
       clearApiCache();

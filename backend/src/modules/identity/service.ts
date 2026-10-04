@@ -69,6 +69,7 @@ export class IdentityService {
       department: string | null;
       phone: string | null;
       profileJson?: unknown;
+      mustChangePassword?: boolean;
     },
     activeRole?: PlatformRole | null,
   ) {
@@ -97,6 +98,7 @@ export class IdentityService {
       department: user.department,
       phone: user.phone,
       profileJson: user.profileJson ?? null,
+      mustChangePassword: user.mustChangePassword ?? false,
     };
   }
 
@@ -136,6 +138,23 @@ export class IdentityService {
       this.assertPortal(user, body.portal);
     }
     return this.issueToken(user);
+  }
+
+  /** Replaces the current password. Clears the forced-change flag set by admin-issued credentials. */
+  async changePassword(userId: string, body: { currentPassword: string; newPassword: string }) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.isActive) throw new UnauthorizedException('Account not found or disabled.');
+    if (!user.passwordHash || !verifyPassword(body.currentPassword, user.passwordHash)) {
+      throw new UnauthorizedException('Current password is incorrect.');
+    }
+    if (body.currentPassword === body.newPassword) {
+      throw new BadRequestException('Choose a new password that is different from the current one.');
+    }
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: hashPassword(body.newPassword), mustChangePassword: false },
+    });
+    return { ok: true, message: 'Password changed.' };
   }
 
   async requestOtp(body: {
@@ -437,7 +456,9 @@ export class IdentityService {
           institute: body.institute ?? existing.institute,
           department: body.department ?? existing.department,
           additionalRoles: additionalRoles.length > 0 ? additionalRoles : undefined,
-          ...(rotatePassword ? { passwordHash: hashPassword(body.password as string) } : {}),
+          ...(rotatePassword
+            ? { passwordHash: hashPassword(body.password as string), mustChangePassword: true }
+            : {}),
           isActive: true,
         },
       });
@@ -468,6 +489,7 @@ export class IdentityService {
         institute: body.institute,
         department: body.department,
         passwordHash: hashPassword(body.password),
+        mustChangePassword: true,
         isActive: true,
       },
     });
@@ -763,7 +785,9 @@ export class IdentityService {
               department: slot.department ?? existing.department,
               additionalRoles: additionalRoles.length > 0 ? additionalRoles : undefined,
               isActive: true,
-              ...(rotatePassword ? { passwordHash: hashPassword(slot.password as string) } : {}),
+              ...(rotatePassword
+                ? { passwordHash: hashPassword(slot.password as string), mustChangePassword: true }
+                : {}),
             },
           });
           const heldAfter = allRoles(user);
@@ -798,7 +822,7 @@ export class IdentityService {
             ...(rest.length > 0 ? { additionalRoles: rest } : {}),
             institute: slot.institute,
             department: slot.department,
-            ...(slot.password ? { passwordHash: hashPassword(slot.password) } : {}),
+            ...(slot.password ? { passwordHash: hashPassword(slot.password), mustChangePassword: true } : {}),
           },
         });
 

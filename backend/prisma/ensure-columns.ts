@@ -11,6 +11,7 @@ async function main() {
     `ALTER TABLE "teams" ADD COLUMN IF NOT EXISTS "mentor_locked_at" TIMESTAMP(3)`,
     // Dual-role accounts (20261001000000): secondary roles live in an enum array.
     `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "additional_roles" "PlatformRole"[] NOT NULL DEFAULT '{}'`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "must_change_password" BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE "deliverables" ADD COLUMN IF NOT EXISTS "ppt_file_name" TEXT`,
     `ALTER TABLE "deliverables" ADD COLUMN IF NOT EXISTS "report_file_name" TEXT`,
     // Mentor LinkedIn link (20261004120000). The backfill from profileJson lives in

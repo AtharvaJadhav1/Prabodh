@@ -26,6 +26,7 @@ export type AuthDbUser = {
   profileJson: unknown;
   domainTags: string[];
   isActive: boolean;
+  mustChangePassword: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -43,6 +44,7 @@ export const AUTH_USER_SELECT = {
   profileJson: true,
   domainTags: true,
   isActive: true,
+  mustChangePassword: true,
   createdAt: true,
   updatedAt: true,
 } as const;

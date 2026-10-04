@@ -109,6 +109,17 @@ export async function api<T>(path: string, init: RequestInit = {}, options: ApiO
     }
 
     if (!res.ok) {
+      // The server blocks everything but /me and change-password while a forced change is pending.
+      if (
+        res.status === 403 &&
+        typeof window !== "undefined" &&
+        typeof data === "object" &&
+        data &&
+        (data as { code?: unknown }).code === "PASSWORD_CHANGE_REQUIRED" &&
+        window.location.pathname !== "/change-password"
+      ) {
+        window.location.assign("/change-password");
+      }
       throw new ApiError(res.status, messageFromApiBody(data, res.statusText), data);
     }
 

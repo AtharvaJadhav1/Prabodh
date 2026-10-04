@@ -864,7 +864,7 @@ export class AdminService {
           const password = generateStaffPassword();
           await this.prisma.user.update({
             where: { id: user.id },
-            data: { passwordHash: hashPassword(password) },
+            data: { passwordHash: hashPassword(password), mustChangePassword: true },
           });
           await sendStaffCredentialsEmail({
             to: user.email,

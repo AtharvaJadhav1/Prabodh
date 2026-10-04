@@ -18,6 +18,8 @@ export type Session = {
   linkedinUrl?: string | null;
   accessToken?: string;
   profileJson?: Record<string, unknown>;
+  /** Admin-issued password still in use: the user must set their own before using the portal. */
+  mustChangePassword?: boolean;
 };
 
 const PLATFORM_ROLES: readonly PlatformRole[] = [
@@ -61,6 +63,7 @@ function normalizeSession(raw: unknown): Session | null {
       r.profileJson && typeof r.profileJson === "object" && !Array.isArray(r.profileJson)
         ? (r.profileJson as Record<string, unknown>)
         : undefined,
+    mustChangePassword: r.mustChangePassword === true,
   };
 }
 
@@ -126,7 +129,9 @@ export function landingForLogin(result: {
   platformRole: PlatformRole;
   additionalRoles?: PlatformRole[] | null;
   activeRole?: PlatformRole | null;
+  mustChangePassword?: boolean;
 }): string {
+  if (result.mustChangePassword) return "/change-password";
   const extras = Array.isArray(result.additionalRoles)
     ? result.additionalRoles.filter((r) => r !== result.platformRole)
     : [];

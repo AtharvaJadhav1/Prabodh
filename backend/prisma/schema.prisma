@@ -130,6 +130,8 @@ model User {
   profileJson  Json?        @map("profile_json")
   domainTags   String[]     @default([]) @map("domain_tags")
   isActive     Boolean      @default(true) @map("is_active")
+  // Set when an admin issues the password (credentials email); cleared when the user picks their own.
+  mustChangePassword Boolean  @default(false) @map("must_change_password")
   createdAt    DateTime     @default(now()) @map("created_at")
   updatedAt    DateTime     @updatedAt @map("updated_at")
 

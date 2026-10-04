@@ -91,6 +91,7 @@ async function main() {
     `ALTER TABLE "user_import_rows" ADD COLUMN IF NOT EXISTS "email_sent_at" TIMESTAMP(3)`,
     // Dual-role accounts: secondary roles in an enum array (platform_role stays primary).
     `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "additional_roles" "PlatformRole"[] NOT NULL DEFAULT '{}'`,
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "must_change_password" BOOLEAN NOT NULL DEFAULT false`,
     `ALTER TABLE "deliverables" ADD COLUMN IF NOT EXISTS "ppt_file_name" TEXT`,
     `ALTER TABLE "deliverables" ADD COLUMN IF NOT EXISTS "report_file_name" TEXT`,
     // Admin batches of teams (mirrors migrations/20261002000000_add_batches).

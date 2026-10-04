@@ -17,6 +17,7 @@ import {
   patchMeSchema,
   registerSchema,
   switchRoleSchema,
+  changePasswordSchema,
 } from './schema';
 
 @Controller()
@@ -133,6 +134,15 @@ export class IdentityController {
   ) {
     const parsed = body as { role: AuthUser['platformRole'] };
     return this.identity.switchActiveRole(user.id, parsed.role);
+  }
+
+  @Post('me/change-password')
+  @UseGuards(JwtAuthGuard)
+  changePassword(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodPipe(changePasswordSchema)) body: unknown,
+  ) {
+    return this.identity.changePassword(user.id, body as { currentPassword: string; newPassword: string });
   }
 
   @Post('me/avatar')

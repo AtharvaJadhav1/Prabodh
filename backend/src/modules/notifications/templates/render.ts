@@ -113,6 +113,8 @@ export type LayoutOptions = {
   middleHtml?: string;
   /** Small label under the brand wordmark (e.g. Student Portal). */
   portalLabel?: string;
+  /** Replaces the default "Yours sincerely, The Prabodh Team" closing (plain text). */
+  signOff?: string;
   footerNote?: string;
   /** Letter salutation, e.g. "Dear Asha,". Defaults to "Dear User,". Pass false to omit. */
   greeting?: string | false;
@@ -120,12 +122,19 @@ export type LayoutOptions = {
 
 export function layout(opts: LayoutOptions) {
   const portal = opts.portalLabel ?? 'Student Portal';
+  const portalLine = portal
+    ? `<div style="margin-top:12px;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:${BRAND.muted}">${escapeHtml(portal)}</div>`
+    : '';
   const footer =
     opts.footerNote ??
     'This message was sent by Prabodh. Scores and sensitive evaluation data are shown only after you sign in.';
   const greeting =
     opts.greeting === false ? '' : `<p style="margin:0 0 14px">${escapeHtml(opts.greeting ?? 'Dear User,')}</p>`;
-  const closing = `<tr><td style="padding:28px 32px 0;font-size:15px;line-height:1.65;color:${BRAND.charcoal}">
+  const closing = opts.signOff
+    ? `<tr><td style="padding:28px 32px 0;font-size:15px;line-height:1.65;color:${BRAND.charcoal}">
+            <p style="margin:0;font-weight:700;color:${BRAND.deep}">${escapeHtml(opts.signOff)}</p>
+          </td></tr>`
+    : `<tr><td style="padding:28px 32px 0;font-size:15px;line-height:1.65;color:${BRAND.charcoal}">
             <p style="margin:0">Yours sincerely,</p>
             <p style="margin:0;font-weight:700;color:${BRAND.deep}">The Prabodh Team</p>
           </td></tr>`;
@@ -151,7 +160,7 @@ export function layout(opts: LayoutOptions) {
           <!-- Header: Prabodh logo -->
           <tr><td align="center" style="padding:32px 32px 24px;background:${BRAND.cream}">
             <img src="${logoUrl()}" width="180" alt="Prabodh" style="display:block;width:180px;max-width:100%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic" />
-            <div style="margin-top:12px;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:${BRAND.muted}">${escapeHtml(portal)}</div>
+            ${portalLine}
           </td></tr>
           <!-- Divider -->
           <tr><td style="padding:0 32px"><div style="height:1px;background:${BRAND.softline};line-height:1px;font-size:1px">&nbsp;</div></td></tr>
@@ -226,7 +235,8 @@ export function renderEmailHtml(
         greeting,
         bodyHtml,
         cta: cta ?? { label: 'Sign in to Prabodh', url: `${origin}/login?switch=1` },
-        portalLabel: 'Faculty & Mentors',
+        portalLabel: '',
+        signOff: '- Team Prabodh',
         footerNote: 'Please keep this password confidential. You may change it after signing in.',
       });
     case 'role_granted':
@@ -235,7 +245,7 @@ export function renderEmailHtml(
         greeting,
         bodyHtml,
         cta: cta ?? { label: 'Sign in to Prabodh', url: `${origin}/login?switch=1` },
-        portalLabel: 'Faculty & Mentors',
+        portalLabel: '',
         footerNote: 'Your existing password keeps working — no change needed unless you use Forgot password.',
       });
     case 'evaluation_published':

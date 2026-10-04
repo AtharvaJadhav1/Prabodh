@@ -17,7 +17,7 @@ export class IdentityRepository {
   updatePasswordHash(userId: string, passwordHash: string) {
     return this.prisma.user.update({
       where: { id: userId },
-      data: { passwordHash },
+      data: { passwordHash, mustChangePassword: false },
     });
   }
 }

@@ -13,6 +13,7 @@ export type AuthResponse = {
   department?: string | null;
   phone?: string | null;
   profileJson?: Record<string, unknown> | null;
+  mustChangePassword?: boolean;
 };
 
 function portalFieldRequired(err: unknown) {

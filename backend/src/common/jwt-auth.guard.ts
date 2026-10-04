@@ -1,6 +1,7 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -9,6 +10,9 @@ import { verifyAccessToken } from '../lib/jwt';
 import { AUTH_USER_SELECT, AuthDbUser, AuthUser } from './auth.types';
 
 type AuthedRequest = {
+  method?: string;
+  originalUrl?: string;
+  url?: string;
   headers: Record<string, string | undefined>;
   user?: AuthUser;
   authDbUser?: AuthDbUser;
@@ -56,9 +60,26 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid session');
     }
 
+    // An admin-issued password must be replaced before anything else works.
+    if (user.mustChangePassword && !isPasswordChangeAllowed(req)) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        code: 'PASSWORD_CHANGE_REQUIRED',
+        message: 'Please change your password before continuing.',
+      });
+    }
+
     attachUser(req, user, payload.activeRole ?? null);
     return true;
   }
+}
+
+/** Only reading the profile and changing the password are allowed while a change is pending. */
+function isPasswordChangeAllowed(req: AuthedRequest) {
+  const path = (req.originalUrl ?? req.url ?? '').split('?')[0].replace(/\/+$/, '');
+  const method = (req.method ?? 'GET').toUpperCase();
+  if (method === 'GET' && /\/me$/.test(path)) return true;
+  return method === 'POST' && /\/me\/change-password$/.test(path);
 }
 
 function attachUser(

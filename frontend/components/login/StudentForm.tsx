@@ -26,7 +26,7 @@ export default function StudentForm() {
       onSuccess={(result) => {
         establishSession(result);
         router.replace(
-          result.platformRole === "student" && !result.additionalRoles?.length
+          result.platformRole === "student" && !result.additionalRoles?.length && !result.mustChangePassword
             ? "/dashboard/student"
             : landingForLogin(result),
         );
