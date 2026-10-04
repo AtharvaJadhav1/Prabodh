@@ -14,6 +14,7 @@ import { hasAnyRole, hasRole } from '../../lib/roles';
 import { writeAudit } from '../../lib/audit';
 import { lockTeamRow, syncTeamMentorPointers } from '../../lib/mentor-pointers';
 import { createNotifications, notifyUsers } from '../../lib/notify';
+import { mentorEmailBlockReason } from '../../lib/mentor-emails';
 import { deleteObjectsByPrefix, isS3Configured } from '../../lib/s3';
 import { PrismaService } from '../../lib/prisma.service';
 import { sendTeamMemberInviteEmail } from '../../lib/invite-email';
@@ -434,8 +435,12 @@ export class TeamsService {
     }
     // Checked before the token is consumed so a frozen team can't burn a leader's quota.
     this.assertTeamMutable(team);
-    await consumeToken(`invite:${user.id}`, Number(process.env.INVITE_RATE_LIMIT_PER_MIN ?? 10));
     const email = body.email.toLowerCase();
+    // "Add teammate" is for students only. A mentor's / staff member's email must never receive a
+    // teammate invitation, whether their account exists yet or the email was only fed in ahead of time.
+    const mentorBlock = await mentorEmailBlockReason(this.prisma, email);
+    if (mentorBlock) throw new BadRequestException(mentorBlock);
+    await consumeToken(`invite:${user.id}`, Number(process.env.INVITE_RATE_LIMIT_PER_MIN ?? 10));
     const existing = await this.repo.findMemberByEmail(teamId, email);
     if (existing && existing.inviteStatus !== InviteStatus.revoked && existing.inviteStatus !== InviteStatus.expired) {
       throw new BadRequestException('This email is already invited');
