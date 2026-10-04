@@ -188,7 +188,7 @@ export default function TeamWorkspaceCard() {
 
       <div className="mt-6">
         <span className="text-xs font-bold tracking-tight text-brand-deep">
-          Roster · {confirmedMembers.length} Mates
+          Roster · {confirmedMembers.length} {confirmedMembers.length > 1 ? "Peers" : "Peer"}
         </span>
         {totalOccupied > 0 && (
           <div className="mt-2 flex w-44 items-center gap-1.5 sm:w-56">
@@ -213,7 +213,7 @@ export default function TeamWorkspaceCard() {
           <div className="flex items-baseline gap-2.5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#786C65]">Team Roster</h3>
             <span className="rounded-full bg-brand-cream px-2.5 py-1 text-[11px] font-bold text-brand-primary">
-              {confirmedMembers.length} Mates
+              {confirmedMembers.length} {confirmedMembers.length > 1 ? "Peers" : "Peer"}
             </span>
           </div>
         </div>

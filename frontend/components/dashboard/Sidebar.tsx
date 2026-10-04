@@ -189,7 +189,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 </div>
               )}
               <span className="shrink-0 font-semibold text-brand-muted">
-                {filledCount} Mates
+                {filledCount} {filledCount > 1 ? "Peers" : "Peer"}
               </span>
             </div>
           </div>
