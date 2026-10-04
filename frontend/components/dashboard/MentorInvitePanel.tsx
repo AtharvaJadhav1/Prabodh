@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTeam } from "./TeamProvider";
 import { GradCapIcon, CheckIcon, SendIcon, ClockIcon } from "./icons";
+import MentorLinkedinIcon from "./MentorLinkedinIcon";
 
 function mentorKindLabel(kind: string) {
   return kind === "industry" ? "Industry Mentor" : "Institute Mentor";
@@ -93,7 +94,10 @@ export default function MentorInvitePanel() {
           <ul className="mt-4 space-y-3">
             {slottedAssignments.map((a) => (
               <li key={a.id} className="rounded-xl border border-brand-softline p-4">
-                <p className="text-sm font-bold text-brand-deep">{a.mentor.fullName}</p>
+                <p className="flex items-center gap-1.5 text-sm font-bold text-brand-deep">
+                  {a.mentor.fullName}
+                  <MentorLinkedinIcon />
+                </p>
                 <p className="text-xs text-brand-muted">{mentorKindLabel(a.mentorType)}</p>
                 <span className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-brand-approved">
                   <CheckIcon className="h-3.5 w-3.5" /> Active assignment
@@ -102,7 +106,10 @@ export default function MentorInvitePanel() {
             ))}
             {pending.map((i) => (
               <li key={i.id} className="rounded-xl border border-brand-softline p-3.5">
-                <p className="truncate text-sm font-bold text-brand-deep">{i.mentor?.fullName ?? i.invitedEmail}</p>
+                <p className="flex items-center gap-1.5 text-sm font-bold text-brand-deep">
+                  <span className="truncate">{i.mentor?.fullName ?? i.invitedEmail}</span>
+                  {i.mentor?.fullName ? <MentorLinkedinIcon /> : null}
+                </p>
                 <p className="text-xs text-brand-muted">{mentorKindLabel(i.mentorType ?? "institute")}</p>
                 <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-brand-softline pt-2.5">
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-primary">

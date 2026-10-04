@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import MentorLinkedinIcon from "./MentorLinkedinIcon";
 import { useTeam } from "./TeamProvider";
 import { GradCapIcon, BriefcaseIcon, PersonIcon, CheckIcon, ClockIcon, ArrowRightIcon } from "./icons";
 
@@ -40,7 +41,10 @@ export default function MentorsCard() {
           </p>
           {faculty ? (
             <>
-              <p className="mt-1 text-sm font-bold text-brand-deep">{faculty.mentor.fullName}</p>
+              <p className="mt-1 flex items-center gap-1.5 text-sm font-bold text-brand-deep">
+                {faculty.mentor.fullName}
+                <MentorLinkedinIcon />
+              </p>
               <p className="text-xs text-brand-muted">
                 {[faculty.mentor.department, faculty.mentor.institute].filter(Boolean).join(" · ")}
               </p>
@@ -62,7 +66,10 @@ export default function MentorsCard() {
           </p>
           {industrial ? (
             <>
-              <p className="mt-1 text-sm font-bold text-brand-deep">{industrial.mentor.fullName}</p>
+              <p className="mt-1 flex items-center gap-1.5 text-sm font-bold text-brand-deep">
+                {industrial.mentor.fullName}
+                <MentorLinkedinIcon />
+              </p>
               <p className="text-xs text-brand-muted">
                 {[industrial.mentor.institute, industrial.mentor.department].filter(Boolean).join(" · ") ||
                   industrial.mentor.institute ||
@@ -74,7 +81,10 @@ export default function MentorsCard() {
           ) : pendingIndustry ? (
             <>
               {pendingIndustry.mentor?.fullName ? (
-                <p className="mt-1 text-sm font-bold text-brand-deep">{pendingIndustry.mentor.fullName}</p>
+                <p className="mt-1 flex items-center gap-1.5 text-sm font-bold text-brand-deep">
+                {pendingIndustry.mentor.fullName}
+                <MentorLinkedinIcon />
+              </p>
               ) : null}
               <p className="text-xs text-brand-muted">Awaiting acceptance from {pendingIndustry.invitedEmail}</p>
               <StatusPill label="Invitation sent" pending />
