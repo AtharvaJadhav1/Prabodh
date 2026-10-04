@@ -48,6 +48,7 @@ type TeamContextValue = {
   incomingInvites: IncomingTeamInvite[];
   acceptInvite: (inviteId: string) => Promise<void>;
   declineInvite: (inviteId: string) => Promise<void>;
+  switchTeams: (inviteId: string, successorUserId?: string) => Promise<void>;
   requests: JoinRequest[];
   requestResults: Record<string, "approved" | "rejected">;
   filledCount: number;
@@ -594,6 +595,16 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           setIncomingInvites((prev) => prev.filter((i) => i.id !== inviteId));
           try {
             await apiPost(`/teams/invites/${inviteId}/decline`, {});
+          } catch (err) {
+            setIncomingInvites((prev) => [...prev, ...incomingInvitesRef.current.filter((i) => i.id !== inviteId)]);
+            throw err;
+          }
+        },
+        switchTeams: async (inviteId, successorUserId) => {
+          setIncomingInvites((prev) => prev.filter((i) => i.id !== inviteId));
+          try {
+            await apiPost(`/teams/invites/${inviteId}/switch`, { successorUserId });
+            void reload();
           } catch (err) {
             setIncomingInvites((prev) => [...prev, ...incomingInvitesRef.current.filter((i) => i.id !== inviteId)]);
             throw err;

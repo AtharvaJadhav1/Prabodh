@@ -17,6 +17,7 @@ import {
 } from "./icons";
 import Avatar from "../Avatar";
 import { getUserAvatarUrl } from "../../lib/avatar";
+import TeamInviteDecisionModal from "./TeamInviteDecisionModal";
 
 export default function RequestsTabs() {
   const [tab, setTab] = useState<1 | 2>(1);
@@ -362,9 +363,10 @@ function MemberRow({
 }
 
 function IncomingInvitesTab() {
-  const { incomingInvites, acceptInvite, declineInvite } = useTeam();
+  const { incomingInvites, acceptInvite, declineInvite, role } = useTeam();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [decisionInvite, setDecisionInvite] = useState<{ id: string; teamName: string } | null>(null);
 
   const run = async (inviteId: string, fn: () => Promise<void>) => {
     setActionError(null);
@@ -388,11 +390,28 @@ function IncomingInvitesTab() {
     createdAt: inv.createdAt,
   }));
 
-  const handleAccept = async (inviteId: string, _teamId?: string) => run(inviteId, () => acceptInvite(inviteId));
+  // Already on a team: accepting straight away would just fail server-side, so ask how the
+  // student wants to proceed (decline / switch teams) instead of calling acceptInvite directly.
+  const handleAccept = async (inviteId: string, teamName: string) => {
+    if (role && role !== "NO_TEAM") {
+      setDecisionInvite({ id: inviteId, teamName });
+      return;
+    }
+    run(inviteId, () => acceptInvite(inviteId));
+  };
   const handleDecline = async (inviteId: string) => run(inviteId, () => declineInvite(inviteId));
 
   return (
     <div>
+      {decisionInvite ? (
+        <TeamInviteDecisionModal
+          open
+          onClose={() => setDecisionInvite(null)}
+          inviteId={decisionInvite.id}
+          newTeamName={decisionInvite.teamName}
+        />
+      ) : null}
+
       {actionError && (
         <p className="mb-3 flex items-center gap-1.5 rounded-lg border border-danger/30 bg-red-50 px-3 py-2 text-xs font-semibold text-danger">
           <AlertCircleIcon className="h-3.5 w-3.5" /> {actionError}
@@ -440,7 +459,7 @@ function IncomingInvitesTab() {
                 <button
                   type="button"
                   disabled={busyId !== null}
-                  onClick={() => handleAccept(invite.id, invite.teamId)}
+                  onClick={() => handleAccept(invite.id, invite.teamName)}
                   className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-[#C25E26] px-5 py-2 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#A84E1D] active:scale-95"
                 >
                   <CheckIcon className="h-3.5 w-3.5 stroke-[2.5]" />

@@ -51,6 +51,21 @@ export class TeamsController {
     return this.teams.declineInvite(user, inviteId);
   }
 
+  /**
+   * Accept an invite while leaving the current team. Only needed when the student already
+   * belongs to a team — `successorUserId` is required when they lead that team and it has
+   * other accepted members, since leadership has to go to someone before they can leave.
+   */
+  @Post('invites/:inviteId/switch')
+  @Roles(PlatformRole.student)
+  switchTeams(
+    @CurrentUser() user: AuthUser,
+    @Param('inviteId') inviteId: string,
+    @Body() body: { successorUserId?: string },
+  ) {
+    return this.teams.switchTeams(user, inviteId, body?.successorUserId);
+  }
+
   @Get(':teamId/deliverables')
   deliverables(@CurrentUser() user: AuthUser, @Param('teamId') teamId: string) {
     return this.teams.listDeliverables(user, teamId);

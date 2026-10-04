@@ -26,6 +26,8 @@ import { clearPsListCache } from '../../lib/ps-list-cache';
 import { generateTeamCode, TeamsRepository } from './repository';
 import { createTeamSchema, inviteSchema, patchTeamSchema } from './schema';
 import { z } from 'zod';
+import { acceptedOthers, invalidSuccessor } from '../../lib/self-delete-rules';
+import { deleteTeams } from '../../lib/user-removal';
 
 const MAX_TEAM_CODE_ATTEMPTS = 3;
 
@@ -649,6 +651,116 @@ export class TeamsService {
       }).catch((err) => console.error('[teams.declineInvite] notify leader failed', err));
     }
     return { declined: true };
+  }
+
+  /**
+   * Student accepts an invite while leaving the team they are currently on. A regular member
+   * is simply moved over; a Team Lead of a team with other accepted members must name a
+   * `successorUserId` from that roster (leadership moves to them before the lead leaves); a
+   * solo Team Lead's team has no one left to hand it to, so it is disbanded with the same
+   * cascade used for a solo team on self-delete (`deleteTeams`).
+   */
+  async switchTeams(user: AuthUser, inviteId: string, successorUserId?: string) {
+    const invite = await this.prisma.teamMember.findUnique({
+      where: { id: inviteId },
+      include: {
+        team: { select: { id: true, name: true, leaderUserId: true, status: true } },
+      },
+    });
+    if (!invite) throw new NotFoundException('Invite not found');
+    if (invite.inviteStatus !== InviteStatus.pending) {
+      throw new BadRequestException('This invite is no longer pending');
+    }
+    this.assertTeamMutable(invite.team);
+    if (invite.userId !== user.id && invite.invitedEmail !== user.email.trim().toLowerCase()) {
+      throw new ForbiddenException('This invite was not dispatched to your account');
+    }
+
+    const currentTeam = await this.prisma.team.findFirst({
+      where: {
+        status: { not: TeamStatus.disqualified },
+        OR: [
+          { leaderUserId: user.id },
+          { members: { some: { userId: user.id, inviteStatus: InviteStatus.accepted } } },
+        ],
+      },
+      include: { members: { select: { userId: true, inviteStatus: true } } },
+    });
+    // No current team to leave: behaves exactly like a normal accept.
+    if (!currentTeam) return this.acceptInvite(user, inviteId);
+
+    const isLeader = currentTeam.leaderUserId === user.id;
+    let disbandTeamId: string | null = null;
+    if (isLeader) {
+      if (acceptedOthers(currentTeam.members, user.id) > 0) {
+        if (invalidSuccessor(currentTeam, successorUserId, user.id)) {
+          throw new BadRequestException(
+            `Select a teammate from ${currentTeam.name} to take over as Team Lead before switching teams.`,
+          );
+        }
+      } else {
+        disbandTeamId = currentTeam.id;
+      }
+    }
+
+    const member = await this.prisma.$transaction(async (tx) => {
+      if (isLeader && !disbandTeamId) {
+        await tx.team.update({ where: { id: currentTeam.id }, data: { leaderUserId: successorUserId } });
+      }
+      if (disbandTeamId) {
+        await deleteTeams(tx, [disbandTeamId]);
+      } else {
+        await tx.teamMember.deleteMany({ where: { teamId: currentTeam.id, userId: user.id } });
+      }
+      return tx.teamMember.update({
+        where: { id: invite.id },
+        data: { inviteStatus: InviteStatus.accepted, userId: user.id, joinedAt: new Date() },
+      });
+    });
+
+    await writeAudit(this.prisma, {
+      actorUserId: user.id,
+      action: 'team.switch',
+      entityType: 'team',
+      entityId: invite.teamId,
+      before: { previousTeamId: currentTeam.id, previousTeamName: currentTeam.name },
+      after: {
+        newTeamId: invite.teamId,
+        disbandedPreviousTeam: !!disbandTeamId,
+        newLeaderUserId: isLeader && !disbandTeamId ? successorUserId : null,
+      },
+    });
+    void notifyUsers(this.prisma, [user.id], {
+      type: NotificationType.team_join_request,
+      title: 'You switched teams',
+      body: `You left ${currentTeam.name} and joined ${invite.team.name} as a member.`,
+      relatedEntity: invite.teamId,
+      template: 'join_request_outcome',
+    }).catch((err) => console.error('[teams.switchTeams] notify student failed', err));
+    if (invite.team.leaderUserId) {
+      void createNotifications(this.prisma, [invite.team.leaderUserId], {
+        type: NotificationType.team_join_request,
+        title: 'New member joined',
+        body: `${user.fullName} switched from another team and joined ${invite.team.name}.`,
+        relatedEntity: invite.team.id,
+      }).catch((err) => console.error('[teams.switchTeams] notify new leader failed', err));
+    }
+    if (isLeader && !disbandTeamId && successorUserId) {
+      void createNotifications(this.prisma, [successorUserId], {
+        type: NotificationType.team_join_request,
+        title: 'You are now Team Lead',
+        body: `${user.fullName} left ${currentTeam.name} to join another team and handed you leadership.`,
+        relatedEntity: currentTeam.id,
+      }).catch((err) => console.error('[teams.switchTeams] notify successor failed', err));
+    } else if (!isLeader && currentTeam.leaderUserId) {
+      void createNotifications(this.prisma, [currentTeam.leaderUserId], {
+        type: NotificationType.team_join_request,
+        title: 'Member left your team',
+        body: `${user.fullName} left ${currentTeam.name} to join another team.`,
+        relatedEntity: currentTeam.id,
+      }).catch((err) => console.error('[teams.switchTeams] notify old leader failed', err));
+    }
+    return member;
   }
 
   /** Student asks to join a team. Lead then accepts or rejects from their Requests tab. */
