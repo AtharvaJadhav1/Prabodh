@@ -7,14 +7,12 @@ import GroupRequestMetricCards from "../../../../components/mentor/GroupRequestM
 import GroupRequestCard from "../../../../components/mentor/GroupRequestCard";
 import GroupRequestEmptyState from "../../../../components/mentor/GroupRequestEmptyState";
 import GroupRequestHistoryTable from "../../../../components/mentor/GroupRequestHistoryTable";
-import { mentorMaxCap } from "../../../../data/mentorDashboard";
 
 export default function GroupRequestsPage() {
   const {
     pendingRequests,
     requestHistory,
     pendingCount,
-    atCapacity,
     acceptRequest,
     declineRequest,
     processingId,
@@ -37,11 +35,6 @@ export default function GroupRequestsPage() {
                 </span>
               )}
             </h2>
-            {atCapacity && (
-              <span className="rounded-full border border-brand-overdue/30 bg-brand-overdue/10 px-3 py-1 text-xs font-bold text-brand-overdue">
-                Capacity Full ({mentorMaxCap}/{mentorMaxCap})
-              </span>
-            )}
           </div>
 
           {pendingRequests.length === 0 ? (
@@ -52,7 +45,6 @@ export default function GroupRequestsPage() {
                   <GroupRequestCard
                     key={req.id}
                     request={req}
-                    atCap={atCapacity}
                     busy={processingId === req.id}
                     onAccept={acceptRequest}
                     onDecline={declineRequest}

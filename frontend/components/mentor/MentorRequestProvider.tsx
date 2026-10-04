@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { mentorMaxCap, type GroupRequest, type GroupRequestHistoryEntry } from "../../data/mentorDashboard";
+import type { GroupRequest, GroupRequestHistoryEntry } from "../../data/mentorDashboard";
 import { api, apiPatch, apiPost } from "../../lib/api";
 import { avatarUrlFrom } from "../../lib/avatar";
 import { useAuth } from "../auth/AuthProvider";
@@ -11,7 +11,9 @@ import { useMentorTeams } from "./MentorTeamsProvider";
 type MentorInviteRow = {
   id: string;
   mentorType: string;
+  inviteStatus?: string;
   createdAt: string;
+  updatedAt?: string;
   team: {
     id: string;
     teamCode: string;
@@ -27,7 +29,6 @@ type MentorRequestContextValue = {
   requestHistory: GroupRequestHistoryEntry[];
   pendingCount: number;
   acceptedCount: number;
-  atCapacity: boolean;
   acceptRequest: (id: string) => void;
   declineRequest: (id: string) => void;
   processingId: string | null;
@@ -51,6 +52,26 @@ function mapInvite(row: MentorInviteRow): GroupRequest {
   };
 }
 
+function mapHistory(row: MentorInviteRow): GroupRequestHistoryEntry {
+  const base = mapInvite(row);
+  // accepted = you took the team; revoked = you declined it (or the team withdrew it); expired = it
+  // was filled/locked before you answered.
+  const status: GroupRequestHistoryEntry["status"] =
+    row.inviteStatus === "accepted" ? "ACCEPTED" : row.inviteStatus === "expired" ? "EXPIRED" : "DECLINED";
+  return {
+    teamId: base.teamId,
+    groupId: base.groupId,
+    teamName: base.teamName,
+    leaderName: base.leaderName,
+    leaderAvatarUrl: base.leaderAvatarUrl,
+    memberCount: base.memberCount,
+    allocatedRole: base.allocatedRole,
+    status,
+    receivedDate: base.allocatedAt,
+    respondedDate: row.updatedAt ? new Date(row.updatedAt).toLocaleDateString() : "—",
+  };
+}
+
 export function MentorRequestProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   const { refresh: refreshMentorTeams } = useMentorTeams();
@@ -65,10 +86,15 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
   const reload = useCallback(async () => {
     if (!session) return;
     try {
-      const rows = await api<MentorInviteRow[]>("/mentors/invites?mentorType=institute");
-      setPendingRequests(rows.map(mapInvite));
+      const [pending, history] = await Promise.all([
+        api<MentorInviteRow[]>("/mentors/invites?mentorType=institute"),
+        // Past responses live on the server, so they survive a refresh.
+        api<MentorInviteRow[]>("/mentors/invites?history=1&mentorType=institute").catch(() => null),
+      ]);
+      setPendingRequests(pending.map(mapInvite));
+      if (history) setRequestHistory(history.map(mapHistory));
     } catch {
-      setPendingRequests([]);
+      // Keep what is already on screen on a transient error — don't wipe the pending list.
     }
   }, [session]);
 
@@ -117,7 +143,6 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
     () => requestHistory.filter((h) => h.status === "ACCEPTED").length,
     [requestHistory],
   );
-  const atCapacity = acceptedCount >= mentorMaxCap;
 
   const acceptRequest = useCallback(
     (id: string) => {
@@ -135,23 +160,7 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
             return;
           }
           void refreshMentorTeams(true);
-          if (target) {
-            setRequestHistory((h) => [
-              {
-                teamId: target.teamId,
-                groupId: target.groupId,
-                teamName: target.teamName,
-                leaderName: target.leaderName,
-                leaderAvatarUrl: target.leaderAvatarUrl,
-                memberCount: target.memberCount,
-                allocatedRole: target.allocatedRole,
-                status: "ACCEPTED",
-                receivedDate: target.allocatedAt,
-                respondedDate: new Date().toLocaleDateString(),
-              },
-              ...h,
-            ]);
-          }
+          void reload();
         })
         .catch(() => {
           if (target) {
@@ -174,23 +183,7 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
       setPendingRequests((prev) => prev.filter((r) => r.id !== id));
       void apiPost(`/mentors/invites/${id}/decline`, {})
         .then(() => {
-          if (target) {
-            setRequestHistory((h) => [
-              {
-                teamId: target.teamId,
-                groupId: target.groupId,
-                teamName: target.teamName,
-                leaderName: target.leaderName,
-                leaderAvatarUrl: target.leaderAvatarUrl,
-                memberCount: target.memberCount,
-                allocatedRole: target.allocatedRole,
-                status: "DECLINED",
-                receivedDate: target.allocatedAt,
-                respondedDate: new Date().toLocaleDateString(),
-              },
-              ...h,
-            ]);
-          }
+          void reload();
         })
         .catch(() => {
           if (target) {
@@ -212,7 +205,6 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
         requestHistory,
         pendingCount,
         acceptedCount,
-        atCapacity,
         acceptRequest,
         declineRequest,
         processingId,

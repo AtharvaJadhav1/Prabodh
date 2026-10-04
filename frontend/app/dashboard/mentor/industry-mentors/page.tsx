@@ -17,6 +17,7 @@ export default function IndustryMentorsPage() {
     if (!session) return;
     void api<
       Array<{
+        pendingInvite?: boolean;
         team: {
           id: string;
           name: string;
@@ -29,7 +30,13 @@ export default function IndustryMentorsPage() {
           mentorAssignments?: Array<{
             mentorType: string;
             mentorUserId: string;
-            mentor: { id: string; fullName: string; email: string };
+            mentor: { id: string; fullName: string; email: string; institute?: string | null; department?: string | null; phone?: string | null };
+            industrialMentor?: {
+              companyName?: string | null;
+              designation?: string | null;
+              domainExpertise?: string[];
+              phone?: string | null;
+            } | null;
           }>;
         };
       }>
@@ -38,6 +45,7 @@ export default function IndustryMentorsPage() {
         const nextGroups: MentorGroup[] = [];
         const byId = new Map<string, IndustryMentor>();
         for (const row of rows) {
+          if (row.pendingInvite) continue; // only teams you have accepted
           nextGroups.push({
             id: row.team.id,
             teamName: row.team.name,
@@ -67,10 +75,10 @@ export default function IndustryMentorsPage() {
                   .slice(0, 2)
                   .toUpperCase(),
                 email: a.mentor.email,
-                phone: "",
-                company: "",
-                designation: "Industry Mentor",
-                expertise: [],
+                phone: a.industrialMentor?.phone ?? a.mentor.phone ?? "",
+                company: a.industrialMentor?.companyName ?? a.mentor.institute ?? "",
+                designation: a.industrialMentor?.designation ?? a.mentor.department ?? "Industry Mentor",
+                expertise: a.industrialMentor?.domainExpertise ?? [],
                 mappedTeamIds: [row.team.id],
               });
             }

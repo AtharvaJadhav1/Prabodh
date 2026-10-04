@@ -9,6 +9,7 @@ import EmptyState from "../../../components/mentor/EmptyState";
 
 import { useMentorTeams } from "../../../components/mentor/MentorTeamsProvider";
 import MentorOnboardingTour from "../../../components/onboarding/MentorOnboardingTour";
+import Link from "next/link";
 import { DashboardIcon } from "../../../components/dashboard/icons";
 
 export default function MentorDashboardPage() {
@@ -16,9 +17,13 @@ export default function MentorDashboardPage() {
   const [search, setSearch] = useState("");
   const [track, setTrack] = useState("All Tracks");
 
+  // Only teams you have accepted count as assigned. Pending invitations live in Group Requests.
+  const assignedRows = useMemo(() => teams.filter((row) => !row.pendingInvite), [teams]);
+  const pendingInviteCount = teams.length - assignedRows.length;
+
   const groups = useMemo(
     () =>
-      teams.map((row) => ({
+      assignedRows.map((row) => ({
         id: row.team.id,
         teamName: row.team.name,
         teamId: row.team.teamCode,
@@ -28,10 +33,10 @@ export default function MentorDashboardPage() {
         problemTitle: row.team.problemStatement?.title ?? "No PS locked yet",
         leader: row.team.leader?.fullName ?? "—",
         leaderPrn: row.team.leader?.email ?? "",
-        milestone: row.pendingInvite ? "Invite pending — accept in Group Requests" : "Assigned",
+        milestone: "Assigned",
         domains: row.team.theme ? [row.team.theme] : [],
       })),
-    [teams],
+    [assignedRows],
   );
 
   const filtered = useMemo(() => {
@@ -60,6 +65,19 @@ export default function MentorDashboardPage() {
         assignedTeams={groups.length}
         totalStudents={groups.reduce((n, g) => n + Number.parseInt(g.capacity.split("/")[0] || "0", 10) || 0, 0)}
       />
+
+      {pendingInviteCount > 0 ? (
+        <Link
+          href="/dashboard/mentor/group-requests"
+          className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-brand-warmBorder bg-brand-lightOrange px-4 py-3 text-xs font-semibold text-brand-deep transition-colors hover:bg-brand-lightOrange/70"
+        >
+          <span>
+            You have {pendingInviteCount} pending team invitation{pendingInviteCount === 1 ? "" : "s"} waiting for your
+            decision.
+          </span>
+          <span className="shrink-0 font-bold text-brand-primary">Review →</span>
+        </Link>
+      ) : null}
 
       <FilterBar
         search={search}

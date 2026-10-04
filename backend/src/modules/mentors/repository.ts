@@ -77,6 +77,20 @@ export class MentorsRepository {
             stageResults: {
               select: { published: true, weightedScore: true, stage: { select: { name: true } } },
             },
+            // Who else mentors this team (faculty + industry). The Industry Mentors page and the
+            // industry workspace's "via institute mentor" column are built from this.
+            mentorAssignments: {
+              where: { active: true },
+              select: {
+                id: true,
+                mentorType: true,
+                mentorUserId: true,
+                mentor: { select: { id: true, fullName: true, email: true, institute: true, department: true, phone: true } },
+                industrialMentor: {
+                  select: { id: true, companyName: true, designation: true, domainExpertise: true, phone: true },
+                },
+              },
+            },
           },
         },
       },

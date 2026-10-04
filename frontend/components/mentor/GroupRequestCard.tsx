@@ -2,25 +2,23 @@
 
 import { useState } from "react";
 import type { GroupRequest } from "../../data/mentorDashboard";
-import { mentorMaxCap } from "../../data/mentorDashboard";
 import { UsersIcon, BriefcaseIcon, ExternalLinkIcon, FileTextIcon } from "../dashboard/icons";
 import Avatar from "../Avatar";
 import ConfirmDialog from "./ConfirmDialog";
 
 type Props = {
   request: GroupRequest;
-  atCap: boolean;
   busy?: boolean;
   onAccept: (id: string) => void;
   onDecline: (id: string) => void;
 };
 
-export default function GroupRequestCard({ request, atCap, busy = false, onAccept, onDecline }: Props) {
+export default function GroupRequestCard({ request, busy = false, onAccept, onDecline }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMode, setConfirmMode] = useState<"accept" | "decline">("accept");
 
   const handleAccept = () => {
-    if (atCap || busy) return;
+    if (busy) return;
     setConfirmMode("accept");
     setConfirmOpen(true);
   };
@@ -113,11 +111,6 @@ export default function GroupRequestCard({ request, atCap, busy = false, onAccep
 
         {/* Actions */}
         <div className="flex items-center gap-3 border-t border-brand-sand pt-3">
-          {atCap && (
-            <p className="flex-1 text-xs font-medium text-brand-overdue">
-              You&apos;ve reached your mentorship cap ({mentorMaxCap}/{mentorMaxCap}). Decline this request or ask the Nodal Admin to raise your limit.
-            </p>
-          )}
           <div className="flex shrink-0 items-center gap-2.5">
             <button
               type="button"
@@ -133,9 +126,9 @@ export default function GroupRequestCard({ request, atCap, busy = false, onAccep
             <button
               type="button"
               onClick={handleAccept}
-              disabled={atCap || busy}
+              disabled={busy}
               className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold text-white transition-colors ${
-                atCap || busy
+                busy
                   ? "cursor-not-allowed bg-brand-muted/40"
                   : "bg-brand-deep shadow-xs hover:bg-brand-primary"
               }`}

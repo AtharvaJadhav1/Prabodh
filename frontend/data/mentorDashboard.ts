@@ -139,8 +139,6 @@ export const mentorProfile: MentorProfile = {
   trackRecord: [],
 };
 
-export const mentorMaxCap = 5;
-
 export type GroupRequest = {
   id: string;
   teamId: string;
@@ -162,7 +160,7 @@ export type GroupRequestHistoryEntry = {
   leaderAvatarUrl?: string | null;
   memberCount: number;
   allocatedRole: string;
-  status: "ACCEPTED" | "DECLINED";
+  status: "ACCEPTED" | "DECLINED" | "EXPIRED";
   receivedDate: string;
   respondedDate: string;
 };

@@ -82,13 +82,6 @@ export default function MentorProfileEditDrawer() {
   };
 
   const socialEmpty = { label: "", href: "" };
-  const cohortEmpty: MentorCohort = {
-    teamName: "",
-    problemCode: "",
-    domain: "",
-    status: "pending",
-    members: 4,
-  };
   const expertiseEmpty: MentorExpertise = { area: "", focusLevel: "Secondary", details: "" };
   const recordEmpty: MentorTrackRecordEntry = {
     season: "",
@@ -285,61 +278,10 @@ export default function MentorProfileEditDrawer() {
             />
           </div>
 
-          <div className="space-y-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-brand-deep">
-              Assigned Cohorts
-            </h3>
-            <ItemListEditor<MentorCohort>
-              items={draft.cohorts}
-              onChange={(cohorts) => patch({ cohorts })}
-              createEmpty={() => cohortEmpty}
-              addLabel="Add Cohort"
-              itemLabel="Cohort"
-              renderItem={(item, update) => (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <TextInput
-                      label="Team Name"
-                      value={item.teamName}
-                      onChange={(teamName) => update({ teamName })}
-                      required
-                    />
-                    <TextInput
-                      label="Problem Code"
-                      value={item.problemCode}
-                      onChange={(problemCode) => update({ problemCode })}
-                      required
-                    />
-                  </div>
-                  <TextInput
-                    label="Domain"
-                    value={item.domain}
-                    onChange={(domain) => update({ domain })}
-                    required
-                  />
-                  <div className="grid grid-cols-2 items-end gap-3">
-                    <TextInput
-                      label="Members"
-                      type="text"
-                      value={String(item.members)}
-                      onChange={(members) => update({ members: Number(members) || 0 })}
-                    />
-                    <label className="flex cursor-pointer items-center justify-between rounded-xl border border-brand-sand bg-white px-4 py-2.5 shadow-sm">
-                      <span className="text-sm font-semibold text-brand-deep">Review Approved</span>
-                      <input
-                        type="checkbox"
-                        checked={item.status === "approved"}
-                        onChange={(e) =>
-                          update({ status: e.target.checked ? "approved" : "pending" })
-                        }
-                        className="h-4 w-4 accent-brand-primary"
-                      />
-                    </label>
-                  </div>
-                </>
-              )}
-            />
-          </div>
+          <p className="rounded-xl border border-brand-sand bg-brand-cream p-3 text-xs text-brand-muted">
+            Assigned cohorts, team counts and student totals are generated automatically from the teams you mentor,
+            so there is nothing to edit here.
+          </p>
         </div>
       )}
 

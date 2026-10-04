@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMentorProfile } from "./MentorProfileProvider";
 import {
   UsersRoundIcon,
@@ -96,13 +97,13 @@ export default function MentorshipOverviewPanel() {
           <PencilIcon className="h-3.5 w-3.5" />
           Edit Overview
         </button>
-        <button
-          type="button"
+        <Link
+          href="/dashboard/mentor/ps-approvals"
           className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-brand-deep px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#7E3B14] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-deep"
         >
           Jump to Reviews
           <ArrowRightIcon className="h-3.5 w-3.5" />
-        </button>
+        </Link>
       </div>
 
       {/* Assigned Cohorts Table */}
@@ -110,15 +111,20 @@ export default function MentorshipOverviewPanel() {
         <div className="flex items-center justify-between border-b border-brand-sand pb-4">
           <div>
             <h3 className="text-base font-bold text-brand-deep">Assigned Cohorts &amp; Domain Highlights</h3>
-            <p className="mt-0.5 text-xs text-brand-muted">Current hackathon teams under Dr. Singh&apos;s guidance</p>
+            <p className="mt-0.5 text-xs text-brand-muted">Teams you currently mentor</p>
           </div>
           <span className="rounded-lg bg-brand-lightOrange px-2.5 py-1 text-xs font-semibold text-brand-primary">
             Cycle 2026
           </span>
         </div>
         <div className="divide-y divide-brand-sand/60 mt-2">
-          {cohorts.map((cohort) => (
-            <div key={cohort.teamName} className="flex flex-col gap-2 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+          {cohorts.length === 0 ? (
+            <p className="py-6 text-center text-xs font-medium text-brand-muted">
+              No teams yet. Teams appear here once you accept an invitation.
+            </p>
+          ) : null}
+          {cohorts.map((cohort, idx) => (
+            <div key={`${cohort.teamName}-${idx}`} className="flex flex-col gap-2 py-3.5 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-xs font-bold text-brand-deep">
                   Team {cohort.teamName} &bull; Problem {cohort.problemCode}
@@ -133,7 +139,7 @@ export default function MentorshipOverviewPanel() {
                       : "border border-brand-primary/20 bg-brand-lightOrange text-brand-primary"
                   }`}
                 >
-                  {cohort.status === "approved" ? "Review Approved" : "Review Pending"}
+                  {cohort.status === "approved" ? "PS Locked" : "PS Pending"}
                 </span>
                 <span className="text-xs text-brand-muted">{cohort.members} Members</span>
               </div>
