@@ -9,6 +9,9 @@ const neverCachePaths = [
   /^\/me($|\?)/,
   /^\/auth\//,
   /^\/health/,
+  // Mentor directory shows live profile details (e.g. a LinkedIn link a mentor just saved), so never
+  // serve a stale copy persisted in localStorage.
+  /^\/mentors\/faculty/,
   /^\/admin\/(audit-log|logs)/,
   // Chat must stay live — never serve stale comment threads from the 60s API cache.
   /\/comments($|\?)/,

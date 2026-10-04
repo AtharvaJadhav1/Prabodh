@@ -2,7 +2,7 @@
 
 import { useMentorProfile } from "./MentorProfileProvider";
 import ExpandableContactItem from "../dashboard/ExpandableContactItem";
-import { handleFromUrl, isHttpUrl, normalizeExternalUrl } from "../../lib/url";
+import { handleFromUrl, isHttpUrl, isLinkedinSocial, normalizeExternalUrl, socialHref } from "../../lib/url";
 import {
   HashIcon,
   ShieldCheckIcon,
@@ -23,7 +23,7 @@ export default function MentorProfileHeaderCard() {
   const hasLinkedin = Boolean(linkedinHref) && isHttpUrl(linkedinHref);
   // The dedicated LinkedIn field above owns LinkedIn now, so a leftover entry in the generic
   // link list would otherwise render a second icon beside it.
-  const otherSocials = socials.filter((link) => link.label.trim().toLowerCase() !== "linkedin");
+  const otherSocials = socials.filter((link) => !isLinkedinSocial(link));
 
   return (
     <section className="rounded-2xl border border-brand-sand bg-white shadow-sm">
@@ -95,21 +95,34 @@ export default function MentorProfileHeaderCard() {
             />
           </div>
           <div className="flex items-center gap-3">
-            {otherSocials.map((link, i) => (
-              <span key={link.label} className="flex items-center gap-3">
-                {i > 0 && <span className="text-brand-sand">&bull;</span>}
-                <a
-                  href={link.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 font-medium transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
-                >
+            {otherSocials.map((link, i) => {
+              const target = socialHref(link);
+              const content = (
+                <>
                   {link.label === "Scholar" && <BookOpenIcon className="h-3.5 w-3.5" />}
                   {link.label === "ResearchGate" && <Share2Icon className="h-3.5 w-3.5" />}
                   {link.label}
-                </a>
-              </span>
-            ))}
+                </>
+              );
+              return (
+                <span key={`${link.label}-${i}`} className="flex items-center gap-3">
+                  {i > 0 && <span className="text-brand-sand">&bull;</span>}
+                  {target ? (
+                    <a
+                      href={target}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-medium transition-colors hover:text-brand-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
+                    >
+                      {content}
+                    </a>
+                  ) : (
+                    // No usable address: show the text, never a link that reloads this page.
+                    <span className="inline-flex items-center gap-1 font-medium">{content}</span>
+                  )}
+                </span>
+              );
+            })}
           </div>
         </div>
       </div>

@@ -20,3 +20,26 @@ export function handleFromUrl(url: string, domain: string): string {
   const prefix = `${domain}/`;
   return cleaned.toLowerCase().startsWith(prefix) ? `@${cleaned.slice(prefix.length)}` : cleaned;
 }
+
+export type SocialLink = { label: string; href: string };
+
+const LINKEDIN_HOST = /linkedin\.com/i;
+
+/** True for an entry in the old free-form links list that points at LinkedIn (in its href or its label). */
+export function isLinkedinSocial(link: SocialLink): boolean {
+  return LINKEDIN_HOST.test(link.href ?? "") || LINKEDIN_HOST.test(link.label ?? "");
+}
+
+/** The safe http(s) target of a free-form link, or "" when it has none (never a relative path). */
+export function socialHref(link: SocialLink): string {
+  const target = normalizeExternalUrl(link.href || (/^(https?:\/\/)?[^\s/]+\.[^\s/]+/i.test(link.label) ? link.label : ""));
+  return isHttpUrl(target) ? target : "";
+}
+
+/** Older profiles stored LinkedIn as a free-form link; recover it so it can fill the dedicated field. */
+export function linkedinFromSocials(socials: SocialLink[] | null | undefined): string {
+  const hit = (socials ?? []).find(isLinkedinSocial);
+  if (!hit) return "";
+  const url = normalizeExternalUrl(LINKEDIN_HOST.test(hit.href ?? "") ? hit.href : hit.label);
+  return isHttpUrl(url) ? url : "";
+}

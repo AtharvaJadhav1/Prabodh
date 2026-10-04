@@ -10,7 +10,7 @@ import {
 } from "../../data/mentorDashboard";
 import { useAuth, initialsFrom } from "../auth/AuthProvider";
 import { apiPatch } from "../../lib/api";
-import { normalizeExternalUrl } from "../../lib/url";
+import { normalizeExternalUrl, isLinkedinSocial, linkedinFromSocials } from "../../lib/url";
 import { useMentorTeams } from "./MentorTeamsProvider";
 
 export type MentorEditSection = "basic" | "socials" | "overview" | "expertise" | "record";
@@ -60,7 +60,7 @@ export function MentorProfileProvider({ children }: { children: ReactNode }) {
       designation: saved.designation ?? prev.designation,
       roleBadge: saved.roleBadge ?? prev.roleBadge,
       location: saved.location ?? prev.location,
-      linkedinUrl: session.linkedinUrl ?? saved.linkedinUrl ?? prev.linkedinUrl,
+      linkedinUrl: session.linkedinUrl || saved.linkedinUrl || linkedinFromSocials(saved.socials) || prev.linkedinUrl,
       socials: saved.socials ?? prev.socials,
       nextAction: saved.nextAction ?? prev.nextAction,
       domainExpertise: saved.domainExpertise ?? prev.domainExpertise,
@@ -117,7 +117,10 @@ export function MentorProfileProvider({ children }: { children: ReactNode }) {
           designation: next.designation,
           roleBadge: next.roleBadge,
           location: next.location,
-          socials: next.socials,
+          // LinkedIn lives in its own field now; keep every other link, with a real https:// target.
+          socials: next.socials
+            .filter((link) => !isLinkedinSocial(link))
+            .map((link) => ({ ...link, href: normalizeExternalUrl(link.href) })),
           nextAction: next.nextAction,
           domainExpertise: next.domainExpertise,
           trackRecord: next.trackRecord,

@@ -127,6 +127,33 @@ async function main() {
     console.warn('[ensure-columns] linkedin_url backfill skipped:', err && err.message ? err.message : err);
   }
 
+  // Backfill linkedin_url from the old free-form links list (best effort, never blocks startup).
+  try {
+    await prisma.$executeRawUnsafe(`UPDATE "users" AS u
+SET "linkedin_url" = CASE
+      WHEN btrim(s.url) ~* '^https?://' THEN btrim(s.url)
+      ELSE 'https://' || regexp_replace(btrim(s.url), '^//', '')
+    END
+FROM (
+  SELECT DISTINCT ON (x.id) x.id, x.url
+  FROM (
+    SELECT usr."id" AS id,
+           CASE WHEN elem->>'href' ILIKE '%linkedin.com%' THEN elem->>'href' ELSE elem->>'label' END AS url
+    FROM "users" usr
+    CROSS JOIN LATERAL jsonb_array_elements(
+      CASE WHEN jsonb_typeof(usr."profile_json"::jsonb->'socials') = 'array'
+           THEN usr."profile_json"::jsonb->'socials' ELSE '[]'::jsonb END
+    ) AS elem
+    WHERE usr."linkedin_url" IS NULL
+      AND (elem->>'href' ILIKE '%linkedin.com%' OR elem->>'label' ILIKE '%linkedin.com%')
+  ) x
+) s
+WHERE u."id" = s.id AND u."linkedin_url" IS NULL`);
+    console.log('[ensure-columns] ok: linkedin_url backfill from links');
+  } catch (err) {
+    console.warn('[ensure-columns] linkedin links backfill skipped:', err && err.message ? err.message : err);
+  }
+
   // Rename legacy enum value draft → saved (runs before prisma db push).
   try {
     await prisma.$executeRawUnsafe(`ALTER TYPE "PsPreferenceStatus" RENAME VALUE 'draft' TO 'saved'`);
