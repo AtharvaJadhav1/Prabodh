@@ -1,4 +1,4 @@
-import { dedupeMentorAssignmentsByType, seatConflict } from '../../lib/mentor-rules';
+import { canFreezeTeam, dedupeMentorAssignmentsByType, mentorRoleFor, seatConflict } from '../../lib/mentor-rules';
 import {
   BadRequestException,
   ConflictException,
@@ -12,7 +12,7 @@ import { InviteStatus, JoinRequestStatus, NotificationType, PlatformRole, Prisma
 import { AuthUser } from '../../common/auth.types';
 import { hasAnyRole, hasRole } from '../../lib/roles';
 import { writeAudit } from '../../lib/audit';
-import { syncTeamMentorPointers } from '../../lib/mentor-pointers';
+import { lockTeamRow, syncTeamMentorPointers } from '../../lib/mentor-pointers';
 import { createNotifications, notifyUsers } from '../../lib/notify';
 import { deleteObjectsByPrefix, isS3Configured } from '../../lib/s3';
 import { PrismaService } from '../../lib/prisma.service';
@@ -26,17 +26,12 @@ import { z } from 'zod';
 
 const MAX_TEAM_CODE_ATTEMPTS = 3;
 
-/** Freezing a team is limited to admins and the team's faculty mentor. */
-function canFreezeTeam(user: AuthUser): boolean {
-  return hasRole(user, PlatformRole.admin) || hasRole(user, PlatformRole.institute_mentor);
-}
-
 /**
  * Unsubmitted ("saved") problem statement preferences stay private to the student
  * until they submit them. `undefined` means "no status filter" (students + admins).
  */
 export function visiblePsStatuses(user: AuthUser): PsPreferenceStatus[] | undefined {
-  if (user.platformRole === 'student' || user.platformRole === 'admin') return undefined;
+  if (user.platformRole === 'student' || hasRole(user, PlatformRole.admin)) return undefined;
   return [PsPreferenceStatus.submitted, PsPreferenceStatus.approved];
 }
 
@@ -268,62 +263,91 @@ export class TeamsService {
     if (cap < 1) {
       throw new BadRequestException('Industrial mentor assignments are disabled for this team.');
     }
-    const activeAssignments = await this.prisma.mentorAssignment.findMany({
-      where: { teamId, mentorType: 'industry', active: true },
+    const holder = await this.prisma.user.findUnique({
+      where: { id: profile.user.id },
+      select: { platformRole: true, additionalRoles: true },
     });
-    // A dual-role account can't be both the faculty and the industrial mentor of one team.
-    const facultySeats = await this.prisma.mentorAssignment.findMany({
-      where: { teamId, mentorType: 'institute', active: true },
-      select: { mentorUserId: true, mentorType: true, active: true },
-    });
-    const seatProblem = seatConflict(facultySeats, profile.user.id, 'industry');
-    if (seatProblem) throw new BadRequestException(seatProblem);
-    // This always replaces the team's whole active industry slate with this one mentor (see the
-    // transaction below), so an existing active mentor of a different person is not a cap breach —
-    // only re-picking the SAME person already assigned is a no-op worth rejecting.
-    if (activeAssignments.some((a) => a.industrialMentorId === profile.id)) {
-      throw new BadRequestException('That mentor is already assigned to this team.');
+    if (!holder || !hasRole(holder, mentorRoleFor('industry'))) {
+      throw new BadRequestException('That person no longer holds the industry mentor role.');
     }
 
-    const assignment = await this.prisma.$transaction(async (tx) => {
-      await tx.mentorAssignment.updateMany({
-        where: { teamId, mentorType: 'industry', active: true },
-        data: { active: false },
-      });
-      const next = await tx.mentorAssignment.create({
-        data: {
-          teamId,
-          mentorUserId: profile.user.id,
-          mentorType: 'industry',
-          assignedById: user.id,
-          assignmentMethod: 'manual',
-          industrialMentorId: profile.id,
+    // Read-check-write under a team row lock so concurrent assignments serialize; the partial unique
+    // index mentor_assignments_team_type_active_unique backs this up (P2002).
+    let result;
+    try {
+      result = await this.prisma.$transaction(
+        async (tx) => {
+          await lockTeamRow(tx, teamId);
+          const activeAssignments = await tx.mentorAssignment.findMany({
+            where: { teamId, mentorType: 'industry', active: true },
+          });
+          // A dual-role account can't be both the faculty and the industrial mentor of one team.
+          const facultySeats = await tx.mentorAssignment.findMany({
+            where: { teamId, mentorType: 'institute', active: true },
+            select: { mentorUserId: true, mentorType: true, active: true },
+          });
+          const seatProblem = seatConflict(facultySeats, profile.user.id, 'industry');
+          if (seatProblem) throw new BadRequestException(seatProblem);
+          // This always replaces the team's whole active industry slate with this one mentor, so an
+          // existing active mentor of a different person is not a cap breach — only re-picking the
+          // SAME person is a no-op worth rejecting.
+          if (activeAssignments.some((a) => a.industrialMentorId === profile.id)) {
+            throw new BadRequestException('That mentor is already assigned to this team.');
+          }
+          await tx.mentorAssignment.updateMany({
+            where: { teamId, mentorType: 'industry', active: true },
+            data: { active: false },
+          });
+          const next = await tx.mentorAssignment.create({
+            data: {
+              teamId,
+              mentorUserId: profile.user.id,
+              mentorType: 'industry',
+              assignedById: user.id,
+              assignmentMethod: 'manual',
+              industrialMentorId: profile.id,
+              ...(activeAssignments[0] ? { reassignedFromId: activeAssignments[0].id } : {}),
+            },
+            include: { team: true },
+          });
+          await syncTeamMentorPointers(tx, teamId);
+          return { next, displaced: activeAssignments.map((a) => a.mentorUserId) };
         },
-        include: { team: true },
-      });
-      await syncTeamMentorPointers(tx, teamId);
-      return next;
-    });
+        { timeout: 15000 },
+      );
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new BadRequestException('That assignment was just changed by someone else. Refresh and try again.');
+      }
+      throw err;
+    }
+    const { next: assignment, displaced } = result;
 
     await writeAudit(this.prisma, {
       actorUserId: user.id,
       action: 'mentor.assign_industry',
       entityType: 'mentor_assignment',
       entityId: assignment.id,
-      after: { teamId, industrialMentorId: profile.id, mentorUserId: profile.user.id },
+      after: { teamId, industrialMentorId: profile.id, mentorUserId: profile.user.id, mentorType: 'industry' },
     });
-    await notifyUsers(this.prisma, [profile.user.id], {
-      type: 'allocation',
-      template: 'mentor_allocation',
-      title: 'New team allocated',
-      body: `You have been assigned as industrial mentor to ${team.name}.`,
-      relatedEntity: `team:${teamId}`,
-    }).catch(() => undefined);
+    const notify = (ids: string[], title: string, body: string) =>
+      notifyUsers(this.prisma, ids, {
+        type: 'allocation',
+        template: 'mentor_allocation',
+        title,
+        body,
+        relatedEntity: `team:${teamId}`,
+      }).catch((err) => this.logger.error(`notification "${title}" failed: ${(err as Error).message}`));
+    await notify([profile.user.id], 'New team allocated', `You have been assigned as industrial mentor to ${team.name}.`);
+    const outgoing = displaced.filter((id) => id !== profile.user.id);
+    if (outgoing.length) {
+      await notify(outgoing, 'Removed from team', `You are no longer the industrial mentor of ${team.name}; another mentor has been assigned.`);
+    }
     return assignment;
   }
 
   async listForUser(user: AuthUser, page: number, limit: number) {
-    if (user.platformRole === 'admin') {
+    if (hasRole(user, PlatformRole.admin)) {
       return this.list(page, limit);
     }
     if (hasAnyRole(user, [PlatformRole.institute_mentor, PlatformRole.industry_mentor])) {
@@ -378,7 +402,7 @@ export class TeamsService {
   async patch(user: AuthUser, teamId: string, body: z.infer<typeof patchTeamSchema>) {
     const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
-    if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
+    if (team.leaderUserId !== user.id && !hasRole(user, PlatformRole.admin)) {
       throw new ForbiddenException('Only the team leader can edit details');
     }
     if (team.status === TeamStatus.locked || team.detailsLockAt) {
@@ -459,7 +483,7 @@ export class TeamsService {
   async removeMember(user: AuthUser, teamId: string, memberId: string) {
     const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
-    if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
+    if (team.leaderUserId !== user.id && !hasRole(user, PlatformRole.admin)) {
       throw new ForbiddenException('Only the team leader can remove members');
     }
     const member = await this.prisma.teamMember.findFirst({ where: { id: memberId, teamId } });
@@ -479,7 +503,7 @@ export class TeamsService {
   async revokeInvite(user: AuthUser, teamId: string, memberId: string) {
     const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
-    if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
+    if (team.leaderUserId !== user.id && !hasRole(user, PlatformRole.admin)) {
       throw new ForbiddenException('Only the team leader can revoke invites');
     }
     const member = await this.prisma.teamMember.findFirst({ where: { id: memberId, teamId } });
@@ -668,7 +692,7 @@ export class TeamsService {
   async listJoinRequests(user: AuthUser, teamId: string) {
     const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
-    if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
+    if (team.leaderUserId !== user.id && !hasRole(user, PlatformRole.admin)) {
       throw new ForbiddenException('Only the team leader can see join requests');
     }
     return this.prisma.joinRequest.findMany({
@@ -703,7 +727,7 @@ export class TeamsService {
       select: { id: true, name: true, leaderUserId: true },
     });
     if (!team) throw new NotFoundException('Team not found');
-    if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
+    if (team.leaderUserId !== user.id && !hasRole(user, PlatformRole.admin)) {
       throw new ForbiddenException('Only the team leader can accept join requests');
     }
 
@@ -713,7 +737,7 @@ export class TeamsService {
         select: { id: true, leaderUserId: true },
       });
       if (!verified) throw new NotFoundException('Team not found');
-      if (verified.leaderUserId !== user.id && user.platformRole !== 'admin') {
+      if (verified.leaderUserId !== user.id && !hasRole(user, PlatformRole.admin)) {
         throw new ForbiddenException('Only the team leader can accept join requests');
       }
 
@@ -798,7 +822,7 @@ export class TeamsService {
       select: { id: true, name: true, leaderUserId: true },
     });
     if (!team) throw new NotFoundException('Team not found');
-    if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
+    if (team.leaderUserId !== user.id && !hasRole(user, PlatformRole.admin)) {
       throw new ForbiddenException('Only the team leader can reject join requests');
     }
 
@@ -839,7 +863,13 @@ export class TeamsService {
   async lock(user: AuthUser, teamId: string) {
     const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
-    if (!canFreezeTeam(user)) {
+    // Admin, or the ACTIVE faculty (institute) mentor of THIS team — not any institute mentor,
+    // and not a dual-role user who is only this team's industry mentor.
+    const assignments = await this.prisma.mentorAssignment.findMany({
+      where: { teamId, active: true },
+      select: { mentorUserId: true, mentorType: true, active: true },
+    });
+    if (!canFreezeTeam(user, assignments)) {
       throw new ForbiddenException('Only an admin or the team faculty mentor can freeze a team');
     }
     const before = { status: team.status, detailsLockAt: team.detailsLockAt };
@@ -864,7 +894,7 @@ export class TeamsService {
    *  - students and mentors are notified, and uploaded files are deleted from storage (best effort).
    */
   async disqualify(user: AuthUser, teamId: string) {
-    if (user.platformRole !== 'admin') {
+    if (!hasRole(user, PlatformRole.admin)) {
       throw new ForbiddenException('Only an admin can disqualify a team');
     }
     const team = await this.repo.findForAccessCheck(teamId);
@@ -981,7 +1011,7 @@ export class TeamsService {
       mentorAssignments: Array<{ mentorUserId: string }>;
     },
   ) {
-    if (user.platformRole === 'admin') return;
+    if (hasRole(user, PlatformRole.admin)) return;
     if (team.status === 'disqualified') {
       throw new ForbiddenException('This team has been disqualified and is no longer available.');
     }
@@ -999,6 +1029,6 @@ export class TeamsService {
   }
 
   isLeader(user: AuthUser, team: { leaderUserId: string }) {
-    return team.leaderUserId === user.id || user.platformRole === 'admin';
+    return team.leaderUserId === user.id || hasRole(user, PlatformRole.admin);
   }
 }

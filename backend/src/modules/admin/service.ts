@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InviteStatus, PlatformRole, Prisma } from '@prisma/client';
 import { sendRoleAddedEmail, sendStaffCredentialsEmail } from '../../lib/invite-email';
-import { allRoles } from '../../lib/roles';
+import { allRoles, hasRole } from '../../lib/roles';
 import { hashPassword } from '../../lib/password';
 import { generateStaffPassword } from '../../lib/staff-password';
 import { writeAudit } from '../../lib/audit';
@@ -159,7 +159,7 @@ export class AdminService {
         select: { teamId: true, mentorType: true, assignmentMethod: true },
       }),
       this.prisma.mentorAssignment.groupBy({
-        by: ['mentorUserId'],
+        by: ['mentorUserId', 'mentorType'],
         where: { active: true },
         _count: true,
       }),
@@ -170,7 +170,12 @@ export class AdminService {
       }),
       this.prisma.mentorInvite.groupBy({ by: ['inviteStatus'], _count: true }),
       this.prisma.user.findMany({
-        where: { platformRole: PlatformRole.institute_mentor },
+        where: {
+          OR: [
+            { platformRole: PlatformRole.institute_mentor },
+            { additionalRoles: { has: PlatformRole.institute_mentor } },
+          ],
+        },
         select: { id: true, isActive: true },
       }),
       this.prisma.industrialMentor.findMany({
@@ -247,10 +252,13 @@ export class AdminService {
       else withNone += 1;
     }
 
+    // Per-person load (a dual-role mentor appears once, summed across mentor types).
     const mentorLoad = new Map<string, number>();
+    const instituteMentorIdsWithTeams = new Set<string>();
     let totalActiveAssignments = 0;
     for (const g of assignmentsByMentor) {
-      mentorLoad.set(g.mentorUserId, g._count);
+      mentorLoad.set(g.mentorUserId, (mentorLoad.get(g.mentorUserId) ?? 0) + g._count);
+      if (g.mentorType === 'institute') instituteMentorIdsWithTeams.add(g.mentorUserId);
       totalActiveAssignments += g._count;
     }
     const activeInstituteMentors = instituteMentors.filter((m) => m.isActive).length;
@@ -280,7 +288,13 @@ export class AdminService {
       void uid;
       mentorLoadBuckets.set(key, (mentorLoadBuckets.get(key) ?? 0) + 1);
     }
-    const mentorsWithNoTeams = Math.max(0, activeInstituteMentors + activeIndustryProfiles - mentorLoad.size);
+    // Distinct active mentor people (institute ∪ industry), so dual-role users count once.
+    const activeMentorUserIds = new Set<string>([
+      ...instituteMentors.filter((m) => m.isActive).map((m) => m.id),
+      ...industryProfiles.filter((p) => p.isActive).map((p) => p.userId),
+    ]);
+    let mentorsWithNoTeams = 0;
+    for (const id of activeMentorUserIds) if (!mentorLoad.has(id)) mentorsWithNoTeams += 1;
 
     const scoreByStage = new Map<string, { sum: number; count: number }>();
     let scoreSum = 0;
@@ -347,7 +361,7 @@ export class AdminService {
       kpi: {
         totalUsers: [...roleCounts.values()].reduce((s, c) => s + c, 0),
         students: roleCounts.get('student') ?? 0,
-        instituteMentors: roleCounts.get('institute_mentor') ?? 0,
+        instituteMentors: instituteMentors.length,
         industryMentors: roleCounts.get('industry_mentor') ?? 0,
         experts: roleCounts.get('student_expert') ?? 0,
         admins: roleCounts.get('admin') ?? 0,
@@ -378,7 +392,8 @@ export class AdminService {
       mentors: {
         activeInstituteMentors,
         activeIndustryMentors: activeIndustryProfiles,
-        instituteMentorsWithTeams: mentorLoad.size,
+        instituteMentorsWithTeams: instituteMentorIdsWithTeams.size,
+        mentorsWithTeams: mentorLoad.size,
         activeAssignments: totalActiveAssignments,
         avgTeamsPerMentor: mentorLoad.size > 0 ? Math.round((totalActiveAssignments / mentorLoad.size) * 10) / 10 : 0,
         mentorsWithNoTeams,
@@ -644,6 +659,8 @@ export class AdminService {
     );
     const { user } = result;
     // Email after DB write — do not block the admin UI on Resend latency.
+    // Delivery is fire-and-forget, so the response only says it was queued.
+    const emailQueued = Boolean(result.created || result.passwordRotated || result.granted);
     if (result.created || result.passwordRotated) {
       void sendStaffCredentialsEmail({
         to: user.email,
@@ -677,7 +694,10 @@ export class AdminService {
       email: user.email,
       platformRole: user.platformRole,
       additionalRoles: user.additionalRoles,
-      emailSent: true,
+      // Honest delivery state: the send is fire-and-forget, so it is never
+      // confirmed here. emailQueued tells the UI whether any email was dispatched.
+      emailQueued,
+      emailSent: false,
       emailError: null,
     };
   }
@@ -779,7 +799,14 @@ export class AdminService {
     return this.prisma.userImportBatch.update({ where: { id }, data: { status: 'rejected' } });
   }
 
-  async retryFailedEmails(id: string) {
+  /**
+   * Re-send emails for activated staff rows whose email failed. Safe by default:
+   * passwords are NEVER rotated and accounts are NEVER reactivated — the retry
+   * sends a role-access email (sign in with the existing password / use Forgot
+   * password). A fresh password is only minted when the admin explicitly asks
+   * with `opts.resetPassword`.
+   */
+  async retryFailedEmails(id: string, opts?: { resetPassword?: boolean }) {
     const batch = await this.prisma.userImportBatch.findUnique({ where: { id } });
     if (!batch) throw new NotFoundException('Import batch not found');
     if (batch.status !== 'activated') {
@@ -809,9 +836,8 @@ export class AdminService {
       };
     }
 
-    // Plaintext passwords are never stored — mint a fresh one, update the hash, then email it.
-    // Group by email: one password + one email per address even when a batch
-    // holds two rows for a dual-role account.
+    // Group by email: one email per address even when a batch holds two rows
+    // for a dual-role account.
     const retryGroups = new Map<string, typeof failedRows>();
     for (const row of failedRows) {
       const key = row.email.toLowerCase();
@@ -823,18 +849,38 @@ export class AdminService {
     await mapPool([...retryGroups.values()], 2, async (rowsForEmail) => {
       const row = rowsForEmail[0];
       const ids = rowsForEmail.map((r) => r.id);
-      const password = generateStaffPassword();
       try {
-        await this.prisma.user.update({
-          where: { email: row.email.toLowerCase() },
-          data: { passwordHash: hashPassword(password), isActive: true },
-        });
-        await sendStaffCredentialsEmail({
-          to: row.email,
-          fullName: row.fullName,
-          password,
-          platformRole: row.platformRole,
-        });
+        const user = await this.prisma.user.findUnique({ where: { email: row.email.toLowerCase() } });
+        if (!user || !user.isActive) {
+          await this.prisma.userImportRow.updateMany({
+            where: { id: { in: ids } },
+            data: { emailError: 'Account is missing or deactivated; no email sent.' },
+          });
+          return;
+        }
+        const roles = allRoles(user);
+        if (opts?.resetPassword === true) {
+          // Plaintext passwords are never stored — mint a fresh one, update the hash, then email it.
+          const password = generateStaffPassword();
+          await this.prisma.user.update({
+            where: { id: user.id },
+            data: { passwordHash: hashPassword(password) },
+          });
+          await sendStaffCredentialsEmail({
+            to: user.email,
+            fullName: user.fullName,
+            password,
+            platformRole: user.platformRole,
+            additionalRoles: user.additionalRoles,
+          });
+        } else {
+          await sendRoleAddedEmail({
+            to: user.email,
+            fullName: user.fullName,
+            grantedRole: row.platformRole,
+            allRoles: roles,
+          });
+        }
         await this.prisma.userImportRow.updateMany({
           where: { id: { in: ids } },
           data: { emailSent: true, emailSentAt: new Date(), emailError: null },
@@ -926,9 +972,16 @@ export class AdminService {
       targetEmail: target.email,
       ledTeamCount: target.ledTeams.length,
     });
-    if (target.platformRole === PlatformRole.admin) {
+    if (hasRole(target, PlatformRole.admin)) {
       const otherAdmins = await this.prisma.user.count({
-        where: { platformRole: PlatformRole.admin, isActive: true, id: { not: userId } },
+        where: {
+          isActive: true,
+          id: { not: userId },
+          OR: [
+            { platformRole: PlatformRole.admin },
+            { additionalRoles: { has: PlatformRole.admin } },
+          ],
+        },
       });
       if (otherAdmins === 0) {
         throw new BadRequestException('Cannot remove the last active admin on the platform');
@@ -1369,6 +1422,20 @@ export class AdminService {
               grantedRoles: result.grantedRoles,
               roles: result.roles,
             });
+          } else if (!result.isNewUser) {
+            // Existing account, nothing new granted (or no password to deliver):
+            // no email is needed. Mark the rows so they are not counted as failed
+            // deliveries and a retry never touches this in-use account.
+            const ids = rowIdsByEmail.get(result.email.toLowerCase()) ?? [];
+            if (ids.length > 0) {
+              await this.prisma.userImportRow.updateMany({
+                where: { id: { in: ids } },
+                data: {
+                  emailSent: true,
+                  emailError: 'No email needed: existing account, no new role granted',
+                },
+              });
+            }
           }
         }
       }

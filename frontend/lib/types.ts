@@ -1,3 +1,6 @@
+/** Lifecycle of a team member / mentor invitation. */
+export type InviteStatus = "pending" | "accepted" | "expired" | "revoked";
+
 export type PortalUser = {
   id: string;
   fullName: string;
@@ -61,7 +64,7 @@ export type PortalTeam = {
   members: Array<{
     id: string;
     invitedEmail: string;
-    inviteStatus: string;
+    inviteStatus: InviteStatus;
     user?: { id?: string; fullName?: string; email?: string; department?: string; profileJson?: Record<string, unknown> } | null;
   }>;
   leader?: { fullName: string; email: string };
@@ -103,7 +106,7 @@ export type PortalTeam = {
     id: string;
     invitedEmail: string;
     mentorType: string;
-    inviteStatus: string;
+    inviteStatus: InviteStatus;
     mentor?: { id: string; fullName: string; email: string } | null;
   }>;
   ideaSubmissions?: Array<{

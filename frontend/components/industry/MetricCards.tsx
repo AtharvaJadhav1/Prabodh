@@ -6,21 +6,23 @@ type Props = {
   pendingCount: number;
   acceptedMentorCount: number;
   visibleTeamCount: number;
+  /** While true, show "—" instead of a misleading 0. */
+  loading?: boolean;
 };
 
-export default function MetricCards({ pendingCount, acceptedMentorCount, visibleTeamCount }: Props) {
+export default function MetricCards({ pendingCount, acceptedMentorCount, visibleTeamCount, loading = false }: Props) {
   const cards = [
     {
       label: "PENDING INVITES",
-      value: String(pendingCount),
-      desc: "Awaiting student response",
+      value: loading ? "—" : String(pendingCount),
+      desc: "Awaiting your response",
       icon: InboxIcon,
       stripe: "bg-[#C25E26]",
       iconBg: "bg-[#C25E26]/10 text-[#C25E26]",
     },
     {
       label: "INSTITUTE MENTORS",
-      value: String(acceptedMentorCount),
+      value: loading ? "—" : String(acceptedMentorCount),
       desc: "Accepted institutional invites",
       icon: BriefcaseIcon,
       stripe: "bg-[#D97706]",
@@ -28,7 +30,7 @@ export default function MetricCards({ pendingCount, acceptedMentorCount, visible
     },
     {
       label: "ASSIGNED TEAMS",
-      value: String(visibleTeamCount),
+      value: loading ? "—" : String(visibleTeamCount),
       desc: "Active teams visible to you",
       icon: FileCheckIcon,
       stripe: "bg-[#059669]",

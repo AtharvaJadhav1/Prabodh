@@ -3,9 +3,22 @@ import { PrismaService } from './prisma.service';
 
 export const CATEGORY_ACTIONS: Record<string, string[]> = {
   team_formation: ['team.created', 'team.renamed', 'team.lock', 'team.disqualify', 'team.invite', 'team.join'],
-  mentor_allocation: ['mentor.allocate', 'mentor.unassign'],
+  // Seat changes made by admins (allocate / assign_industry / reassign / unassign) apply to both mentor
+  // types, so they appear in the shared seat categories AND in industry_invites: an industry mentor
+  // filtering "Industry Invites" sees the whole life of their seat (invited, accepted/declined/revoked,
+  // or placed/replaced/removed by an admin).
+  mentor_allocation: ['mentor.allocate', 'mentor.unassign', 'mentor.assign_industry', 'mentor.invite_accepted'],
   mentor_override: ['mentor.reassign'],
-  industry_invites: ['mentor.invite', 'mentor.invite_accepted', 'mentor.assign_industry'],
+  industry_invites: [
+    'mentor.invite',
+    'mentor.invite_accepted',
+    'mentor.invite_declined',
+    'mentor.invite_revoked',
+    'mentor.assign_industry',
+    'mentor.allocate',
+    'mentor.reassign',
+    'mentor.unassign',
+  ],
   milestone_reviews: ['evaluation.submitted', 'evaluation.publish'],
   user_administration: ['user.remove'],
 };
@@ -91,6 +104,8 @@ export async function enrichAuditRows(prisma: PrismaService, rows: AuditRow[]) {
     if (mid) userIds.add(mid);
     const oldMid = strOf(before?.mentorUserId);
     if (oldMid) userIds.add(oldMid);
+    const actorId = strOf(after?.actorUserId);
+    if (actorId) userIds.add(actorId);
   }
 
   const [teams, assignments, stages, broadcasts, users] = await Promise.all([
@@ -250,6 +265,16 @@ function summarizeAudit(input: SummaryInput): string {
     case 'mentor.invite_accepted': {
       const type = mentorTypeLabel(after?.mentorType ?? assignment?.mentorType);
       return teamLabel ? `Accepted ${type} mentor invite and bound to ${teamLabel}` : `Accepted a ${type} mentor invite`;
+    }
+    case 'mentor.invite_declined': {
+      const type = mentorTypeLabel(after?.mentorType);
+      const who = nameOf(after?.actorUserId) ?? 'The invitee';
+      return `${who} declined the ${type} mentor invite for ${teamLabel ?? 'a team'}`;
+    }
+    case 'mentor.invite_revoked': {
+      const type = mentorTypeLabel(after?.mentorType);
+      const who = nameOf(after?.actorUserId) ?? 'Someone';
+      return `${who} revoked the ${type} mentor invite for ${teamLabel ?? 'a team'}`;
     }
     case 'evaluation.submitted': {
       const stage = stageName ? ` for ${stageName}` : '';

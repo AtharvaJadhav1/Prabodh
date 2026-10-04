@@ -19,19 +19,28 @@ function toTags(value: string): string[] {
     .filter(Boolean);
 }
 
+function sameTags(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((t, i) => t === b[i]);
+}
+
 function TagEditor({
+  id,
   values,
   onChange,
   placeholder,
 }: {
+  id?: string;
   values: string[];
   onChange: (next: string[]) => void;
   placeholder?: string;
 }) {
   const [text, setText] = useState(values.join(", "));
 
+  // The local text is authoritative while typing (so "Cloud, " keeps its comma).
+  // Only re-sync when the incoming values differ from what the text already encodes,
+  // e.g. when the drawer reopens or the draft is reset.
   useEffect(() => {
-    setText(values.join(", "));
+    setText((current) => (sameTags(toTags(current), values) ? current : values.join(", ")));
   }, [values]);
 
   const preview = text.trim() ? toTags(text) : values;
@@ -39,6 +48,7 @@ function TagEditor({
   return (
     <div className="space-y-1.5">
       <input
+        id={id}
         type="text"
         value={text}
         onChange={(e) => {
@@ -84,13 +94,18 @@ export default function IndustryProfileEditDrawer() {
 
   const handleSave = () => {
     setError("");
-    if (!draft.fullName.trim()) {
-      setError("Full Name is required.");
+    const missing: string[] = [];
+    if (!draft.fullName.trim()) missing.push("Full Name");
+    if (!draft.company.trim()) missing.push("Company / Organization");
+    if (!draft.designation.trim()) missing.push("Designation / Department");
+    if (missing.length > 0) {
+      setError(`${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} required.`);
+      openDrawer("profile");
       return;
     }
     void saveProfile(draft)
       .then(() => closeDrawer())
-      .catch((err) => setError(err instanceof Error ? err.message : "Could not save profile"));
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Could not save profile"));
   };
 
   return (
@@ -152,8 +167,9 @@ export default function IndustryProfileEditDrawer() {
             required
           />
           <div className="space-y-1.5">
-            <label className={labelClass}>Official Email</label>
+            <label htmlFor="industry-profile-email" className={labelClass}>Official Email</label>
             <input
+              id="industry-profile-email"
               type="email"
               value={draft.email}
               readOnly
@@ -179,16 +195,18 @@ export default function IndustryProfileEditDrawer() {
       {section === "expertise" && (
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className={labelClass}>Domain Expertise</label>
+            <label htmlFor="industry-domain-expertise" className={labelClass}>Domain Expertise</label>
             <TagEditor
+              id="industry-domain-expertise"
               values={draft.domainExpertise}
               onChange={(domainExpertise) => patch({ domainExpertise })}
               placeholder="e.g. Cloud Systems, AI/ML, FinTech"
             />
           </div>
           <div className="space-y-1.5">
-            <label className={labelClass}>Core Skills / Tech Stack</label>
+            <label htmlFor="industry-core-skills" className={labelClass}>Core Skills / Tech Stack</label>
             <TagEditor
+              id="industry-core-skills"
               values={draft.coreSkills}
               onChange={(coreSkills) => patch({ coreSkills })}
               placeholder="e.g. Kubernetes, Python, AWS, React"

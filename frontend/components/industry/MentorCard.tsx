@@ -14,6 +14,7 @@ export default function MentorCard({ mentor, selected, onToggle }: Props) {
     <button
       type="button"
       onClick={() => onToggle(mentor.instituteMentorId)}
+      aria-pressed={selected}
       className={`w-full rounded-2xl border p-5 text-left shadow-xs transition duration-200 hover:shadow-md ${
         selected ? "border-brand-primary bg-brand-lightOrange/50" : "border-brand-sand bg-white hover:border-brand-primary/40"
       }`}

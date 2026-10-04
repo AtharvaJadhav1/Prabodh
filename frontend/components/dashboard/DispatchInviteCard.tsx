@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTeam } from "./TeamProvider";
 import { MailIcon, SendIcon, CheckIcon, LockIcon } from "./icons";
 
@@ -12,14 +12,23 @@ export default function DispatchInviteCard() {
   const [sending, setSending] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(
+    () => () => {
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+    },
+    [],
+  );
+
   const handleSend = async () => {
+    if (sending) return;
     const trimmed = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setError("Enter a valid institute email, e.g. name@mituniversity.edu.in");
       return;
     }
     setSending(true);
-    setSuccess(`Invite queued for ${trimmed}…`);
+    setError("");
+    setSuccess("");
     try {
       const result = await sendInvite(trimmed);
       if (result.ok) {
@@ -32,12 +41,13 @@ export default function DispatchInviteCard() {
           setError(
             result.emailError
               ? `Invite saved, but email failed: ${result.emailError}`
-              : "Invite saved, but the email was not sent. Check Resend settings on the backend.",
+              : "Invite saved, but the email could not be sent. Please try again or contact your administrator.",
           );
         }
         if (flashTimer.current) clearTimeout(flashTimer.current);
         flashTimer.current = setTimeout(() => setSuccess(""), 3500);
       } else {
+        setSuccess("");
         setError("Could not send this invite.");
       }
     } catch (err) {
@@ -100,7 +110,7 @@ export default function DispatchInviteCard() {
                 sent.
               </span>
               <span className="block">
-                We'll email them an invite link. Teammates must join using their invited email
+                We&apos;ll email them an invite link. Teammates must join using their invited email
                 address.
               </span>
             </p>

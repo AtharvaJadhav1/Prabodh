@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./AuthProvider";
 import LoadingState from "../LoadingState";
@@ -20,7 +20,8 @@ function rolesForPath(pathname: string): PlatformRole[] | null {
 }
 
 export default function DashboardRoleGuard({ children }: { children: ReactNode }) {
-  const { session, ready } = useAuth();
+  const { session, ready, syncActiveRole } = useAuth();
+  const syncAttempted = useRef<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const allowed = rolesForPath(pathname);
@@ -32,6 +33,25 @@ export default function DashboardRoleGuard({ children }: { children: ReactNode }
       router.replace(dashboardForRole(session.activeRole ?? session.platformRole));
     }
   }, [ready, session, allowed, router]);
+
+  // Dual-role user on a dashboard for a role they hold, but activeRole points elsewhere:
+  // reconcile activeRole (no navigation) so the sidebar badge and RoleSwitcher are correct.
+  const userId = session?.userId;
+  const activeRole = session?.activeRole;
+  const held = session ? allRoles(session) : [];
+  const targetRole = allowed ? allowed.find((r) => held.includes(r)) : undefined;
+  const heldKey = held.join(",");
+  useEffect(() => {
+    if (!ready || !userId || !targetRole || !activeRole) return;
+    if (activeRole === targetRole || allowed?.includes(activeRole)) return;
+    const key = `${userId}:${targetRole}`;
+    if (syncAttempted.current === key) return; // one attempt per user/role; avoid loops
+    syncAttempted.current = key;
+    void syncActiveRole(targetRole).catch(() => {
+      /* server refused: leave the current role untouched */
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, userId, activeRole, targetRole, heldKey, syncActiveRole]);
 
   if (!ready) {
     return (

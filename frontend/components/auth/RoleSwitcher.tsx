@@ -12,7 +12,7 @@ interface RoleConfig {
   label: string;
 }
 
-const ROLE_CONFIG: Record<Exclude<PlatformRole, "student" | "admin" | "student_expert">, RoleConfig> = {
+const ROLE_CONFIG: Partial<Record<PlatformRole, RoleConfig>> = {
   institute_mentor: {
     icon: LandmarkIcon,
     label: "Institute Mentor",
@@ -30,21 +30,25 @@ const ROLE_CONFIG: Record<Exclude<PlatformRole, "student" | "admin" | "student_e
 export default function RoleSwitcher() {
   const { session, switchRole } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isDualMentor(session)) return null;
 
   const current = session?.activeRole ?? session?.platformRole;
   const other = SWITCH_TARGETS.find((r) => r !== current) ?? "institute_mentor";
 
-  const currentConfig = ROLE_CONFIG[current as keyof typeof ROLE_CONFIG];
-  const otherConfig = ROLE_CONFIG[other as keyof typeof ROLE_CONFIG];
+  const currentConfig = current ? ROLE_CONFIG[current] : undefined;
+  const otherConfig = ROLE_CONFIG[other];
   const CurrentIcon = currentConfig?.icon ?? LandmarkIcon;
   const OtherIcon = otherConfig?.icon ?? BriefcaseIcon;
 
   const handleSwitch = async () => {
     setBusy(true);
+    setError(null);
     try {
       await switchRole(other);
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Could not switch workspace. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -81,6 +85,11 @@ export default function RoleSwitcher() {
           <ChevronsUpDownIcon className="w-4 h-4" aria-hidden="true" />
         </div>
       </button>
+      {error ? (
+        <p role="alert" className="mt-1.5 px-1 text-[11px] font-semibold text-red-700">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

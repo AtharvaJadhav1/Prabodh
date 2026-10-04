@@ -1,4 +1,4 @@
-import type { MentorInvite } from "../../data/industryDashboard";
+import { inviteStatusLabel, type MentorInvite } from "../../data/industryDashboard";
 
 type Props = {
   history: MentorInvite[];
@@ -32,22 +32,24 @@ export default function InviteHistoryList({ history }: Props) {
           {rows.map((inv) => (
             <tr key={inv.id} className="transition-colors hover:bg-brand-cream/80">
               <td className="px-4 py-4">
-                <div className="text-sm font-bold text-brand-deep">{inv.instituteMentorName}</div>
-                <div className="mt-0.5 text-[11px] text-brand-muted">{inv.instituteMentorTitle}</div>
+                <div className="text-sm font-bold text-brand-deep">{inv.teamName}</div>
+                <div className="mt-0.5 text-[11px] text-brand-muted">
+                  {inv.invitedByName ? `Invited by ${inv.invitedByName}` : "Invited by an institute mentor"}
+                </div>
               </td>
-              <td className="px-4 py-4 font-mono text-brand-charcoal">{inv.groupIds.join(", ")}</td>
+              <td className="px-4 py-4 font-mono text-brand-charcoal">{inv.teamCode}</td>
               <td className="px-4 py-4 text-center">
                 {inv.status === "accepted" ? (
                   <span className="inline-flex items-center gap-1 rounded-full border border-brand-approved/20 bg-brand-approved/10 px-2.5 py-1 text-[11px] font-semibold text-brand-approved">
-                    Accepted
+                    {inviteStatusLabel("accepted")}
                   </span>
                 ) : inv.status === "expired" ? (
                   <span className="inline-flex items-center gap-1 rounded-full border border-brand-sand bg-brand-cream px-2.5 py-1 text-[11px] font-semibold text-brand-muted">
-                    Expired
+                    {inviteStatusLabel("expired")}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 rounded-full border border-brand-overdue/20 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-brand-overdue">
-                    Declined
+                    {inviteStatusLabel(inv.status)}
                   </span>
                 )}
               </td>

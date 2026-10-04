@@ -18,7 +18,9 @@ export class RolesGuard implements CanActivate {
     const req = context.switchToHttp().getRequest<{ user?: AuthUser }>();
     const user = req.user;
     if (!user) throw new ForbiddenException('Not authenticated');
-    // Dual-role accounts pass when ANY held role (primary or secondary) is allowed.
+    // Dual-role accounts pass when ANY held role (primary or secondary) is allowed. This only gates
+    // the endpoint: handlers that serve workspace-specific data (e.g. ?mentorType=) MUST scope by it
+    // themselves, since a dual-role user holds both mentor roles at once.
     if (!roles.some((r) => allRoles(user).includes(r))) {
       throw new ForbiddenException('Insufficient role');
     }

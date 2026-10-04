@@ -6,15 +6,24 @@ import IndustryMentorMetricCards from "../../../../components/mentor/IndustryMen
 import IndustryMentorCard from "../../../../components/mentor/IndustryMentorCard";
 import { type IndustryMentor, type MentorGroup } from "../../../../data/mentorDashboard";
 import { api } from "../../../../lib/api";
+import { initials } from "../../../../lib/initials";
+import { ErrorBanner, SkeletonRows } from "../../../../components/industry/LoadState";
 import { useAuth } from "../../../../components/auth/AuthProvider";
 
 export default function IndustryMentorsPage() {
   const { session } = useAuth();
   const [mentors, setMentors] = useState<IndustryMentor[]>([]);
   const [groups, setGroups] = useState<MentorGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
+  const userId = session?.userId ?? null;
 
   useEffect(() => {
-    if (!session) return;
+    if (!userId) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
     void api<
       Array<{
         pendingInvite?: boolean;
@@ -41,6 +50,7 @@ export default function IndustryMentorsPage() {
       }>
     >("/mentors/me/teams?mentorType=institute")
       .then((rows) => {
+        if (cancelled) return;
         const nextGroups: MentorGroup[] = [];
         const byId = new Map<string, IndustryMentor>();
         for (const row of rows) {
@@ -67,12 +77,7 @@ export default function IndustryMentorsPage() {
               byId.set(a.mentorUserId, {
                 id: a.mentorUserId,
                 name: a.mentor.fullName,
-                initials: a.mentor.fullName
-                  .split(" ")
-                  .map((p) => p[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase(),
+                initials: initials(a.mentor.fullName),
                 email: a.mentor.email,
                 phone: a.industrialMentor?.phone ?? a.mentor.phone ?? "",
                 company: a.industrialMentor?.companyName ?? a.mentor.institute ?? "",
@@ -85,12 +90,17 @@ export default function IndustryMentorsPage() {
         }
         setGroups(nextGroups);
         setMentors([...byId.values()]);
+        setLoading(false);
       })
-      .catch(() => {
-        setGroups([]);
-        setMentors([]);
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof Error && err.message ? err.message : "Could not load your industry mentors.");
+        setLoading(false);
       });
-  }, [session]);
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, reloadTick]);
 
   const mapping = useMemo(() => {
     return groups.map((g) => {
@@ -101,6 +111,9 @@ export default function IndustryMentorsPage() {
 
   return (
     <MentorShell title="Industry Mentors">
+      {error ? (
+        <ErrorBanner className="mb-4" message={error} onRetry={() => setReloadTick((t) => t + 1)} />
+      ) : null}
       <IndustryMentorMetricCards mentors={mentors} totalTeams={groups.length} />
 
       <section className="mb-10">
@@ -109,10 +122,14 @@ export default function IndustryMentorsPage() {
           <p className="text-xs text-brand-muted">Live assignments from the platform, not a local directory.</p>
         </div>
 
-        {mentors.length === 0 ? (
+        {loading ? (
+          <SkeletonRows rows={2} label="Loading industry mentors…" />
+        ) : mentors.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-brand-sand bg-brand-cream p-8 text-center">
             <p className="text-xs font-medium text-brand-muted">
-              No industry mentors are allocated to your teams yet.
+              {error
+                ? "Industry mentors could not be loaded."
+                : "No industry mentors are allocated to your teams yet."}
             </p>
           </div>
         ) : (
@@ -130,8 +147,10 @@ export default function IndustryMentorsPage() {
 
       <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
         <h2 className="mb-4 text-base font-bold text-brand-deep">Team mapping</h2>
-        {mapping.length === 0 ? (
-          <p className="text-sm text-brand-muted">No assigned teams yet.</p>
+        {loading ? (
+          <SkeletonRows rows={2} label="Loading team mapping…" />
+        ) : mapping.length === 0 ? (
+          <p className="text-sm text-brand-muted">{error ? "Teams could not be loaded." : "No assigned teams yet."}</p>
         ) : (
           <ul className="divide-y divide-brand-sand">
             {mapping.map(({ group, mentor }) => (

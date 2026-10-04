@@ -2,7 +2,15 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { MentorType, PlatformRole } from '@prisma/client';
 import { allRoles, hasRole, isDualMentor } from './roles';
-import { isSelfInvite, mentorTypeForRole, parseMentorTypeQuery, seatConflict } from './mentor-rules';
+import {
+  canFreezeTeam,
+  isSelfInvite,
+  mentorTypeForRole,
+  nextMentorLockedAt,
+  parseMentorTypeQuery,
+  sameEmail,
+  seatConflict,
+} from './mentor-rules';
 
 const DUAL_INSTITUTE_PRIMARY = {
   platformRole: PlatformRole.institute_mentor,
@@ -102,5 +110,44 @@ describe('admin override — role required for each seat', () => {
     // Without excluding it, the same-type seat would block; with it removed the list is empty.
     assert.notEqual(seatConflict([seatBeingReplaced], 'dual', MentorType.institute), null);
     assert.equal(seatConflict([], 'dual', MentorType.institute), null);
+  });
+});
+
+describe('canFreezeTeam', () => {
+  const seat = (mentorUserId: string, mentorType: MentorType, active = true) => ({ mentorUserId, mentorType, active });
+  const user = (id: string, platformRole: PlatformRole, additionalRoles: PlatformRole[] = []) => ({
+    id,
+    platformRole,
+    additionalRoles,
+  });
+
+  it('allows admins, including via additionalRoles', () => {
+    assert.equal(canFreezeTeam(user('a', PlatformRole.admin), []), true);
+    assert.equal(canFreezeTeam(user('a', PlatformRole.student, [PlatformRole.admin]), []), true);
+  });
+  it('allows only the active faculty mentor of that team', () => {
+    const seats = [seat('f1', MentorType.institute)];
+    assert.equal(canFreezeTeam(user('f1', PlatformRole.institute_mentor), seats), true);
+    assert.equal(canFreezeTeam(user('f2', PlatformRole.institute_mentor), seats), false);
+    assert.equal(canFreezeTeam(user('f1', PlatformRole.institute_mentor), [seat('f1', MentorType.institute, false)]), false);
+  });
+  it('rejects a dual-role user who is only the industry mentor', () => {
+    const dual = user('d', PlatformRole.institute_mentor, [PlatformRole.industry_mentor]);
+    assert.equal(canFreezeTeam(dual, [seat('d', MentorType.industry)]), false);
+  });
+});
+
+describe('sameEmail / nextMentorLockedAt', () => {
+  it('compares emails case-insensitively', () => {
+    assert.equal(sameEmail('A@B.com', ' a@b.COM '), true);
+    assert.equal(sameEmail('a@b.com', 'c@b.com'), false);
+    assert.equal(sameEmail(null, 'a@b.com'), false);
+  });
+  it('keeps, sets and clears the faculty lock', () => {
+    const now = new Date('2026-01-02');
+    const before = new Date('2026-01-01');
+    assert.equal(nextMentorLockedAt(true, before, now), before);
+    assert.equal(nextMentorLockedAt(true, null, now), now);
+    assert.equal(nextMentorLockedAt(false, before, now), null);
   });
 });

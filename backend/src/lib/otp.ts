@@ -45,12 +45,18 @@ export async function sendOtp(opts: {
   const key = otpKey(opts.purpose, email);
 
   try {
-    await redis.set(key, JSON.stringify({ hash: hashCode(code), attempts: 0 }), 'EX', OTP_TTL_SEC);
+    await redis.set(
+      key,
+      JSON.stringify({ hash: hashCode(code), attempts: 0 }),
+      'EX',
+      OTP_TTL_SEC,
+    );
     if (opts.purpose === 'register' && opts.profile) {
       await redis.set(profileKey(email), JSON.stringify(opts.profile), 'EX', OTP_TTL_SEC);
     }
   } catch (err) {
     console.error('[otp] Redis write failed during send', err);
+    await clearStoredOtp(redis, key, opts.purpose, email);
     throw new Error(
       `OTP storage unavailable: ${err instanceof Error ? err.message : String(err)}`,
     );
@@ -94,19 +100,29 @@ export async function sendOtp(opts: {
     });
     return {};
   } catch (err) {
-    try {
-      await redis.del(key);
-      if (opts.purpose === 'register') await redis.del(profileKey(email));
-    } catch {
-      /* best-effort cleanup */
-    }
     if (process.env.NODE_ENV !== 'production') {
       console.warn('[otp] Email send failed — dev code logged', err);
       return { devCode: code };
     }
+    // Production: no live OTP / plaintext password may linger when delivery failed.
+    await clearStoredOtp(redis, key, opts.purpose, email);
     const msg = err instanceof Error ? err.message : 'Email send failed';
     console.error('[otp] Email send failed in production', msg);
     throw new Error(msg);
+  }
+}
+
+async function clearStoredOtp(
+  redis: ReturnType<typeof getCacheRedis>,
+  key: string,
+  purpose: OtpPurpose,
+  email: string,
+) {
+  try {
+    await redis.del(key);
+    if (purpose === 'register') await redis.del(profileKey(email));
+  } catch {
+    /* best-effort cleanup */
   }
 }
 

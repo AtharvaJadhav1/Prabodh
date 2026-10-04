@@ -27,9 +27,9 @@ export class MentorsRepository {
     });
   }
 
-  teamsForMentor(mentorUserId: string) {
+  teamsForMentor(mentorUserId: string, mentorType?: MentorType) {
     return this.prisma.mentorAssignment.findMany({
-      where: { mentorUserId, active: true },
+      where: { mentorUserId, active: true, ...(mentorType ? { mentorType } : {}) },
       include: {
         team: {
           select: {

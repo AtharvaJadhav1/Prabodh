@@ -18,12 +18,55 @@ export type Session = {
   profileJson?: Record<string, unknown>;
 };
 
+const PLATFORM_ROLES: readonly PlatformRole[] = [
+  "student",
+  "institute_mentor",
+  "industry_mentor",
+  "admin",
+  "student_expert",
+];
+
+function isPlatformRole(v: unknown): v is PlatformRole {
+  return typeof v === "string" && (PLATFORM_ROLES as readonly string[]).includes(v);
+}
+
+/** Validate a parsed localStorage value; returns null when it is not a usable session. */
+function normalizeSession(raw: unknown): Session | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.userId !== "string" || !r.userId) return null;
+  if (typeof r.email !== "string" || typeof r.fullName !== "string") return null;
+  if (!isPlatformRole(r.platformRole)) return null;
+  const platformRole = r.platformRole;
+  const additionalRoles = Array.isArray(r.additionalRoles)
+    ? r.additionalRoles.filter(isPlatformRole).filter((x) => x !== platformRole)
+    : [];
+  const held = [platformRole, ...additionalRoles];
+  const activeRole = isPlatformRole(r.activeRole) && held.includes(r.activeRole) ? r.activeRole : platformRole;
+  return {
+    userId: r.userId,
+    email: r.email,
+    fullName: r.fullName,
+    platformRole,
+    additionalRoles,
+    activeRole,
+    institute: typeof r.institute === "string" ? r.institute : null,
+    department: typeof r.department === "string" ? r.department : null,
+    phone: typeof r.phone === "string" ? r.phone : null,
+    accessToken: typeof r.accessToken === "string" ? r.accessToken : undefined,
+    profileJson:
+      r.profileJson && typeof r.profileJson === "object" && !Array.isArray(r.profileJson)
+        ? (r.profileJson as Record<string, unknown>)
+        : undefined,
+  };
+}
+
 export function readSession(): Session | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as Session;
+    return normalizeSession(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -51,7 +94,8 @@ export function allRoles(session: Pick<Session, "platformRole" | "additionalRole
   return [session.platformRole, ...extras.filter((r) => r !== session.platformRole)];
 }
 
-/** Dual-mentor account: holds both institute_mentor and industry_mentor. */export function isDualMentor(
+/** Dual-mentor account: holds both institute_mentor and industry_mentor. */
+export function isDualMentor(
   session: Pick<Session, "platformRole" | "additionalRoles"> | null | undefined,
 ): boolean {
   if (!session) return false;

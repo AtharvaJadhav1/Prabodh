@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { MentorInvite } from "../../data/industryDashboard";
+import { initials } from "../../lib/initials";
 
 type Props = {
   invite: MentorInvite;
@@ -33,11 +34,11 @@ export default function InviteCard({ invite, onAccept, onDecline }: Props) {
       <div className="flex items-start justify-between pb-4 border-b border-brand-sand">
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold tracking-wider text-white shadow-xs">
-            {invite.instituteMentorInitials}
+            {initials(invite.invitedByName ?? invite.teamName)}
           </div>
           <div>
-            <h3 className="text-base font-bold text-brand-deep">{invite.instituteMentorName}</h3>
-            <p className="text-xs text-brand-muted">{invite.instituteMentorTitle}</p>
+            <h3 className="text-base font-bold text-brand-deep">{invite.invitedByName ?? "Institute mentor"}</h3>
+            <p className="text-xs text-brand-muted">Invited you to mentor a team</p>
           </div>
         </div>
         <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2.5 py-0.5 text-[11px] font-semibold text-brand-primary">
@@ -47,17 +48,13 @@ export default function InviteCard({ invite, onAccept, onDecline }: Props) {
 
       <div className="py-4">
         <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-brand-muted">
-          Invitation covers {invite.groupIds.length} Team{invite.groupIds.length !== 1 ? "s" : ""}
+          Team
         </span>
-        <div className="flex flex-wrap gap-1.5">
-          {invite.groupIds.map((id) => (
-            <span
-              key={id}
-              className="rounded-md border border-brand-sand bg-brand-cream px-2.5 py-1 font-mono text-[11px] font-semibold text-brand-charcoal"
-            >
-              {id}
-            </span>
-          ))}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-sm font-bold text-brand-deep">{invite.teamName}</span>
+          <span className="rounded-md border border-brand-sand bg-brand-cream px-2.5 py-1 font-mono text-[11px] font-semibold text-brand-charcoal">
+            {invite.teamCode}
+          </span>
         </div>
       </div>
 

@@ -8,10 +8,15 @@ import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
 import { ZodPipe } from '../../common/zod.pipe';
 import { parseMentorTypeQuery } from '../../lib/mentor-rules';
-import { allocateSchema, assignInstituteMentorSchema, autoAllocateSchema, mentorInviteSchema } from './schema';
+import {
+  allocateSchema,
+  assignInstituteMentorSchema,
+  auditLogQuerySchema,
+  autoAllocateSchema,
+  mentorInviteSchema,
+  reassignSchema,
+} from './schema';
 import { MentorsService } from './service';
-
-const reassignSchema = z.object({ mentorUserId: z.string().uuid() });
 
 @Controller('mentors')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -40,7 +45,7 @@ export class MentorsController {
   @Post('invite')
   @Roles(PlatformRole.student, PlatformRole.institute_mentor, PlatformRole.admin)
   invite(@CurrentUser() user: AuthUser, @Body(new ZodPipe(mentorInviteSchema)) body: unknown) {
-    return this.mentors.inviteFromLeader(user, body as never);
+    return this.mentors.inviteFromLeader(user, body as z.infer<typeof mentorInviteSchema>);
   }
 
   @Post('invites/:inviteId/accept')
@@ -64,7 +69,7 @@ export class MentorsController {
   @Post('allocate')
   @Roles(PlatformRole.admin)
   allocate(@CurrentUser() user: AuthUser, @Body(new ZodPipe(allocateSchema)) body: unknown) {
-    return this.mentors.allocate(user, body as never);
+    return this.mentors.allocate(user, body as z.infer<typeof allocateSchema>);
   }
 
   @Post('assign-institute')
@@ -99,12 +104,11 @@ export class MentorsController {
 
   @Get('me/audit-log')
   @Roles(PlatformRole.institute_mentor, PlatformRole.industry_mentor)
-  myAuditLog(
-    @CurrentUser() user: AuthUser,
-    @Query()
-    query: { page?: string; limit?: string; category?: string; search?: string; hours?: string; teamId?: string; mentorType?: string },
-  ) {
-    return this.mentors.teamAuditLog(user, { ...query, mentorType: parseMentorTypeQuery(query.mentorType) });
+  // Validated here (zod): bad `hours` / `category` / `teamId` is a 400, not a 500.
+  // Dual-role accounts must pass ?mentorType= so data is scoped to the workspace they are in.
+  myAuditLog(@CurrentUser() user: AuthUser, @Query(new ZodPipe(auditLogQuerySchema)) query: unknown) {
+    const parsed = query as z.infer<typeof auditLogQuerySchema>;
+    return this.mentors.teamAuditLog(user, { ...parsed, mentorType: parseMentorTypeQuery(parsed.mentorType) });
   }
 
   @Get('me/teams')

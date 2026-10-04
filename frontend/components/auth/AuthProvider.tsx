@@ -12,7 +12,8 @@ import {
   type ReactNode,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { api, apiPost } from "../../lib/api";
+import { ApiError, api, apiPost } from "../../lib/api";
+import { initials } from "../../lib/initials";
 import { setAccessToken } from "../../lib/auth-token";
 import { clearApiCache } from "../../lib/api-cache";
 import {
@@ -45,8 +46,23 @@ type AuthContextValue = {
   }) => void;
   logout: () => void;
   refreshMe: () => Promise<void>;
-  /** Switch a dual-role account to another held workspace (persists + redirects). */
+  /**
+   * Switch a dual-role account to another held workspace (persists + redirects).
+   * Rejects (and keeps the current role) when the server refuses the switch.
+   */
   switchRole: (role: PlatformRole) => Promise<void>;
+  /** Align activeRole with the dashboard the user is already on — persists but does NOT navigate. */
+  syncActiveRole: (role: PlatformRole) => Promise<void>;
+};
+
+type ActiveRoleResponse = {
+  accessToken: string;
+  userId: string;
+  email: string;
+  fullName: string;
+  platformRole: PlatformRole;
+  additionalRoles?: PlatformRole[] | null;
+  activeRole?: PlatformRole | null;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -216,39 +232,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const switchRole = useCallback(async (role: PlatformRole) => {
+  /** Persist a workspace change. Returns the resulting role, or null when nothing changed. */
+  const applyActiveRole = useCallback(async (role: PlatformRole): Promise<PlatformRole | null> => {
     const cached = readSession();
-    if (!cached?.userId || !cached?.accessToken) return;
-    if (!allRoles(cached).includes(role)) return;
+    if (!cached?.userId || !cached?.accessToken) return null;
+    if (!allRoles(cached).includes(role)) return null;
     // Persist server-side (cross-device memory + audit attribution); the
     // response carries a fresh token bound to the chosen workspace.
     setAccessToken(cached.accessToken);
     try {
-      const res = await apiPost<{
-        accessToken: string;
-        userId: string;
-        email: string;
-        fullName: string;
-        platformRole: PlatformRole;
-        additionalRoles?: PlatformRole[] | null;
-        activeRole?: PlatformRole | null;
-      }>("/me/active-role", { role });
+      const res = await apiPost<ActiveRoleResponse>("/me/active-role", { role });
       const next = toSession({ ...res, accessToken: res.accessToken });
       clearApiCache();
       writeSession(next);
       writeLastActiveRole(next.userId, next.activeRole);
       setAccessToken(next.accessToken ?? null);
       setSession(next);
-      window.location.assign(dashboardForRole(next.activeRole));
-    } catch {
-      // Offline fallback: flip workspace locally; server syncs on next refresh.
+      return next.activeRole;
+    } catch (err) {
+      // The server answered and refused (4xx/5xx): do not switch locally.
+      if (err instanceof ApiError) throw err;
+      // Network error / offline: flip workspace locally; server syncs on next refresh.
       const next: Session = { ...cached, activeRole: role };
       writeSession(next);
       writeLastActiveRole(next.userId, role);
       setSession(next);
-      window.location.assign(dashboardForRole(role));
+      return role;
     }
   }, []);
+
+  const switchRole = useCallback(
+    async (role: PlatformRole) => {
+      const applied = await applyActiveRole(role);
+      if (applied) window.location.assign(dashboardForRole(applied));
+    },
+    [applyActiveRole],
+  );
+
+  const syncActiveRole = useCallback(
+    async (role: PlatformRole) => {
+      await applyActiveRole(role);
+    },
+    [applyActiveRole],
+  );
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -264,8 +290,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       refreshMe,
       switchRole,
+      syncActiveRole,
     }),
-    [session, ready, establishSession, refreshMe, switchRole],
+    [session, ready, establishSession, refreshMe, switchRole, syncActiveRole],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -285,11 +312,4 @@ export function roleLabel(role: PlatformRole) {
   return "Student";
 }
 
-export function initialsFrom(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? "")
-    .join("");
-}
+export const initialsFrom = initials;

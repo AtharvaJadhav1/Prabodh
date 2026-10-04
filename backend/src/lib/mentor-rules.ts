@@ -1,4 +1,5 @@
 import { MentorType, PlatformRole } from '@prisma/client';
+import { hasRole } from './roles';
 
 /** The mentor flavour a role works as: institute_mentor -> institute, industry_mentor -> industry. */
 export function mentorTypeForRole(role: PlatformRole | null | undefined): MentorType | undefined {
@@ -62,4 +63,33 @@ export function dedupeMentorAssignmentsByType<T extends TimestampedAssignment>(a
     result.push(a);
   }
   return result;
+}
+
+type FreezeActor = { id: string; platformRole: PlatformRole; additionalRoles?: PlatformRole[] | null };
+
+/**
+ * Freezing a team is limited to admins and the team's own ACTIVE faculty (institute) mentor.
+ * A dual-role user who is only the team's industry mentor must not pass, nor may a faculty
+ * mentor of a different team.
+ */
+export function canFreezeTeam(user: FreezeActor, assignments: AssignmentLike[]): boolean {
+  if (hasRole(user, PlatformRole.admin)) return true;
+  return assignments.some(
+    (a) => a.active && a.mentorType === MentorType.institute && a.mentorUserId === user.id,
+  );
+}
+
+/** Case-insensitive, whitespace-tolerant email comparison for invitedEmail matching. */
+export function sameEmail(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) return false;
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+/**
+ * `team.mentorLockedAt` mirrors "an active institute assignment exists": keep the original timestamp
+ * while a faculty seat is held, set it when one is first seated, and clear it once none remains.
+ */
+export function nextMentorLockedAt(hasActiveFaculty: boolean, current: Date | null, now: Date): Date | null {
+  if (!hasActiveFaculty) return null;
+  return current ?? now;
 }

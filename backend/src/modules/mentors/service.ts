@@ -1,11 +1,19 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  HttpException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InviteStatus, MentorType, PlatformRole, Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
 import { pickLeastLoadedMentor } from '../../domain/rules';
 import { writeAudit } from '../../lib/audit';
-import { syncTeamMentorPointers } from '../../lib/mentor-pointers';
-import { isSelfInvite, mentorRoleFor, seatConflict } from '../../lib/mentor-rules';
+import { lockTeamRow, requireIndustrialProfileId, syncTeamMentorPointers } from '../../lib/mentor-pointers';
+import { isSelfInvite, mentorRoleFor, sameEmail, seatConflict } from '../../lib/mentor-rules';
 import { hasRole } from '../../lib/roles';
 import { sendMentorInviteEmail } from '../../lib/invite-email';
 import { notifyUsers } from '../../lib/notify';
@@ -15,64 +23,95 @@ import { CATEGORY_ACTIONS, enrichAuditRows } from '../../lib/audit-view';
 import { parsePagination } from '../../common/pagination';
 import { PsPreferencesService } from '../ps-preferences/service';
 import { MentorsRepository } from './repository';
-import { allocateSchema, mentorInviteSchema } from './schema';
+import { allocateSchema, auditLogQuerySchema, mentorInviteSchema } from './schema';
+
+type Notice = Parameters<typeof notifyUsers>[2];
 
 @Injectable()
 export class MentorsService {
+  private readonly logger = new Logger(MentorsService.name);
+
   constructor(
     private readonly repo: MentorsRepository,
     private readonly prisma: PrismaService,
     private readonly psPreferences: PsPreferencesService,
   ) {}
 
+  /** A failed notification must never turn an already-committed seat change into a 500. */
+  private async safeNotify(userIds: string[], payload: Notice) {
+    try {
+      await notifyUsers(this.prisma, userIds, payload);
+    } catch (err) {
+      this.logger.error(`notification "${payload.title}" failed: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Seat changes (allocate / reassign / assign-institute / unassign / accept-invite / assign-industrial)
+   * all follow the same recipe: lock the team row, re-read the active seat, write with `active: true`
+   * guards, and sync the team pointers + mentorLockedAt in the same transaction. The partial unique
+   * index mentor_assignments_team_type_active_unique is the last line of defence (P2002).
+   */
   async allocate(admin: AuthUser, body: z.infer<typeof allocateSchema>) {
-    const existing = await this.repo.activeForTeam(body.teamId, body.mentorType as MentorType);
-    if (existing) {
-      throw new BadRequestException('Team already has an active mentor of this type; use reassign');
-    }
-    await this.assertSeatEligible(body.teamId, body.mentorUserId, body.mentorType as MentorType);
-    const capKey = body.mentorType === 'institute' ? 'institute_mentor_cap' : 'industry_mentor_cap';
+    const mentorType = body.mentorType as MentorType;
+    const capKey = mentorType === 'institute' ? 'institute_mentor_cap' : 'industry_mentor_cap';
     const cap = await getSettingNumber(this.prisma, capKey);
-    const activeOfType = await this.prisma.mentorAssignment.count({
-      where: { teamId: body.teamId, mentorType: body.mentorType, active: true },
-    });
-    if (activeOfType >= cap) {
-      throw new BadRequestException(`Team already has ${cap} ${body.mentorType} mentor(s)`);
-    }
-    const industrialMentorId =
-      body.mentorType === 'industry'
-        ? (
-            await this.prisma.industrialMentor.findUnique({
-              where: { userId: body.mentorUserId },
-              select: { id: true },
-            })
-          )?.id ?? null
-        : null;
     let assignment;
     try {
-      assignment = await this.repo.create({
-        team: { connect: { id: body.teamId } },
-        mentor: { connect: { id: body.mentorUserId } },
-        assignedBy: { connect: { id: admin.id } },
-        mentorType: body.mentorType,
-        assignmentMethod: body.assignmentMethod,
-        ...(industrialMentorId ? { industrialMentor: { connect: { id: industrialMentorId } } } : {}),
-      });
+      assignment = await this.prisma.$transaction(
+        async (tx) => {
+          await lockTeamRow(tx, body.teamId);
+          const existing = await tx.mentorAssignment.findFirst({
+            where: { teamId: body.teamId, mentorType, active: true },
+          });
+          if (existing) {
+            throw new BadRequestException('Team already has an active mentor of this type; use reassign');
+          }
+          await this.assertSeatEligible(tx, body.teamId, body.mentorUserId, mentorType);
+          const activeOfType = await tx.mentorAssignment.count({
+            where: { teamId: body.teamId, mentorType, active: true },
+          });
+          if (activeOfType >= cap) {
+            throw new BadRequestException(`Team already has ${cap} ${mentorType} mentor(s)`);
+          }
+          const industrialMentorId =
+            mentorType === 'industry' ? await requireIndustrialProfileId(tx, body.mentorUserId) : null;
+          const created = await tx.mentorAssignment.create({
+            data: {
+              team: { connect: { id: body.teamId } },
+              mentor: { connect: { id: body.mentorUserId } },
+              assignedBy: { connect: { id: admin.id } },
+              mentorType,
+              assignmentMethod: body.assignmentMethod,
+              ...(industrialMentorId ? { industrialMentor: { connect: { id: industrialMentorId } } } : {}),
+            },
+            include: { mentor: true, team: true },
+          });
+          // Also stamps mentorLockedAt for an institute seat, matching the invite-accept path.
+          await syncTeamMentorPointers(tx, body.teamId);
+          return created;
+        },
+        { timeout: 15000 },
+      );
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new BadRequestException('Team already has an active mentor of this type; use reassign');
       }
       throw err;
     }
-    await this.syncTeamMentorPointers(this.prisma, body.teamId);
     await writeAudit(this.prisma, {
       actorUserId: admin.id,
       action: 'mentor.allocate',
       entityType: 'mentor_assignment',
       entityId: assignment.id,
-      after: assignment as never,
+      after: {
+        teamId: assignment.teamId,
+        mentorUserId: assignment.mentorUserId,
+        mentorType: assignment.mentorType,
+        assignmentMethod: assignment.assignmentMethod,
+      },
     });
-    await notifyUsers(this.prisma, [assignment.mentor.id], {
+    await this.safeNotify([assignment.mentor.id], {
       type: 'allocation',
       template: 'mentor_allocation',
       title: 'New team allocated',
@@ -92,12 +131,13 @@ export class MentorsService {
    * hold the OTHER seat on this team (dual-role accounts). `ignoreAssignmentId` = the seat being replaced.
    */
   private async assertSeatEligible(
+    db: Prisma.TransactionClient,
     teamId: string,
     mentorUserId: string,
     mentorType: MentorType,
     ignoreAssignmentId?: string,
   ) {
-    const candidate = await this.prisma.user.findUnique({
+    const candidate = await db.user.findUnique({
       where: { id: mentorUserId },
       select: { id: true, isActive: true, platformRole: true, additionalRoles: true },
     });
@@ -109,7 +149,7 @@ export class MentorsService {
           : 'That person is not an industry mentor.',
       );
     }
-    const seats = await this.prisma.mentorAssignment.findMany({
+    const seats = await db.mentorAssignment.findMany({
       where: { teamId, active: true, ...(ignoreAssignmentId ? { id: { not: ignoreAssignmentId } } : {}) },
       select: { mentorUserId: true, mentorType: true, active: true },
     });
@@ -117,6 +157,11 @@ export class MentorsService {
     if (conflict) throw new BadRequestException(conflict);
   }
 
+  /**
+   * Auto-allocates faculty mentors to unassigned teams. A seat conflict for one team/mentor never aborts
+   * the run: that candidate is skipped (next least-loaded eligible mentor is tried) and the outcome is
+   * reported. Response keeps `allocated` + `results`; `skipped` is new.
+   */
   async autoAllocate(admin: AuthUser, mentorType: MentorType) {
     if (mentorType === 'industry') {
       throw new BadRequestException(
@@ -128,80 +173,112 @@ export class MentorsService {
     if (!mentors.length) throw new BadRequestException('No mentors available for auto-allocation');
     const load = await this.repo.loadByMentor(mentors.map((m) => m.id));
     const results = [];
+    const skipped: { teamId: string; reason: string }[] = [];
     for (const team of teams) {
-      const mentor = pickLeastLoadedMentor(mentors, load, team.theme);
-      if (!mentor) continue;
-      const assignment = await this.allocate(admin, {
-        teamId: team.id,
-        mentorUserId: mentor.id,
-        mentorType,
-        assignmentMethod: 'auto_rule',
-      });
-      results.push(assignment);
-      load.set(mentor.id, (load.get(mentor.id) ?? 0) + 1);
+      let candidates = [...mentors];
+      let reason = 'No eligible mentor available';
+      let done = false;
+      while (candidates.length && !done) {
+        const mentor = pickLeastLoadedMentor(candidates, load, team.theme);
+        if (!mentor) break;
+        try {
+          const assignment = await this.allocate(admin, {
+            teamId: team.id,
+            mentorUserId: mentor.id,
+            mentorType,
+            assignmentMethod: 'auto_rule',
+          });
+          results.push(assignment);
+          load.set(mentor.id, (load.get(mentor.id) ?? 0) + 1);
+          done = true;
+        } catch (err) {
+          if (!(err instanceof HttpException)) throw err;
+          reason = err.message;
+          // Someone else seated this team meanwhile: nothing left to do for it.
+          if (await this.repo.activeForTeam(team.id, mentorType)) break;
+          candidates = candidates.filter((m) => m.id !== mentor.id);
+        }
+      }
+      if (!done) skipped.push({ teamId: team.id, reason });
     }
-    return { allocated: results.length, results };
+    return { allocated: results.length, results, skipped };
   }
 
   async reassign(admin: AuthUser, assignmentId: string, mentorUserId: string) {
-    const current = await this.repo.findById(assignmentId);
-    if (!current) throw new NotFoundException('Assignment not found');
-    if (!current.active) throw new BadRequestException('That assignment is no longer active. Refresh and try again.');
-    if (current.mentorUserId === mentorUserId) {
-      throw new BadRequestException('That mentor is already assigned to this team.');
-    }
-    // The seat being replaced doesn't count as a conflict for the incoming mentor.
-    await this.assertSeatEligible(current.teamId, mentorUserId, current.mentorType, assignmentId);
-    const industrialMentorId =
-      current.mentorType === 'industry'
-        ? (
-            await this.prisma.industrialMentor.findUnique({
-              where: { userId: mentorUserId },
-              select: { id: true },
-            })
-          )?.id ?? null
-        : null;
+    const initial = await this.repo.findById(assignmentId);
+    if (!initial) throw new NotFoundException('Assignment not found');
     // Deactivate + create in one transaction so a failed create never leaves the team without a mentor.
     let next;
     try {
-      next = await this.prisma.$transaction(async (tx) => {
-        await tx.mentorAssignment.update({ where: { id: assignmentId }, data: { active: false } });
-        return tx.mentorAssignment.create({
-          data: {
-            team: { connect: { id: current.teamId } },
-            mentor: { connect: { id: mentorUserId } },
-            assignedBy: { connect: { id: admin.id } },
-            mentorType: current.mentorType,
-            assignmentMethod: 'manual',
-            reassignedFrom: { connect: { id: assignmentId } },
-            ...(industrialMentorId ? { industrialMentor: { connect: { id: industrialMentorId } } } : {}),
-          },
-          include: { mentor: true, team: true },
-        });
-      });
+      next = await this.prisma.$transaction(
+        async (tx) => {
+          await lockTeamRow(tx, initial.teamId);
+          const current = await tx.mentorAssignment.findUnique({ where: { id: assignmentId } });
+          if (!current) throw new NotFoundException('Assignment not found');
+          if (!current.active) {
+            throw new BadRequestException('That assignment is no longer active. Refresh and try again.');
+          }
+          if (current.mentorUserId === mentorUserId) {
+            throw new BadRequestException('That mentor is already assigned to this team.');
+          }
+          // The seat being replaced doesn't count as a conflict for the incoming mentor.
+          await this.assertSeatEligible(tx, current.teamId, mentorUserId, current.mentorType, assignmentId);
+          const industrialMentorId =
+            current.mentorType === 'industry' ? await requireIndustrialProfileId(tx, mentorUserId) : null;
+          const deactivated = await tx.mentorAssignment.updateMany({
+            where: { id: assignmentId, active: true },
+            data: { active: false },
+          });
+          if (deactivated.count === 0) {
+            throw new BadRequestException('That assignment was just changed by someone else. Refresh and try again.');
+          }
+          const created = await tx.mentorAssignment.create({
+            data: {
+              team: { connect: { id: current.teamId } },
+              mentor: { connect: { id: mentorUserId } },
+              assignedBy: { connect: { id: admin.id } },
+              mentorType: current.mentorType,
+              assignmentMethod: 'manual',
+              reassignedFrom: { connect: { id: assignmentId } },
+              ...(industrialMentorId ? { industrialMentor: { connect: { id: industrialMentorId } } } : {}),
+            },
+            include: { mentor: true, team: true },
+          });
+          await syncTeamMentorPointers(tx, current.teamId);
+          return { created, previousMentorUserId: current.mentorUserId };
+        },
+        { timeout: 15000 },
+      );
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new BadRequestException('That assignment was just changed by someone else. Refresh and try again.');
       }
       throw err;
     }
-    await this.syncTeamMentorPointers(this.prisma, current.teamId);
+    const { created, previousMentorUserId } = next;
     await writeAudit(this.prisma, {
       actorUserId: admin.id,
       action: 'mentor.reassign',
       entityType: 'mentor_assignment',
-      entityId: next.id,
-      before: { assignmentId, mentorUserId: current.mentorUserId },
-      after: { assignmentId: next.id, mentorUserId, teamId: current.teamId },
+      entityId: created.id,
+      before: { assignmentId, mentorUserId: previousMentorUserId, mentorType: created.mentorType },
+      after: { assignmentId: created.id, mentorUserId, teamId: created.teamId, mentorType: created.mentorType },
     });
-    await notifyUsers(this.prisma, [next.mentor.id], {
+    await this.safeNotify([created.mentor.id], {
       type: 'allocation',
       template: 'mentor_allocation',
       title: 'Team reassigned to you',
-      body: `You have been allocated as mentor to ${next.team.name}.`,
-      relatedEntity: `team:${next.teamId}`,
+      body: `You have been allocated as mentor to ${created.team.name}.`,
+      relatedEntity: `team:${created.teamId}`,
     });
-    return next;
+    await this.safeNotify([previousMentorUserId], {
+      type: 'allocation',
+      template: 'mentor_allocation',
+      title: 'Removed from team',
+      body: `You are no longer the ${created.mentorType} mentor of ${created.team.name}; another mentor has been assigned.`,
+      relatedEntity: `team:${created.teamId}`,
+    });
+    return created;
   }
 
   /**
@@ -211,59 +288,86 @@ export class MentorsService {
    * allocation or an override. Mirrors TeamsService.assignIndustrialMentor's approach for industry.
    */
   async assignInstituteMentor(admin: AuthUser, teamId: string, mentorUserId: string) {
-    const team = await this.prisma.team.findUnique({ where: { id: teamId } });
-    if (!team) throw new NotFoundException('Team not found');
-    const current = await this.repo.activeForTeam(teamId, 'institute');
-    if (current?.mentorUserId === mentorUserId) {
-      throw new BadRequestException('That mentor is already assigned to this team.');
-    }
-    // The seat being replaced doesn't count as a conflict for the incoming mentor.
-    await this.assertSeatEligible(teamId, mentorUserId, 'institute', current?.id);
-
-    let assignment;
+    let result;
     try {
-      assignment = await this.prisma.$transaction(async (tx) => {
-        if (current) {
-          await tx.mentorAssignment.update({ where: { id: current.id }, data: { active: false } });
-        }
-        return tx.mentorAssignment.create({
-          data: {
-            team: { connect: { id: teamId } },
-            mentor: { connect: { id: mentorUserId } },
-            assignedBy: { connect: { id: admin.id } },
-            mentorType: 'institute',
-            assignmentMethod: 'manual',
-            ...(current ? { reassignedFrom: { connect: { id: current.id } } } : {}),
-          },
-          include: { mentor: true, team: true },
-        });
-      });
+      result = await this.prisma.$transaction(
+        async (tx) => {
+          await lockTeamRow(tx, teamId);
+          const current = await tx.mentorAssignment.findFirst({
+            where: { teamId, mentorType: 'institute', active: true },
+          });
+          if (current?.mentorUserId === mentorUserId) {
+            throw new BadRequestException('That mentor is already assigned to this team.');
+          }
+          // The seat being replaced doesn't count as a conflict for the incoming mentor.
+          await this.assertSeatEligible(tx, teamId, mentorUserId, 'institute', current?.id);
+          if (current) {
+            const deactivated = await tx.mentorAssignment.updateMany({
+              where: { id: current.id, active: true },
+              data: { active: false },
+            });
+            if (deactivated.count === 0) {
+              throw new BadRequestException('Team already has an active mentor of this type. Refresh and try again.');
+            }
+          }
+          const created = await tx.mentorAssignment.create({
+            data: {
+              team: { connect: { id: teamId } },
+              mentor: { connect: { id: mentorUserId } },
+              assignedBy: { connect: { id: admin.id } },
+              mentorType: 'institute',
+              assignmentMethod: 'manual',
+              ...(current ? { reassignedFrom: { connect: { id: current.id } } } : {}),
+            },
+            include: { mentor: true, team: true },
+          });
+          await syncTeamMentorPointers(tx, teamId);
+          return { created, replaced: current ? { id: current.id, mentorUserId: current.mentorUserId } : null };
+        },
+        { timeout: 15000 },
+      );
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new BadRequestException('Team already has an active mentor of this type. Refresh and try again.');
       }
       throw err;
     }
-    await this.syncTeamMentorPointers(this.prisma, teamId);
+    const { created: assignment, replaced } = result;
     await writeAudit(this.prisma, {
       actorUserId: admin.id,
-      action: current ? 'mentor.reassign' : 'mentor.allocate',
+      action: replaced ? 'mentor.reassign' : 'mentor.allocate',
       entityType: 'mentor_assignment',
       entityId: assignment.id,
-      ...(current
+      ...(replaced
         ? {
-            before: { assignmentId: current.id, mentorUserId: current.mentorUserId },
-            after: { assignmentId: assignment.id, mentorUserId, teamId },
+            before: { assignmentId: replaced.id, mentorUserId: replaced.mentorUserId, mentorType: 'institute' },
+            after: { assignmentId: assignment.id, mentorUserId, teamId, mentorType: 'institute' },
           }
-        : { after: assignment as never }),
+        : {
+            after: {
+              teamId,
+              mentorUserId,
+              mentorType: 'institute',
+              assignmentMethod: assignment.assignmentMethod,
+            },
+          }),
     });
-    await notifyUsers(this.prisma, [assignment.mentor.id], {
+    await this.safeNotify([assignment.mentor.id], {
       type: 'allocation',
       template: 'mentor_allocation',
-      title: current ? 'Team reassigned to you' : 'New team allocated',
+      title: replaced ? 'Team reassigned to you' : 'New team allocated',
       body: `You have been allocated as mentor to ${assignment.team.name}.`,
       relatedEntity: `team:${teamId}`,
     });
+    if (replaced) {
+      await this.safeNotify([replaced.mentorUserId], {
+        type: 'allocation',
+        template: 'mentor_allocation',
+        title: 'Removed from team',
+        body: `You are no longer the institute mentor of ${assignment.team.name}; another mentor has been assigned.`,
+        relatedEntity: `team:${teamId}`,
+      });
+    }
     try {
       await this.psPreferences.promoteSavedOnMentorAssigned(teamId);
     } catch {
@@ -273,23 +377,34 @@ export class MentorsService {
   }
 
   async unassign(admin: AuthUser, assignmentId: string) {
-    const current = await this.repo.findById(assignmentId);
-    if (!current) throw new NotFoundException('Assignment not found');
-    if (!current.active) throw new BadRequestException('Assignment is already inactive');
-    const updated = await this.repo.deactivate(assignmentId);
-    await this.syncTeamMentorPointers(this.prisma, current.teamId);
+    const initial = await this.repo.findById(assignmentId);
+    if (!initial) throw new NotFoundException('Assignment not found');
+    const updated = await this.prisma.$transaction(
+      async (tx) => {
+        await lockTeamRow(tx, initial.teamId);
+        const deactivated = await tx.mentorAssignment.updateMany({
+          where: { id: assignmentId, active: true },
+          data: { active: false },
+        });
+        if (deactivated.count === 0) throw new BadRequestException('Assignment is already inactive');
+        // Clears team.mentorLockedAt when this was the last active faculty seat.
+        await syncTeamMentorPointers(tx, initial.teamId);
+        return tx.mentorAssignment.findUniqueOrThrow({ where: { id: assignmentId } });
+      },
+      { timeout: 15000 },
+    );
     await writeAudit(this.prisma, {
       actorUserId: admin.id,
       action: 'mentor.unassign',
       entityType: 'mentor_assignment',
       entityId: assignmentId,
       before: {
-        mentorUserId: current.mentorUserId,
-        mentorType: current.mentorType,
-        teamId: current.teamId,
-        teamName: current.team.name,
+        mentorUserId: initial.mentorUserId,
+        mentorType: initial.mentorType,
+        teamId: initial.teamId,
+        teamName: initial.team.name,
       },
-      after: { active: false, teamId: current.teamId },
+      after: { active: false, teamId: initial.teamId },
     });
     return updated;
   }
@@ -299,13 +414,12 @@ export class MentorsService {
    * not see the teams they mentor as faculty inside the Industry workspace, or the reverse.
    */
   async myTeams(user: AuthUser, mentorType?: MentorType) {
-    const allAssignments = await this.repo.teamsForMentor(user.id);
-    const assignments = mentorType ? allAssignments.filter((a) => a.mentorType === mentorType) : allAssignments;
+    const assignments = await this.repo.teamsForMentor(user.id, mentorType);
     const pendingInvites = await this.prisma.mentorInvite.findMany({
       where: {
         inviteStatus: InviteStatus.pending,
         ...(mentorType ? { mentorType } : {}),
-        OR: [{ mentorUserId: user.id }, { invitedEmail: user.email }],
+        OR: [{ mentorUserId: user.id }, { invitedEmail: { equals: user.email, mode: 'insensitive' } }],
       },
       include: {
         invitedBy: { select: { id: true, fullName: true, email: true } },
@@ -341,18 +455,10 @@ export class MentorsService {
     return [...assignments, ...inviteRows];
   }
 
-  /** Audit trail limited to the teams this mentor is actively assigned to. */
+  /** Audit trail limited to the teams this mentor is actively assigned to. `query` is already validated (auditLogQuerySchema). */
   async teamAuditLog(
     user: AuthUser,
-    query: {
-      page?: string;
-      limit?: string;
-      category?: string;
-      search?: string;
-      hours?: string;
-      teamId?: string;
-      mentorType?: MentorType;
-    },
+    query: z.infer<typeof auditLogQuerySchema> & { mentorType?: MentorType },
   ) {
     const { page, limit, skip, take } = parsePagination(query);
     const mine = await this.prisma.mentorAssignment.findMany({
@@ -374,12 +480,15 @@ export class MentorsService {
         ...teamIds.map((id) => ({ after: { path: ['teamId'], equals: id } })),
       ],
     };
-    const actions = query.category ? CATEGORY_ACTIONS[query.category] : undefined;
+    const actions =
+      query.category && Object.prototype.hasOwnProperty.call(CATEGORY_ACTIONS, query.category)
+        ? CATEGORY_ACTIONS[query.category]
+        : undefined;
     const where: Prisma.AuditLogWhereInput = {
       AND: [
         scope,
         ...(actions ? [{ action: { in: actions } }] : []),
-        ...(query.hours ? [{ createdAt: { gte: new Date(Date.now() - Number(query.hours) * 3_600_000) } }] : []),
+        ...(query.hours ? [{ createdAt: { gte: new Date(Date.now() - query.hours * 3_600_000) } }] : []),
         ...(query.search
           ? [
               {
@@ -433,18 +542,23 @@ export class MentorsService {
     });
   }
 
+  /**
+   * Response: the invite row plus `emailSent` (true only if the provider accepted the message — it is
+   * awaited) and `emailError` (provider/config error message, else null).
+   */
   async inviteFromLeader(user: AuthUser, body: z.infer<typeof mentorInviteSchema>) {
     const team = await this.prisma.team.findUnique({ where: { id: body.teamId } });
     if (!team) throw new NotFoundException('Team not found');
 
     const mentorType: MentorType = body.mentorType;
-    const email = body.email.toLowerCase();
+    const email = body.email.trim().toLowerCase();
+    const isAdmin = hasRole(user, PlatformRole.admin);
 
     if (mentorType === 'institute') {
-      if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
+      if (team.leaderUserId !== user.id && !isAdmin) {
         throw new ForbiddenException('Only the team leader can invite a faculty mentor');
       }
-    } else if (user.platformRole !== 'admin') {
+    } else if (!isAdmin) {
       const faculty = await this.repo.activeForTeam(team.id, 'institute');
       if (!faculty || faculty.mentorUserId !== user.id) {
         throw new ForbiddenException("Only the team's faculty mentor can invite an industrial mentor");
@@ -455,36 +569,17 @@ export class MentorsService {
     if (mentorType === 'industry') {
       const profile = await this.prisma.industrialMentor.findFirst({
         where: { email: { equals: email, mode: 'insensitive' } },
-        include: { user: { select: { id: true, isActive: true } } },
+        include: { user: { select: { id: true, isActive: true, platformRole: true, additionalRoles: true } } },
       });
       if (!profile || !profile.isActive || !profile.user.isActive) {
         throw new BadRequestException(
           'No industrial mentor profile exists for this email. Ask your nodal admin to onboard them first.',
         );
       }
-      mentor = { id: profile.user.id };
-      if (user.platformRole !== 'admin') {
-        const cap = await getSettingNumber(this.prisma, 'industry_mentor_cap');
-        const activeCount = await this.prisma.mentorAssignment.count({
-          where: { teamId: team.id, mentorType: 'industry', active: true },
-        });
-        if (activeCount >= cap) {
-          throw new BadRequestException(`Team already has ${cap} industrial mentor(s)`);
-        }
-        const otherPending = await this.prisma.mentorInvite.count({
-          where: {
-            teamId: team.id,
-            mentorType: 'industry',
-            inviteStatus: InviteStatus.pending,
-            NOT: { invitedEmail: email },
-          },
-        });
-        if (activeCount + otherPending >= cap) {
-          throw new BadRequestException(
-            'An industrial mentor invitation is already pending for this team. Revoke it before inviting someone else.',
-          );
-        }
+      if (!hasRole(profile.user, PlatformRole.industry_mentor)) {
+        throw new BadRequestException('That person no longer holds the industry mentor role.');
       }
+      mentor = { id: profile.user.id };
     } else {
       const found = await this.prisma.user.findUnique({ where: { email } });
       if (!found || !found.isActive || !hasRole(found, PlatformRole.institute_mentor)) {
@@ -493,32 +588,58 @@ export class MentorsService {
         );
       }
       mentor = { id: found.id };
-      if (team.mentorLockedAt) {
-        throw new BadRequestException('This team already has a locked faculty mentor');
-      }
-      const active = await this.repo.activeForTeam(team.id, 'institute');
-      if (active) {
-        throw new BadRequestException('This team already has a locked faculty mentor');
-      }
     }
 
     if (isSelfInvite(user.id, mentor.id)) {
       throw new BadRequestException('You cannot invite yourself as a mentor.');
     }
-    const seats = await this.prisma.mentorAssignment.findMany({
-      where: { teamId: team.id, active: true },
-      select: { mentorUserId: true, mentorType: true, active: true },
-    });
-    const conflict = seatConflict(seats, mentor.id, mentorType);
-    if (conflict) throw new BadRequestException(conflict);
 
-    const invite = await this.upsertMentorInvite({
-      teamId: team.id,
-      email,
-      mentorUserId: mentor.id,
-      mentorType,
-      invitedById: user.id,
-    });
+    // State-dependent checks and the upsert run under the team row lock so two concurrent invites
+    // cannot both slip past the cap / pending-invite checks.
+    const invite = await this.prisma.$transaction(
+      async (tx) => {
+        await lockTeamRow(tx, team.id);
+        const freshTeam = await tx.team.findUnique({ where: { id: team.id }, select: { mentorLockedAt: true } });
+        const seats = await tx.mentorAssignment.findMany({
+          where: { teamId: team.id, active: true },
+          select: { mentorUserId: true, mentorType: true, active: true },
+        });
+        if (mentorType === 'institute') {
+          if (freshTeam?.mentorLockedAt || seats.some((s) => s.mentorType === 'institute')) {
+            throw new BadRequestException('This team already has a locked faculty mentor');
+          }
+        } else if (!isAdmin) {
+          const cap = await getSettingNumber(tx, 'industry_mentor_cap');
+          const activeCount = seats.filter((s) => s.mentorType === 'industry').length;
+          if (activeCount >= cap) {
+            throw new BadRequestException(`Team already has ${cap} industrial mentor(s)`);
+          }
+          const otherPending = await tx.mentorInvite.count({
+            where: {
+              teamId: team.id,
+              mentorType: 'industry',
+              inviteStatus: InviteStatus.pending,
+              NOT: { invitedEmail: email },
+            },
+          });
+          if (activeCount + otherPending >= cap) {
+            throw new BadRequestException(
+              'An industrial mentor invitation is already pending for this team. Revoke it before inviting someone else.',
+            );
+          }
+        }
+        const conflict = seatConflict(seats, mentor.id, mentorType);
+        if (conflict) throw new BadRequestException(conflict);
+        return this.upsertMentorInvite(tx, {
+          teamId: team.id,
+          email,
+          mentorUserId: mentor.id,
+          mentorType,
+          invitedById: user.id,
+        });
+      },
+      { timeout: 15000 },
+    );
 
     await writeAudit(this.prisma, {
       actorUserId: user.id,
@@ -528,22 +649,25 @@ export class MentorsService {
       after: { teamId: team.id, mentorType, invitedEmail: email, mentorUserId: mentor.id },
     });
 
-    void sendMentorInviteEmail({
-      to: email,
-      teamName: team.name,
-      leaderName: user.fullName,
-    }).catch((err) => {
-      console.error('[mentors.invite] email delivery failed for', email, err);
-    });
-    void notifyUsers(this.prisma, [mentor.id], {
+    void this.safeNotify([mentor.id], {
       type: 'allocation',
       template: 'mentor_allocation',
       title: 'Mentor invitation received',
       body: `${user.fullName} invited you to mentor ${team.name}.`,
       relatedEntity: `team:${team.id}`,
-    }).catch(() => undefined);
+    });
 
-    return { ...invite, emailSent: true, emailError: null };
+    let emailSent = false;
+    let emailError: string | null = null;
+    try {
+      await sendMentorInviteEmail({ to: email, teamName: team.name, leaderName: user.fullName });
+      emailSent = true;
+    } catch (err) {
+      emailError = (err as Error)?.message || 'Email delivery failed';
+      console.error('[mentors.invite] email delivery failed for', email, err);
+    }
+
+    return { ...invite, emailSent, emailError };
   }
 
   async revokeInvite(user: AuthUser, inviteId: string) {
@@ -552,17 +676,39 @@ export class MentorsService {
     if (
       invite.team.leaderUserId !== user.id &&
       invite.invitedById !== user.id &&
-      user.platformRole !== 'admin'
+      !hasRole(user, PlatformRole.admin)
     ) {
       throw new ForbiddenException('Only the team leader, the mentor who sent the invite, or an admin can revoke it');
     }
     if (invite.inviteStatus === InviteStatus.accepted) {
       throw new BadRequestException('Accepted mentor assignments cannot be revoked here');
     }
-    return this.prisma.mentorInvite.update({
-      where: { id: inviteId },
+    if (invite.inviteStatus !== InviteStatus.pending) {
+      throw new BadRequestException(`This invitation is already ${invite.inviteStatus}`);
+    }
+    // Atomic: only a still-pending invite can be revoked; a concurrent accept/decline wins cleanly.
+    const changed = await this.prisma.mentorInvite.updateMany({
+      where: { id: inviteId, inviteStatus: InviteStatus.pending },
       data: { inviteStatus: InviteStatus.revoked },
     });
+    if (changed.count === 0) {
+      throw new ConflictException('This invitation was just changed by someone else. Refresh and try again.');
+    }
+    await writeAudit(this.prisma, {
+      actorUserId: user.id,
+      action: 'mentor.invite_revoked',
+      entityType: 'mentor_invite',
+      entityId: invite.id,
+      after: {
+        teamId: invite.teamId,
+        mentorType: invite.mentorType,
+        invitedEmail: invite.invitedEmail,
+        mentorUserId: invite.mentorUserId,
+        actorUserId: user.id,
+        actorRole: invite.invitedById === user.id ? 'inviter' : invite.team.leaderUserId === user.id ? 'leader' : 'admin',
+      },
+    });
+    return this.prisma.mentorInvite.findUniqueOrThrow({ where: { id: inviteId } });
   }
 
   pendingInvitesForMentor(user: AuthUser, history = false, mentorType?: MentorType) {
@@ -570,7 +716,7 @@ export class MentorsService {
       where: {
         inviteStatus: history ? { not: InviteStatus.pending } : InviteStatus.pending,
         ...(mentorType ? { mentorType } : {}),
-        OR: [{ mentorUserId: user.id }, { invitedEmail: user.email }],
+        OR: [{ mentorUserId: user.id }, { invitedEmail: { equals: user.email, mode: 'insensitive' } }],
       },
       ...(history ? { take: 100 } : {}),
       include: {
@@ -597,22 +743,43 @@ export class MentorsService {
       include: { team: true },
     });
     if (!invite) throw new NotFoundException('Invite not found');
-    const isInvitee = invite.mentorUserId === user.id || invite.invitedEmail === user.email;
-    if (!isInvitee && user.platformRole !== 'admin') {
+    const isInvitee = invite.mentorUserId === user.id || sameEmail(invite.invitedEmail, user.email);
+    const isAdmin = hasRole(user, PlatformRole.admin);
+    if (!isInvitee && !isAdmin) {
       throw new ForbiddenException('This invitation is not for your account');
     }
     if (invite.inviteStatus !== InviteStatus.pending) {
       throw new BadRequestException('This invitation is no longer pending');
     }
     if (!accept) {
-      return this.prisma.mentorInvite.update({
-        where: { id: inviteId },
+      // Decline and revoke both end as inviteStatus=revoked; the audit entries (mentor.invite_declined vs
+      // mentor.invite_revoked, with the actor) are what tell them apart.
+      const changed = await this.prisma.mentorInvite.updateMany({
+        where: { id: inviteId, inviteStatus: InviteStatus.pending },
         data: { inviteStatus: InviteStatus.revoked },
       });
+      if (changed.count === 0) {
+        throw new BadRequestException('This invitation is no longer pending');
+      }
+      await writeAudit(this.prisma, {
+        actorUserId: user.id,
+        action: 'mentor.invite_declined',
+        entityType: 'mentor_invite',
+        entityId: invite.id,
+        after: {
+          teamId: invite.teamId,
+          mentorType: invite.mentorType,
+          invitedEmail: invite.invitedEmail,
+          mentorUserId: invite.mentorUserId,
+          actorUserId: user.id,
+          actorRole: isInvitee ? 'invitee' : 'admin',
+        },
+      });
+      return this.prisma.mentorInvite.findUniqueOrThrow({ where: { id: inviteId } });
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM "teams" WHERE id = ${invite.teamId} FOR UPDATE`;
+      await lockTeamRow(tx, invite.teamId);
 
       const fresh = await tx.mentorInvite.findUnique({
         where: { id: inviteId },
@@ -623,6 +790,37 @@ export class MentorsService {
       }
       const team = fresh.team;
 
+      // The seat belongs to the INVITED mentor, never to an admin acting on their behalf.
+      let seatUserId = fresh.mentorUserId;
+      if (!seatUserId) {
+        if (isInvitee) {
+          seatUserId = user.id;
+        } else {
+          const byEmail = await tx.user.findFirst({
+            where: { email: { equals: fresh.invitedEmail, mode: 'insensitive' } },
+            select: { id: true },
+          });
+          seatUserId = byEmail?.id ?? null;
+        }
+      }
+      if (!seatUserId) {
+        throw new BadRequestException('The invited mentor has no account yet, so this invitation cannot be accepted.');
+      }
+      const seatUser = await tx.user.findUnique({
+        where: { id: seatUserId },
+        select: { id: true, fullName: true, isActive: true, platformRole: true, additionalRoles: true },
+      });
+      if (!seatUser || !seatUser.isActive) {
+        throw new BadRequestException('The invited mentor account is not active.');
+      }
+      if (!hasRole(seatUser, mentorRoleFor(fresh.mentorType))) {
+        throw new BadRequestException(
+          fresh.mentorType === 'institute'
+            ? 'That person is not an institute (faculty) mentor.'
+            : 'That person is not an industry mentor.',
+        );
+      }
+
       const active = await tx.mentorAssignment.findFirst({
         where: { teamId: team.id, mentorType: fresh.mentorType, active: true },
       });
@@ -632,19 +830,19 @@ export class MentorsService {
         select: { mentorUserId: true, mentorType: true, active: true },
       });
       // A dual-role account may not take a second seat (faculty AND industrial) on the same team.
-      if (seatConflict(seats, user.id, fresh.mentorType)) {
+      if (seatConflict(seats, seatUserId, fresh.mentorType)) {
         await tx.mentorInvite.update({
           where: { id: fresh.id },
           data: { inviteStatus: InviteStatus.expired },
         });
-        return { accepted: false };
+        return { accepted: false as const };
       }
       if (facultyLocked || active) {
         await tx.mentorInvite.update({
           where: { id: fresh.id },
           data: { inviteStatus: InviteStatus.expired },
         });
-        return { accepted: false };
+        return { accepted: false as const };
       }
 
       if (fresh.mentorType === 'industry') {
@@ -657,78 +855,74 @@ export class MentorsService {
             where: { id: fresh.id },
             data: { inviteStatus: InviteStatus.expired },
           });
-          return { accepted: false };
+          return { accepted: false as const };
         }
       }
 
       const industrialMentorId =
-        fresh.mentorType === 'industry'
-          ? (await tx.industrialMentor.findUnique({ where: { userId: user.id }, select: { id: true } }))?.id ?? null
-          : null;
+        fresh.mentorType === 'industry' ? await requireIndustrialProfileId(tx, seatUserId) : null;
 
       const assignment = await tx.mentorAssignment.create({
         data: {
           team: { connect: { id: team.id } },
-          mentor: { connect: { id: user.id } },
+          mentor: { connect: { id: seatUserId } },
           assignedBy: { connect: { id: fresh.invitedById } },
           mentorType: fresh.mentorType,
           assignmentMethod: 'manual',
           ...(industrialMentorId ? { industrialMentor: { connect: { id: industrialMentorId } } } : {}),
         },
       });
-      if (fresh.mentorType === 'institute') {
-        await tx.team.update({
-          where: { id: team.id },
-          data: { mentorLockedAt: new Date() },
-        });
-      }
-      await this.syncTeamMentorPointers(tx, team.id);
+      // Syncs facultyMentorId / industrialMentorId and stamps mentorLockedAt for an institute seat.
+      await syncTeamMentorPointers(tx, team.id);
       await tx.mentorInvite.update({
         where: { id: fresh.id },
-        data: { inviteStatus: InviteStatus.accepted, mentorUserId: user.id },
+        // Keep the invite's own mentorUserId; only backfill it when it was never resolved.
+        data: { inviteStatus: InviteStatus.accepted, ...(fresh.mentorUserId ? {} : { mentorUserId: seatUserId }) },
       });
       await tx.mentorInvite.updateMany({
         where: { teamId: team.id, inviteStatus: InviteStatus.pending, id: { not: fresh.id } },
         data: { inviteStatus: InviteStatus.expired },
       });
-      return { accepted: true, assignment };
+      return { accepted: true as const, assignment, mentorName: seatUser.fullName, seatUserId };
     }, { timeout: 15000 });
 
-    if (result.accepted) {
-      void notifyUsers(this.prisma, [invite.invitedById], {
-        type: 'allocation',
-        template: 'mentor_allocation',
-        title: 'Mentor invitation accepted',
-        body: `${user.fullName} accepted the mentor invitation for ${invite.team.name}.`,
-        relatedEntity: `team:${invite.teamId}`,
-      }).catch(() => undefined);
-      void this.psPreferences.promoteSavedOnMentorAssigned(invite.teamId).catch(() => undefined);
-      if (result.assignment) {
-        await writeAudit(this.prisma, {
-          actorUserId: user.id,
-          action: 'mentor.invite_accepted',
-          entityType: 'mentor_assignment',
-          entityId: result.assignment.id,
-          after: {
-            teamId: invite.teamId,
-            teamName: invite.team.name,
-            mentorType: invite.mentorType,
-            mentorUserId: user.id,
-          },
-        });
-      }
-    }
-    return result;
+    if (!result.accepted) return result;
+
+    void this.safeNotify([invite.invitedById], {
+      type: 'allocation',
+      template: 'mentor_allocation',
+      title: 'Mentor invitation accepted',
+      body: `${result.mentorName} accepted the mentor invitation for ${invite.team.name}.`,
+      relatedEntity: `team:${invite.teamId}`,
+    });
+    void this.psPreferences.promoteSavedOnMentorAssigned(invite.teamId).catch(() => undefined);
+    await writeAudit(this.prisma, {
+      actorUserId: user.id,
+      action: 'mentor.invite_accepted',
+      entityType: 'mentor_assignment',
+      entityId: result.assignment.id,
+      after: {
+        teamId: invite.teamId,
+        teamName: invite.team.name,
+        mentorType: invite.mentorType,
+        mentorUserId: result.seatUserId,
+        actorUserId: user.id,
+      },
+    });
+    return { accepted: true, assignment: result.assignment };
   }
 
-  private async upsertMentorInvite(opts: {
-    teamId: string;
-    email: string;
-    mentorUserId: string;
-    mentorType: MentorType;
-    invitedById: string;
-  }) {
-    return this.prisma.mentorInvite.upsert({
+  private async upsertMentorInvite(
+    db: Prisma.TransactionClient,
+    opts: {
+      teamId: string;
+      email: string;
+      mentorUserId: string;
+      mentorType: MentorType;
+      invitedById: string;
+    },
+  ) {
+    return db.mentorInvite.upsert({
       where: {
         teamId_invitedEmail_mentorType: {
           teamId: opts.teamId,
@@ -753,10 +947,6 @@ export class MentorsService {
     });
   }
 
-  private async syncTeamMentorPointers(db: Parameters<typeof syncTeamMentorPointers>[0], teamId: string) {
-    return syncTeamMentorPointers(db, teamId);
-  }
-
   async listIndustrialMentors(
     query: { domain?: string; q?: string; teamId?: string },
     requester?: AuthUser,
@@ -765,6 +955,14 @@ export class MentorsService {
     const excludeUserIds = new Set<string>();
     if (requester) excludeUserIds.add(requester.id);
     if (query.teamId) {
+      // Only an admin or someone actively seated on the team may probe its mentor roster.
+      if (requester && !hasRole(requester, PlatformRole.admin)) {
+        const own = await this.prisma.mentorAssignment.findFirst({
+          where: { teamId: query.teamId, mentorUserId: requester.id, active: true },
+          select: { id: true },
+        });
+        if (!own) throw new ForbiddenException('You are not a mentor of this team');
+      }
       const seated = await this.prisma.mentorAssignment.findMany({
         where: { teamId: query.teamId, active: true },
         select: { mentorUserId: true },

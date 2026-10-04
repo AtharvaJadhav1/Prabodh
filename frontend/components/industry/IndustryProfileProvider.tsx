@@ -2,7 +2,9 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { MentorGroup } from "../../data/mentorDashboard";
-import { useAuth, initialsFrom } from "../auth/AuthProvider";
+import { useAuth } from "../auth/AuthProvider";
+import { initials as initialsOf } from "../../lib/initials";
+import { normalizeExternalUrl } from "../../lib/url";
 import { apiPatch } from "../../lib/api";
 import { useIndustryMentor } from "./IndustryMentorProvider";
 
@@ -52,6 +54,44 @@ type SavedIndustryProfile = {
   trackRecord?: IndustryTrackRecordEntry[];
 };
 
+function str(v: unknown): string | undefined {
+  return typeof v === "string" ? v : undefined;
+}
+
+function strList(v: unknown): string[] | undefined {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : undefined;
+}
+
+function trackRecordList(v: unknown): IndustryTrackRecordEntry[] | undefined {
+  if (!Array.isArray(v)) return undefined;
+  return v
+    .filter((x): x is Record<string, unknown> => !!x && typeof x === "object")
+    .map((x) => ({
+      teamName: str(x.teamName) ?? "",
+      problemCode: str(x.problemCode) ?? "",
+      track: str(x.track) ?? "",
+      status: str(x.status) ?? "",
+      outcome: str(x.outcome) ?? "",
+    }));
+}
+
+/** Validate the untyped profileJson blob instead of blindly casting it. */
+function parseSavedProfile(raw: unknown): SavedIndustryProfile {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const r = raw as Record<string, unknown>;
+  return {
+    designation: str(r.designation),
+    company: str(r.company),
+    roleBadge: str(r.roleBadge),
+    location: str(r.location),
+    linkedinUrl: str(r.linkedinUrl),
+    domainExpertise: strList(r.domainExpertise),
+    coreSkills: strList(r.coreSkills),
+    experienceYears: str(r.experienceYears) ?? (typeof r.experienceYears === "number" ? String(r.experienceYears) : undefined),
+    trackRecord: trackRecordList(r.trackRecord),
+  };
+}
+
 type IndustryProfileContextValue = {
   profile: IndustryProfile;
   stats: IndustryStats;
@@ -70,13 +110,13 @@ const defaultProfile: IndustryProfile = {
   fullName: "Industry Mentor",
   email: "",
   company: "",
-  designation: "Industry Expert",
+  designation: "",
   phone: "",
   location: "",
   industryMentorId: "",
-  roleBadge: "Industry Expert",
+  roleBadge: "",
   linkedinUrl: "",
-  domainExpertise: ["Cloud Systems", "AI/ML", "Embedded Systems", "FinTech"],
+  domainExpertise: [],
   coreSkills: [],
   experienceYears: "",
   trackRecord: [],
@@ -96,21 +136,21 @@ export function IndustryProfileProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!session) return;
-    const saved = (session.profileJson ?? {}) as SavedIndustryProfile;
+    const saved = parseSavedProfile(session.profileJson);
     setProfile((prev) => ({
       ...defaultProfile,
       ...prev,
-      initials: initialsFrom(session.fullName),
+      initials: initialsOf(session.fullName) || defaultProfile.initials,
       fullName: session.fullName,
       email: session.email,
-      phone: session.phone ?? prev.phone,
+      phone: session.phone ?? "",
       industryMentorId: session.userId,
-      company: session.institute ?? saved.company ?? prev.company,
-      designation: session.department ?? saved.designation ?? prev.designation,
-      roleBadge: saved.roleBadge ?? "Industry Expert",
+      company: session.institute ?? saved.company ?? "",
+      designation: session.department ?? saved.designation ?? "",
+      roleBadge: saved.roleBadge ?? "",
       location: saved.location ?? "",
       linkedinUrl: saved.linkedinUrl ?? "",
-      domainExpertise: saved.domainExpertise ?? prev.domainExpertise,
+      domainExpertise: saved.domainExpertise ?? [],
       coreSkills: saved.coreSkills ?? [],
       experienceYears: saved.experienceYears ?? "",
       trackRecord: saved.trackRecord ?? [],
@@ -123,7 +163,9 @@ export function IndustryProfileProvider({ children }: { children: ReactNode }) {
   };
   const closeDrawer = () => setDrawerOpen(false);
 
-  const saveProfile: IndustryProfileContextValue["saveProfile"] = async (next) => {
+  const saveProfile: IndustryProfileContextValue["saveProfile"] = async (input) => {
+    const previous = profile;
+    const next: IndustryProfile = { ...input, linkedinUrl: normalizeExternalUrl(input.linkedinUrl) };
     setProfile(next);
     setSaving(true);
     try {
@@ -144,7 +186,16 @@ export function IndustryProfileProvider({ children }: { children: ReactNode }) {
           trackRecord: next.trackRecord,
         },
       });
+    } catch (err) {
+      // Roll back the optimistic update; the drawer surfaces the thrown error.
+      setProfile(previous);
+      setSaving(false);
+      throw err;
+    }
+    try {
       await refreshMe();
+    } catch {
+      /* saved server-side; the optimistic profile stays until the next refresh */
     } finally {
       setSaving(false);
     }

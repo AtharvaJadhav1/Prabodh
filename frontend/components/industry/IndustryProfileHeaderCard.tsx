@@ -53,11 +53,13 @@ export default function IndustryProfileHeaderCard() {
           value={industryMentorId || "—"}
           onCopy
         />
-        <ExpandableContactItem
-          icon={<BadgeCheckIcon className="h-4 w-4" />}
-          label="Verified Domain Specialist"
-          value={roleBadge}
-        />
+        {roleBadge ? (
+          <ExpandableContactItem
+            icon={<BadgeCheckIcon className="h-4 w-4" />}
+            label="Role"
+            value={roleBadge}
+          />
+        ) : null}
         <ExpandableContactItem
           icon={<MailIcon className="h-4 w-4" />}
           label="Official Work Email (click to copy)"
@@ -67,19 +69,14 @@ export default function IndustryProfileHeaderCard() {
         <ExpandableContactItem
           icon={<PhoneIcon className="h-4 w-4" />}
           label="Direct Contact Number"
-          value={phone || "empty"}
+          value={phone || "Not provided"}
           onAction={phone ? undefined : () => openDrawer("profile")}
         />
         <ExpandableContactItem
           icon={<MapPinIcon className="h-4 w-4" />}
           label="Office / City Location"
-          value={location || "empty"}
+          value={location || "Not provided"}
           onAction={location ? undefined : () => openDrawer("profile")}
-        />
-        <ExpandableContactItem
-          icon={<BadgeCheckIcon className="h-4 w-4" />}
-          label="University Partner Account Verified"
-          value="Verified Industry Profile"
         />
       </div>
     </section>

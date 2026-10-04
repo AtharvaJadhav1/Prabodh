@@ -23,7 +23,7 @@ export default function MentorsCard() {
 
   const faculty = assignments.find((a) => a.mentorType === "institute");
   const industrial = assignments.find((a) => a.mentorType === "industry");
-  const pendingIndustry = invites.find((i) => i.mentorType === "industry");
+  const pendingIndustry = invites.find((i) => i.mentorType === "industry" && i.inviteStatus === "pending");
 
   return (
     <section className="rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)] sm:p-6">
@@ -58,7 +58,7 @@ export default function MentorsCard() {
         {/* Industrial mentor */}
         <div className="w-full rounded-xl border border-brand-softline bg-brand-cream p-3">
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-muted">
-            <BriefcaseIcon className="h-3.5 w-3.5" /> Industrial
+            <BriefcaseIcon className="h-3.5 w-3.5" /> Industry Mentor
           </p>
           {industrial ? (
             <>
@@ -73,13 +73,15 @@ export default function MentorsCard() {
             </>
           ) : pendingIndustry ? (
             <>
-              <p className="mt-1 text-sm font-bold text-brand-deep">{pendingIndustry.mentor?.fullName}</p>
+              {pendingIndustry.mentor?.fullName ? (
+                <p className="mt-1 text-sm font-bold text-brand-deep">{pendingIndustry.mentor.fullName}</p>
+              ) : null}
               <p className="text-xs text-brand-muted">Awaiting acceptance from {pendingIndustry.invitedEmail}</p>
               <StatusPill label="Invitation sent" pending />
             </>
           ) : (
             <>
-              <p className="mt-1 text-sm text-brand-muted">No industrial mentor assigned yet.</p>
+              <p className="mt-1 text-sm text-brand-muted">No industry mentor assigned yet.</p>
               <p className="text-xs text-brand-muted">Your faculty mentor will invite an industry expert.</p>
             </>
           )}

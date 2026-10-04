@@ -158,6 +158,10 @@ export class IdentityService {
       return { ok: true, message: 'Verification code sent to your email.', devCode: result.devCode };
     }
 
+    if (user && !user.isActive) {
+      throw new ForbiddenException('This account is deactivated. Contact your administrator.');
+    }
+
     // Cross-role registration rules. Mentor↔mentor is allowed (dual-role grant
     // completed on OTP verify); student↔staff mixing stays blocked.
     if (user && !hasRole(user, targetRole)) {
@@ -247,15 +251,18 @@ export class IdentityService {
   async requestPasswordReset(email: string) {
     const normalized = email.trim().toLowerCase();
     const user = await this.repo.findByEmail(normalized);
+    const message = 'If an account exists for this email, a reset code has been sent.';
+    // Same generic response for unknown / disabled accounts (no account enumeration).
     if (!user || !user.isActive) {
-      throw new NotFoundException('No account found for this email.');
+      return { ok: true, message };
     }
-    const result = await sendOtp({ email: normalized, purpose: 'reset_password' });
-    return {
-      ok: true,
-      message: 'If an account exists for this email, a reset code has been sent.',
-      devCode: result.devCode,
-    };
+    let result: { devCode?: string };
+    try {
+      result = await sendOtp({ email: normalized, purpose: 'reset_password' });
+    } catch (err) {
+      this.mapOtpDeliveryError(err);
+    }
+    return { ok: true, message, devCode: result.devCode };
   }
 
   /** Step 2: check the emailed code. Only then is the caller allowed to choose a new password. */
@@ -321,7 +328,10 @@ export class IdentityService {
     const existing = await this.repo.findByEmail(email);
     let user;
     if (existing) {
-      if (existing.platformRole === PlatformRole.student) {
+      if (!existing.isActive) {
+        throw new ForbiddenException('This account is deactivated. Contact your administrator.');
+      }
+      if (hasRole(existing, PlatformRole.student)) {
         throw new BadRequestException('This email is already registered as a student. Sign in instead.');
       }
       // Same-role re-register OR cross-mentor dual grant: merge, never clobber.
@@ -334,7 +344,6 @@ export class IdentityService {
           department: body.department ?? existing.department,
           phone: body.phone ?? existing.phone,
           additionalRoles: additionalRoles.length > 0 ? additionalRoles : undefined,
-          isActive: true,
           ...(body.password ? { passwordHash: hashPassword(body.password) } : {}),
         },
       });
@@ -355,25 +364,13 @@ export class IdentityService {
       });
     }
     if (role === PlatformRole.industry_mentor) {
-      await this.prisma.industrialMentor.upsert({
-        where: { userId: user.id },
-        update: {
-          fullName: body.fullName,
-          email,
-          phone: body.phone ?? null,
-          companyName: body.institute ?? null,
-          designation: body.department ?? null,
-          isActive: true,
-        },
-        create: {
-          userId: user.id,
-          fullName: body.fullName,
-          email,
-          phone: body.phone ?? null,
-          companyName: body.institute ?? null,
-          designation: body.department ?? null,
-          isActive: true,
-        },
+      await this.syncIndustrialMentorProfile({
+        userId: user.id,
+        fullName: body.fullName,
+        email,
+        phone: body.phone,
+        companyName: body.institute,
+        designation: body.department,
       });
     }
     return user;
@@ -431,10 +428,7 @@ export class IdentityService {
           isActive: true,
         },
       });
-      if (
-        body.platformRole === PlatformRole.industry_mentor ||
-        hasRole(user, PlatformRole.industry_mentor)
-      ) {
+      if (body.platformRole === PlatformRole.industry_mentor) {
         await this.syncIndustrialMentorProfile({
           userId: user.id,
           fullName: body.fullName,
@@ -477,21 +471,19 @@ export class IdentityService {
     return { user, created: true, granted: true, passwordRotated: true };
   }
 
-  /** Upsert industrial mentor directory row; recover from email/userId unique collisions on re-import. */
+  /**
+   * Upsert industrial mentor directory row; recover from email/userId unique collisions.
+   * Only fields with a non-empty value are written — an update never blanks existing data.
+   */
   private async syncIndustrialMentorProfile(opts: {
     userId: string;
     fullName: string;
     email: string;
+    phone?: string | null;
     companyName?: string | null;
     designation?: string | null;
   }) {
-    const data = {
-      fullName: opts.fullName,
-      email: opts.email,
-      companyName: opts.companyName ?? null,
-      designation: opts.designation ?? null,
-      isActive: true,
-    };
+    const data = buildIndustrialMentorData(opts);
 
     const byUser = await this.prisma.industrialMentor.findUnique({ where: { userId: opts.userId } });
     if (byUser) {
@@ -510,7 +502,7 @@ export class IdentityService {
     }
 
     await this.prisma.industrialMentor.create({
-      data: { userId: opts.userId, ...data },
+      data: { userId: opts.userId, ...data, fullName: data.fullName ?? opts.fullName, email: opts.email },
     });
   }
 
@@ -528,6 +520,9 @@ export class IdentityService {
       if (existing.platformRole !== PlatformRole.student) {
         throw new BadRequestException('This email is already registered with another role. Sign in instead.');
       }
+      if (!existing.isActive) {
+        throw new ForbiddenException('This account is deactivated. Contact your administrator.');
+      }
       return this.prisma.user.update({
         where: { id: existing.id },
         data: {
@@ -535,7 +530,6 @@ export class IdentityService {
           institute: body.institute ?? existing.institute,
           department: body.department ?? existing.department,
           phone: body.phone ?? existing.phone,
-          isActive: true,
           ...(body.password ? { passwordHash: hashPassword(body.password) } : {}),
         },
       });
@@ -585,41 +579,6 @@ export class IdentityService {
     };
   }
 
-  async registerFacultyWithPassword(body: {
-    email: string;
-    password: string;
-    fullName: string;
-    institute?: string;
-    department?: string;
-    phone?: string;
-    mentorKind?: 'institute' | 'industry';
-  }) {
-    const email = body.email.toLowerCase();
-    const role =
-      body.mentorKind === 'industry' ? PlatformRole.industry_mentor : PlatformRole.institute_mentor;
-    const result = await sendOtp({
-      email,
-      purpose: 'register',
-      profile: {
-        email,
-        fullName: body.fullName.trim(),
-        password: body.password,
-        platformRole: role,
-        institute: body.institute?.trim(),
-        department: body.department?.trim(),
-        phone: body.phone?.trim(),
-      },
-    });
-    return {
-      ok: true,
-      message:
-        role === PlatformRole.industry_mentor
-          ? 'Verification code sent. Enter the OTP to complete industry mentor registration.'
-          : 'Verification code sent to your email. Enter the OTP to complete faculty registration.',
-      devCode: result.devCode,
-    };
-  }
-
   async updateProfile(
     userId: string,
     body: {
@@ -653,6 +612,21 @@ export class IdentityService {
           : {}),
       },
     });
+    if (hasRole(updated, PlatformRole.industry_mentor)) {
+      // Mirror into the directory row. institute/department double as college vs
+      // company, so they are only mirrored for industry-only accounts; dual-role
+      // accounts mirror just the role-agnostic fields (name, phone).
+      const industryOnly = !hasRole(updated, PlatformRole.institute_mentor);
+      const { isActive: _ignored, ...mirror } = buildIndustrialMentorData({
+        fullName: body.fullName,
+        phone: body.phone,
+        companyName: industryOnly ? body.institute : undefined,
+        designation: industryOnly ? body.department : undefined,
+      });
+      if (Object.keys(mirror).length > 0) {
+        await this.prisma.industrialMentor.updateMany({ where: { userId }, data: mirror });
+      }
+    }
     const { passwordHash: _ph, ...safe } = updated;
     return safe;
   }
@@ -753,12 +727,9 @@ export class IdentityService {
         const email = slot.email.toLowerCase();
         const existing = await this.repo.findByEmail(email);
         const [primary, ...rest] = slot.roles;
+        const mixError = studentStaffMixError(existing ? allRoles(existing) : [], slot.roles);
+        if (mixError) throw new BadRequestException(mixError);
         if (existing) {
-          if (existing.platformRole === PlatformRole.student && slot.roles.some((r) => r !== PlatformRole.student)) {
-            throw new BadRequestException(
-              'This email is already registered as a student and cannot be converted to staff.',
-            );
-          }
           let additionalRoles = Array.isArray(existing.additionalRoles)
             ? [...existing.additionalRoles]
             : [];
@@ -784,7 +755,7 @@ export class IdentityService {
           const granted = slot.roles.filter((r) => r !== existing.platformRole &&
             !(existing.additionalRoles ?? []).includes(r));
 
-          if (heldAfter.includes(PlatformRole.industry_mentor)) {
+          if (slot.roles.includes(PlatformRole.industry_mentor)) {
             await this.syncIndustrialMentorProfile({
               userId: user.id,
               fullName: slot.fullName,
@@ -866,6 +837,51 @@ export class IdentityService {
     });
     return this.issueToken(updated, role);
   }
+}
+
+/** Non-empty trimmed string or undefined. */
+function nonEmpty(v: string | null | undefined): string | undefined {
+  const t = typeof v === 'string' ? v.trim() : '';
+  return t ? t : undefined;
+}
+
+/** Directory-row payload containing only provided, non-empty fields. */
+export function buildIndustrialMentorData(opts: {
+  fullName?: string | null;
+  email?: string;
+  phone?: string | null;
+  companyName?: string | null;
+  designation?: string | null;
+}) {
+  const data: {
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    companyName?: string;
+    designation?: string;
+    isActive: boolean;
+  } = { isActive: true };
+  const fullName = nonEmpty(opts.fullName);
+  const phone = nonEmpty(opts.phone);
+  const companyName = nonEmpty(opts.companyName);
+  const designation = nonEmpty(opts.designation);
+  if (fullName) data.fullName = fullName;
+  if (opts.email) data.email = opts.email;
+  if (phone) data.phone = phone;
+  if (companyName) data.companyName = companyName;
+  if (designation) data.designation = designation;
+  return data;
+}
+
+/** Student accounts must never be combined with any other role. Returns an error message or null. */
+export function studentStaffMixError(held: PlatformRole[], requested: PlatformRole[]): string | null {
+  const all = [...held, ...requested];
+  if (all.includes(PlatformRole.student) && all.some((r) => r !== PlatformRole.student)) {
+    return held.includes(PlatformRole.student)
+      ? 'This email is already registered as a student and cannot be converted to staff.'
+      : 'A student role cannot be combined with staff roles for the same email.';
+  }
+  return null;
 }
 
 const AVATAR_MAX_BYTES = 5 * 1024 * 1024;

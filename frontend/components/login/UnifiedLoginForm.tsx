@@ -2,14 +2,14 @@
 
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "../auth/AuthProvider";
-import { dashboardForRole, landingForLogin } from "../../lib/session";
+import { dashboardForRole, landingForLogin, type PlatformRole } from "../../lib/session";
 import LoginPasswordForm from "./LoginPasswordForm";
 
-function safeNextPath(raw: string | null, role: string) {
+function safeNextPath(raw: string | null, role: PlatformRole) {
   if (raw && raw.startsWith("/") && !raw.startsWith("//") && !raw.includes("://")) {
     return raw;
   }
-  return dashboardForRole(role as never);
+  return dashboardForRole(role);
 }
 
 export default function UnifiedLoginForm() {
@@ -27,8 +27,8 @@ export default function UnifiedLoginForm() {
         <div className="space-y-3">
           {notice === "faculty-invite-only" || fromInvite ? (
             <p className="rounded-xl border border-brand-softline bg-brand-cream px-3 py-2 text-center text-xs text-brand-muted">
-              Faculty and staff accounts are created by your administrator. Paste the password from your email, then
-              sign in above.
+              Faculty and industry mentor accounts are registered by your institute. Use the credentials from your
+              email, or contact your administrator if you have not received them.
             </p>
           ) : null}
           <p className="text-center text-sm text-brand-muted">

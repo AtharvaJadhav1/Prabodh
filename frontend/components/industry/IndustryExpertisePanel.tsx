@@ -1,12 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useIndustryProfile } from "./IndustryProfileProvider";
+import { isHttpUrl, normalizeExternalUrl } from "../../lib/url";
 import { CpuIcon, PencilIcon, LandmarkIcon, BriefcaseIcon, LinkedinIcon } from "../dashboard/icons";
 
 export default function IndustryExpertisePanel() {
   const { profile, openDrawer } = useIndustryProfile();
   const { domainExpertise, coreSkills, designation, company, experienceYears, linkedinUrl } = profile;
+  const linkedinHref = normalizeExternalUrl(linkedinUrl);
 
   return (
     <div className="space-y-6">
@@ -111,16 +112,16 @@ export default function IndustryExpertisePanel() {
 
         <div className="mt-4 flex items-center justify-between rounded-xl border border-brand-sand bg-brand-cream/60 p-4">
           <p className="text-[11px] font-bold uppercase tracking-wider text-brand-muted">LinkedIn Profile</p>
-          {linkedinUrl ? (
-            <Link
-              href={linkedinUrl}
+          {linkedinHref && isHttpUrl(linkedinHref) ? (
+            <a
+              href={linkedinHref}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-primary transition-colors hover:text-brand-hover"
             >
               <LinkedinIcon className="h-3.5 w-3.5" />
-              {linkedinUrl.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
-            </Link>
+              {linkedinHref.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
+            </a>
           ) : (
             <span className="text-xs font-medium text-brand-muted">Not linked</span>
           )}

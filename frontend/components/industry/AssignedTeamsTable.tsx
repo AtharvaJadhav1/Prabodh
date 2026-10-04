@@ -8,10 +8,12 @@ import { SearchIcon } from "../dashboard/icons";
 
 type Props = {
   groups: MentorGroup[];
+  /** Count of every assigned team before the mentor filter; 0 means the mentor truly has no teams. */
+  totalTeams?: number;
   teamMentors: (teamCode: string) => AcceptedMentor[];
 };
 
-export default function AssignedTeamsTable({ groups, teamMentors }: Props) {
+export default function AssignedTeamsTable({ groups, totalTeams, teamMentors }: Props) {
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
@@ -69,7 +71,7 @@ export default function AssignedTeamsTable({ groups, teamMentors }: Props) {
             {filtered.map((group) => {
               const mentors = teamMentors(group.teamId);
               return (
-                <tr key={group.teamId} className="transition-colors hover:bg-brand-cream/80">
+                <tr key={group.id ?? group.teamId} className="transition-colors hover:bg-brand-cream/80">
                   <td className="px-4 py-4">
                     <div className="text-sm font-bold text-brand-deep">{group.teamName}</div>
                     <div className="mt-0.5 font-mono text-[11px] text-brand-muted">{group.teamId}</div>
@@ -81,7 +83,7 @@ export default function AssignedTeamsTable({ groups, teamMentors }: Props) {
                     <div className="line-clamp-1 text-xs font-semibold text-brand-charcoal">
                       {group.problemTitle}
                     </div>
-                    <div className="mt-1.5 flex gap-1.5">
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {group.domains.map((d) => (
                         <span
                           key={d}
@@ -134,7 +136,11 @@ export default function AssignedTeamsTable({ groups, teamMentors }: Props) {
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-12 text-center text-xs font-medium text-brand-muted">
-                  No teams match &ldquo;{search}&rdquo;.
+                  {search.trim()
+                    ? <>No teams match &ldquo;{search}&rdquo;.</>
+                    : (totalTeams ?? groups.length) === 0
+                      ? "No teams assigned yet. Accept an invite to see teams."
+                      : "No teams are shared by the selected mentors."}
                 </td>
               </tr>
             )}

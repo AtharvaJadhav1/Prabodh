@@ -67,7 +67,7 @@ export default function FacultyRegisterForm() {
           Mentor Registration
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-brand-muted">
-          Create an institute faculty ID or an industry mentor ID. Students invite you using this email address.
+          Create an institute faculty ID or an industry mentor ID. Institute faculty mentors invite industry mentors using the email address you register with.
         </p>
       </div>
       <form

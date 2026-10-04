@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { LayoutDashboardIcon, CpuIcon, TrophyIcon } from "../dashboard/icons";
 import IndustryOverviewPanel from "./IndustryOverviewPanel";
 import IndustryExpertisePanel from "./IndustryExpertisePanel";
@@ -16,12 +16,27 @@ const tabs: { key: TabName; label: string; icon: typeof LayoutDashboardIcon }[] 
 
 export default function IndustryProfileTabs() {
   const [active, setActive] = useState<TabName>("overview");
+  const tabRefs = useRef<Record<TabName, HTMLButtonElement | null>>({ overview: null, expertise: null, record: null });
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const index = tabs.findIndex((t) => t.key === active);
+    let nextIndex = index;
+    if (e.key === "ArrowRight") nextIndex = (index + 1) % tabs.length;
+    else if (e.key === "ArrowLeft") nextIndex = (index - 1 + tabs.length) % tabs.length;
+    else if (e.key === "Home") nextIndex = 0;
+    else if (e.key === "End") nextIndex = tabs.length - 1;
+    else return;
+    e.preventDefault();
+    const next = tabs[nextIndex].key;
+    setActive(next);
+    tabRefs.current[next]?.focus();
+  };
 
   return (
     <div className="space-y-0">
       {/* Tab Strip */}
       <div className="border-b border-neutral-200">
-        <nav aria-label="Tabs" className="-mb-px flex gap-6 overflow-x-auto">
+        <div role="tablist" aria-label="Profile sections" onKeyDown={onKeyDown} className="-mb-px flex gap-6 overflow-x-auto">
           {tabs.map((tab) => {
             const isActive = tab.key === active;
             return (
@@ -32,6 +47,10 @@ export default function IndustryProfileTabs() {
                 aria-selected={isActive}
                 aria-controls={`panel-${tab.key}`}
                 id={`tab-${tab.key}`}
+                tabIndex={isActive ? 0 : -1}
+                ref={(el) => {
+                  tabRefs.current[tab.key] = el;
+                }}
                 onClick={() => setActive(tab.key)}
                 className={`inline-flex items-center gap-2 whitespace-nowrap border-b-2 pb-3 text-sm font-semibold transition-colors ${
                   isActive
@@ -44,11 +63,11 @@ export default function IndustryProfileTabs() {
               </button>
             );
           })}
-        </nav>
+        </div>
       </div>
 
       {/* Tab Panels */}
-      <div className="pt-6">
+      <div className="pt-6" role="tabpanel" id={`panel-${active}`} aria-labelledby={`tab-${active}`} tabIndex={0}>
         {active === "overview" && <IndustryOverviewPanel />}
         {active === "expertise" && <IndustryExpertisePanel />}
         {active === "record" && <IndustryTrackRecordPanel />}

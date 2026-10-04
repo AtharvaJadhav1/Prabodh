@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   DashboardIcon,
   InboxIcon,
@@ -14,7 +15,8 @@ import {
   HistoryIcon,
   ChevronRightIcon,
 } from "../dashboard/icons";
-import { roleLabel, useAuth, initialsFrom } from "../auth/AuthProvider";
+import { roleLabel, useAuth } from "../auth/AuthProvider";
+import { initials } from "../../lib/initials";
 import RoleSwitcher from "../auth/RoleSwitcher";
 import { useIndustryMentor } from "./IndustryMentorProvider";
 
@@ -32,13 +34,32 @@ type NavItem = {
 };
 
 export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
-  const router = useRouter();
   const pathname = usePathname();
   const { pendingCount, allTeams: visibleTeams } = useIndustryMentor();
   const { session, logout } = useAuth();
   const role = roleLabel(session?.activeRole ?? session?.platformRole ?? "industry_mentor");
   const fullName = session?.fullName ?? "Industry Mentor";
   const displayName = fullName.length > 16 ? fullName.split(" ")[0] : fullName;
+
+  // Below lg the sidebar is an off-canvas drawer: keep it out of the tab order / a11y tree while closed.
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  const drawerHidden = !isDesktop && !mobileOpen;
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCloseMobile();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mobileOpen, onCloseMobile]);
 
   const navItems: NavItem[] = [
     { label: "Overview", href: "/dashboard/industry", match: "exact", icon: DashboardIcon },
@@ -65,6 +86,10 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
       )}
 
       <aside
+        id="industry-sidebar"
+        aria-label="Industry mentor navigation"
+        aria-hidden={drawerHidden ? true : undefined}
+        inert={drawerHidden}
         className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-brand-softline bg-[#FAF7F2] transition-transform duration-300 ease-out lg:translate-x-0 ${
           mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         }`}
@@ -95,7 +120,7 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
         <div className="border-b border-brand-softline px-4 py-4">
           <div className="rounded-2xl border border-brand-softline bg-white p-4">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-brand-muted">Workspace Role</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-brand-muted">Workspace Overview</p>
             </div>
             <div className="mt-1.5 flex items-center justify-between gap-2 text-sm">
               <span className="truncate font-extrabold text-brand-deep">
@@ -123,6 +148,7 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
                 key={item.label}
                 href={item.href}
                 onClick={onCloseMobile}
+                aria-current={active ? "page" : undefined}
                 className={`group flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-150 ${
                   active
                     ? "bg-brand-primary text-white shadow-md shadow-brand-primary/25"
@@ -154,7 +180,7 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
               className="group flex w-full cursor-pointer items-center gap-3 rounded-xl border border-brand-softline bg-white p-3 shadow-sm transition-all duration-200 hover:border-brand-softline hover:bg-brand-cream/80 hover:shadow-md"
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-deep font-bold text-white">
-                {initialsFrom(fullName)}
+                {initials(fullName)}
               </div>
               <div className="flex min-w-0 flex-1 flex-col items-start">
                 <span className="max-w-full truncate text-sm font-semibold leading-tight text-brand-deep">
@@ -170,10 +196,7 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
             </Link>
             <button
               type="button"
-              onClick={() => {
-                logout();
-                router.push("/");
-              }}
+              onClick={() => logout()}
               className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-brand-primary px-4 py-2.5 text-xs font-bold tracking-wide text-white shadow-sm transition-all duration-200 hover:bg-brand-hover hover:shadow-md sm:text-sm"
             >
               <LogoutIcon className="h-5 w-5 shrink-0" />

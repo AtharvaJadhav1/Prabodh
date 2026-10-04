@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, apiPost } from "../../lib/api";
+import { initials } from "../../lib/initials";
 import type { IndustrialMentorProfile } from "../../lib/types";
 import { XIcon, SearchIcon, CheckIcon, MailIcon, BriefcaseIcon, UserCheckIcon } from "../dashboard/icons";
 import LoadingState from "../LoadingState";
@@ -12,6 +13,8 @@ type Props = {
   teamName: string;
   onClose: () => void;
   onInvited: () => void;
+  /** Emails that already have a pending industry invite for this team (keeps "Invitation sent" after reopen). */
+  invitedEmails?: string[];
 };
 
 const DOMAIN_FILTERS = [
@@ -27,16 +30,15 @@ const DOMAIN_FILTERS = [
   "FinTech",
 ];
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase() ?? "")
-    .join("");
+/** Lower-case and strip punctuation/spaces so "ai/ml" matches "AI/ML" and "Cloud" matches "Cloud Systems". */
+function normalizeTag(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
-export default function InviteIndustrialMentorModal({ open, teamId, teamName, onClose, onInvited }: Props) {
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+export default function InviteIndustrialMentorModal({ open, teamId, teamName, onClose, onInvited, invitedEmails }: Props) {
   const [results, setResults] = useState<IndustrialMentorProfile[]>([]);
   const [query, setQuery] = useState("");
   const [domain, setDomain] = useState("");
@@ -44,6 +46,9 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
   const [error, setError] = useState("");
   const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
   const [busyEmail, setBusyEmail] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const invitedTeamRef = useRef(teamId);
 
   // The directory is small, so load it once per open and search it instantly on the client
   // (name, company, designation, email and expertise) instead of a delayed server call per keystroke.
@@ -55,7 +60,7 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
       const rows = await api<IndustrialMentorProfile[]>(`/industrial-mentors?teamId=${encodeURIComponent(teamId)}`);
       setResults(rows.filter((m) => m.isActive));
     } catch {
-      setError("Could not load the industrial mentor directory.");
+      setError("Could not load the industry mentor directory.");
       setResults([]);
     } finally {
       setLoading(false);
@@ -66,18 +71,44 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
     if (!open) return;
     setQuery("");
     setDomain("");
-    setInvitedIds(new Set());
+    // Keep "Invitation sent" markers across close/reopen; only reset for a different team.
+    if (invitedTeamRef.current !== teamId) {
+      invitedTeamRef.current = teamId;
+      setInvitedIds(new Set());
+    }
     setError("");
     void load();
-  }, [open, load]);
+  }, [open, load, teamId]);
 
+  // Initial focus, focus trap, Escape, and focus restoration.
   useEffect(() => {
     if (!open) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    searchRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !dialogRef.current) return;
+      const items = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !dialogRef.current.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !dialogRef.current.contains(active))) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      previouslyFocused?.focus?.();
+    };
   }, [open, onClose]);
 
   const handleInvite = async (m: IndustrialMentorProfile) => {
@@ -98,7 +129,10 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return results.filter((m) => {
-      if (domain && !(m.domainExpertise ?? []).includes(domain)) return false;
+      if (domain) {
+        const wanted = normalizeTag(domain);
+        if (!(m.domainExpertise ?? []).some((tag) => normalizeTag(tag).includes(wanted))) return false;
+      }
       if (!q) return true;
       return [m.fullName, m.companyName ?? "", m.designation ?? "", m.email, ...(m.domainExpertise ?? [])].some((v) =>
         v.toLowerCase().includes(q),
@@ -115,11 +149,17 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-deep/50 p-4 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-brand-deep/50 p-4 backdrop-blur-sm"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Invite an industrial mentor"
+        aria-label="Invite an industry mentor"
         className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-brand-sand bg-white shadow-2xl"
       >
         <div className="shrink-0 border-b border-brand-sand bg-brand-cream p-6">
@@ -129,7 +169,7 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
                 <BriefcaseIcon className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-brand-deep">Invite an Industrial Mentor</h3>
+                <h3 className="text-lg font-bold text-brand-deep">Invite an Industry Mentor</h3>
                 <p className="mt-0.5 text-xs text-brand-muted">
                   Pick an industry expert from the registered directory. They will accept or decline the invitation.
                 </p>
@@ -154,11 +194,12 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
             <div className="relative flex-1">
               <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-muted" />
               <input
+                ref={searchRef}
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search by name, company, designation, email or expertise"
-                aria-label="Search industrial mentors"
+                aria-label="Search industry mentors"
                 className="w-full rounded-xl border border-brand-sand bg-brand-cream py-2.5 pl-9 pr-9 text-xs text-brand-charcoal placeholder-brand-muted transition focus:border-brand-primary focus:bg-white focus:outline-none"
               />
               {query ? (
@@ -192,7 +233,20 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
             ))}
           </div>
 
-          {error ? <p className="text-xs font-semibold text-brand-overdue">{error}</p> : null}
+          {error ? (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-brand-overdue">
+              <span>{error}</span>
+              {!loading && results.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => void load()}
+                  className="rounded-lg border border-brand-overdue/30 bg-white px-3 py-1 text-[11px] font-bold text-brand-overdue hover:bg-red-50"
+                >
+                  Retry
+                </button>
+              ) : null}
+            </div>
+          ) : null}
 
           {!loading && !error && results.length > 0 ? (
             <div className="flex items-center justify-between gap-3 text-[11px] font-semibold text-brand-muted">
@@ -216,13 +270,13 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
           <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-6 py-4">
             {loading ? (
               <div className="py-4">
-                <LoadingState compact fontSize={13} label="Loading directory" steps={["Searching industrial mentors"]} />
+                <LoadingState compact fontSize={13} label="Loading directory" steps={["Searching industry mentors"]} />
               </div>
-            ) : filtered.length === 0 ? (
+            ) : filtered.length === 0 && error ? null : filtered.length === 0 ? (
               <div className="py-6 text-center text-xs text-brand-muted">
                 {results.length > 0 && hasFilters ? (
                   <>
-                    <p>No industrial mentors match your search.</p>
+                    <p>No industry mentors match your search.</p>
                     <button
                       type="button"
                       onClick={clearFilters}
@@ -232,12 +286,13 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
                     </button>
                   </>
                 ) : (
-                  <p>No industrial mentors available. Ask the nodal admin to register them first.</p>
+                  <p>No industry mentors are registered yet. Contact your administrator.</p>
                 )}
               </div>
             ) : (
               filtered.map((m) => {
-                const invited = invitedIds.has(m.id);
+                const invited =
+                  invitedIds.has(m.id) || (invitedEmails ?? []).some((e) => e.toLowerCase() === m.email.toLowerCase());
                 const busy = busyEmail === m.email;
                 return (
                   <div

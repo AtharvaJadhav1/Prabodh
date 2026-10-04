@@ -17,7 +17,10 @@ export default function IndustryOverviewPanel() {
             <ZapIcon className="h-4 w-4" />
           </div>
           <p className="text-xs font-medium text-brand-charcoal">
-            <strong className="font-bold text-brand-deep">Current Status:</strong> Open to Industry Mentorship
+            <strong className="font-bold text-brand-deep">Invites:</strong>{" "}
+            {pendingCount > 0
+              ? `You have ${pendingCount} invitation${pendingCount === 1 ? "" : "s"} waiting for a response.`
+              : "No invitations are waiting for a response."}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -30,7 +33,7 @@ export default function IndustryOverviewPanel() {
             href="/dashboard/industry/invites"
             className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-brand-deep px-3.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-[#7E3B14]"
           >
-            View Team Queries
+            View Invites
             <ArrowRightIcon className="h-3.5 w-3.5" />
           </Link>
         </div>

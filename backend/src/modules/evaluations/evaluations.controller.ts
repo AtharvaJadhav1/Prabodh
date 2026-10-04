@@ -22,8 +22,8 @@ export class EvaluationsController {
 
   @Get('stages/:stageId/results')
   @Roles(PlatformRole.admin, PlatformRole.institute_mentor, PlatformRole.industry_mentor)
-  results(@Param('stageId') stageId: string) {
-    return this.evaluations.results(stageId);
+  results(@CurrentUser() user: AuthUser, @Param('stageId') stageId: string) {
+    return this.evaluations.results(user, stageId);
   }
 
   @Post('stages/:stageId/results/publish')

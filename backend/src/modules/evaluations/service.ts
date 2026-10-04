@@ -1,9 +1,10 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { PlatformRole, Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
 import { canStudentViewResults } from '../../domain/rules';
 import { writeAudit } from '../../lib/audit';
+import { hasRole } from '../../lib/roles';
 import { PrismaService } from '../../lib/prisma.service';
 import { aggregateQueue, notificationQueue } from '../../lib/queue';
 import { TeamsService } from '../teams/service';
@@ -93,10 +94,23 @@ export class EvaluationsService {
     }
   }
 
-  async results(stageId: string) {
+  /**
+   * Admins see every team's result (published or not). Mentors only see PUBLISHED results of the
+   * teams they are actively assigned to.
+   */
+  async results(user: AuthUser, stageId: string) {
+    const isAdmin = hasRole(user, PlatformRole.admin);
+    let scope: Prisma.StageResultWhereInput = {};
+    if (!isAdmin) {
+      const mine = await this.prisma.mentorAssignment.findMany({
+        where: { mentorUserId: user.id, active: true },
+        select: { teamId: true },
+      });
+      scope = { published: true, teamId: { in: [...new Set(mine.map((a) => a.teamId))] } };
+    }
     return this.prisma.stageResult.findMany({
-      where: { stageId },
-      include: { team: true },
+      where: { stageId, ...scope },
+      include: { team: { select: { id: true, name: true, teamCode: true, theme: true, institute: true } } },
       orderBy: { rank: 'asc' },
     });
   }

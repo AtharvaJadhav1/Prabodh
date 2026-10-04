@@ -2,22 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { apiPost } from "../../lib/api";
-import type { PlatformRole } from "../../lib/session";
+import type { AuthResponse } from "../../lib/auth-login";
 import TextField from "./TextField";
-
-type AuthResponse = {
-  accessToken: string;
-  userId: string;
-  email: string;
-  fullName: string;
-  platformRole: PlatformRole;
-  additionalRoles?: PlatformRole[];
-  activeRole?: PlatformRole;
-  institute?: string | null;
-  department?: string | null;
-  phone?: string | null;
-  devCode?: string;
-};
 
 type Props = {
   purpose: "login" | "register";
