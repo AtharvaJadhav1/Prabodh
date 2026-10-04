@@ -144,6 +144,22 @@ export class IdentityController {
     return this.identity.uploadAvatar(user.id, body as never);
   }
 
+  /**
+   * POST rather than DELETE /users/me because the typed-confirmation phrase has to travel in
+   * a body, and the frontend's apiDelete helper takes no body.
+   */
+  @Post('me/delete')
+  @UseGuards(JwtAuthGuard)
+  deleteAccount(@CurrentUser() user: AuthUser, @Body() body: { confirm?: string }) {
+    return this.identity.deleteOwnAccount(user, String(body?.confirm ?? ''));
+  }
+
+  @Get('me/delete-preview')
+  @UseGuards(JwtAuthGuard)
+  deletePreview(@CurrentUser() user: AuthUser) {
+    return this.identity.deleteOwnAccountPreview(user);
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async me(

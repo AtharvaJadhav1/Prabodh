@@ -15,7 +15,7 @@ import { PrismaService } from '../../lib/prisma.service';
 import { exportQueue } from '../../lib/queue';
 import { createPresignedGetUrl } from '../../lib/s3';
 import { upsertSetting } from '../../lib/settings';
-import { syncTeamMentorPointers } from '../../lib/mentor-pointers';
+import { deleteOwnEvaluations, deleteTeams, detachUserRelations } from '../../lib/user-removal';
 import { IdentityService, parseCsvUsers } from '../identity/service';
 import { adminInviteUserSchema, exportSchema, settingsSchema } from './schema';
 import { createReadStream, existsSync } from 'fs';
@@ -1034,76 +1034,17 @@ export class AdminService {
           await tx.team.update({ where: { id: p.teamId }, data: { leaderUserId: p.nextLeaderId } });
         }
         if (deletedTeamIds.size > 0) {
-          await this.deleteTeams(tx, [...deletedTeamIds]);
+          await deleteTeams(tx, [...deletedTeamIds]);
         }
 
-        if (target.industrialMentorProfile) {
-          const profileId = target.industrialMentorProfile.id;
-          await tx.team.updateMany({
-            where: { industrialMentorId: profileId },
-            data: { industrialMentorId: null },
-          });
-          await tx.mentorAssignment.updateMany({
-            where: { industrialMentorId: profileId },
-            data: { industrialMentorId: null },
-          });
-          await tx.industrialMentor.delete({ where: { id: profileId } });
-        }
-
-        await tx.team.updateMany({ where: { facultyMentorId: target.id }, data: { facultyMentorId: null } });
-
-        const targetAssignments = await tx.mentorAssignment.findMany({
-          where: { mentorUserId: target.id },
-          select: { id: true, teamId: true },
+        await detachUserRelations(tx, target, {
+          reassignMentorWorkTo: actor.id,
+          skipMentorPointerSyncFor: deletedTeamIds,
         });
-        const targetAssignmentIds = targetAssignments.map((a) => a.id);
-        if (targetAssignmentIds.length > 0) {
-          await tx.mentorAssignment.updateMany({
-            where: { reassignedFromId: { in: targetAssignmentIds } },
-            data: { reassignedFromId: null },
-          });
-          await tx.mentorAssignment.deleteMany({ where: { id: { in: targetAssignmentIds } } });
-        }
-        for (const teamId of [...new Set(targetAssignments.map((a) => a.teamId))]) {
-          if (!deletedTeamIds.has(teamId)) await syncTeamMentorPointers(tx, teamId);
-        }
-        await tx.mentorAssignment.updateMany({
-          where: { assignedById: target.id },
-          data: { assignedById: actor.id },
-        });
-        await tx.mentorInvite.deleteMany({ where: { mentorUserId: target.id } });
-        await tx.mentorInvite.deleteMany({ where: { invitedById: target.id } });
 
-        await tx.ideaSubmission.updateMany({ where: { authorUserId: target.id }, data: { authorUserId: null } });
-        await tx.teamPsPreference.updateMany({ where: { decidedById: target.id }, data: { decidedById: null } });
-        await tx.teamPsPreference.deleteMany({ where: { submittedById: target.id } });
-        await tx.notificationLog.updateMany({ where: { recipientUserId: target.id }, data: { recipientUserId: null } });
-        await tx.stageResult.updateMany({ where: { publishedById: target.id }, data: { publishedById: null } });
-        await tx.teamMember.deleteMany({ where: { userId: target.id } });
-        await tx.joinRequest.deleteMany({ where: { studentId: target.id } });
-        await tx.notification.deleteMany({ where: { userId: target.id } });
-
-        // Other evaluators' rows can point at the target's via the supersede chain.
-        const targetEvals = await tx.evaluation.findMany({
-          where: { evaluatorUserId: target.id },
-          select: { id: true },
-        });
-        if (targetEvals.length > 0) {
-          const ids = targetEvals.map((e) => e.id);
-          await tx.evaluation.updateMany({ where: { supersededById: { in: ids } }, data: { supersededById: null } });
-          await tx.evaluation.deleteMany({ where: { id: { in: ids } } });
-        }
-        await tx.broadcast.deleteMany({ where: { adminUserId: target.id } });
-
-        const commentIds = await tx.comment.findMany({
-          where: { authorUserId: target.id },
-          select: { id: true },
-        });
-        if (commentIds.length > 0) {
-          const ids = commentIds.map((c) => c.id);
-          await tx.comment.updateMany({ where: { parentCommentId: { in: ids } }, data: { parentCommentId: null } });
-          await tx.comment.deleteMany({ where: { id: { in: ids } } });
-        }
+        // Admin removal takes the user's evaluations with it; the self-service path keeps
+        // them and scrubs the identity instead.
+        await deleteOwnEvaluations(tx, target.id);
 
         await tx.auditLog.updateMany({ where: { actorUserId: target.id }, data: { actorUserId: null } });
         await tx.user.delete({ where: { id: target.id } });
@@ -1193,61 +1134,6 @@ export class AdminService {
       promotedTeams: promotedTeams.length,
       deletedTeams: deletedTeams.length,
     };
-  }
-
-  private async deleteTeams(
-    tx: Prisma.TransactionClient,
-    teamIds: string[],
-  ) {
-    const assignments = await tx.mentorAssignment.findMany({
-      where: { teamId: { in: teamIds } },
-      select: { id: true },
-    });
-    const assignmentIds = assignments.map((a) => a.id);
-    if (assignmentIds.length > 0) {
-      await tx.mentorAssignment.updateMany({
-        where: { reassignedFromId: { in: assignmentIds } },
-        data: { reassignedFromId: null },
-      });
-    }
-    const psRows = await tx.team.findMany({
-      where: { id: { in: teamIds }, psId: { not: null } },
-      select: { psId: true },
-    });
-    await tx.comment.updateMany({
-      where: { teamId: { in: teamIds }, parentCommentId: { not: null } },
-      data: { parentCommentId: null },
-    });
-    await tx.comment.deleteMany({ where: { teamId: { in: teamIds } } });
-    await tx.deliverable.deleteMany({ where: { teamId: { in: teamIds } } });
-    await tx.evaluation.updateMany({
-      where: { supersededBy: { teamId: { in: teamIds } } },
-      data: { supersededById: null },
-    });
-    await tx.evaluation.deleteMany({ where: { teamId: { in: teamIds } } });
-    await tx.ideaSubmission.deleteMany({ where: { teamId: { in: teamIds } } });
-    await tx.joinRequest.deleteMany({ where: { teamId: { in: teamIds } } });
-    await tx.mentorAssignment.deleteMany({ where: { teamId: { in: teamIds } } });
-    await tx.mentorInvite.deleteMany({ where: { teamId: { in: teamIds } } });
-    await tx.stageResult.deleteMany({ where: { teamId: { in: teamIds } } });
-    await tx.teamMember.deleteMany({ where: { teamId: { in: teamIds } } });
-    await tx.teamPsPreference.deleteMany({ where: { teamId: { in: teamIds } } });
-    await tx.teamStageStatus.deleteMany({ where: { teamId: { in: teamIds } } });
-    await tx.team.deleteMany({ where: { id: { in: teamIds } } });
-    // Group by psId and decrement once per distinct statement. Two deleted teams
-    // can share a psId, so the per-team multiplicity has to be preserved —
-    // de-duplicating to a Set here would silently under-count teamsSelectedCount.
-    const decrements = new Map<string, number>();
-    for (const row of psRows) {
-      if (!row.psId) continue;
-      decrements.set(row.psId, (decrements.get(row.psId) ?? 0) + 1);
-    }
-    for (const [psId, count] of decrements) {
-      await tx.problemStatement.updateMany({
-        where: { id: psId },
-        data: { teamsSelectedCount: { decrement: count } },
-      });
-    }
   }
 
   /**

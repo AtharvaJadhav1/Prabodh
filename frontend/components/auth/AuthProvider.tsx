@@ -67,6 +67,17 @@ type ActiveRoleResponse = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/**
+ * Drop every trace of the signed-in session from this tab. Callers are responsible for the
+ * navigation (and for clearing React state via setSession) — this only handles storage, the
+ * in-memory access token, and the API response cache.
+ */
+export function wipeClientSession() {
+  clearApiCache();
+  clearSession();
+  setAccessToken(null);
+}
+
 function toSession(user: {
   userId?: string;
   id?: string;
@@ -282,9 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ready,
       establishSession,
       logout: () => {
-        clearApiCache();
-        clearSession();
-        setAccessToken(null);
+        wipeClientSession();
         setSession(null);
         window.location.assign("/login");
       },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import DangerZoneDeleteAccount from "../../../../components/account/DangerZoneDeleteAccount";
 import AdminShell from "../../../../components/admin/AdminShell";
 import TextInput from "../../../../components/profile/TextInput";
 import { useAuth, initialsFrom } from "../../../../components/auth/AuthProvider";
@@ -58,6 +59,8 @@ export default function AdminProfilePage() {
         >
           {saving ? "Saving…" : "Save Changes"}
         </button>
+
+        <DangerZoneDeleteAccount />
       </div>
     </AdminShell>
   );

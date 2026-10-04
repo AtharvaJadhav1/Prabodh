@@ -1,7 +1,8 @@
 import { Prisma } from '@prisma/client';
 
 type AuditInput = {
-  actorUserId: string;
+  /** Null is allowed for actions whose actor is the subject and may not survive the action (self-delete). */
+  actorUserId: string | null;
   action: string;
   entityType: string;
   entityId: string;
@@ -17,7 +18,9 @@ export async function writeAudit(
   input: AuditInput,
 ) {
   let { actorName, actorEmail, actorRole } = input;
-  if (actorName == null || actorEmail == null || actorRole == null) {
+  // Skipped when there is no actor id to look up (self-delete) or when the snapshot is
+  // already complete; either way there is nothing left to resolve.
+  if (input.actorUserId && (actorName == null || actorEmail == null || actorRole == null)) {
     const actor = await prisma.user.findUnique({
       where: { id: input.actorUserId },
       select: { fullName: true, email: true, platformRole: true },

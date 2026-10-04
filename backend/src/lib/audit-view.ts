@@ -20,7 +20,7 @@ export const CATEGORY_ACTIONS: Record<string, string[]> = {
     'mentor.unassign',
   ],
   milestone_reviews: ['evaluation.submitted', 'evaluation.publish'],
-  user_administration: ['user.remove'],
+  user_administration: ['user.remove', 'user.self_delete'],
 };
 
 export type AuditRow = {
@@ -341,6 +341,36 @@ function summarizeAudit(input: SummaryInput): string {
         }
       }
       return `Removed ${subject}.${sentences.length ? ` ${sentences.join(' ')}` : ''}`;
+    }
+    case 'user.self_delete': {
+      // Self-initiated, so there is no second party to name. Renders from the same snapshot
+      // the admin path uses, since the account is gone (or scrubbed) by the time this is read.
+      const role = roleLabel(strOf(before?.platformRole));
+      const name = strOf(before?.fullName);
+      const email = strOf(after?.targetEmail) ?? strOf(before?.email);
+      const who = name ?? email;
+      const impact = asRecord(after?.impact);
+      const deleted = recListOf(impact?.deletedTeams);
+      const retained = numOf(impact?.evaluationsRetained) ?? 0;
+
+      const sentences: string[] = [];
+      if (deleted.length > 0) {
+        const listed = deleted
+          .map((d) => {
+            const nm = strOf(d.teamName) ?? strOf(d.deletedTeamId) ?? 'a team';
+            const n = numOf(d.membersAffected) ?? 0;
+            return `'${nm}'${n ? ` (${n} member${n === 1 ? '' : 's'})` : ''}`;
+          })
+          .join(', ');
+        sentences.push(`Cascaded deletion: deleted ${deleted.length === 1 ? 'team' : 'teams'} ${listed}.`);
+      }
+      sentences.push(
+        after?.anonymized
+          ? `Account scrubbed rather than deleted; ${retained} past evaluation${retained === 1 ? '' : 's'} kept for academic integrity.`
+          : 'Account and its data deleted.',
+      );
+      const subject = who ? (role ? `${role} ${who}` : who) : 'a user';
+      return `${subject} deleted their own account. ${sentences.join(' ')}`;
     }
     default:
       return humanizeAction(action);

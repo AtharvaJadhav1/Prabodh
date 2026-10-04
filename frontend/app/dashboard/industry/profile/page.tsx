@@ -1,5 +1,6 @@
 "use client";
 
+import DangerZoneDeleteAccount from "../../../../components/account/DangerZoneDeleteAccount";
 import IndustryShell from "../../../../components/industry/IndustryShell";
 import { IndustryProfileProvider } from "../../../../components/industry/IndustryProfileProvider";
 import IndustryProfileHeaderCard from "../../../../components/industry/IndustryProfileHeaderCard";
@@ -13,6 +14,7 @@ export default function IndustryProfilePage() {
         <div className="mx-auto max-w-7xl space-y-6">
           <IndustryProfileHeaderCard />
           <IndustryProfileTabs />
+          <DangerZoneDeleteAccount />
         </div>
       </IndustryShell>
       <IndustryProfileEditDrawer />

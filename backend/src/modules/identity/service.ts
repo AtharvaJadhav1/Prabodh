@@ -8,8 +8,20 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PlatformRole, Prisma } from '@prisma/client';
+import { InviteStatus, PlatformRole, Prisma } from '@prisma/client';
 import { signAccessToken } from '../../lib/jwt';
+import { writeAudit } from '../../lib/audit';
+import {
+  confirmationMatches,
+  partitionLedTeams,
+  selfDeleteBlockers,
+  SOLE_ADMIN_BLOCKER,
+  teamLeadBlocker,
+} from '../../lib/self-delete-rules';
+import { deleteTeams, detachUserRelations } from '../../lib/user-removal';
+import { AuthUser } from '../../common/auth.types';
+import { notifyUsers } from '../../lib/notify';
+import { deleteObjectsByPrefix } from '../../lib/s3';
 import { allRoles, hasAnyRole, hasRole, unionAdditionalRoles } from '../../lib/roles';
 import { consumeResetToken, issueResetToken, sendOtp, verifyOtp } from '../../lib/otp';
 import { hashPassword, verifyPassword } from '../../lib/password';
@@ -813,6 +825,260 @@ export class IdentityService {
         };
       }
     });
+  }
+
+  /**
+   * Read-only summary of what deleting this account would do, so the Danger Zone can
+   * explain the consequences and list any blocker before the user types the confirmation.
+   */
+  async deleteOwnAccountPreview(actor: AuthUser) {
+    const [target, evaluationCount, activeAssignments, memberships] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: actor.id },
+        include: {
+          ledTeams: {
+            include: { members: { select: { userId: true, inviteStatus: true } } },
+          },
+        },
+      }),
+      this.prisma.evaluation.count({ where: { evaluatorUserId: actor.id } }),
+      this.prisma.mentorAssignment.count({ where: { mentorUserId: actor.id, active: true } }),
+      this.prisma.teamMember.count({ where: { userId: actor.id } }),
+    ]);
+    if (!target) throw new NotFoundException('User not found');
+
+    const isAdmin = hasRole(target, PlatformRole.admin);
+    // Undefined for non-admins: the sole-admin rule only applies when the caller actually holds
+    // the role, so there is nothing to count. An `0` here would be a lie either way.
+    const otherAdmins = isAdmin
+      ? await this.prisma.user.count({
+          where: {
+            isActive: true,
+            id: { not: target.id },
+            OR: [
+              { platformRole: PlatformRole.admin },
+              { additionalRoles: { has: PlatformRole.admin } },
+            ],
+          },
+        })
+      : undefined;
+    const { solo: soloTeams, blocking: blockingTeams } = partitionLedTeams(target.ledTeams, target.id);
+    const blockers = selfDeleteBlockers({
+      isAdmin,
+      otherActiveAdmins: otherAdmins,
+      ledTeams: target.ledTeams,
+      selfId: target.id,
+    });
+
+    return {
+      email: target.email,
+      fullName: target.fullName,
+      blockers,
+      teamsToDelete: soloTeams.map((t) => ({ id: t.id, name: t.name, memberCount: t.members.length })),
+      teamsBlocking: blockingTeams.map((t) => ({ id: t.id, name: t.name, memberCount: t.members.length })),
+      mentorAssignmentsActive: activeAssignments,
+      // Memberships on teams that survive. Every membership is removed by the cascade, so this
+      // is the count behind the "you will be removed from your teams" line. Memberships on
+      // solo-led teams are already covered by `teamsToDelete`.
+      otherTeamMemberships: Math.max(
+        0,
+        memberships - soloTeams.reduce((sum, t) => sum + t.members.filter((m) => m.userId === target.id).length, 0),
+      ),
+      // Drives the "your past evaluations are kept, only your identity is scrubbed" copy.
+      hasEvaluationHistory: evaluationCount > 0,
+    };
+  }
+
+  /**
+   * Self-service account removal. Same relational cascade as the admin path
+   * (`AdminService.removeUser`) but with different pre-conditions: a Team Lead of a team
+   * with teammates is blocked outright instead of having a successor promoted, since quietly
+   * handing their team to someone else is not what they asked for.
+   *
+   * Evaluators are scrubbed rather than deleted. `Evaluation.evaluatorUserId` is NOT NULL
+   * with no cascade, so deleting the row would either need a migration or would destroy the
+   * scores those teams were given. The User row survives with the identity fields cleared and
+   * `isActive` false, which keeps those evaluations intact and still blocks sign-in.
+   */
+  async deleteOwnAccount(actor: AuthUser, confirm: string) {
+    if (!confirmationMatches(confirm, actor.email)) {
+      throw new BadRequestException('Type DELETE or your email address to confirm account deletion.');
+    }
+
+    const target = await this.prisma.user.findUnique({
+      where: { id: actor.id },
+      include: {
+        ledTeams: {
+          include: { members: { select: { userId: true, inviteStatus: true } } },
+        },
+        industrialMentorProfile: { select: { id: true } },
+      },
+    });
+    if (!target) throw new NotFoundException('User not found');
+
+    // Same count the admin path uses, so a self-delete can never be the action that removes
+    // the last admin on the platform.
+    if (hasRole(target, PlatformRole.admin)) {
+      const otherAdmins = await this.prisma.user.count({
+        where: {
+          isActive: true,
+          id: { not: target.id },
+          OR: [
+            { platformRole: PlatformRole.admin },
+            { additionalRoles: { has: PlatformRole.admin } },
+          ],
+        },
+      });
+      if (otherAdmins === 0) throw new BadRequestException(SOLE_ADMIN_BLOCKER);
+    }
+
+    // Block rather than promote: the admin path promotes a successor here, but handing someone's
+    // team to a teammate behind their back is not what deleting their own account asked for.
+    const { solo: teamsToDelete, blocking } = partitionLedTeams(target.ledTeams, target.id);
+    if (blocking.length > 0) {
+      throw new BadRequestException(teamLeadBlocker(blocking[0].name));
+    }
+
+    const evaluationCount = await this.prisma.evaluation.count({
+      where: { evaluatorUserId: target.id },
+    });
+    const anonymized = evaluationCount > 0;
+
+    // MentorAssignment.assignedById is NOT NULL, so mentor seats this user created needs a
+    // surviving owner. There is no second actor here, so it goes to the earliest active admin —
+// the same "an admin owns this record now" resolution the admin path uses. The fallbacks exist
+    // so an ex-admin who no longer holds the role, or the anonymizing branch (where the row
+    // survives but is deactivated), can never deadlock the NOT NULL constraint.
+    const isAdminRow = {
+      OR: [
+        { platformRole: PlatformRole.admin },
+        { additionalRoles: { has: PlatformRole.admin } },
+      ],
+    };
+    const [nextAdmin, nextActive] = await Promise.all([
+      this.prisma.user.findFirst({
+        where: { isActive: true, id: { not: target.id }, ...isAdminRow },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      }),
+      this.prisma.user.findFirst({
+        where: { isActive: true, id: { not: target.id } },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      }),
+    ]);
+    const fallbackOwner = nextAdmin?.id ?? (anonymized ? target.id : nextActive?.id);
+    if (!fallbackOwner) {
+      throw new BadRequestException('No active account is available to take over your records.');
+    }
+
+    const deletedTeamIds = teamsToDelete.map((t) => t.id);
+    const mentoredTeamIds = await this.prisma.$transaction(
+      async (tx) => {
+        if (deletedTeamIds.length > 0) {
+          await deleteTeams(tx, deletedTeamIds);
+        }
+        const { mentoredTeamIds: vacated } = await detachUserRelations(tx, target, {
+          reassignMentorWorkTo: fallbackOwner,
+          skipMentorPointerSyncFor: deletedTeamIds,
+        });
+
+        if (anonymized) {
+          // Identity scrubbed in place. The row itself has to survive for the FK; the
+          // password hash is invalidated too so nothing can be signed into as this account
+          // even if `isActive` is later flipped back by mistake.
+          await tx.user.update({
+            where: { id: target.id },
+            data: {
+              fullName: 'Former Evaluator',
+              email: `deleted-${target.id}@prabodh.invalid`,
+              phone: null,
+              institute: null,
+              department: null,
+              profileJson: Prisma.DbNull,
+              passwordHash: null,
+              isActive: false,
+            },
+          });
+        } else {
+          await tx.auditLog.updateMany({ where: { actorUserId: target.id }, data: { actorUserId: null } });
+          await tx.user.delete({ where: { id: target.id } });
+        }
+
+        // Written after the relation cleanup, with the actor FK left null and the identity
+        // snapshotted inline. Same shape as the admin path: it survives both the hard delete
+        // and the anonymizing scrub, and it keeps the row readable as "this person" instead
+        // of pointing at a row now named "Former Evaluator".
+        await writeAudit(tx, {
+          actorUserId: null,
+          actorName: target.fullName,
+          actorEmail: target.email,
+          actorRole: target.platformRole,
+          action: 'user.self_delete',
+          entityType: 'user',
+          entityId: target.id,
+          before: {
+            id: target.id,
+            email: target.email,
+            fullName: target.fullName,
+            platformRole: target.platformRole,
+            wasTeamLeader: target.ledTeams.length > 0,
+            ledTeamCount: target.ledTeams.length,
+          },
+          after: {
+            deleted: true,
+            anonymized,
+            // Duplicated into `after` on purpose: the admin log search only scans `after`
+            // (see listAudit), so the address has to live there to stay findable once the
+            // user row is gone.
+            targetEmail: target.email,
+            wasTeamLeader: target.ledTeams.length > 0,
+            ledTeamCount: target.ledTeams.length,
+            impact: {
+              deletedTeams: teamsToDelete.map((d) => ({
+                deletedTeamId: d.id,
+                teamName: d.name,
+                membersAffected: d.members.length,
+              })),
+              membersAffected: teamsToDelete.reduce((sum, d) => sum + d.members.length, 0),
+              evaluationsRetained: evaluationCount,
+            },
+            deletedTeams: teamsToDelete.map((d) => d.name),
+            auditLogsRetained: true,
+          },
+        });
+
+        return vacated;
+      },
+      { timeout: 60_000, maxWait: 10_000 },
+    );
+
+    // Fire and forget: a failed notification or storage cleanup must not undo a committed
+    // deletion, and there is no session left to show an error to.
+    if (mentoredTeamIds.length > 0) {
+      const leads = await this.prisma.team.findMany({
+        where: { id: { in: mentoredTeamIds } },
+        select: { leaderUserId: true },
+      });
+      void notifyUsers(
+        this.prisma,
+        [...new Set(leads.map((l) => l.leaderUserId))],
+        {
+          type: 'status_change',
+          template: 'admin_broadcast',
+          title: 'Your mentor has stepped down',
+          body: 'The mentor assigned to your team has left the platform. Please contact your administrator to arrange a new mentor.',
+          relatedEntity: 'mentor_unassigned',
+        },
+      ).catch((err) => console.error('[identity.selfDelete] mentor notification failed', err));
+    }
+    if (isS3Configured()) {
+      void deleteObjectsByPrefix(`avatars/${target.id}/`).catch((err) =>
+        console.error('[identity.selfDelete] could not delete stored avatar for', target.id, err),
+      );
+    }
+
+    return { deleted: true, anonymized };
   }
 
   /**

@@ -75,6 +75,7 @@ const ACTION_LABELS: Record<string, string> = {
   "evaluation.publish": "Results Published",
   "broadcast.send": "Broadcast Sent",
   "user.remove": "User Removed",
+  "user.self_delete": "Account Self-Deleted",
 };
 
 const ACTION_BADGES: Record<string, string> = {
@@ -94,6 +95,7 @@ const ACTION_BADGES: Record<string, string> = {
   "evaluation.publish": "bg-teal-50 text-teal-700 border-teal-200",
   "broadcast.send": "bg-slate-50 text-slate-700 border-slate-200",
   "user.remove": "bg-red-50 text-red-700 border-red-200",
+  "user.self_delete": "bg-red-50 text-red-700 border-red-200",
 };
 
 const ROLE_LABELS: Record<string, string> = {

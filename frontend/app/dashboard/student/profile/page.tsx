@@ -1,3 +1,4 @@
+import DangerZoneDeleteAccount from "../../../../components/account/DangerZoneDeleteAccount";
 import ProfileHeaderCard from "../../../../components/dashboard/ProfileHeaderCard";
 import ProfileTabs from "../../../../components/dashboard/ProfileTabs";
 
@@ -6,6 +7,7 @@ export default function StudentProfilePage() {
     <div className="mx-auto max-w-5xl space-y-6">
       <ProfileHeaderCard />
       <ProfileTabs />
+      <DangerZoneDeleteAccount />
     </div>
   );
 }

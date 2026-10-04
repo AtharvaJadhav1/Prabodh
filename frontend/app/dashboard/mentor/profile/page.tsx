@@ -1,5 +1,6 @@
 "use client";
 
+import DangerZoneDeleteAccount from "../../../../components/account/DangerZoneDeleteAccount";
 import MentorShell from "../../../../components/mentor/MentorShell";
 import { MentorProfileProvider } from "../../../../components/mentor/MentorProfileProvider";
 import MentorProfileHeaderCard from "../../../../components/mentor/MentorProfileHeaderCard";
@@ -13,6 +14,7 @@ export default function MentorProfilePage() {
         <div className="mx-auto max-w-7xl space-y-6">
           <MentorProfileHeaderCard />
           <MentorProfileTabs />
+          <DangerZoneDeleteAccount />
         </div>
       </MentorShell>
       <MentorProfileEditDrawer />
