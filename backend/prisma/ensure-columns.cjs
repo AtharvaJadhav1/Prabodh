@@ -102,6 +102,9 @@ async function main() {
     `CREATE INDEX IF NOT EXISTS "teams_batch_id_idx" ON "teams"("batch_id")`,
     `ALTER TABLE "teams" DROP CONSTRAINT IF EXISTS "teams_batch_id_fkey"`,
     `ALTER TABLE "teams" ADD CONSTRAINT "teams_batch_id_fkey" FOREIGN KEY ("batch_id") REFERENCES "batches"("id") ON DELETE SET NULL ON UPDATE CASCADE`,
+    // Mentor LinkedIn link (mirrors migrations/20261004120000). The Prisma client selects this column on
+    // every user query, so it MUST exist or login and /me fail with P2022 "column does not exist".
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "linkedin_url" TEXT`,
   ];
 
   for (const sql of statements) {
@@ -112,6 +115,16 @@ async function main() {
       console.error('[ensure-columns] failed:', sql, err);
       throw err;
     }
+  }
+
+  // Backfill linkedin_url from the older profileJson copy (best effort — never blocks startup).
+  try {
+    await prisma.$executeRawUnsafe(
+      `UPDATE "users" SET "linkedin_url" = "profile_json" ->> 'linkedinUrl' WHERE "linkedin_url" IS NULL AND "profile_json" ->> 'linkedinUrl' IS NOT NULL AND "profile_json" ->> 'linkedinUrl' <> ''`,
+    );
+    console.log('[ensure-columns] ok: linkedin_url backfill');
+  } catch (err) {
+    console.warn('[ensure-columns] linkedin_url backfill skipped:', err && err.message ? err.message : err);
   }
 
   // Rename legacy enum value draft → saved (runs before prisma db push).
