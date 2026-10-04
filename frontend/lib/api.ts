@@ -126,7 +126,10 @@ export async function api<T>(path: string, init: RequestInit = {}, options: ApiO
       } else if (path.includes("/join-requests")) {
         invalidateApiCache(/\/join-requests(\/|$)/);
       } else if (path.includes("/teams")) {
-        invalidateApiCache(/\/teams(\/|$)/);
+        // Admin's allocation table reads /admin/bootstrap, which embeds each team's
+        // mentorAssignments — a team mutation (e.g. assign-industrial-mentor) must
+        // invalidate that too, or the admin table keeps serving a stale 60s snapshot.
+        invalidateApiCache(/\/(teams|admin)(\/|$)/);
       } else if (path.includes("/notifications")) {
         invalidateApiCache(/\/notifications(\/|$)/);
       } else if (path.includes("/idea-submissions") || path.includes("/problem-statements")) {
