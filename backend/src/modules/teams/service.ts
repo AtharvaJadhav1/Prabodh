@@ -8,7 +8,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InviteStatus, JoinRequestStatus, NotificationType, PlatformRole, Prisma, PsPreferenceStatus, TeamStatus } from '@prisma/client';
+import { IdeaStatus, InviteStatus, JoinRequestStatus, NotificationType, PlatformRole, Prisma, PsPreferenceStatus, TeamStatus } from '@prisma/client';
 import { AuthUser } from '../../common/auth.types';
 import { hasAnyRole, hasRole } from '../../lib/roles';
 import { writeAudit } from '../../lib/audit';
@@ -18,8 +18,10 @@ import { deleteObjectsByPrefix, isS3Configured } from '../../lib/s3';
 import { PrismaService } from '../../lib/prisma.service';
 import { sendTeamMemberInviteEmail } from '../../lib/invite-email';
 import { consumeToken } from '../../lib/rate-limit';
+import { isTeamFrozen, TEAM_FROZEN_MESSAGE } from '../../lib/team-rules';
 import { getSettingNumber } from '../../lib/settings';
 import { resolveDeliverableRow } from '../../lib/deliverable-url';
+import { clearPsListCache } from '../../lib/ps-list-cache';
 import { generateTeamCode, TeamsRepository } from './repository';
 import { createTeamSchema, inviteSchema, patchTeamSchema } from './schema';
 import { z } from 'zod';
@@ -258,6 +260,7 @@ export class TeamsService {
     }
     const team = await this.prisma.team.findUnique({ where: { id: teamId } });
     if (!team) throw new NotFoundException('Team not found');
+    this.assertTeamMutable(team);
 
     const cap = await getSettingNumber(this.prisma, 'industry_mentor_cap');
     if (cap < 1) {
@@ -405,6 +408,7 @@ export class TeamsService {
     if (team.leaderUserId !== user.id && !hasRole(user, PlatformRole.admin)) {
       throw new ForbiddenException('Only the team leader can edit details');
     }
+    this.assertTeamMutable(team);
     if (team.status === TeamStatus.locked || team.detailsLockAt) {
       throw new ForbiddenException('Team details are locked');
     }
@@ -423,12 +427,14 @@ export class TeamsService {
   }
 
   async invite(user: AuthUser, teamId: string, body: z.infer<typeof inviteSchema>) {
-    await consumeToken(`invite:${user.id}`, Number(process.env.INVITE_RATE_LIMIT_PER_MIN ?? 10));
     const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
     if (team.leaderUserId !== user.id) {
       throw new ForbiddenException('Only the team leader can invite members');
     }
+    // Checked before the token is consumed so a frozen team can't burn a leader's quota.
+    this.assertTeamMutable(team);
+    await consumeToken(`invite:${user.id}`, Number(process.env.INVITE_RATE_LIMIT_PER_MIN ?? 10));
     const email = body.email.toLowerCase();
     const existing = await this.repo.findMemberByEmail(teamId, email);
     if (existing && existing.inviteStatus !== InviteStatus.revoked && existing.inviteStatus !== InviteStatus.expired) {
@@ -486,6 +492,7 @@ export class TeamsService {
     if (team.leaderUserId !== user.id && !hasRole(user, PlatformRole.admin)) {
       throw new ForbiddenException('Only the team leader can remove members');
     }
+    this.assertTeamMutable(team);
     const member = await this.prisma.teamMember.findFirst({ where: { id: memberId, teamId } });
     if (!member) throw new NotFoundException('Member not found');
     if (member.userId === team.leaderUserId) {
@@ -506,6 +513,7 @@ export class TeamsService {
     if (team.leaderUserId !== user.id && !hasRole(user, PlatformRole.admin)) {
       throw new ForbiddenException('Only the team leader can revoke invites');
     }
+    this.assertTeamMutable(team);
     const member = await this.prisma.teamMember.findFirst({ where: { id: memberId, teamId } });
     if (!member) throw new NotFoundException('Invite not found');
     if (member.inviteStatus === InviteStatus.accepted) {
@@ -555,13 +563,16 @@ export class TeamsService {
     const invite = await this.prisma.teamMember.findUnique({
       where: { id: inviteId },
       include: {
-        team: { select: { id: true, name: true, leaderUserId: true } },
+        team: { select: { id: true, name: true, leaderUserId: true, status: true } },
       },
     });
     if (!invite) throw new NotFoundException('Invite not found');
     if (invite.inviteStatus !== InviteStatus.pending) {
       throw new BadRequestException('This invite is no longer pending');
     }
+    // Disqualification deletes invites, so this is only reachable in a race against it.
+    // Guarding on the loaded team keeps that race a clean 403 instead of a failed update.
+    this.assertTeamMutable(invite.team);
     if (invite.userId !== user.id && invite.invitedEmail !== user.email.trim().toLowerCase()) {
       throw new ForbiddenException('This invite was not dispatched to your account');
     }
@@ -639,9 +650,10 @@ export class TeamsService {
   async createJoinRequest(user: AuthUser, teamId: string) {
     const team = await this.prisma.team.findUnique({
       where: { id: teamId },
-      select: { id: true, name: true, leaderUserId: true },
+      select: { id: true, name: true, leaderUserId: true, status: true },
     });
     if (!team) throw new NotFoundException('Team not found');
+    this.assertTeamMutable(team);
 
     const alreadyInTeam = await this.findUserTeam(user.id);
     if (alreadyInTeam) {
@@ -695,6 +707,7 @@ export class TeamsService {
     if (team.leaderUserId !== user.id && !hasRole(user, PlatformRole.admin)) {
       throw new ForbiddenException('Only the team leader can see join requests');
     }
+    this.assertTeamMutable(team);
     return this.prisma.joinRequest.findMany({
       where: { teamId, status: JoinRequestStatus.pending },
       orderBy: { createdAt: 'asc' },
@@ -724,22 +737,26 @@ export class TeamsService {
     }
     const team = await this.prisma.team.findUnique({
       where: { id: request.teamId },
-      select: { id: true, name: true, leaderUserId: true },
+      select: { id: true, name: true, leaderUserId: true, status: true },
     });
     if (!team) throw new NotFoundException('Team not found');
     if (team.leaderUserId !== user.id && !hasRole(user, PlatformRole.admin)) {
       throw new ForbiddenException('Only the team leader can accept join requests');
     }
+    this.assertTeamMutable(team);
 
     const member = await this.prisma.$transaction(async (tx) => {
       const verified = await tx.team.findUnique({
         where: { id: team.id },
-        select: { id: true, leaderUserId: true },
+        select: { id: true, leaderUserId: true, status: true },
       });
       if (!verified) throw new NotFoundException('Team not found');
       if (verified.leaderUserId !== user.id && !hasRole(user, PlatformRole.admin)) {
         throw new ForbiddenException('Only the team leader can accept join requests');
       }
+      // Re-checked inside the transaction: the team could have been disqualified between
+      // the read above and this write.
+      this.assertTeamMutable(verified);
 
       const alreadyPlaced = await tx.team.findFirst({
         where: {
@@ -819,12 +836,13 @@ export class TeamsService {
     }
     const team = await this.prisma.team.findUnique({
       where: { id: request.teamId },
-      select: { id: true, name: true, leaderUserId: true },
+      select: { id: true, name: true, leaderUserId: true, status: true },
     });
     if (!team) throw new NotFoundException('Team not found');
     if (team.leaderUserId !== user.id && !hasRole(user, PlatformRole.admin)) {
       throw new ForbiddenException('Only the team leader can reject join requests');
     }
+    this.assertTeamMutable(team);
 
     const updated = await this.prisma.joinRequest.update({
       where: { id: request.id },
@@ -872,6 +890,7 @@ export class TeamsService {
     if (!canFreezeTeam(user, assignments)) {
       throw new ForbiddenException('Only an admin or the team faculty mentor can freeze a team');
     }
+    this.assertTeamMutable(team);
     const before = { status: team.status, detailsLockAt: team.detailsLockAt };
     const updated = await this.repo.lock(teamId);
     await writeAudit(this.prisma, {
@@ -901,15 +920,36 @@ export class TeamsService {
     if (!team) throw new NotFoundException('Team not found');
     // A team disqualified earlier (before records were removed) can be cleared by running this again.
 
-    const [memberRows, mentorRows, teamRow] = await Promise.all([
+    const [memberRows, mentorRows, countedIdeas] = await Promise.all([
       this.prisma.teamMember.findMany({ where: { teamId }, select: { userId: true } }),
-      this.prisma.mentorAssignment.findMany({ where: { teamId, active: true }, select: { mentorUserId: true } }),
-      this.prisma.team.findUnique({ where: { id: teamId }, select: { psId: true } }),
+      // Every assignment is deleted below, so notify all of them — not just active seats.
+      this.prisma.mentorAssignment.findMany({
+        where: { teamId },
+        select: { mentorUserId: true, mentorType: true },
+      }),
+      // `teamsSelectedCount` is incremented once per live idea draft, not once per team
+      // (problem-statements repository.createDraftWithCap). Releasing only team.psId would
+      // strand a count on every other problem statement this team drafted against, permanently
+      // shrinking those caps for unrelated teams. Abandoned drafts already released theirs in
+      // abandonDraft, so only draft/locked rows still hold a count.
+      this.prisma.ideaSubmission.findMany({
+        where: { teamId, status: { in: [IdeaStatus.draft, IdeaStatus.locked] } },
+        select: { psId: true },
+      }),
     ]);
     const studentIds = [
       ...new Set([team.leaderUserId, ...memberRows.map((m) => m.userId).filter((id): id is string => !!id)]),
     ];
     const mentorIds = [...new Set(mentorRows.map((m) => m.mentorUserId))];
+    // Recorded on the audit row because the assignments themselves are deleted below. Without
+    // it a mentor who never authored a `team.*` row would lose sight of a team they were
+    // assigned to once it is disqualified.
+    const priorMentors = mentorRows.map((m) => ({ userId: m.mentorUserId, mentorType: m.mentorType }));
+    // A team can hold several live drafts on different PSes; each one consumed a slot.
+    const releaseByPsId = new Map<string, number>();
+    for (const idea of countedIdeas) {
+      releaseByPsId.set(idea.psId, (releaseByPsId.get(idea.psId) ?? 0) + 1);
+    }
 
     const removed = await this.prisma.$transaction(
       async (tx) => {
@@ -932,12 +972,28 @@ export class TeamsService {
         const members = (await tx.teamMember.deleteMany({ where: { teamId } })).count;
         const psPreferences = (await tx.teamPsPreference.deleteMany({ where: { teamId } })).count;
         const stageStatuses = (await tx.teamStageStatus.deleteMany({ where: { teamId } })).count;
-        await tx.notification.deleteMany({ where: { relatedEntity: `team:${teamId}` } });
-        if (teamRow?.psId) {
-          await tx.problemStatement.updateMany({
-            where: { id: teamRow.psId },
-            data: { teamsSelectedCount: { decrement: 1 } },
+        // Notifications are written under two different keys across the codebase
+        // (`team:<id>` and a bare `<id>`); both have to go or students keep
+        // notifications pointing at a team they can no longer open.
+        await tx.notification.deleteMany({
+          where: { OR: [{ relatedEntity: `team:${teamId}` }, { relatedEntity: teamId }] },
+        });
+        // Release one slot per live draft, grouped per problem statement. Clamped at zero
+        // so a counter that was never incremented for this team can't be driven negative,
+        // which would silently disable that problem statement's cap.
+        for (const [psId, count] of releaseByPsId) {
+          const ps = await tx.problemStatement.findUnique({
+            where: { id: psId },
+            select: { teamsSelectedCount: true },
           });
+          if (!ps) continue;
+          const next = Math.max(0, ps.teamsSelectedCount - count);
+          if (next !== ps.teamsSelectedCount) {
+            await tx.problemStatement.update({
+              where: { id: psId },
+              data: { teamsSelectedCount: next },
+            });
+          }
         }
         // Last: nothing references the team any more (batch/leader/mentor pointers live on the row itself).
         await tx.team.delete({ where: { id: teamId } });
@@ -953,10 +1009,14 @@ export class TeamsService {
           members,
           psPreferences,
           stageStatuses,
+          psSlotsReleased: Object.fromEntries(releaseByPsId),
         };
       },
       { timeout: 30_000 },
     );
+
+    // Released slots change what the PS list reports as full.
+    clearPsListCache();
 
     await writeAudit(this.prisma, {
       actorUserId: user.id,
@@ -969,6 +1029,11 @@ export class TeamsService {
         teamName: team.name,
         teamCode: team.teamCode,
         memberCount: studentIds.length,
+        // Snapshot of who the mentors were, so their audit-log scope survives the delete above.
+        // Kept as two flat id arrays rather than a list of objects: `array_contains` only
+        // matches on a JSON array of scalars, and the reader filters by mentor type.
+        instituteMentorIds: priorMentors.filter((m) => m.mentorType === 'institute').map((m) => m.userId),
+        industryMentorIds: priorMentors.filter((m) => m.mentorType === 'industry').map((m) => m.userId),
         removed,
       },
     });
@@ -1020,6 +1085,23 @@ export class TeamsService {
     const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
     await this.assertCanView(user, team);
+    return team;
+  }
+
+  /**
+* A disqualified team is frozen permanently: every mutation is refused, for admins too.
+   * Reads stay open through `assertCanView`, which lets admins keep the record for history
+   * and audit purposes. Deliberately role-agnostic - a freeze cannot be side-stepped by
+   * holding a stronger role.
+   *
+   * `disqualify` now deletes the team row outright, so a newly disqualified team trips a 404
+   * rather than this guard. It still matters for teams disqualified before that change, whose
+   * rows survive marked `disqualified` and would otherwise be fully mutable.
+   */
+  assertTeamMutable(team: { status?: string | null }) {
+    if (isTeamFrozen(team.status)) {
+      throw new ForbiddenException(TEAM_FROZEN_MESSAGE);
+    }
     return team;
   }
 

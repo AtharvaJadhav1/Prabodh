@@ -55,7 +55,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { session, logout } = useAuth();
-  const { filledCount, pendingRequestCount, role, teamName, team, isLead, renameTeam, incomingInvites } = useTeam();
+  const { filledCount, pendingRequestCount, teamName, team, isLead, renameTeam, incomingInvites } = useTeam();
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(teamName);
   const [savingName, setSavingName] = useState(false);
@@ -64,14 +64,6 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const fullName = session?.fullName ?? "Student";
   const displayName = fullName.length > 16 ? fullName.split(" ")[0] : fullName;
   const profileAvatar = getUserAvatarUrl(session);
-  const rolePill =
-    role !== null
-      ? role === "LEAD"
-        ? { label: "Team Lead", className: "bg-brand-primary/10 text-brand-primary" }
-        : role === "MEMBER"
-          ? { label: "Team Member", className: "bg-brand-approved/10 text-brand-approved" }
-          : { label: "Solo / No Team", className: "bg-brand-muted/10 text-brand-muted" }
-      : null;
 
   return (
     <>
@@ -197,7 +189,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 </div>
               )}
               <span className="shrink-0 font-semibold text-brand-muted">
-                {filledCount} {filledCount === 1 ? "member" : "members"}
+                {filledCount} Mates
               </span>
             </div>
           </div>
@@ -276,25 +268,12 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                   className="h-full w-full object-cover select-none"
                 />
               </div>
-              <div className="flex min-w-0 flex-1 flex-col items-start">
-                <p
-                  title={fullName}
-                  className="max-w-full truncate text-sm font-semibold leading-tight text-[#3C1D06]"
-                >
-                  {displayName}
-                </p>
-                {rolePill ? (
-                  <span
-                    className={`mt-1 inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-xs font-semibold leading-tight ${rolePill.className}`}
-                  >
-                    <span className="truncate">{rolePill.label}</span>
-                  </span>
-                ) : (
-                  <span className="mt-1 inline-flex max-w-full items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold leading-tight text-amber-800">
-                    <span className="truncate">Solo / No Team</span>
-                  </span>
-                )}
-              </div>
+              <p
+                title={fullName}
+                className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-[#3C1D06]"
+              >
+                {displayName}
+              </p>
               <ChevronRightIcon className="ml-auto h-4 w-4 shrink-0 text-stone-400 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-amber-600" />
             </Link>
             <button

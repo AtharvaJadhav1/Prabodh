@@ -26,6 +26,7 @@ export class PsPreferencesService {
 
   async save(user: AuthUser, teamId: string, body: z.infer<typeof submitPreferencesSchema>) {
     const team = await this.teams.assertTeamAccess(user, teamId);
+    this.teams.assertTeamMutable(team);
     if (!this.teams.isLeader(user, team)) {
       throw new ForbiddenException('Only the team leader can save problem statement preferences');
     }
@@ -36,6 +37,7 @@ export class PsPreferencesService {
 
   async submit(user: AuthUser, teamId: string, body: z.infer<typeof submitPreferencesSchema>) {
     const team = await this.teams.assertTeamAccess(user, teamId);
+    this.teams.assertTeamMutable(team);
     if (!this.teams.isLeader(user, team)) {
       throw new ForbiddenException('Only the team leader can submit problem statement preferences');
     }
@@ -131,6 +133,12 @@ export class PsPreferencesService {
   }
 
   async approve(user: AuthUser, teamId: string, preferenceId: string) {
+    // Checked separately from assertTeamAccess so the existing "not an active mentor"
+    // error is preserved — this only needs to stop writes against a frozen team.
+    const status = await this.prisma.team.findUnique({ where: { id: teamId }, select: { status: true } });
+    if (!status) throw new NotFoundException('Team not found');
+    this.teams.assertTeamMutable(status);
+
     const isActiveMentor = await this.prisma.mentorAssignment.findFirst({
       where: { teamId, mentorUserId: user.id, active: true },
     });

@@ -179,9 +179,16 @@ export default function TeamWorkspaceCard() {
         </div>
       </div>
 
+      {!isLead && (
+        <p className="mt-4 flex items-center gap-2 rounded-xl border border-brand-softline bg-brand-cream px-4 py-2.5 text-xs font-semibold text-brand-muted">
+          <LockIcon className="h-3.5 w-3.5 shrink-0" />
+          Team settings and invitations are managed by your Team Lead.
+        </p>
+      )}
+
       <div className="mt-6">
         <span className="text-xs font-bold tracking-tight text-brand-deep">
-          Roster · {confirmedMembers.length} {confirmedMembers.length === 1 ? "member" : "members"}
+          Roster · {confirmedMembers.length} Mates
         </span>
         {totalOccupied > 0 && (
           <div className="mt-2 flex w-44 items-center gap-1.5 sm:w-56">
@@ -206,7 +213,7 @@ export default function TeamWorkspaceCard() {
           <div className="flex items-baseline gap-2.5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#786C65]">Team Roster</h3>
             <span className="rounded-full bg-brand-cream px-2.5 py-1 text-[11px] font-bold text-brand-primary">
-              {confirmedMembers.length} {confirmedMembers.length === 1 ? "member" : "members"}
+              {confirmedMembers.length} Mates
             </span>
           </div>
         </div>
@@ -357,17 +364,12 @@ export default function TeamWorkspaceCard() {
                 <span>Add Teammate</span>
               </button>
             )
-          ) : (
-            <div className="flex items-center justify-center gap-2 rounded-xl border border-brand-softline bg-brand-cream px-4 py-4 text-xs font-semibold text-brand-muted">
-              <LockIcon className="h-4 w-4" />
-              Read Only — Group managed by Team Lead
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-brand-softline pt-4">
-        {isLead ? (
+        {isLead && (
           <button
             type="button"
             onClick={openDrawer}
@@ -376,15 +378,12 @@ export default function TeamWorkspaceCard() {
             <UserPlusIcon className="h-4 w-4" />
             Manage Group Requests
           </button>
-        ) : (
-          <span className="inline-flex items-center gap-2 rounded-xl border border-brand-softline bg-brand-cream px-4 py-2.5 text-xs font-semibold text-brand-muted">
-            <LockIcon className="h-4 w-4" />
-            Read Only — Group managed by Team Lead
-          </span>
         )}
         <Link
           href="/dashboard/student/group-requests"
-          className="inline-flex items-center gap-2 rounded-xl border border-brand-softline px-4 py-2.5 text-sm font-bold text-brand-deep transition-colors hover:border-brand-primary/40 hover:text-brand-primary"
+          className={`inline-flex items-center gap-2 rounded-xl border border-brand-softline px-4 py-2.5 text-sm font-bold text-brand-deep transition-colors hover:border-brand-primary/40 hover:text-brand-primary ${
+            isLead ? "" : "ml-auto"
+          }`}
         >
           Open Full Team Page
         </Link>

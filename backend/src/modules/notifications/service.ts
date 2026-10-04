@@ -144,7 +144,7 @@ export class NotificationsService {
   }
 
   async addComment(user: AuthUser, teamId: string, body: z.infer<typeof commentSchema>) {
-    await this.teams.assertTeamAccess(user, teamId);
+    this.teams.assertTeamMutable(await this.teams.assertTeamAccess(user, teamId));
     const comment = await this.prisma.comment.create({
       data: {
         teamId,
@@ -198,7 +198,7 @@ export class NotificationsService {
   }
 
   async deleteComment(user: AuthUser, teamId: string, commentId: string) {
-    await this.teams.assertTeamAccess(user, teamId);
+    this.teams.assertTeamMutable(await this.teams.assertTeamAccess(user, teamId));
     const comment = await this.prisma.comment.findUnique({ where: { id: commentId } });
     if (!comment || comment.teamId !== teamId) {
       throw new NotFoundException('Comment not found');

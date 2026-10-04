@@ -161,17 +161,12 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }: Props) {
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#3c2415] text-sm font-bold text-[#ffddb8]">
               {initialsFrom(session?.fullName ?? "AD")}
             </div>
-            <div className="flex min-w-0 flex-1 flex-col items-start">
-              <span
-                title={session?.fullName ?? "Platform Administrator"}
-                className="max-w-full truncate text-sm font-semibold leading-tight text-[#3C1D06]"
-              >
-                {session?.fullName ?? "Platform Administrator"}
-              </span>
-              <span className="mt-1 inline-flex max-w-full items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold leading-tight text-amber-800">
-                <span className="truncate">Nodal Admin</span>
-              </span>
-            </div>
+            <span
+              title={session?.fullName ?? "Platform Administrator"}
+              className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-[#3C1D06]"
+            >
+              {session?.fullName ?? "Platform Administrator"}
+            </span>
             <ChevronRightIcon className="ml-auto h-4 w-4 shrink-0 text-stone-400 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-amber-600" />
           </Link>
           <div className="px-3">

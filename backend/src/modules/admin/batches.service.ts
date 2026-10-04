@@ -4,6 +4,7 @@ import { AuthUser } from '../../common/auth.types';
 import { writeAudit } from '../../lib/audit';
 import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
+import { isTeamFrozen } from '../../lib/team-rules';
 
 export const batchCreateSchema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -221,6 +222,7 @@ export class BatchesService {
         id: true,
         email: true,
         ledTeams: {
+          where: { status: { not: 'disqualified' } },
           select: { id: true, name: true, teamCode: true, batchId: true, batch: { select: { name: true } } },
         },
       },
@@ -299,10 +301,17 @@ export class BatchesService {
   private async assignTeams(tx: Pick<PrismaService, 'team'>, batchId: string, teamIds: string[]) {
     const found = await tx.team.findMany({
       where: { id: { in: teamIds } },
-      select: { id: true, name: true, teamCode: true, batchId: true },
+      select: { id: true, name: true, teamCode: true, batchId: true, status: true },
     });
     if (found.length !== teamIds.length) {
       throw new BadRequestException('One or more selected teams no longer exist.');
+    }
+    // A disqualified team is permanently frozen; its batch seat stays released.
+    const frozen = found.filter((t) => isTeamFrozen(t.status));
+    if (frozen.length) {
+      throw new BadRequestException(
+        `Disqualified teams cannot join a batch: ${frozen.map((t) => `${t.name} (${t.teamCode})`).join(', ')}`,
+      );
     }
     const taken = found.filter((t) => t.batchId && t.batchId !== batchId);
     if (taken.length) {

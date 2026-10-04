@@ -157,6 +157,11 @@ type Props = {
 };
 
 export default function AuditLogView({ endpoint, teamOptions, csvName = "audit_logs.csv" }: Props) {
+  // The mentor audit endpoint returns teamOptions scoped to exactly the rows it serves, which
+  // is the only accurate source once a team has been disqualified and unassigned. Fall back to
+  // the prop when the endpoint does not supply them (admin logs have no team filter).
+  const [scopedTeamOptions, setScopedTeamOptions] = useState<FilterDropdownOption[] | null>(null);
+  const effectiveTeamOptions = scopedTeamOptions ?? teamOptions;
   const [teamId, setTeamId] = useState("");
   const [category, setCategory] = useState("");
   const [hours, setHours] = useState("");
@@ -190,10 +195,13 @@ export default function AuditLogView({ endpoint, teamOptions, csvName = "audit_l
       if (hours) params.set("hours", hours);
       if (q) params.set("search", q);
       if (teamId) params.set("teamId", teamId);
-      const res = await api<AuditMeta>(`${endpoint}${endpoint.includes("?") ? "&" : "?"}${params.toString()}`);
+      const res = await api<AuditMeta & { teamOptions?: FilterDropdownOption[] }>(
+        `${endpoint}${endpoint.includes("?") ? "&" : "?"}${params.toString()}`,
+      );
       setRows(res.items ?? []);
       setTotal(res.total ?? 0);
       setPages(res.pages ?? 0);
+      setScopedTeamOptions(res.teamOptions ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load logs");
       setRows([]);
@@ -247,9 +255,9 @@ export default function AuditLogView({ endpoint, teamOptions, csvName = "audit_l
               />
               <SearchIcon className="absolute right-3 top-3 h-4 w-4 text-neutral-400" />
             </div>
-            {teamOptions && teamOptions.length > 0 ? (
+            {effectiveTeamOptions && effectiveTeamOptions.length > 0 ? (
               <FilterDropdown
-                options={[{ value: "", label: "All Teams" }, ...teamOptions]}
+                options={[{ value: "", label: "All Teams" }, ...effectiveTeamOptions]}
                 value={teamId}
                 onChange={setTeamId}
                 className="w-full sm:w-56"

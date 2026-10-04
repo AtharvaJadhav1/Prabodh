@@ -295,6 +295,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
+  const [accessMessage, setAccessMessage] = useState<string | null>(null);
 
   const [lockPending, setLockPending] = useState(false);
   const [disqualifyPending, setDisqualifyPending] = useState(false);
@@ -323,7 +324,14 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
       .catch((err) => {
         if (silent) return;
         if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
+          // assertCanView explains a disqualified team specifically ("has been disqualified and is
+          // no longer available"); surfacing that beats a generic no-access screen.
           setDenied(true);
+          setAccessMessage(
+            err.status === 403 && /disqualified/i.test(err.message)
+              ? err.message
+              : "You do not have access to this team.",
+          );
         } else {
           setError(err instanceof Error ? err.message : "Failed to load team details.");
         }
@@ -385,11 +393,12 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
         </Link>
         <EmptyState
           icon={<AlertCircleIcon className="h-10 w-10" />}
-          heading="Access denied"
+          heading={accessMessage && /disqualified/i.test(accessMessage) ? "Team unavailable" : "Access denied"}
           description={
-            isIndustry
+            accessMessage ??
+            (isIndustry
               ? "You can view a team's details only after you have accepted its mentor invitation."
-              : "You can only view a team's details once you have accepted their mentor invitation."
+              : "You can only view a team's details once you have accepted their mentor invitation.")
           }
         />
       </div>
@@ -421,6 +430,10 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
   const industrial = mentors?.industrial ?? null;
   const pendingInvite = mentors?.pendingIndustryInvite ?? null;
   const deliverables = (team.deliverables ?? []).slice().sort((a, b) => b.version - a.version);
+// A disqualified team is frozen server-side for every role, so the lock affordance is hidden
+  // for it. The disqualify button is deliberately NOT hidden: it doubles as the cleanup action
+  // that deletes a row left behind by an earlier disqualification.
+  const isFrozen = status === "disqualified";
   const showActions = canLock || canDisqualify;
   const liveMembers = team.members.filter(
     (m) => m.inviteStatus === "pending" || m.inviteStatus === "accepted",
@@ -431,6 +444,24 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
       <Link href={backHref} className="text-sm font-medium text-brand-muted hover:text-brand-primary">
         ← Back to Teams
       </Link>
+
+{status === "disqualified" && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-300 bg-red-50 p-4 text-xs font-medium text-red-700"
+        >
+          <p className="flex items-center gap-2 text-sm font-bold">
+            <AlertTriangleIcon className="h-4 w-4 shrink-0" />
+            This team is disqualified
+          </p>
+          <p className="mt-1.5">
+            Its data has been removed and nothing on it can be changed: no one can invite or add
+            members, submit deliverables or evaluations, edit its details, or place it in a batch.
+            Members are free to create or join another team. This leftover record is kept only for
+            history and can be deleted below; the audit log keeps the record either way.
+          </p>
+        </div>
+      )}
 
       {actionError && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-600">
@@ -510,7 +541,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
             )}
           </Card>
 
-          {isMentor && <PsPreferencesSection team={team} onApproved={reloadSilently} />}
+          {isMentor && !isFrozen && <PsPreferencesSection team={team} onApproved={reloadSilently} />}
 
           <Card title="Deliverables">
             {deliverables.length === 0 ? (
@@ -585,7 +616,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
                 )}
               </div>
 
-              {isMentor ? (
+              {isFrozen ? null : isMentor ? (
                 <button
                   type="button"
                   onClick={() => setInviteOpen(true)}
@@ -609,7 +640,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
           {showActions && (
             <Card title="Team Actions">
               <div className="flex flex-col gap-3">
-                {canLock && status !== "locked" && status !== "disqualified" && !confirmingLock && (
+                {canLock && status !== "locked" && !isFrozen && !confirmingLock && (
                   <button
                     type="button"
                     onClick={() => setConfirmingLock(true)}
@@ -632,7 +663,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
                   />
                 )}
 
-                {canDisqualify && !confirmingDisqualify && (
+{canDisqualify && !confirmingDisqualify && (
                   <button
                     type="button"
                     onClick={() => setConfirmingDisqualify(true)}

@@ -18,7 +18,7 @@ export class EvaluationsService {
   ) {}
 
   async submit(user: AuthUser, body: z.infer<typeof createEvaluationSchema>) {
-    await this.teams.assertTeamAccess(user, body.teamId);
+    this.teams.assertTeamMutable(await this.teams.assertTeamAccess(user, body.teamId));
     const prior = await this.prisma.evaluation.findFirst({
       where: {
         teamId: body.teamId,

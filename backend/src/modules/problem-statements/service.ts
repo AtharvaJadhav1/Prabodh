@@ -8,13 +8,11 @@ import { IdeaStatus } from '@prisma/client';
 import { z } from 'zod';
 import { AuthUser } from '../../common/auth.types';
 import { PrismaService } from '../../lib/prisma.service';
+import { clearPsListCache, psListCache } from '../../lib/ps-list-cache';
 import { getSettingNumber } from '../../lib/settings';
-import { TtlCache } from '../../lib/ttl-cache';
 import { TeamsService } from '../teams/service';
 import { ProblemStatementsRepository } from './repository';
 import { createIdeaSchema, createPsSchema, manualIdeaSchema, patchIdeaSchema, patchPsSchema } from './schema';
-
-const psListCache = new TtlCache<{ items: unknown; total: number; page: number; limit: number; pages: number }>(15_000);
 
 @Injectable()
 export class ProblemStatementsService {
@@ -39,7 +37,7 @@ export class ProblemStatementsService {
 
   async createPs(body: z.infer<typeof createPsSchema>) {
     const created = await this.repo.createPs(body);
-    psListCache.clear();
+    clearPsListCache();
     return created;
   }
 
@@ -47,7 +45,7 @@ export class ProblemStatementsService {
     const existing = await this.repo.findPs(id);
     if (!existing) throw new NotFoundException('Problem statement not found');
     const updated = await this.prisma.problemStatement.update({ where: { id }, data: body });
-    psListCache.clear();
+    clearPsListCache();
     return updated;
   }
 
@@ -59,12 +57,13 @@ export class ProblemStatementsService {
     });
     if (inUse) throw new ConflictException('Cannot delete a PS that still has submissions');
     const deleted = await this.prisma.problemStatement.delete({ where: { id } });
-    psListCache.clear();
+    clearPsListCache();
     return deleted;
   }
 
   async createIdea(user: AuthUser, body: z.infer<typeof createIdeaSchema>) {
     const team = await this.teams.assertTeamAccess(user, body.teamId);
+    this.teams.assertTeamMutable(team);
     if (!this.teams.isLeader(user, team)) {
       throw new ForbiddenException('Only the team leader can submit an idea');
     }
@@ -81,12 +80,13 @@ export class ProblemStatementsService {
       throw new ConflictException('PS full: team cap reached for this problem statement');
     }
     // Cap counters change list payload — drop short-lived list cache.
-    psListCache.clear();
+    clearPsListCache();
     return result.idea;
   }
 
   async selectAndLock(user: AuthUser, body: z.infer<typeof createIdeaSchema>) {
     const team = await this.teams.assertTeamAccess(user, body.teamId);
+    this.teams.assertTeamMutable(team);
     if (!this.teams.isLeader(user, team)) {
       throw new ForbiddenException('Only the team leader can select a problem statement');
     }
@@ -103,7 +103,7 @@ export class ProblemStatementsService {
       throw new ConflictException('PS full: team cap reached for this problem statement');
     }
     const locked = await this.repo.lockIdea(result.idea.id, body.teamId, body.psId);
-    psListCache.clear();
+    clearPsListCache();
     return locked;
   }
 
@@ -112,6 +112,7 @@ export class ProblemStatementsService {
     if (!idea) throw new NotFoundException('Idea not found');
     if (idea.status === IdeaStatus.locked) throw new ForbiddenException('Locked submissions cannot be edited');
     const team = await this.teams.assertTeamAccess(user, idea.teamId);
+    this.teams.assertTeamMutable(team);
     if (!this.teams.isLeader(user, team)) {
       throw new ForbiddenException('Only the team leader can update the idea');
     }
@@ -130,7 +131,7 @@ export class ProblemStatementsService {
       throw new ConflictException('PS full: team cap reached for this problem statement');
     }
     if ('error' in result && result.error === 'ps_not_found') throw new NotFoundException('Problem statement not found');
-    if (body.psId && body.psId !== idea.psId) psListCache.clear();
+    if (body.psId && body.psId !== idea.psId) clearPsListCache();
     return result.idea;
   }
 
@@ -138,6 +139,7 @@ export class ProblemStatementsService {
     const idea = await this.repo.findIdea(id);
     if (!idea) throw new NotFoundException('Idea not found');
     const team = await this.teams.assertTeamAccess(user, idea.teamId);
+    this.teams.assertTeamMutable(team);
     if (!this.teams.isLeader(user, team)) {
       throw new ForbiddenException('Only the team leader can lock the idea');
     }
@@ -149,12 +151,13 @@ export class ProblemStatementsService {
     const idea = await this.repo.findIdea(id);
     if (!idea) throw new NotFoundException('Idea not found');
     const team = await this.teams.assertTeamAccess(user, idea.teamId);
+    this.teams.assertTeamMutable(team);
     if (!this.teams.isLeader(user, team)) {
       throw new ForbiddenException('Only the team leader can abandon a draft');
     }
     const res = await this.repo.abandonDraft(id);
     if ('error' in res) throw new ForbiddenException('Only unlocked drafts can be abandoned');
-    psListCache.clear();
+    clearPsListCache();
     return { abandoned: true };
   }
 
@@ -165,6 +168,7 @@ export class ProblemStatementsService {
 
   async submitManualIdea(user: AuthUser, body: z.infer<typeof manualIdeaSchema>) {
     const team = await this.teams.assertTeamAccess(user, body.teamId);
+    this.teams.assertTeamMutable(team);
     if (!this.teams.isLeader(user, team)) {
       throw new ForbiddenException('Only the team leader can submit a manual problem statement');
     }
@@ -195,7 +199,7 @@ export class ProblemStatementsService {
     });
     if ('error' in draft) throw new ConflictException('Could not create manual submission');
     const locked = await this.repo.lockIdea(draft.idea.id, body.teamId, ps.id);
-    psListCache.clear();
+    clearPsListCache();
     return locked;
   }
 }

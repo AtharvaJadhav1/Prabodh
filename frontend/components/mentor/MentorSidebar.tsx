@@ -14,7 +14,7 @@ import {
   HistoryIcon,
   ChevronRightIcon,
 } from "../dashboard/icons";
-import { roleLabel, useAuth, initialsFrom } from "../auth/AuthProvider";
+import { useAuth, initialsFrom } from "../auth/AuthProvider";
 import RoleSwitcher from "../auth/RoleSwitcher";
 import { useMentorRequests } from "./MentorRequestProvider";
 
@@ -35,7 +35,6 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
   const pathname = usePathname();
   const { pendingCount, unreadCommentCount } = useMentorRequests();
   const { session, logout } = useAuth();
-  const role = roleLabel(session?.activeRole ?? session?.platformRole ?? "institute_mentor");
   const fullName = session?.fullName ?? "Mentor";
   const displayName = fullName.length > 16 ? fullName.split(" ")[0] : fullName;
 
@@ -144,17 +143,12 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold text-white">
                 {initialsFrom(fullName)}
               </div>
-              <div className="flex min-w-0 flex-1 flex-col items-start">
-                <p
-                  title={fullName}
-                  className="max-w-full truncate text-sm font-semibold leading-tight text-[#3C1D06]"
-                >
-                  {displayName}
-                </p>
-                <span className="mt-1 inline-flex max-w-full items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold leading-tight text-amber-800">
-                  <span className="truncate">{role}</span>
-                </span>
-              </div>
+              <p
+                title={fullName}
+                className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-[#3C1D06]"
+              >
+                {displayName}
+              </p>
               <ChevronRightIcon className="ml-auto h-4 w-4 shrink-0 text-stone-400 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-amber-600" />
             </Link>
             <button

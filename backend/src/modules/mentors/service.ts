@@ -15,6 +15,7 @@ import { writeAudit } from '../../lib/audit';
 import { lockTeamRow, requireIndustrialProfileId, syncTeamMentorPointers } from '../../lib/mentor-pointers';
 import { isSelfInvite, mentorRoleFor, sameEmail, seatConflict } from '../../lib/mentor-rules';
 import { hasRole } from '../../lib/roles';
+import { isTeamFrozen, TEAM_FROZEN_MESSAGE } from '../../lib/team-rules';
 import { sendMentorInviteEmail } from '../../lib/invite-email';
 import { notifyUsers } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
@@ -52,7 +53,15 @@ export class MentorsService {
    * guards, and sync the team pointers + mentorLockedAt in the same transaction. The partial unique
    * index mentor_assignments_team_type_active_unique is the last line of defence (P2002).
    */
+  /** A disqualified team is frozen, so no mentor seat can be created, moved or removed on it. */
+  private async assertTeamMutable(teamId: string) {
+    const team = await this.prisma.team.findUnique({ where: { id: teamId }, select: { status: true } });
+    if (team && isTeamFrozen(team.status)) throw new ForbiddenException(TEAM_FROZEN_MESSAGE);
+    return team;
+  }
+
   async allocate(admin: AuthUser, body: z.infer<typeof allocateSchema>) {
+    await this.assertTeamMutable(body.teamId);
     const mentorType = body.mentorType as MentorType;
     const capKey = mentorType === 'institute' ? 'institute_mentor_cap' : 'industry_mentor_cap';
     const cap = await getSettingNumber(this.prisma, capKey);
@@ -207,6 +216,7 @@ export class MentorsService {
   async reassign(admin: AuthUser, assignmentId: string, mentorUserId: string) {
     const initial = await this.repo.findById(assignmentId);
     if (!initial) throw new NotFoundException('Assignment not found');
+    await this.assertTeamMutable(initial.teamId);
     // Deactivate + create in one transaction so a failed create never leaves the team without a mentor.
     let next;
     try {
@@ -288,6 +298,7 @@ export class MentorsService {
    * allocation or an override. Mirrors TeamsService.assignIndustrialMentor's approach for industry.
    */
   async assignInstituteMentor(admin: AuthUser, teamId: string, mentorUserId: string) {
+    await this.assertTeamMutable(teamId);
     let result;
     try {
       result = await this.prisma.$transaction(
@@ -379,6 +390,7 @@ export class MentorsService {
   async unassign(admin: AuthUser, assignmentId: string) {
     const initial = await this.repo.findById(assignmentId);
     if (!initial) throw new NotFoundException('Assignment not found');
+    await this.assertTeamMutable(initial.teamId);
     const updated = await this.prisma.$transaction(
       async (tx) => {
         await lockTeamRow(tx, initial.teamId);
@@ -465,9 +477,45 @@ export class MentorsService {
       where: { mentorUserId: user.id, active: true, ...(query.mentorType ? { mentorType: query.mentorType } : {}) },
       select: { teamId: true },
     });
-    let teamIds = [...new Set(mine.map((a) => a.teamId))];
+    // Disqualifying a team deletes both its record and its mentor assignments, which would drop
+    // the team — and every log line the mentor ever generated for it — out of this scope. Two
+    // sources are unioned back in: teams the mentor personally acted on, and teams whose
+    // disqualification snapshotted them as a prior mentor.
+    const [actedOn, snapshot] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where: { actorUserId: user.id, entityType: 'team' },
+        select: { entityId: true },
+        distinct: ['entityId'],
+      }),
+      // A dual-role account can hold both seats, so the snapshot is read per workspace:
+      // without this filter, institute history would leak into the industry audit view.
+      // `OR` is unavailable inside a JSON filter, so the two workspaces are OR-ed at row level.
+      this.prisma.auditLog.findMany({
+        where: {
+          action: 'team.disqualify',
+          entityType: 'team',
+          OR: query.mentorType
+            ? [{ after: { path: [query.mentorType === 'industry' ? 'industryMentorIds' : 'instituteMentorIds'], array_contains: user.id } }]
+            : [
+                { after: { path: ['instituteMentorIds'], array_contains: user.id } },
+                { after: { path: ['industryMentorIds'], array_contains: user.id } },
+              ],
+        },
+        select: { entityId: true },
+        distinct: ['entityId'],
+      }),
+    ]);
+    let teamIds = [...new Set([...mine.map((a) => a.teamId), ...actedOn.map((h) => h.entityId), ...snapshot.map((h) => h.entityId)])];
     if (query.teamId) teamIds = teamIds.filter((id) => id === query.teamId);
-    if (!teamIds.length) return { items: [], total: 0, page, limit, pages: 0 };
+    if (!teamIds.length) return { items: [], total: 0, page, limit, pages: 0, teamOptions: [] };
+
+    // Options for the team filter, built from the same scope as the rows. The mentor's current
+    // team list can't be reused: a disqualified team is no longer assigned, so it would be
+    // missing from that dropdown while its logs are still listed below.
+    const scopedTeams = await this.prisma.team.findMany({
+      where: { id: { in: teamIds } },
+      select: { id: true, name: true, teamCode: true },
+    });
 
     const assignments = await this.prisma.mentorAssignment.findMany({
       where: { teamId: { in: teamIds } },
@@ -514,7 +562,7 @@ export class MentorsService {
     ]);
     // Raw before/after payloads can hold other people's details — mentors only get the summary.
     const items = (await enrichAuditRows(this.prisma, rows)).map(({ before: _b, after: _a, ...rest }) => rest);
-    return { items, total, page, limit, pages: Math.ceil(total / limit) };
+    return { items, total, page, limit, pages: Math.ceil(total / limit), teamOptions: scopedTeams };
   }
 
   listFaculty() {
@@ -549,6 +597,7 @@ export class MentorsService {
   async inviteFromLeader(user: AuthUser, body: z.infer<typeof mentorInviteSchema>) {
     const team = await this.prisma.team.findUnique({ where: { id: body.teamId } });
     if (!team) throw new NotFoundException('Team not found');
+    if (isTeamFrozen(team.status)) throw new ForbiddenException(TEAM_FROZEN_MESSAGE);
 
     const mentorType: MentorType = body.mentorType;
     const email = body.email.trim().toLowerCase();
@@ -743,6 +792,9 @@ export class MentorsService {
       include: { team: true },
     });
     if (!invite) throw new NotFoundException('Invite not found');
+    // `include: { team: true }` already carries status, so accepting an invite for a team that
+    // was disqualified while the invite was outstanding is refused rather than granted.
+    if (isTeamFrozen(invite.team.status)) throw new ForbiddenException(TEAM_FROZEN_MESSAGE);
     const isInvitee = invite.mentorUserId === user.id || sameEmail(invite.invitedEmail, user.email);
     const isAdmin = hasRole(user, PlatformRole.admin);
     if (!isInvitee && !isAdmin) {

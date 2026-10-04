@@ -27,7 +27,7 @@ export default function HeaderZone() {
 
         <div className="w-full lg:w-96 flex flex-col justify-center">
           <span className="text-xs font-bold tracking-tight text-brand-deep">
-            Roster · {confirmedCount} {confirmedCount === 1 ? "member" : "members"}
+            Roster · {confirmedCount} Mates
             {pendingCount > 0 ? ` · ${pendingCount} pending` : ""}
           </span>
 

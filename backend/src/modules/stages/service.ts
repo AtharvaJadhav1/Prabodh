@@ -112,7 +112,7 @@ export class StagesService {
 
   async presign(user: AuthUser, stageId: string, body: z.infer<typeof presignSchema>) {
     await consumeToken(`upload:${body.teamId}`, Number(process.env.UPLOAD_RATE_LIMIT_PER_MIN ?? 20));
-    await this.teams.assertTeamAccess(user, body.teamId);
+    this.teams.assertTeamMutable(await this.teams.assertTeamAccess(user, body.teamId));
     const stage = await this.prisma.stage.findUnique({ where: { id: stageId } });
     if (!stage) throw new NotFoundException('Stage not found');
     const contentType = normalizeUploadMime(body.filename, body.contentType);
@@ -129,6 +129,7 @@ export class StagesService {
   async uploadDirect(user: AuthUser, stageId: string, body: z.infer<typeof directUploadSchema>) {
     await consumeToken(`upload:${body.teamId}`, Number(process.env.UPLOAD_RATE_LIMIT_PER_MIN ?? 20));
     const team = await this.teams.assertTeamAccess(user, body.teamId);
+    this.teams.assertTeamMutable(team);
     if (!this.teams.isLeader(user, team)) {
       throw new ForbiddenException('Only the team leader can upload deliverables');
     }
@@ -196,6 +197,7 @@ export class StagesService {
 
   async submitDeliverable(user: AuthUser, stageId: string, body: z.infer<typeof deliverableSchema>) {
     const team = await this.teams.assertTeamAccess(user, body.teamId);
+    this.teams.assertTeamMutable(team);
     if (!this.teams.isLeader(user, team)) {
       throw new ForbiddenException('Only the team leader can submit deliverables');
     }
@@ -240,6 +242,7 @@ export class StagesService {
     });
     if (!row) throw new NotFoundException('Deliverable not found');
     const team = await this.teams.assertTeamAccess(user, row.teamId);
+    this.teams.assertTeamMutable(team);
     if (!this.teams.isLeader(user, team)) {
       throw new ForbiddenException('Only the team leader can delete deliverables');
     }
@@ -251,7 +254,7 @@ export class StagesService {
   }
 
   async statusTracker(user: AuthUser, teamId: string) {
-    await this.teams.assertTeamAccess(user, teamId);
+    this.teams.assertTeamMutable(await this.teams.assertTeamAccess(user, teamId));
     const [stages, statuses] = await Promise.all([
       this.list() as Promise<
         Array<{
@@ -281,7 +284,7 @@ export class StagesService {
   }
 
   async patchStatus(user: AuthUser, teamId: string, stageId: string, body: z.infer<typeof statusPatchSchema>) {
-    await this.teams.assertTeamAccess(user, teamId);
+    this.teams.assertTeamMutable(await this.teams.assertTeamAccess(user, teamId));
     const updated = await this.prisma.teamStageStatus.upsert({
       where: { teamId_stageId: { teamId, stageId } },
       create: { teamId, stageId, status: body.status },
