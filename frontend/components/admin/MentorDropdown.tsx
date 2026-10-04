@@ -8,6 +8,8 @@ export type MentorOption = {
   id: string;
   name: string;
   subtext?: string;
+  /** When set, the option renders greyed out with this reason and can't be chosen. */
+  disabledReason?: string;
 };
 
 type MentorDropdownProps = {
@@ -148,23 +150,35 @@ export default function MentorDropdown({
               ) : (
                 options.map((option) => {
                   const isSelected = option.id === selectedId;
+                  const isDisabled = Boolean(option.disabledReason);
                   return (
                     <button
                       key={option.id}
                       type="button"
                       role="option"
                       aria-selected={isSelected}
-                      onClick={() => choose(option.id)}
+                      aria-disabled={isDisabled}
+                      disabled={isDisabled}
+                      title={option.disabledReason}
+                      onClick={() => !isDisabled && choose(option.id)}
                       className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                        isSelected
-                          ? "bg-[#d95c26]/10 font-semibold text-[#d95c26]"
-                          : "text-neutral-700 hover:bg-neutral-100"
+                        isDisabled
+                          ? "cursor-not-allowed text-neutral-300"
+                          : isSelected
+                            ? "bg-[#d95c26]/10 font-semibold text-[#d95c26]"
+                            : "text-neutral-700 hover:bg-neutral-100"
                       }`}
                     >
                       <div className="flex flex-col truncate pr-2">
                         <span className="truncate">{option.name}</span>
-                        {option.subtext && (
-                          <span className="truncate text-xs font-normal text-neutral-400">{option.subtext}</span>
+                        {isDisabled ? (
+                          <span className="truncate text-xs font-normal text-neutral-300">
+                            {option.disabledReason}
+                          </span>
+                        ) : (
+                          option.subtext && (
+                            <span className="truncate text-xs font-normal text-neutral-400">{option.subtext}</span>
+                          )
                         )}
                       </div>
                       {isSelected && <CheckIcon className="h-4 w-4 shrink-0 text-[#d95c26]" />}

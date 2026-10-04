@@ -95,7 +95,13 @@ export default function AllocationTable({ allocations, onAssignInstitute, onAssi
                   </td>
                   <td className="min-w-[190px] px-4 py-4">
                     <MentorDropdown
-                      options={mentors.map((m) => ({ id: m.id, name: m.name, subtext: m.title }))}
+                      options={mentors.map((m) => ({
+                        id: m.id,
+                        name: m.name,
+                        subtext: m.title,
+                        // A mentor already the team's industrial mentor can't also take the institute seat.
+                        disabledReason: m.id === a.assignedIndustryMentorId ? "Already Industrial Mentor" : undefined,
+                      }))}
                       selectedId={a.assignedMentorId ?? undefined}
                       placeholder="Select Institute Mentor..."
                       disabled={pendingTeams.has(a.teamId)}
@@ -105,7 +111,13 @@ export default function AllocationTable({ allocations, onAssignInstitute, onAssi
                   </td>
                   <td className="min-w-[190px] px-4 py-4">
                     <MentorDropdown
-                      options={industryMentorOptions.map((m) => ({ id: m.id, name: m.name, subtext: m.title }))}
+                      options={industryMentorOptions.map((m) => ({
+                        id: m.id,
+                        name: m.name,
+                        subtext: m.title,
+                        // A mentor already the team's institute mentor can't also take the industrial seat.
+                        disabledReason: m.id === a.assignedMentorId ? "Already Institute Mentor" : undefined,
+                      }))}
                       selectedId={a.assignedIndustryMentorId ?? undefined}
                       placeholder="Select Industrial Mentor..."
                       disabled={pendingTeams.has(a.teamId)}

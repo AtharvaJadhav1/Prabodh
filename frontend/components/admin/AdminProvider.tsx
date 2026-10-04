@@ -226,6 +226,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         failFast("Invalid mentor ID format");
         return;
       }
+      if (target && target === current.assignedIndustryMentorId) {
+        failFast("This mentor is already the industrial mentor for this team — pick someone else.");
+        return;
+      }
       const name = mentors.find((m) => m.id === target)?.name ?? null;
       void runAllocation(
         teamId,
@@ -255,6 +259,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       const target = (mentorUserId || "").trim();
       if (target && !UUID_RE.test(target)) {
         failFast("Invalid mentor ID format");
+        return;
+      }
+      if (target && target === current.assignedMentorId) {
+        failFast("This mentor is already the institute mentor for this team — pick someone else.");
         return;
       }
       const name = industryMentorOptions.find((m) => m.id === target)?.name ?? null;
