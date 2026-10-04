@@ -763,6 +763,62 @@ export class TeamsService {
     return member;
   }
 
+  /**
+   * Lead undoes an accidental team creation: only while the team is still in its earliest
+   * state (`forming`, no problem statement picked, no deliverables submitted). Disbanding wipes
+   * the team via the same cascade used for a solo-lead's old team on switch/self-delete
+   * (`deleteTeams`), which also revokes any pending invites since they live in `teamMember` rows.
+   */
+  async disbandTeam(user: AuthUser, teamId: string) {
+    const team = await this.repo.findForAccessCheck(teamId);
+    if (!team) throw new NotFoundException('Team not found');
+    if (team.leaderUserId !== user.id) {
+      throw new ForbiddenException('Only the Team Lead can undo team creation');
+    }
+    this.assertTeamMutable(team);
+    if (team.status !== TeamStatus.forming) {
+      throw new BadRequestException('This team has progressed too far to be undone; disband it manually instead.');
+    }
+    const psRow = await this.prisma.team.findUnique({ where: { id: teamId }, select: { psId: true } });
+    if (psRow?.psId) {
+      throw new BadRequestException('A problem statement has already been locked in for this team.');
+    }
+    const deliverableCount = await this.prisma.deliverable.count({ where: { teamId } });
+    if (deliverableCount > 0) {
+      throw new BadRequestException('This team has already submitted deliverables and can no longer be undone.');
+    }
+
+    const memberRows = await this.prisma.teamMember.findMany({
+      where: { teamId, inviteStatus: InviteStatus.accepted, userId: { not: user.id } },
+      select: { userId: true },
+    });
+    const notifyIds = memberRows.map((m) => m.userId).filter((id): id is string => !!id);
+
+    await this.prisma.$transaction(async (tx) => {
+      await deleteTeams(tx, [teamId]);
+    });
+
+    await writeAudit(this.prisma, {
+      actorUserId: user.id,
+      action: 'team.disband',
+      entityType: 'team',
+      entityId: teamId,
+      before: { name: team.name, teamCode: team.teamCode, status: team.status },
+      after: { memberCount: notifyIds.length + 1 },
+    });
+
+    if (notifyIds.length > 0) {
+      void notifyUsers(this.prisma, notifyIds, {
+        type: 'status_change',
+        template: 'admin_broadcast',
+        title: `Team "${team.name}" was disbanded`,
+        body: `${user.fullName} undid the creation of "${team.name}" (${team.teamCode}). You are no longer part of it and can create or join another team.`,
+      }).catch((err) => console.error('[teams.disbandTeam] notify members failed', err));
+    }
+
+    return { ok: true, teamId };
+  }
+
   /** Student asks to join a team. Lead then accepts or rejects from their Requests tab. */
   async createJoinRequest(user: AuthUser, teamId: string) {
     const team = await this.prisma.team.findUnique({

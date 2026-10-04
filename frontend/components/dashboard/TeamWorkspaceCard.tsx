@@ -8,6 +8,7 @@ import LoadingState from "../LoadingState";
 import { getUserAvatarUrl } from "../../lib/avatar";
 import InteractiveTeamAvatar from "./InteractiveTeamAvatar";
 import { CreateTeamForm } from "./CreateTeamModal";
+import UndoTeamModal from "./UndoTeamModal";
 import {
   UserPlusIcon,
   LockIcon,
@@ -16,10 +17,12 @@ import {
   SendIcon,
   ClockIcon,
   CheckIcon,
+  TrashIcon,
 } from "./icons";
 
 export default function TeamWorkspaceCard() {
   const {
+    team,
     members,
     openDrawer,
     invites,
@@ -39,6 +42,12 @@ export default function TeamWorkspaceCard() {
   const [inviteError, setInviteError] = useState("");
   const [inviteSuccess, setInviteSuccess] = useState("");
   const [revokingInviteId, setRevokingInviteId] = useState<string | null>(null);
+  const [undoOpen, setUndoOpen] = useState(false);
+  const canUndo =
+    isLead &&
+    team?.status === "forming" &&
+    !team?.problemStatement &&
+    (team?.deliverables?.length ?? 0) === 0;
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const teamNameWrapRef = useRef<HTMLDivElement | null>(null);
   const confirmedMembers = members.filter((m) => m.status === "Verified");
@@ -143,6 +152,16 @@ export default function TeamWorkspaceCard() {
             </p>
           </div>
         </div>
+        {canUndo && (
+          <button
+            type="button"
+            onClick={() => setUndoOpen(true)}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 transition-colors hover:bg-red-100 hover:text-red-700"
+          >
+            <TrashIcon className="h-3.5 w-3.5" />
+            Undo Team Creation
+          </button>
+        )}
       </div>
 
       {!isLead && (
@@ -345,6 +364,11 @@ export default function TeamWorkspaceCard() {
           Open Full Team Page
         </Link>
       </div>
+      <UndoTeamModal
+        open={undoOpen}
+        onClose={() => setUndoOpen(false)}
+        onDisbanded={() => setUndoOpen(false)}
+      />
     </section>
   );
 }

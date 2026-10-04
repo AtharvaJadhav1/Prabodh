@@ -66,6 +66,13 @@ export class TeamsController {
     return this.teams.switchTeams(user, inviteId, body?.successorUserId);
   }
 
+  /** Undo an accidental team creation: only the lead, only while still in its earliest state. */
+  @Post(':teamId/disband')
+  @Roles(PlatformRole.student)
+  disbandTeam(@CurrentUser() user: AuthUser, @Param('teamId') teamId: string) {
+    return this.teams.disbandTeam(user, teamId);
+  }
+
   @Get(':teamId/deliverables')
   deliverables(@CurrentUser() user: AuthUser, @Param('teamId') teamId: string) {
     return this.teams.listDeliverables(user, teamId);

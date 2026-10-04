@@ -87,6 +87,7 @@ type TeamContextValue = {
   reload: () => Promise<void>;
   createTeam: (name: string) => Promise<void>;
   renameTeam: (name: string) => Promise<void>;
+  disbandTeam: () => Promise<void>;
   removeCommentLocally: (commentId: string) => void;
   addCommentLocally: (comment: import("../../lib/types").PortalComment) => void;
   refreshDeliverables: () => Promise<void>;
@@ -746,6 +747,16 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           if (!team?.id) return;
           if (team.status === "locked") throw new Error("Team details are locked");
           await apiPatch(`/teams/${team.id}`, { name });
+          await reload();
+        },
+        disbandTeam: async () => {
+          if (!team?.id) return;
+          await apiPost(`/teams/${team.id}/disband`, {});
+          setTeam(null);
+          setMembers([]);
+          setInvites([]);
+          setMemberIds({});
+          setRole("NO_TEAM");
           await reload();
         },
       }}
