@@ -12,7 +12,6 @@ import {
   PersonIcon,
   LogoutIcon,
   XIcon,
-  HistoryIcon,
   ChevronRightIcon,
 } from "../dashboard/icons";
 import { roleLabel, useAuth } from "../auth/AuthProvider";
@@ -72,7 +71,6 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
     },
     { label: "My Mentors", href: "/dashboard/industry/mentors", match: "start", icon: BriefcaseIcon },
     { label: "Assigned Teams", href: "/dashboard/industry/teams", match: "start", icon: FileCheckIcon },
-    { label: "Audit Logs", href: "/dashboard/industry/audit-logs", match: "start", icon: HistoryIcon },
   ];
 
   return (

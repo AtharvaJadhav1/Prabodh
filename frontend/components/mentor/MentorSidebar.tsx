@@ -11,7 +11,6 @@ import {
   XIcon,
   InboxIcon,
   UsersIcon,
-  HistoryIcon,
   ChevronRightIcon,
 } from "../dashboard/icons";
 import { useAuth, initialsFrom } from "../auth/AuthProvider";
@@ -50,7 +49,6 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
     },
     { label: "PS Approvals", href: "/dashboard/mentor/ps-approvals", match: "start", icon: CompassIcon },
     { label: "Team Queries", href: "/dashboard/mentor/queries", match: "start", icon: MessageIcon, badge: unreadCommentCount > 0 ? String(unreadCommentCount) : undefined },
-    { label: "Audit Logs", href: "/dashboard/mentor/audit-logs", match: "start", icon: HistoryIcon },
   ];
 
   return (
