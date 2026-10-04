@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { api, apiPost, ApiError } from "../../lib/api";
 import { downloadDataUrl } from "../../lib/download-data-url";
 import type { PortalTeam, TeamMentors } from "../../lib/types";
@@ -105,6 +106,7 @@ function DisqualifyPanel({
   teamName,
   teamCode,
   memberCount,
+  alreadyDisqualified,
   pending,
   onCancel,
   onConfirm,
@@ -112,6 +114,7 @@ function DisqualifyPanel({
   teamName: string;
   teamCode: string;
   memberCount: number;
+  alreadyDisqualified: boolean;
   pending: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -122,22 +125,21 @@ function DisqualifyPanel({
     <div role="alertdialog" aria-label="Disqualify team" className="rounded-xl border border-red-300 bg-red-50 p-4">
       <p className="flex items-center gap-2 text-sm font-bold text-red-700">
         <AlertTriangleIcon className="h-4 w-4 shrink-0" />
-        Disqualify &ldquo;{teamName}&rdquo;?
+        {alreadyDisqualified ? "Remove" : "Disqualify"} &ldquo;{teamName}&rdquo;?
       </p>
       <p className="mt-2 text-xs font-medium text-red-700">
-        This permanently removes the team&apos;s data and cannot be undone:
+        This permanently deletes the team and its data, and cannot be undone:
       </p>
       <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-xs text-red-700">
         <li>All comments, deliverables and uploaded files</li>
         <li>Evaluations, scores and published results</li>
         <li>Problem statement choices, ideas, join requests and invites</li>
-        <li>Mentor assignments and stage progress</li>
-        <li>Its place in any batch</li>
+        <li>Faculty and industry mentor assignments (both mentors are de-assigned) and stage progress</li>
+        <li>Its place in any batch, and the team itself from every list</li>
       </ul>
       <p className="mt-2 text-xs font-medium text-red-700">
-        The team record stays on the admin side as &ldquo;Disqualified&rdquo; for history. The{" "}
-        {memberCount} member{memberCount === 1 ? "" : "s"} will no longer see this team and can create or join
-        another one. Students and mentors are notified.
+        The audit log keeps a record that this happened. The {memberCount} member{memberCount === 1 ? "" : "s"} will
+        no longer see this team and can create or join another one. Students and mentors are notified.
       </p>
       <label htmlFor="disqualify-confirm" className="mt-3 block text-xs font-semibold text-red-800">
         Type <span className="font-mono font-bold">{teamCode}</span> to confirm
@@ -165,7 +167,7 @@ function DisqualifyPanel({
           disabled={pending || !matches}
           className="flex-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {pending ? "Removing data…" : "Disqualify and remove data"}
+          {pending ? "Removing…" : alreadyDisqualified ? "Remove team permanently" : "Disqualify and remove team"}
         </button>
       </div>
     </div>
@@ -287,6 +289,7 @@ function PsPreferencesSection({ team, onApproved }: PsPreferencesSectionProps) {
 
 export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
   const { session } = useAuth();
+  const router = useRouter();
   const [team, setTeam] = useState<PortalTeam | null>(null);
   const [mentors, setMentors] = useState<TeamMentors | null>(null);
   const [loading, setLoading] = useState(true);
@@ -297,7 +300,6 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
   const [disqualifyPending, setDisqualifyPending] = useState(false);
   const [confirmingLock, setConfirmingLock] = useState(false);
   const [confirmingDisqualify, setConfirmingDisqualify] = useState(false);
-  const [disqualifyNotice, setDisqualifyNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
 
@@ -359,8 +361,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
     try {
       await apiPost(`/teams/${teamId}/disqualify`, {});
       setConfirmingDisqualify(false);
-      setDisqualifyNotice("Team disqualified. Its data was removed and the members and mentors were notified.");
-      reloadSilently();
+      router.replace(`${backHref}?removed=${encodeURIComponent(team?.name ?? "Team")}`);
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Could not disqualify this team.");
     } finally {
@@ -430,12 +431,6 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
       <Link href={backHref} className="text-sm font-medium text-brand-muted hover:text-brand-primary">
         ← Back to Teams
       </Link>
-
-      {disqualifyNotice && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-medium text-emerald-700">
-          {disqualifyNotice}
-        </div>
-      )}
 
       {actionError && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-600">
@@ -637,14 +632,14 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
                   />
                 )}
 
-                {canDisqualify && status !== "disqualified" && !confirmingDisqualify && (
+                {canDisqualify && !confirmingDisqualify && (
                   <button
                     type="button"
                     onClick={() => setConfirmingDisqualify(true)}
                     className="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-100"
                   >
                     <AlertTriangleIcon className="h-4 w-4" />
-                    Disqualify Team
+                    {status === "disqualified" ? "Remove disqualified team" : "Disqualify Team"}
                   </button>
                 )}
 
@@ -653,6 +648,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
                     teamName={team.name}
                     teamCode={team.teamCode}
                     memberCount={team.members.filter((m) => m.inviteStatus === "accepted").length}
+                    alreadyDisqualified={status === "disqualified"}
                     pending={disqualifyPending}
                     onCancel={() => setConfirmingDisqualify(false)}
                     onConfirm={handleDisqualify}

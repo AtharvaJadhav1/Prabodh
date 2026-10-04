@@ -107,6 +107,16 @@ export default function AdminTeamsPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<TeamStatus | "all">("all");
+  const [removedName, setRemovedName] = useState<string | null>(null);
+
+  // Set by Team Details after a disqualification removed the team (?removed=<name>).
+  useEffect(() => {
+    const name = new URLSearchParams(window.location.search).get("removed");
+    if (name) {
+      setRemovedName(name);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -160,6 +170,21 @@ export default function AdminTeamsPage() {
 
   return (
     <AdminShell title="Teams">
+      {removedName ? (
+        <div
+          role="status"
+          className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-700"
+        >
+          <span>
+            Team &ldquo;{removedName}&rdquo; was disqualified and removed with all its data. Its members and mentors
+            were notified.
+          </span>
+          <button type="button" onClick={() => setRemovedName(null)} className="shrink-0 font-bold hover:underline">
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+
       <BatchesCard />
       {error ? (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm font-medium text-red-600">{error}</div>

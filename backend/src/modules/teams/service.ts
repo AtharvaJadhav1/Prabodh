@@ -889,8 +889,8 @@ export class TeamsService {
    * Admin-only. Disqualifying removes the team's data and frees its people:
    *  - all team data (comments, deliverables, evaluations, results, PS preferences, ideas, requests,
    *    invites, mentor assignments, stage statuses, memberships, batch) is deleted in one transaction;
-   *  - the team row stays, marked "disqualified", so history and the audit log keep making sense;
-   *  - students no longer see it and can create/join another team; mentors lose the assignment;
+   *  - the team record itself is removed too (the audit log keeps who/what/when with the team's name);
+   *  - students no longer see it and can create/join another team; both mentors are de-assigned;
    *  - students and mentors are notified, and uploaded files are deleted from storage (best effort).
    */
   async disqualify(user: AuthUser, teamId: string) {
@@ -899,9 +899,7 @@ export class TeamsService {
     }
     const team = await this.repo.findForAccessCheck(teamId);
     if (!team) throw new NotFoundException('Team not found');
-    if (team.status === TeamStatus.disqualified) {
-      throw new BadRequestException('This team is already disqualified.');
-    }
+    // A team disqualified earlier (before records were removed) can be cleared by running this again.
 
     const [memberRows, mentorRows, teamRow] = await Promise.all([
       this.prisma.teamMember.findMany({ where: { teamId }, select: { userId: true } }),
@@ -941,17 +939,8 @@ export class TeamsService {
             data: { teamsSelectedCount: { decrement: 1 } },
           });
         }
-        await tx.team.update({
-          where: { id: teamId },
-          data: {
-            status: TeamStatus.disqualified,
-            psId: null,
-            batchId: null,
-            mentorLockedAt: null,
-            facultyMentorId: null,
-            industrialMentorId: null,
-          },
-        });
+        // Last: nothing references the team any more (batch/leader/mentor pointers live on the row itself).
+        await tx.team.delete({ where: { id: teamId } });
         return {
           comments,
           deliverables,
@@ -975,7 +964,13 @@ export class TeamsService {
       entityType: 'team',
       entityId: teamId,
       before: { status: team.status },
-      after: { status: TeamStatus.disqualified, teamName: team.name, memberCount: studentIds.length, removed },
+      after: {
+        status: 'removed',
+        teamName: team.name,
+        teamCode: team.teamCode,
+        memberCount: studentIds.length,
+        removed,
+      },
     });
 
     // Tell the people affected (fire and forget: never fail the disqualification over an email).
@@ -999,7 +994,7 @@ export class TeamsService {
       );
     }
 
-    return { ok: true, teamId, status: TeamStatus.disqualified, removed };
+    return { ok: true, teamId, removed };
   }
 
   async assertCanView(

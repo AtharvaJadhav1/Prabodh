@@ -176,8 +176,8 @@ export async function enrichAuditRows(prisma: PrismaService, rows: AuditRow[]) {
       actorName: it.actor?.fullName ?? it.actorName,
       actorEmail: it.actor?.email ?? it.actorEmail,
       actorRole: it.actor?.platformRole ?? it.actorRole,
-      teamName: team?.name ?? null,
-      teamCode: team?.teamCode ?? null,
+      teamName: team?.name ?? strOf(after?.teamName) ?? null,
+      teamCode: team?.teamCode ?? strOf(after?.teamCode) ?? null,
       targetLabel,
       targetMeta,
       summary,
@@ -215,7 +215,11 @@ function summarizeAudit(input: SummaryInput): string {
     case 'team.lock':
       return teamLabel ? `Locked team details for ${teamLabel}` : 'Locked team details';
     case 'team.disqualify':
-      return teamLabel ? `Disqualified team ${teamLabel} and removed its data` : 'Disqualified a team and removed its data';
+      return teamLabel
+        ? `Disqualified team ${teamLabel} and removed it with all its data`
+        : after?.teamName
+          ? `Disqualified team ${String(after.teamName)}${after.teamCode ? ` (${String(after.teamCode)})` : ''} and removed it with all its data`
+          : 'Disqualified a team and removed it with all its data';
     case 'team.invite':
       return `Invited ${String(after?.invitedEmail ?? 'a student')} to join ${teamLabel ?? 'the team'}`;
     case 'team.join': {
