@@ -45,16 +45,14 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
   const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
   const [busyEmail, setBusyEmail] = useState<string | null>(null);
 
-  const load = useCallback(async (q: string, d: string) => {
+  // The directory is small, so load it once per open and search it instantly on the client
+  // (name, company, designation, email and expertise) instead of a delayed server call per keystroke.
+  const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const params = new URLSearchParams();
-      if (q) params.set("q", q);
-      if (d) params.set("domain", d);
       // Hides the signed-in mentor (dual-role accounts) and anyone already seated on this team.
-      params.set("teamId", teamId);
-      const rows = await api<IndustrialMentorProfile[]>(`/industrial-mentors${params.size ? `?${params.toString()}` : ""}`);
+      const rows = await api<IndustrialMentorProfile[]>(`/industrial-mentors?teamId=${encodeURIComponent(teamId)}`);
       setResults(rows.filter((m) => m.isActive));
     } catch {
       setError("Could not load the industrial mentor directory.");
@@ -70,14 +68,17 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
     setDomain("");
     setInvitedIds(new Set());
     setError("");
-    void load("", "");
+    void load();
   }, [open, load]);
 
   useEffect(() => {
     if (!open) return;
-    const t = setTimeout(() => void load(query.trim(), domain), 250);
-    return () => clearTimeout(t);
-  }, [query, domain, open, load]);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
 
   const handleInvite = async (m: IndustrialMentorProfile) => {
     if (busyEmail) return;
@@ -94,13 +95,22 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
     }
   };
 
-  const filtered = useMemo(
-    () =>
-      results.filter((m) =>
-        domain ? (m.domainExpertise ?? []).includes(domain) : true,
-      ),
-    [results, domain],
-  );
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return results.filter((m) => {
+      if (domain && !(m.domainExpertise ?? []).includes(domain)) return false;
+      if (!q) return true;
+      return [m.fullName, m.companyName ?? "", m.designation ?? "", m.email, ...(m.domainExpertise ?? [])].some((v) =>
+        v.toLowerCase().includes(q),
+      );
+    });
+  }, [results, query, domain]);
+
+  const hasFilters = query.trim() !== "" || domain !== "";
+  const clearFilters = () => {
+    setQuery("");
+    setDomain("");
+  };
 
   if (!open) return null;
 
@@ -123,6 +133,8 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
             <button
               type="button"
               onClick={onClose}
+              aria-label="Close"
+              title="Close"
               className="rounded-lg p-1.5 text-brand-muted transition-colors hover:bg-white hover:text-brand-deep"
             >
               <XIcon className="h-5 w-5" />
@@ -138,9 +150,21 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by name, company or email"
-                className="w-full rounded-xl border border-brand-sand bg-brand-cream py-2.5 pl-9 pr-3 text-xs text-brand-charcoal placeholder-brand-muted transition focus:border-brand-primary focus:bg-white focus:outline-none"
+                placeholder="Search by name, company, designation, email or expertise"
+                aria-label="Search industrial mentors"
+                className="w-full rounded-xl border border-brand-sand bg-brand-cream py-2.5 pl-9 pr-9 text-xs text-brand-charcoal placeholder-brand-muted transition focus:border-brand-primary focus:bg-white focus:outline-none"
               />
+              {query ? (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  aria-label="Clear search"
+                  title="Clear search"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-brand-muted transition-colors hover:bg-white hover:text-brand-deep"
+                >
+                  <XIcon className="h-4 w-4" />
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -163,15 +187,45 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
 
           {error ? <p className="text-xs font-semibold text-brand-overdue">{error}</p> : null}
 
+          {!loading && !error && results.length > 0 ? (
+            <div className="flex items-center justify-between gap-3 text-[11px] font-semibold text-brand-muted">
+              <span>
+                {hasFilters ? `${filtered.length} of ${results.length} match` : `${results.length} available`}
+              </span>
+              {hasFilters ? (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="inline-flex items-center gap-1 text-brand-primary hover:text-brand-hover"
+                >
+                  <XIcon className="h-3.5 w-3.5" /> Clear filters
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="space-y-2">
             {loading ? (
               <div className="py-4">
                 <LoadingState compact fontSize={13} label="Loading directory" steps={["Searching industrial mentors"]} />
               </div>
             ) : filtered.length === 0 ? (
-              <p className="py-6 text-center text-xs text-brand-muted">
-                No matching industrial mentors found. Ask the nodal admin to register them first.
-              </p>
+              <div className="py-6 text-center text-xs text-brand-muted">
+                {results.length > 0 && hasFilters ? (
+                  <>
+                    <p>No industrial mentors match your search.</p>
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="mt-2 font-bold text-brand-primary hover:text-brand-hover"
+                    >
+                      Clear search and filters
+                    </button>
+                  </>
+                ) : (
+                  <p>No industrial mentors available. Ask the nodal admin to register them first.</p>
+                )}
+              </div>
             ) : (
               filtered.map((m) => {
                 const invited = invitedIds.has(m.id);
