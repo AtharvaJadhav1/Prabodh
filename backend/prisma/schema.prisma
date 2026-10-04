@@ -317,6 +317,10 @@ model IdeaSubmission {
   @@map("idea_submissions")
 }
 
+// A partial unique index (mentor_assignments_team_type_active_unique, see
+// migrations/20261004000000_mentor_assignment_one_active_per_type) enforces at
+// most one row with active=true per (teamId, mentorType). Prisma can't express
+// a partial unique index via @@unique, so it isn't declared here.
 model MentorAssignment {
   id                 String           @id @default(uuid())
   teamId             String           @map("team_id")

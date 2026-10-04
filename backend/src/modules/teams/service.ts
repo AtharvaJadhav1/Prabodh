@@ -1,4 +1,4 @@
-import { seatConflict } from '../../lib/mentor-rules';
+import { dedupeMentorAssignmentsByType, seatConflict } from '../../lib/mentor-rules';
 import {
   BadRequestException,
   ConflictException,
@@ -148,10 +148,18 @@ export class TeamsService {
   private async withResolvedDeliverables<T>(team: T): Promise<T> {
     const raw = team as {
       deliverables?: Array<{ pptUrl?: string | null; reportUrl?: string | null; videoUrl?: string | null }>;
+      mentorAssignments?: Array<{ mentorType: string; assignedAt: Date; createdAt: Date }>;
     };
-    if (!raw.deliverables?.length) return team;
-    const deliverables = await Promise.all(raw.deliverables.map((d) => resolveDeliverableRow(d)));
-    return { ...team, deliverables };
+    let result = team;
+    if (raw.deliverables?.length) {
+      const deliverables = await Promise.all(raw.deliverables.map((d) => resolveDeliverableRow(d)));
+      result = { ...result, deliverables };
+    }
+    // Defense-in-depth against legacy/racy data — see dedupeMentorAssignmentsByType.
+    if (raw.mentorAssignments && raw.mentorAssignments.length > 1) {
+      result = { ...result, mentorAssignments: dedupeMentorAssignmentsByType(raw.mentorAssignments) };
+    }
+    return result;
   }
 
   /** Both mentors of a team (faculty + industrial) with assignment provenance. */
@@ -160,6 +168,10 @@ export class TeamsService {
     const [assignments, pendingIndustryInvite] = await Promise.all([
       this.prisma.mentorAssignment.findMany({
         where: { teamId, active: true },
+        // Defense-in-depth: if legacy/racy data ever has two active rows of the
+        // same mentorType, the .find() below deterministically keeps the most
+        // recent one rather than whatever order Postgres happens to return.
+        orderBy: [{ assignedAt: 'desc' }, { createdAt: 'desc' }],
         include: {
           mentor: {
             select: {

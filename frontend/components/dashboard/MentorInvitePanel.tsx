@@ -12,6 +12,13 @@ export default function MentorInvitePanel() {
   const { team, isLead, mentorLocked, sendFacultyInvite, revokeFacultyInvite, facultyDirectory, loadFacultyDirectory } =
     useTeam();
   const assignments = team?.mentorAssignments ?? [];
+  // Slot by mentorType so at most one card per slot ever renders, even if the
+  // API ever returns more than one active row for the same type.
+  const instituteAssignment = assignments.find((a) => a.mentorType === "institute");
+  const industryAssignment = assignments.find((a) => a.mentorType === "industry");
+  const slottedAssignments = [instituteAssignment, industryAssignment].filter(
+    (a): a is NonNullable<typeof a> => Boolean(a),
+  );
   const pending = (team?.mentorInvites ?? []).filter((i) => i.inviteStatus === "pending");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -19,8 +26,7 @@ export default function MentorInvitePanel() {
   const [busy, setBusy] = useState(false);
   const [revokingId, setRevokingId] = useState<string | null>(null);
 
-  const hasInstitute = assignments.some((a) => a.mentorType === "institute");
-  const instituteLocked = mentorLocked || hasInstitute;
+  const instituteLocked = mentorLocked || Boolean(instituteAssignment);
   const inviteBlocked = instituteLocked;
 
   const facultyOnly = useMemo(
@@ -79,13 +85,13 @@ export default function MentorInvitePanel() {
         <p className="mt-2 text-sm text-brand-muted">
           Invite an Institute Faculty Mentor to guide your team. The slot locks when the mentor accepts.
         </p>
-        {assignments.length === 0 && pending.length === 0 ? (
+        {slottedAssignments.length === 0 && pending.length === 0 ? (
           <div className="mt-4 rounded-xl border border-dashed border-brand-softline bg-brand-cream p-5 text-center text-sm text-brand-muted">
             No mentors assigned yet.
           </div>
         ) : (
           <ul className="mt-4 space-y-3">
-            {assignments.map((a) => (
+            {slottedAssignments.map((a) => (
               <li key={a.id} className="rounded-xl border border-brand-softline p-4">
                 <p className="text-sm font-bold text-brand-deep">{a.mentor.fullName}</p>
                 <p className="text-xs text-brand-muted">{mentorKindLabel(a.mentorType)}</p>

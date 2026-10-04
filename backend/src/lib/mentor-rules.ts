@@ -40,3 +40,26 @@ export function seatConflict(
 export function isSelfInvite(inviterUserId: string, inviteeUserId: string): boolean {
   return inviterUserId === inviteeUserId;
 }
+
+type TimestampedAssignment = { mentorType: MentorType | string; assignedAt: Date; createdAt: Date };
+
+/**
+ * Defense-in-depth against legacy/racy data: a team should have at most one
+ * active assignment per mentorType. If duplicates slip through, keep only the
+ * most recently assigned row per type (assignedAt desc, createdAt tiebreak).
+ * A single mentor legitimately holding both an institute AND industry seat is
+ * untouched — this dedupes within a mentorType, not across types.
+ */
+export function dedupeMentorAssignmentsByType<T extends TimestampedAssignment>(assignments: T[]): T[] {
+  const sorted = [...assignments].sort(
+    (a, b) => b.assignedAt.getTime() - a.assignedAt.getTime() || b.createdAt.getTime() - a.createdAt.getTime(),
+  );
+  const seen = new Set<T['mentorType']>();
+  const result: T[] = [];
+  for (const a of sorted) {
+    if (seen.has(a.mentorType)) continue;
+    seen.add(a.mentorType);
+    result.push(a);
+  }
+  return result;
+}

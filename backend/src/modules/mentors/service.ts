@@ -48,14 +48,22 @@ export class MentorsService {
             })
           )?.id ?? null
         : null;
-    const assignment = await this.repo.create({
-      team: { connect: { id: body.teamId } },
-      mentor: { connect: { id: body.mentorUserId } },
-      assignedBy: { connect: { id: admin.id } },
-      mentorType: body.mentorType,
-      assignmentMethod: body.assignmentMethod,
-      ...(industrialMentorId ? { industrialMentor: { connect: { id: industrialMentorId } } } : {}),
-    });
+    let assignment;
+    try {
+      assignment = await this.repo.create({
+        team: { connect: { id: body.teamId } },
+        mentor: { connect: { id: body.mentorUserId } },
+        assignedBy: { connect: { id: admin.id } },
+        mentorType: body.mentorType,
+        assignmentMethod: body.assignmentMethod,
+        ...(industrialMentorId ? { industrialMentor: { connect: { id: industrialMentorId } } } : {}),
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new BadRequestException('Team already has an active mentor of this type; use reassign');
+      }
+      throw err;
+    }
     await this.syncTeamMentorPointers(this.prisma, body.teamId);
     await writeAudit(this.prisma, {
       actorUserId: admin.id,
@@ -154,21 +162,29 @@ export class MentorsService {
           )?.id ?? null
         : null;
     // Deactivate + create in one transaction so a failed create never leaves the team without a mentor.
-    const next = await this.prisma.$transaction(async (tx) => {
-      await tx.mentorAssignment.update({ where: { id: assignmentId }, data: { active: false } });
-      return tx.mentorAssignment.create({
-        data: {
-          team: { connect: { id: current.teamId } },
-          mentor: { connect: { id: mentorUserId } },
-          assignedBy: { connect: { id: admin.id } },
-          mentorType: current.mentorType,
-          assignmentMethod: 'manual',
-          reassignedFrom: { connect: { id: assignmentId } },
-          ...(industrialMentorId ? { industrialMentor: { connect: { id: industrialMentorId } } } : {}),
-        },
-        include: { mentor: true, team: true },
+    let next;
+    try {
+      next = await this.prisma.$transaction(async (tx) => {
+        await tx.mentorAssignment.update({ where: { id: assignmentId }, data: { active: false } });
+        return tx.mentorAssignment.create({
+          data: {
+            team: { connect: { id: current.teamId } },
+            mentor: { connect: { id: mentorUserId } },
+            assignedBy: { connect: { id: admin.id } },
+            mentorType: current.mentorType,
+            assignmentMethod: 'manual',
+            reassignedFrom: { connect: { id: assignmentId } },
+            ...(industrialMentorId ? { industrialMentor: { connect: { id: industrialMentorId } } } : {}),
+          },
+          include: { mentor: true, team: true },
+        });
       });
-    });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new BadRequestException('That assignment was just changed by someone else. Refresh and try again.');
+      }
+      throw err;
+    }
     await this.syncTeamMentorPointers(this.prisma, current.teamId);
     await writeAudit(this.prisma, {
       actorUserId: admin.id,
