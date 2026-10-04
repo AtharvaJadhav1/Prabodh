@@ -12,6 +12,7 @@ import { clearPsListCache, psListCache } from '../../lib/ps-list-cache';
 import { getSettingNumber } from '../../lib/settings';
 import { TeamsService } from '../teams/service';
 import { ProblemStatementsRepository } from './repository';
+import { cleanPsFields } from '../../lib/ps-text';
 import { createIdeaSchema, createPsSchema, manualIdeaSchema, patchIdeaSchema, patchPsSchema } from './schema';
 
 @Injectable()
@@ -30,7 +31,8 @@ export class ProblemStatementsService {
     const cached = psListCache.get(cacheKey);
     if (cached) return cached;
     const [items, total] = await this.repo.list(query, (page - 1) * limit, limit);
-    const payload = { items, total, page, limit, pages: Math.max(1, Math.ceil(total / limit)) };
+    const cleanItems = items.map((ps) => cleanPsFields(ps));
+    const payload = { items: cleanItems, total, page, limit, pages: Math.max(1, Math.ceil(total / limit)) };
     psListCache.set(cacheKey, payload);
     return payload;
   }
@@ -38,7 +40,7 @@ export class ProblemStatementsService {
   async createPs(body: z.infer<typeof createPsSchema>) {
     const created = await this.repo.createPs(body);
     clearPsListCache();
-    return created;
+    return cleanPsFields(created);
   }
 
   async updatePs(id: string, body: z.infer<typeof patchPsSchema>) {
@@ -46,7 +48,7 @@ export class ProblemStatementsService {
     if (!existing) throw new NotFoundException('Problem statement not found');
     const updated = await this.prisma.problemStatement.update({ where: { id }, data: body });
     clearPsListCache();
-    return updated;
+    return cleanPsFields(updated);
   }
 
   async deletePs(id: string) {

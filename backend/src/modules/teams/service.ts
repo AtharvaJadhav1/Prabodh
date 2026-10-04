@@ -23,6 +23,7 @@ import { isTeamFrozen, TEAM_FROZEN_MESSAGE } from '../../lib/team-rules';
 import { getSettingNumber } from '../../lib/settings';
 import { resolveDeliverableRow } from '../../lib/deliverable-url';
 import { clearPsListCache } from '../../lib/ps-list-cache';
+import { cleanPsFields } from '../../lib/ps-text';
 import { generateTeamCode, TeamsRepository } from './repository';
 import { createTeamSchema, inviteSchema, patchTeamSchema } from './schema';
 import { z } from 'zod';
@@ -390,10 +391,15 @@ export class TeamsService {
           },
         },
       });
-      const items = assignments.map((a) => a.team);
+      const items = assignments.map((a) => {
+        const t = a.team;
+        return t.problemStatement ? { ...t, problemStatement: cleanPsFields(t.problemStatement) } : t;
+      });
       return { items, total: items.length, page: 1, limit: items.length || 1, pages: 1 };
     }
-    const items = await this.repo.listMine(user.id);
+    const items = (await this.repo.listMine(user.id)).map((t) =>
+      t.problemStatement ? { ...t, problemStatement: cleanPsFields(t.problemStatement) } : t,
+    );
     return { items, total: items.length, page: 1, limit: items.length || 1, pages: 1 };
   }
 
@@ -402,7 +408,10 @@ export class TeamsService {
       this.repo.list((page - 1) * limit, limit),
       this.repo.count(),
     ]);
-    return { items, total, page, limit, pages: Math.ceil(total / limit) };
+    const cleanItems = items.map((t) =>
+      t.problemStatement ? { ...t, problemStatement: cleanPsFields(t.problemStatement) } : t,
+    );
+    return { items: cleanItems, total, page, limit, pages: Math.ceil(total / limit) };
   }
 
   async patch(user: AuthUser, teamId: string, body: z.infer<typeof patchTeamSchema>) {

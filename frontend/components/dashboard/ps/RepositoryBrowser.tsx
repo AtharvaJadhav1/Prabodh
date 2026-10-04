@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { siFolders, type SiStatement } from "../../../data/studentDashboard";
-import { SearchIcon, LockIcon, ExternalLinkIcon, CheckIcon } from "../icons";
+import { SearchIcon, LockIcon, ExternalLinkIcon, CheckIcon, ChevronDownIcon } from "../icons";
 import { useTeam } from "../TeamProvider";
 import PlaceholderLink from "../PlaceholderLink";
 import { api } from "../../../lib/api";
@@ -55,6 +55,7 @@ export default function RepositoryBrowser({ targetRank, usedPsIds, onPick, inten
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [remote, setRemote] = useState<SiStatement[] | null>(null);
   const [ids, setIds] = useState<Record<string, string>>({});
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const { isLead } = useTeam();
   const gating = intent === "gate";
   const actionable = intent === "readonly" ? false : gating || isLead;
@@ -158,7 +159,8 @@ export default function RepositoryBrowser({ targetRank, usedPsIds, onPick, inten
                 key={folder.id}
                 type="button"
                 onClick={() => setActiveFolder(isActive ? null : folder.id)}
-                className={`group rounded-2xl p-3.5 text-left shadow-[0_2px_8px_rgba(91,46,16,0.04)] transition-all sm:p-5 ${
+                className={`group rounded-2xl p-3.5 text-left shadow-[0_2px_8px_rgba(91,46,16,0.04)] transition-all 
+sm:p-5 ${
                   isActive
                     ? "border-2 border-brand-primary bg-white shadow-[0_6px_18px_rgba(91,46,16,0.10)]"
                     : "border border-brand-softline bg-white hover:shadow-[0_6px_18px_rgba(91,46,16,0.08)]"
@@ -215,7 +217,8 @@ export default function RepositoryBrowser({ targetRank, usedPsIds, onPick, inten
       </div>
 
       {/* Search + Filters */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-brand-softline bg-white p-4 shadow-[0_2px_8px_rgba(91,46,16,0.04)] sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-brand-softline bg-white p-4 
+shadow-[0_2px_8px_rgba(91,46,16,0.04)] sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1">
           <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-muted" />
           <input
@@ -223,7 +226,9 @@ export default function RepositoryBrowser({ targetRank, usedPsIds, onPick, inten
             placeholder="Search by title, domain, ministry, or technology stack..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-brand-softline bg-brand-cream py-2.5 pl-10 pr-4 text-sm text-brand-deep transition-all placeholder:text-brand-muted/60 focus:border-brand-primary focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-primary/30"
+            className="w-full rounded-xl border border-brand-softline bg-brand-cream py-2.5 pl-10 pr-4 text-sm 
+text-brand-deep transition-all placeholder:text-brand-muted/60 focus:border-brand-primary focus:bg-white 
+focus:outline-none focus:ring-1 focus:ring-brand-primary/30"
           />
         </div>
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
@@ -247,82 +252,110 @@ export default function RepositoryBrowser({ targetRank, usedPsIds, onPick, inten
       {/* PS Card List */}
       <div className="flex flex-col gap-4">
         {filtered.length === 0 ? (
-          <div className="rounded-2xl border border-brand-softline bg-white py-12 px-6 text-center shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
+          <div className="rounded-2xl border border-brand-softline bg-white py-12 px-6 text-center 
+shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
             <SearchIcon className="mx-auto mb-3 h-8 w-8 text-brand-muted/40" />
             <p className="text-sm font-bold text-brand-deep">No problem statements match your search</p>
             <p className="mt-1 text-xs text-brand-muted">Try adjusting your filters or clearing the search.</p>
           </div>
         ) : (
-          filtered.map((stmt) => (
-            <div
-              key={stmt.code}
-              className="flex flex-col gap-4 rounded-2xl border border-brand-softline bg-white p-4 shadow-[0_2px_8px_rgba(91,46,16,0.04)] transition-all hover:border-brand-primary/40 hover:shadow-[0_6px_18px_rgba(91,46,16,0.08)] sm:p-5 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="max-w-3xl flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded border border-brand-softline bg-brand-cream px-2 py-0.5 font-mono text-xs font-bold text-brand-deep">
-                    {stmt.code}
-                  </span>
-                  <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2 py-0.5 text-[11px] font-bold uppercase text-brand-deep">
-                    {stmt.ministry}
-                  </span>
-                  <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2 py-0.5 text-[11px] font-bold uppercase text-brand-deep">
-                    {stmt.category}
-                  </span>
-                  <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2 py-0.5 text-[11px] font-bold uppercase text-brand-deep">
-                    {stmt.domain}
-                  </span>
+          filtered.map((stmt) => {
+            const isExpanded = expanded.has(stmt.code);
+            return (
+              <div
+                key={stmt.code}
+                className="flex flex-col gap-4 rounded-2xl border border-brand-softline bg-white p-4 shadow-[0_2px_8px_rgba(91,46,16,0.04)] transition-all hover:border-brand-primary/40 hover:shadow-[0_6px_18px_rgba(91,46,16,0.08)] sm:p-5"
+              >
+                <div className="w-full">
+                  {/* Badge Row: ID | Organisation | Category | Theme */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded border border-brand-softline bg-brand-cream px-2 py-0.5 font-mono text-xs font-bold text-brand-deep">
+                      {stmt.code}
+                    </span>
+                    <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2 py-0.5 text-[11px] font-bold uppercase text-brand-deep">
+                      {stmt.ministry}
+                    </span>
+                    <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2 py-0.5 text-[11px] font-bold uppercase text-brand-deep">
+                      {stmt.category}
+                    </span>
+                    <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2 py-0.5 text-[11px] font-bold uppercase text-brand-deep">
+                      {stmt.domain}
+                    </span>
+                  </div>
+                  {/* Title */}
+                  <h3 className="mt-3 text-base font-bold text-brand-deep sm:text-lg">{stmt.title}</h3>
+                  {/* Description with Read more clamp */}
+                  <div className="mt-2">
+                    <p className={`text-sm leading-relaxed text-brand-muted ${isExpanded ? "" : "line-clamp-3"}`}>
+                      {stmt.description}
+                    </p>
+                    {stmt.description.length > 180 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpanded((prev) => {
+                            const next = new Set(prev);
+                            if (isExpanded) next.delete(stmt.code);
+                            else next.add(stmt.code);
+                            return next;
+                          })
+                        }
+                        className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-brand-primary hover:underline"
+                      >
+                        {isExpanded ? "Show less" : "Read more"}
+                        <ChevronDownIcon className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                      </button>
+                    )}
+                  </div>
+                  {/* Footer: Posted by */}
+                  <div className="mt-3 flex items-center justify-between text-xs text-brand-muted">
+                    <span>Posted by {stmt.postedBy}</span>
+                  </div>
                 </div>
-                <h4 className="mt-2 text-base font-bold text-brand-deep">{stmt.title}</h4>
-                <p className="mt-1 line-clamp-2 text-sm text-brand-muted">{stmt.description}</p>
-                <div className="mt-2 flex items-center gap-4 text-xs text-brand-muted">
-                  <span>Posted by {stmt.postedBy}</span>
-                  <span>Updated {stmt.updatedAgo}</span>
+                {/* Action button (right column on desktop) */}
+                <div className="flex shrink-0 flex-col items-end gap-2 w-full sm:w-auto">
+                  {actionable ? (
+                    <button
+                      type="button"
+                      disabled={!ids[stmt.code] || (!gating && usedPsIds.includes(ids[stmt.code]))}
+                      onClick={() => {
+                        const psId = ids[stmt.code];
+                        if (!psId) return;
+                        onPick({
+                          kind: "catalog",
+                          psId,
+                          code: stmt.code,
+                          title: stmt.title,
+                          theme: stmt.domain,
+                          category: stmt.category.toLowerCase().includes("hardware") ? "hardware" : "software",
+                          organisation: stmt.ministry,
+                          description: stmt.description,
+                        });
+                      }}
+                      className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-xl bg-brand-primary px-3 py-2 text-xs font-bold text-white shadow-md shadow-brand-primary/25 transition-all duration-150 hover:bg-brand-hover active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <CheckIcon className="h-4 w-4" />
+                      {gating
+                        ? "Select for Team"
+                        : usedPsIds.includes(ids[stmt.code] ?? "")
+                          ? "Already added"
+                          : `Add to Preference #${targetRank}`}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      title="Only the Team Lead can select a problem statement"
+                      className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-xl bg-brand-sand px-3 py-2 text-xs font-bold text-brand-muted/70 cursor-not-allowed"
+                    >
+                      <LockIcon className="h-4 w-4" />
+                      Selection Locked — Team Lead Only
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-2 pt-3 sm:pt-0">
-                {actionable ? (
-                  <button
-                    type="button"
-                    disabled={!ids[stmt.code] || (!gating && usedPsIds.includes(ids[stmt.code]))}
-                    onClick={() => {
-                      const psId = ids[stmt.code];
-                      if (!psId) return;
-                      onPick({
-                        kind: "catalog",
-                        psId,
-                        code: stmt.code,
-                        title: stmt.title,
-                        theme: stmt.domain,
-                        category: stmt.category.toLowerCase().includes("hardware") ? "hardware" : "software",
-                        organisation: stmt.ministry,
-                        description: stmt.description,
-                      });
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-brand-primary px-3 py-2 text-xs font-bold text-white shadow-md shadow-brand-primary/25 transition-all duration-150 hover:bg-brand-hover active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <CheckIcon className="h-4 w-4" />
-                    {gating
-                      ? "Select for Team"
-                      : usedPsIds.includes(ids[stmt.code] ?? "")
-                        ? "Already added"
-                        : `Add to Preference #${targetRank}`}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    title="Only the Team Lead can select a problem statement"
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-brand-sand px-3 py-2 text-xs font-bold text-brand-muted/70 cursor-not-allowed"
-                  >
-                    <LockIcon className="h-4 w-4" />
-                    Selection Locked — Team Lead Only
-                  </button>
-                )}
-                <PlaceholderLink icon={<ExternalLinkIcon className="h-3.5 w-3.5" />} label="View Specs" />
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
