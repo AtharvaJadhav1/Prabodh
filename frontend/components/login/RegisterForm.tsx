@@ -48,6 +48,7 @@ export default function RegisterForm() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [institute, setInstitute] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const [draft, setDraft] = useState<RegistrationDraft | null>(null);
 
   if (draft) {
@@ -109,6 +110,9 @@ export default function RegisterForm() {
             if (!payload.institute) {
               throw new Error("Please select your institute.");
             }
+            if (!agreed) {
+              throw new Error("Please agree to the Privacy Policy to continue.");
+            }
             setDraft(payload);
           } catch (err) {
             setError(err instanceof Error ? err.message : "Registration failed");
@@ -166,6 +170,26 @@ export default function RegisterForm() {
             </>
           }
         />
+        <label className="flex items-start gap-2 text-sm text-brand-muted">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-brand-primary"
+          />
+          <span>
+            I agree to the{" "}
+            <a
+              href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-brand-primary hover:text-brand-hover"
+            >
+              Privacy Policy
+            </a>
+            .
+          </span>
+        </label>
         {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
         <button
           type="submit"
