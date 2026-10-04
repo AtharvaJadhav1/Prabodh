@@ -1,13 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { useIndustryProfile } from "./IndustryProfileProvider";
+import { useAuth } from "../auth/AuthProvider";
+import { apiPatch } from "../../lib/api";
+import Avatar from "../Avatar";
+import AvatarPickerModal from "../dashboard/AvatarPickerModal";
+import { WAVES_PRESET_LIST, buildWavesAvatarUrl, resolveMentorAvatarUrl } from "../../lib/mentorAvatar";
 import ExpandableContactItem from "../dashboard/ExpandableContactItem";
-import { PencilIcon, MailIcon, PhoneIcon, MapPinIcon, BadgeCheckIcon, HashIcon } from "../dashboard/icons";
+import { PencilIcon, MailIcon, PhoneIcon, MapPinIcon, BadgeCheckIcon, HashIcon, CameraIcon } from "../dashboard/icons";
 
 export default function IndustryProfileHeaderCard() {
   const { profile, openDrawer } = useIndustryProfile();
+  const { session, refreshMe } = useAuth();
   const {
-    initials,
     fullName,
     designation,
     company,
@@ -17,14 +23,32 @@ export default function IndustryProfileHeaderCard() {
     industryMentorId,
     roleBadge,
   } = profile;
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const saveAvatar = async (avatarUrl: string) => {
+    await apiPatch("/me", { profileJson: { avatarUrl } });
+    await refreshMe();
+  };
 
   return (
     <section className="flex flex-col gap-6 rounded-3xl border border-neutral-100 bg-white p-6 shadow-sm sm:p-8">
       {/* Top row */}
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[#3c2415] text-2xl font-bold text-[#ffddb8]">
-            {initials}
+          <div className="relative shrink-0">
+            <Avatar
+              src={resolveMentorAvatarUrl("INDUSTRY", { profileJson: session?.profileJson, email, fullName })}
+              seed={fullName}
+              className="h-20 w-20 rounded-2xl"
+            />
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-[#d95c26] text-white shadow-md transition-colors hover:bg-[#c04d1c]"
+              aria-label="Change profile photo"
+            >
+              <CameraIcon className="h-3.5 w-3.5" />
+            </button>
           </div>
           <div>
             <h2 className="text-2xl font-bold text-neutral-900 sm:text-3xl">{fullName}</h2>
@@ -79,6 +103,20 @@ export default function IndustryProfileHeaderCard() {
           onAction={location ? undefined : () => openDrawer("profile")}
         />
       </div>
+      <AvatarPickerModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSaved={saveAvatar}
+        presetStyle={{
+          previewSeed: email || fullName,
+          presets: WAVES_PRESET_LIST.map((p) => ({
+            key: p.key,
+            label: p.label,
+            description: p.description,
+            buildUrl: (seed) => buildWavesAvatarUrl(p.key, seed),
+          })),
+        }}
+      />
     </section>
   );
 }

@@ -13,9 +13,11 @@ import {
   UsersIcon,
   ChevronRightIcon,
 } from "../dashboard/icons";
-import { useAuth, initialsFrom } from "../auth/AuthProvider";
+import { useAuth } from "../auth/AuthProvider";
 import RoleSwitcher from "../auth/RoleSwitcher";
 import { useMentorRequests } from "./MentorRequestProvider";
+import Avatar from "../Avatar";
+import { resolveMentorAvatarUrl } from "../../lib/mentorAvatar";
 
 type Props = {
   mobileOpen: boolean;
@@ -138,9 +140,15 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
                   : "border-amber-900/10 hover:bg-white"
               }`}
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold text-white">
-                {initialsFrom(fullName)}
-              </div>
+              <Avatar
+                src={resolveMentorAvatarUrl("INSTITUTE", {
+                  profileJson: session?.profileJson,
+                  email: session?.email,
+                  fullName,
+                })}
+                seed={fullName}
+                className="h-10 w-10 border-2 border-white shadow-sm"
+              />
               <p
                 title={fullName}
                 className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-[#3C1D06]"

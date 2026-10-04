@@ -1,6 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { useMentorProfile } from "./MentorProfileProvider";
+import { useAuth } from "../auth/AuthProvider";
+import { apiPatch } from "../../lib/api";
+import Avatar from "../Avatar";
+import AvatarPickerModal from "../dashboard/AvatarPickerModal";
+import { WAVES_PRESET_LIST, buildWavesAvatarUrl, resolveMentorAvatarUrl } from "../../lib/mentorAvatar";
 import ExpandableContactItem from "../dashboard/ExpandableContactItem";
 import { handleFromUrl, isHttpUrl, isLinkedinSocial, normalizeExternalUrl, socialHref } from "../../lib/url";
 import {
@@ -12,12 +18,19 @@ import {
   Share2Icon,
   LinkedinIcon,
   PencilIcon,
+  CameraIcon,
 } from "../dashboard/icons";
 
 export default function MentorProfileHeaderCard() {
   const { profile, openDrawer } = useMentorProfile();
-  const { initials, fullName, designation, department, facultyId, roleBadge, email, location, linkedinUrl, socials } =
-    profile;
+  const { session, refreshMe } = useAuth();
+  const { fullName, designation, department, facultyId, roleBadge, email, location, linkedinUrl, socials } = profile;
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const saveAvatar = async (avatarUrl: string) => {
+    await apiPatch("/me", { profileJson: { avatarUrl } });
+    await refreshMe();
+  };
 
   const linkedinHref = normalizeExternalUrl(linkedinUrl);
   const hasLinkedin = Boolean(linkedinHref) && isHttpUrl(linkedinHref);
@@ -35,8 +48,20 @@ export default function MentorProfileHeaderCard() {
         <div className="-mt-10 mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Avatar + Name */}
           <div className="flex items-center gap-4">
-            <div className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-2xl border-4 border-white bg-brand-deep text-xl font-black text-white shadow-md">
-              {initials}
+            <div className="relative shrink-0">
+              <Avatar
+                src={resolveMentorAvatarUrl("INSTITUTE", { profileJson: session?.profileJson, email, fullName })}
+                seed={fullName}
+                className="h-20 w-20 rounded-2xl border-4 border-white shadow-md"
+              />
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-brand-primary text-white shadow-md transition-colors hover:bg-brand-hover"
+                aria-label="Change profile photo"
+              >
+                <CameraIcon className="h-3.5 w-3.5" />
+              </button>
             </div>
             <div className="pt-5">
               <div className="flex flex-wrap items-center gap-2">
@@ -126,6 +151,20 @@ export default function MentorProfileHeaderCard() {
           </div>
         </div>
       </div>
+      <AvatarPickerModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSaved={saveAvatar}
+        presetStyle={{
+          previewSeed: email || fullName,
+          presets: WAVES_PRESET_LIST.map((p) => ({
+            key: p.key,
+            label: p.label,
+            description: p.description,
+            buildUrl: (seed) => buildWavesAvatarUrl(p.key, seed),
+          })),
+        }}
+      />
     </section>
   );
 }

@@ -16,7 +16,7 @@ import {
 } from "./icons";
 
 export default function ProfileHeaderCard() {
-  const { profile, openDrawer } = useProfile();
+  const { profile, openDrawer, setAvatarUrl } = useProfile();
   const { fullName, bio, school, team, role, contacts, avatarUrl } = profile;
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -139,7 +139,7 @@ export default function ProfileHeaderCard() {
         </div>
       </div>
 
-      <AvatarPickerModal open={pickerOpen} onClose={() => setPickerOpen(false)} />
+      <AvatarPickerModal open={pickerOpen} onClose={() => setPickerOpen(false)} onSaved={setAvatarUrl} />
     </section>
   );
 }

@@ -15,9 +15,10 @@ import {
   ChevronRightIcon,
 } from "../dashboard/icons";
 import { roleLabel, useAuth } from "../auth/AuthProvider";
-import { initials } from "../../lib/initials";
 import RoleSwitcher from "../auth/RoleSwitcher";
 import { useIndustryMentor } from "./IndustryMentorProvider";
+import Avatar from "../Avatar";
+import { resolveMentorAvatarUrl } from "../../lib/mentorAvatar";
 
 type Props = {
   mobileOpen: boolean;
@@ -177,9 +178,15 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
               onClick={onCloseMobile}
               className="group flex w-full cursor-pointer items-center gap-3 rounded-xl border border-brand-softline bg-white p-3 shadow-sm transition-all duration-200 hover:border-brand-softline hover:bg-brand-cream/80 hover:shadow-md"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-deep font-bold text-white">
-                {initials(fullName)}
-              </div>
+              <Avatar
+                src={resolveMentorAvatarUrl("INDUSTRY", {
+                  profileJson: session?.profileJson,
+                  email: session?.email,
+                  fullName,
+                })}
+                seed={fullName}
+                className="h-10 w-10 border-2 border-white shadow-sm"
+              />
               <div className="flex min-w-0 flex-1 flex-col items-start">
                 <span className="max-w-full truncate text-sm font-semibold leading-tight text-brand-deep">
                   {displayName}

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { diceBearUrl, type AvatarStyle } from "../../lib/avatar";
-import { useProfile } from "./ProfileProvider";
 import { CameraIcon, XIcon, UploadCloudIcon, SparklesIcon } from "./icons";
 
 type Tab = "upload" | "pick";
@@ -43,20 +42,47 @@ const PICK_SEEDS = [
   "Vivaan",
 ];
 
-export default function AvatarPickerModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { setAvatarUrl } = useProfile();
+type NamedPreset = { key: string; label: string; description?: string; buildUrl: (seed: string) => string };
+
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  /** Persists the chosen/uploaded avatar URL. Thrown errors surface in the modal. */
+  onSaved: (avatarUrl: string) => Promise<void> | void;
+  /** false hides the "Pick an avatar" preset tab entirely (upload-only). */
+  allowPresets?: boolean;
+  /**
+   * Replaces the generic adventurer/bottts style switcher with a gallery of fixed-style presets
+   * (e.g. the DiceBear Waves preset set) — pick a style first, then shuffle seeds within it.
+   * `previewSeed` renders the gallery thumbnails (typically the mentor's own name/email).
+   */
+  presetStyle?: { previewSeed: string; presets: NamedPreset[] };
+};
+
+export default function AvatarPickerModal({ open, onClose, onSaved, allowPresets = true, presetStyle }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [tab, setTab] = useState<Tab>("pick");
+  const [tab, setTab] = useState<Tab>(allowPresets ? "pick" : "upload");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [seeds, setSeeds] = useState<string[]>(PICK_SEEDS);
   const [style, setStyle] = useState<AvatarStyle>("adventurer");
+  const [selectedPresetKey, setSelectedPresetKey] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open) setTab("pick");
-  }, [open]);
+    if (open) {
+      setTab(allowPresets ? "pick" : "upload");
+      setSelectedPresetKey(null);
+    }
+  }, [open, allowPresets]);
 
   if (!open) return null;
+
+  const selectedPreset = presetStyle?.presets.find((p) => p.key === selectedPresetKey) ?? null;
+  const buildUrl = (seed: string) => {
+    if (selectedPreset) return selectedPreset.buildUrl(seed);
+    if (presetStyle) return presetStyle.presets[0].buildUrl(seed);
+    return diceBearUrl(seed, style);
+  };
 
   const shuffle = () => {
     setSeeds(PICK_SEEDS.map((s) => `${s}${Math.floor(Math.random() * 9000)}`));
@@ -66,7 +92,7 @@ export default function AvatarPickerModal({ open, onClose }: { open: boolean; on
     void (async () => {
       setBusy(true);
       try {
-        await setAvatarUrl(diceBearUrl(seed, style));
+        await onSaved(buildUrl(seed));
         onClose();
       } catch {
         setError("Could not save the avatar. Please try again.");
@@ -95,7 +121,7 @@ export default function AvatarPickerModal({ open, onClose }: { open: boolean; on
         contentType: mimeFor(file),
         dataBase64,
       });
-      await setAvatarUrl(result.avatarUrl);
+      await onSaved(result.avatarUrl);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed. Please try again.");
@@ -104,11 +130,17 @@ export default function AvatarPickerModal({ open, onClose }: { open: boolean; on
     }
   };
 
+  const showingGallery = tab === "pick" && Boolean(presetStyle) && !selectedPreset;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-[#2A1408]/60" onClick={onClose} aria-hidden="true" />
-      <div className="relative w-full max-w-md rounded-2xl border border-brand-softline bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-brand-softline px-5 py-4">
+      <div
+        className={`relative flex max-h-[85vh] w-full flex-col rounded-2xl border border-brand-softline bg-white shadow-2xl transition-[max-width] ${
+          showingGallery ? "max-w-xl" : "max-w-md"
+        }`}
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-brand-softline px-5 py-4">
           <div className="flex items-center gap-2">
             <CameraIcon className="h-5 w-5 text-brand-primary" />
             <h3 className="text-sm font-bold text-brand-deep">Set your profile photo</h3>
@@ -123,29 +155,31 @@ export default function AvatarPickerModal({ open, onClose }: { open: boolean; on
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5 border-b border-brand-softline px-5 py-3">
-          {(
-            [
-              { key: "pick", label: "Pick an avatar" },
-              { key: "upload", label: "Upload photo" },
-            ] as const
-          ).map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                tab === t.key
-                  ? "bg-brand-lightOrange text-brand-primary shadow-sm"
-                  : "text-brand-muted hover:text-brand-deep"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {allowPresets ? (
+          <div className="flex shrink-0 items-center gap-1.5 border-b border-brand-softline px-5 py-3">
+            {(
+              [
+                { key: "pick", label: "Pick an avatar" },
+                { key: "upload", label: "Upload photo" },
+              ] as const
+            ).map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setTab(t.key)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                  tab === t.key
+                    ? "bg-brand-lightOrange text-brand-primary shadow-sm"
+                    : "text-brand-muted hover:text-brand-deep"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
-        <div className="px-5 py-5">
+        <div className="overflow-y-auto px-5 py-5">
           {tab === "upload" ? (
             <div>
               <input
@@ -174,25 +208,62 @@ export default function AvatarPickerModal({ open, onClose }: { open: boolean; on
                 <span className="text-xs text-brand-muted">PNG, JPEG, WebP or GIF • up to 5 MB</span>
               </button>
             </div>
+          ) : presetStyle && !selectedPreset ? (
+            <div>
+              <p className="mb-3 text-xs font-semibold text-brand-muted">Choose a style, then pick a pattern within it.</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {presetStyle.presets.map((preset) => (
+                  <button
+                    key={preset.key}
+                    type="button"
+                    onClick={() => setSelectedPresetKey(preset.key)}
+                    className="flex h-[148px] flex-col items-center gap-1.5 rounded-xl border border-brand-softline bg-brand-canvas/40 p-3 text-center transition-all hover:border-brand-primary/50 hover:bg-brand-cream"
+                  >
+                    <img
+                      src={preset.buildUrl(presetStyle.previewSeed)}
+                      alt={`${preset.label} preview`}
+                      loading="lazy"
+                      className="h-14 w-14 shrink-0 rounded-full object-cover"
+                    />
+                    <span className="text-xs font-bold text-brand-deep">{preset.label}</span>
+                    {preset.description ? (
+                      <span className="line-clamp-2 text-[10px] leading-tight text-brand-muted">
+                        {preset.description}
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            </div>
           ) : (
             <div>
               <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  {(["adventurer", "bottts-neutral"] as AvatarStyle[]).map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setStyle(s)}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                        style === s
-                          ? "bg-brand-lightOrange text-brand-primary shadow-sm"
-                          : "bg-brand-cream text-brand-muted hover:text-brand-deep"
-                      }`}
-                    >
-                      {s === "adventurer" ? "Gen-Z" : "Botts"}
-                    </button>
-                  ))}
-                </div>
+                {presetStyle && selectedPreset ? (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPresetKey(null)}
+                    className="rounded-lg bg-brand-lightOrange px-3 py-1.5 text-xs font-bold text-brand-primary transition-colors hover:bg-brand-lightOrange/70"
+                  >
+                    ← {selectedPreset.label}
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    {(["adventurer", "bottts-neutral"] as AvatarStyle[]).map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setStyle(s)}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                          style === s
+                            ? "bg-brand-lightOrange text-brand-primary shadow-sm"
+                            : "bg-brand-cream text-brand-muted hover:text-brand-deep"
+                        }`}
+                      >
+                        {s === "adventurer" ? "Gen-Z" : "Botts"}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={shuffle}
@@ -212,7 +283,7 @@ export default function AvatarPickerModal({ open, onClose }: { open: boolean; on
                     className="group flex flex-col items-center gap-1 rounded-xl border border-brand-softline bg-brand-canvas/40 p-2 transition-all hover:border-brand-primary/50 hover:bg-brand-cream disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <img
-                      src={diceBearUrl(seed, style)}
+                      src={buildUrl(seed)}
                       alt={`Generated avatar ${seed}`}
                       loading="lazy"
                       className="h-16 w-16 rounded-full object-cover transition-transform group-hover:scale-105"

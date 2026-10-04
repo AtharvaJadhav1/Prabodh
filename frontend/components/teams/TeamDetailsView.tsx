@@ -7,6 +7,7 @@ import { api, apiPost, ApiError } from "../../lib/api";
 import { downloadDataUrl } from "../../lib/download-data-url";
 import type { PortalTeam, TeamMentors } from "../../lib/types";
 import Avatar from "../Avatar";
+import { getMentorWavesAvatarUrl } from "../../lib/mentorAvatar";
 import LoadingState from "../LoadingState";
 import StatusPill from "../admin/StatusPill";
 import EmptyState from "../mentor/EmptyState";
@@ -581,7 +582,11 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
                 </h3>
                 {faculty ? (
                   <div className="flex items-center gap-3">
-                    <Avatar src={null} seed={faculty.name} className="h-9 w-9" />
+                    <Avatar
+                      src={getMentorWavesAvatarUrl("INSTITUTE", faculty.email || faculty.name)}
+                      seed={faculty.name}
+                      className="h-9 w-9"
+                    />
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold text-neutral-900">{faculty.name}</div>
                       <div className="truncate text-xs text-neutral-500">
@@ -599,7 +604,11 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
                 <h3 className="mb-1.5 text-xs font-bold uppercase tracking-wide text-neutral-400">Industrial Mentor</h3>
                 {industrial ? (
                   <div className="flex items-center gap-3">
-                    <Avatar src={null} seed={industrial.name} className="h-9 w-9" />
+                    <Avatar
+                      src={getMentorWavesAvatarUrl("INDUSTRY", industrial.email || industrial.name)}
+                      seed={industrial.name}
+                      className="h-9 w-9"
+                    />
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold text-neutral-900">{industrial.name}</div>
                       <div className="truncate text-xs text-neutral-500">
