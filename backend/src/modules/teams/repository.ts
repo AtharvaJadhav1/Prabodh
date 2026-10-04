@@ -115,6 +115,7 @@ export class TeamsRepository {
   findCurrentForUser(userId: string) {
     return this.prisma.team.findFirst({
       where: {
+        status: { not: 'disqualified' },
         OR: [{ leaderUserId: userId }, { members: { some: { userId } } }],
       },
       orderBy: { createdAt: 'desc' },
@@ -195,6 +196,7 @@ export class TeamsRepository {
   listMine(userId: string) {
     return this.prisma.team.findMany({
       where: {
+        status: { not: 'disqualified' },
         OR: [{ leaderUserId: userId }, { members: { some: { userId } } }],
       },
       orderBy: { createdAt: 'desc' },

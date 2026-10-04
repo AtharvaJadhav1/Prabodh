@@ -200,7 +200,7 @@ function summarizeAudit(input: SummaryInput): string {
     case 'team.lock':
       return teamLabel ? `Locked team details for ${teamLabel}` : 'Locked team details';
     case 'team.disqualify':
-      return teamLabel ? `Disqualified team ${teamLabel}` : 'Disqualified a team';
+      return teamLabel ? `Disqualified team ${teamLabel} and removed its data` : 'Disqualified a team and removed its data';
     case 'team.invite':
       return `Invited ${String(after?.invitedEmail ?? 'a student')} to join ${teamLabel ?? 'the team'}`;
     case 'team.join': {

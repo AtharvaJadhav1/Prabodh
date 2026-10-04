@@ -14,6 +14,7 @@ import { hasAnyRole, hasRole } from '../../lib/roles';
 import { writeAudit } from '../../lib/audit';
 import { syncTeamMentorPointers } from '../../lib/mentor-pointers';
 import { createNotifications, notifyUsers } from '../../lib/notify';
+import { deleteObjectsByPrefix, isS3Configured } from '../../lib/s3';
 import { PrismaService } from '../../lib/prisma.service';
 import { sendTeamMemberInviteEmail } from '../../lib/invite-email';
 import { consumeToken } from '../../lib/rate-limit';
@@ -55,6 +56,8 @@ export class TeamsService {
 
     const existing = await this.prisma.team.findFirst({
       where: {
+        // A disqualified team no longer holds its former leader or members.
+        status: { not: 'disqualified' },
         OR: [
           { leaderUserId: user.id },
           { members: { some: { userId: user.id } } },
@@ -729,6 +732,7 @@ export class TeamsService {
         where: {
           AND: [
             { id: { not: team.id } },
+            { status: { not: 'disqualified' } },
             {
               OR: [
                 { leaderUserId: request.studentId },
@@ -849,6 +853,7 @@ export class TeamsService {
   private async findUserTeam(userId: string) {
     return this.prisma.team.findFirst({
       where: {
+        status: { not: 'disqualified' },
         OR: [
           { leaderUserId: userId },
           { members: { some: { userId, inviteStatus: InviteStatus.accepted } } },
@@ -877,33 +882,136 @@ export class TeamsService {
     return updated;
   }
 
+  /**
+   * Admin-only. Disqualifying removes the team's data and frees its people:
+   *  - all team data (comments, deliverables, evaluations, results, PS preferences, ideas, requests,
+   *    invites, mentor assignments, stage statuses, memberships, batch) is deleted in one transaction;
+   *  - the team row stays, marked "disqualified", so history and the audit log keep making sense;
+   *  - students no longer see it and can create/join another team; mentors lose the assignment;
+   *  - students and mentors are notified, and uploaded files are deleted from storage (best effort).
+   */
   async disqualify(user: AuthUser, teamId: string) {
-    const team = await this.repo.findForAccessCheck(teamId);
-    if (!team) throw new NotFoundException('Team not found');
     if (user.platformRole !== 'admin') {
       throw new ForbiddenException('Only an admin can disqualify a team');
     }
-    const updated = await this.repo.update(teamId, { status: TeamStatus.disqualified });
+    const team = await this.repo.findForAccessCheck(teamId);
+    if (!team) throw new NotFoundException('Team not found');
+    if (team.status === TeamStatus.disqualified) {
+      throw new BadRequestException('This team is already disqualified.');
+    }
+
+    const [memberRows, mentorRows, teamRow] = await Promise.all([
+      this.prisma.teamMember.findMany({ where: { teamId }, select: { userId: true } }),
+      this.prisma.mentorAssignment.findMany({ where: { teamId, active: true }, select: { mentorUserId: true } }),
+      this.prisma.team.findUnique({ where: { id: teamId }, select: { psId: true } }),
+    ]);
+    const studentIds = [
+      ...new Set([team.leaderUserId, ...memberRows.map((m) => m.userId).filter((id): id is string => !!id)]),
+    ];
+    const mentorIds = [...new Set(mentorRows.map((m) => m.mentorUserId))];
+
+    const removed = await this.prisma.$transaction(
+      async (tx) => {
+        await tx.comment.updateMany({
+          where: { teamId, parentCommentId: { not: null } },
+          data: { parentCommentId: null },
+        });
+        const comments = (await tx.comment.deleteMany({ where: { teamId } })).count;
+        const deliverables = (await tx.deliverable.deleteMany({ where: { teamId } })).count;
+        await tx.evaluation.updateMany({
+          where: { supersededBy: { teamId } },
+          data: { supersededById: null },
+        });
+        const evaluations = (await tx.evaluation.deleteMany({ where: { teamId } })).count;
+        const ideas = (await tx.ideaSubmission.deleteMany({ where: { teamId } })).count;
+        const joinRequests = (await tx.joinRequest.deleteMany({ where: { teamId } })).count;
+        const mentorAssignments = (await tx.mentorAssignment.deleteMany({ where: { teamId } })).count;
+        const mentorInvites = (await tx.mentorInvite.deleteMany({ where: { teamId } })).count;
+        const stageResults = (await tx.stageResult.deleteMany({ where: { teamId } })).count;
+        const members = (await tx.teamMember.deleteMany({ where: { teamId } })).count;
+        const psPreferences = (await tx.teamPsPreference.deleteMany({ where: { teamId } })).count;
+        const stageStatuses = (await tx.teamStageStatus.deleteMany({ where: { teamId } })).count;
+        await tx.notification.deleteMany({ where: { relatedEntity: `team:${teamId}` } });
+        if (teamRow?.psId) {
+          await tx.problemStatement.updateMany({
+            where: { id: teamRow.psId },
+            data: { teamsSelectedCount: { decrement: 1 } },
+          });
+        }
+        await tx.team.update({
+          where: { id: teamId },
+          data: {
+            status: TeamStatus.disqualified,
+            psId: null,
+            batchId: null,
+            mentorLockedAt: null,
+            facultyMentorId: null,
+            industrialMentorId: null,
+          },
+        });
+        return {
+          comments,
+          deliverables,
+          evaluations,
+          ideas,
+          joinRequests,
+          mentorAssignments,
+          mentorInvites,
+          stageResults,
+          members,
+          psPreferences,
+          stageStatuses,
+        };
+      },
+      { timeout: 30_000 },
+    );
+
     await writeAudit(this.prisma, {
       actorUserId: user.id,
       action: 'team.disqualify',
       entityType: 'team',
       entityId: teamId,
       before: { status: team.status },
-      after: { status: updated.status },
+      after: { status: TeamStatus.disqualified, teamName: team.name, memberCount: studentIds.length, removed },
     });
-    return updated;
+
+    // Tell the people affected (fire and forget: never fail the disqualification over an email).
+    void notifyUsers(this.prisma, studentIds, {
+      type: 'status_change',
+      template: 'admin_broadcast',
+      title: `Your team "${team.name}" has been disqualified`,
+      body: `The administrator has disqualified team "${team.name}" (${team.teamCode}). The team's data has been removed and you are no longer part of it. You can now create a new team or join another one.`,
+    }).catch((err) => console.error('[teams.disqualify] student notification failed', err));
+    void notifyUsers(this.prisma, mentorIds, {
+      type: 'status_change',
+      template: 'admin_broadcast',
+      title: `Team "${team.name}" has been disqualified`,
+      body: `The administrator has disqualified team "${team.name}" (${team.teamCode}). It has been removed from your assigned teams.`,
+    }).catch((err) => console.error('[teams.disqualify] mentor notification failed', err));
+
+    // Uploaded files go too (best effort: a storage hiccup must not undo the disqualification).
+    if (isS3Configured()) {
+      void deleteObjectsByPrefix(`deliverables/${teamId}/`).catch((err) =>
+        console.error('[teams.disqualify] could not delete stored files for', teamId, err),
+      );
+    }
+
+    return { ok: true, teamId, status: TeamStatus.disqualified, removed };
   }
 
   async assertCanView(
     user: AuthUser,
     team: {
       leaderUserId: string;
+      status?: string;
       members: Array<{ userId: string | null }>;
       mentorAssignments: Array<{ mentorUserId: string }>;
     },
   ) {
     if (user.platformRole === 'admin') return;
+    if (team.status === 'disqualified') {
+      throw new ForbiddenException('This team has been disqualified and is no longer available.');
+    }
     if (team.leaderUserId === user.id) return;
     if (team.members.some((m) => m.userId === user.id)) return;
     if (team.mentorAssignments.some((m) => m.mentorUserId === user.id)) return;

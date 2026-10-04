@@ -1,4 +1,10 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectsCommand,
+  GetObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 function s3() {
@@ -105,6 +111,27 @@ export async function putObjectBuffer(key: string, body: Buffer, contentType: st
     }),
   );
   return { key, publicUrl: publicObjectUrl(key) };
+}
+
+/** Delete every object under `prefix` (e.g. a disqualified team's uploads). Returns how many were removed. */
+export async function deleteObjectsByPrefix(prefix: string): Promise<number> {
+  const bucket = process.env.S3_BUCKET;
+  if (!bucket || !prefix) return 0;
+  const client = s3();
+  let removed = 0;
+  let token: string | undefined;
+  do {
+    const page = await client.send(
+      new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, ContinuationToken: token }),
+    );
+    const keys = (page.Contents ?? []).map((o) => ({ Key: o.Key! })).filter((k) => k.Key);
+    if (keys.length) {
+      await client.send(new DeleteObjectsCommand({ Bucket: bucket, Delete: { Objects: keys, Quiet: true } }));
+      removed += keys.length;
+    }
+    token = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (token);
+  return removed;
 }
 
 export function isS3Configured() {

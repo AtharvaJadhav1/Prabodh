@@ -100,6 +100,78 @@ type ConfirmPanelProps = {
   onConfirm: () => void;
 };
 
+/** Irreversible: spells out what is deleted and makes the admin type the team code to continue. */
+function DisqualifyPanel({
+  teamName,
+  teamCode,
+  memberCount,
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  teamName: string;
+  teamCode: string;
+  memberCount: number;
+  pending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const [typed, setTyped] = useState("");
+  const matches = typed.trim().toLowerCase() === teamCode.trim().toLowerCase();
+  return (
+    <div role="alertdialog" aria-label="Disqualify team" className="rounded-xl border border-red-300 bg-red-50 p-4">
+      <p className="flex items-center gap-2 text-sm font-bold text-red-700">
+        <AlertTriangleIcon className="h-4 w-4 shrink-0" />
+        Disqualify &ldquo;{teamName}&rdquo;?
+      </p>
+      <p className="mt-2 text-xs font-medium text-red-700">
+        This permanently removes the team&apos;s data and cannot be undone:
+      </p>
+      <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-xs text-red-700">
+        <li>All comments, deliverables and uploaded files</li>
+        <li>Evaluations, scores and published results</li>
+        <li>Problem statement choices, ideas, join requests and invites</li>
+        <li>Mentor assignments and stage progress</li>
+        <li>Its place in any batch</li>
+      </ul>
+      <p className="mt-2 text-xs font-medium text-red-700">
+        The team record stays on the admin side as &ldquo;Disqualified&rdquo; for history. The{" "}
+        {memberCount} member{memberCount === 1 ? "" : "s"} will no longer see this team and can create or join
+        another one. Students and mentors are notified.
+      </p>
+      <label htmlFor="disqualify-confirm" className="mt-3 block text-xs font-semibold text-red-800">
+        Type <span className="font-mono font-bold">{teamCode}</span> to confirm
+      </label>
+      <input
+        id="disqualify-confirm"
+        value={typed}
+        onChange={(e) => setTyped(e.target.value)}
+        autoComplete="off"
+        placeholder={teamCode}
+        className="mt-1 w-full rounded-lg border border-red-200 bg-white px-3 py-1.5 font-mono text-xs text-neutral-900 outline-none focus:border-red-500"
+      />
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={pending}
+          className="flex-1 rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-600 hover:bg-neutral-50 disabled:opacity-50"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={pending || !matches}
+          className="flex-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {pending ? "Removing data…" : "Disqualify and remove data"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ConfirmPanel({
   tone,
   message,
@@ -225,6 +297,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
   const [disqualifyPending, setDisqualifyPending] = useState(false);
   const [confirmingLock, setConfirmingLock] = useState(false);
   const [confirmingDisqualify, setConfirmingDisqualify] = useState(false);
+  const [disqualifyNotice, setDisqualifyNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
 
@@ -286,6 +359,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
     try {
       await apiPost(`/teams/${teamId}/disqualify`, {});
       setConfirmingDisqualify(false);
+      setDisqualifyNotice("Team disqualified. Its data was removed and the members and mentors were notified.");
       reloadSilently();
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Could not disqualify this team.");
@@ -353,6 +427,12 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
       <Link href={backHref} className="text-sm font-medium text-brand-muted hover:text-brand-primary">
         ← Back to Teams
       </Link>
+
+      {disqualifyNotice && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs font-medium text-emerald-700">
+          {disqualifyNotice}
+        </div>
+      )}
 
       {actionError && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-600">
@@ -566,11 +646,10 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
                 )}
 
                 {canDisqualify && confirmingDisqualify && (
-                  <ConfirmPanel
-                    tone="danger"
-                    message="Are you sure you want to disqualify this team? This cannot be undone."
-                    cancelLabel="Cancel"
-                    confirmLabel={disqualifyPending ? "Disqualifying…" : "Confirm Disqualify"}
+                  <DisqualifyPanel
+                    teamName={team.name}
+                    teamCode={team.teamCode}
+                    memberCount={team.members.filter((m) => m.inviteStatus === "accepted").length}
                     pending={disqualifyPending}
                     onCancel={() => setConfirmingDisqualify(false)}
                     onConfirm={handleDisqualify}
