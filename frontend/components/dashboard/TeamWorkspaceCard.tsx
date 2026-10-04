@@ -17,7 +17,7 @@ import {
   SendIcon,
   ClockIcon,
   CheckIcon,
-  TrashIcon,
+  AlertTriangleIcon,
 } from "./icons";
 
 export default function TeamWorkspaceCard() {
@@ -156,10 +156,13 @@ export default function TeamWorkspaceCard() {
           <button
             type="button"
             onClick={() => setUndoOpen(true)}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-600 transition-colors hover:bg-red-100 hover:text-red-700"
+            title="Undo Team Creation"
+            className="group flex shrink-0 cursor-pointer items-center gap-0 overflow-hidden rounded-full border border-red-200 bg-red-50 px-2.5 py-1.5 text-red-600 transition-all duration-300 hover:gap-2 hover:bg-red-100"
           >
-            <TrashIcon className="h-3.5 w-3.5" />
-            Undo Team Creation
+            <AlertTriangleIcon className="h-4 w-4 shrink-0 text-red-600" />
+            <span className="max-w-0 whitespace-nowrap text-xs font-bold opacity-0 transition-all duration-300 ease-in-out group-hover:max-w-xs group-hover:opacity-100">
+              Undo Team Creation
+            </span>
           </button>
         )}
       </div>

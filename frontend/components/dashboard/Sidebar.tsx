@@ -14,6 +14,7 @@ import {
   GradCapIcon,
   LogoutIcon,
   LockIcon,
+  LockOpenIcon,
   XIcon,
   PencilIcon,
   ChevronRightIcon,
@@ -107,9 +108,15 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           <div className="rounded-2xl border border-brand-softline bg-white p-4">
             <div className="flex items-center justify-between gap-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-brand-muted">Active Team</p>
-              <span className="inline-flex items-center gap-1 rounded-full bg-brand-approved/10 px-2 py-0.5 text-[10px] font-bold uppercase text-brand-approved">
-                <LockIcon className="h-3 w-3" /> {team?.status ?? "forming"}
-              </span>
+              {(team?.status ?? "forming") === "locked" ? (
+                <span title="Team Locked" aria-label="Team Locked">
+                  <LockIcon className="h-5 w-5 shrink-0 text-gray-700" />
+                </span>
+              ) : (
+                <span title="Team Forming (Open)" aria-label="Team Forming (Open)">
+                  <LockOpenIcon className="h-5 w-5 shrink-0 text-amber-600" />
+                </span>
+              )}
             </div>
             <div className="mt-1.5 flex items-center justify-between gap-2 text-sm">
               {editingName ? (

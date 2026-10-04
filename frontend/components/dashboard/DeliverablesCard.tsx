@@ -430,7 +430,7 @@ export default function DeliverablesCard() {
           onClick={() => void saveGithub()}
           className="rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
         >
-          Save GitHub
+          Save Repo
         </button>
       </div>
       {message ? <p className="mt-2 text-xs font-medium text-brand-deep">{message}</p> : null}
