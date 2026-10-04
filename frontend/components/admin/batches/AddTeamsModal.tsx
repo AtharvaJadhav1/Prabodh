@@ -219,7 +219,7 @@ export default function AddTeamsModal({ open, onClose, selectedIds, onConfirm }:
                     <td className="px-5 py-3 text-right">
                       <span className="inline-flex items-center gap-1 font-bold text-neutral-900">
                         <UsersIcon className="h-3.5 w-3.5 text-neutral-400" />
-                        {t._count?.members ?? 0}/{t.memberCap}
+                        {t._count?.members ?? 0}
                       </span>
                     </td>
                   </tr>

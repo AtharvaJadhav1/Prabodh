@@ -74,7 +74,7 @@ export default function AssignedTeamsTable({ groups, teamMentors }: Props) {
                     <div className="text-sm font-bold text-brand-deep">{group.teamName}</div>
                     <div className="mt-0.5 font-mono text-[11px] text-brand-muted">{group.teamId}</div>
                     <span className="mt-1 inline-block rounded border border-brand-sand bg-brand-cream px-2 py-0.5 text-[10px] text-brand-muted">
-                      {group.capacity} &middot; {group.track.split(" / ")[0]}
+                      {group.memberCount} {group.memberCount === 1 ? "member" : "members"} &middot; {group.track.split(" / ")[0]}
                     </span>
                   </td>
                   <td className="max-w-xs px-4 py-4">

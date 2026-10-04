@@ -55,7 +55,6 @@ export type PortalTeam = {
   name: string;
   institute: string;
   theme?: string | null;
-  memberCap: number;
   leaderUserId: string;
   status: string;
   mentorLockedAt?: string | null;

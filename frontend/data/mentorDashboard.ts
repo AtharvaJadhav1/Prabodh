@@ -2,7 +2,7 @@ export type MentorGroup = {
   id?: string;
   teamName: string;
   teamId: string;
-  capacity: string;
+  memberCount: number;
   track: string;
   problemCode: string;
   problemTitle: string;

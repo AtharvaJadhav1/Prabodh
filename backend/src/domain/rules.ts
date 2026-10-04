@@ -22,7 +22,6 @@ export function pickLeastLoadedMentor<T extends { id: string; domainTags: string
 }
 
 export const DEFAULT_SETTINGS = {
-  member_cap: 6,
   institute_mentor_cap: 1,
   industry_mentor_cap: 1,
   invite_ttl_hours: 72,

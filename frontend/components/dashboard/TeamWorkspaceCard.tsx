@@ -20,13 +20,11 @@ import {
 export default function TeamWorkspaceCard() {
   const {
     members,
-    filledCount,
     openDrawer,
     invites,
     isLead,
     teamCode,
     teamName,
-    capacity,
     teamId,
     createTeam,
     loading,
@@ -46,7 +44,6 @@ export default function TeamWorkspaceCard() {
   const teamNameInputRef = useRef<HTMLInputElement | null>(null);
   const confirmedMembers = members.filter((m) => m.status === "Verified");
   const totalOccupied = confirmedMembers.length + invites.length;
-  const slotsLeft = capacity - totalOccupied;
 
   const closeInviteForm = () => {
     setIsInviting(false);
@@ -59,10 +56,6 @@ export default function TeamWorkspaceCard() {
     const trimmed = inviteEmail.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setInviteError("Enter a valid institute email, e.g. name@mituniversity.edu.in");
-      return;
-    }
-    if (slotsLeft <= 0 || filledCount + invites.length >= capacity) {
-      setInviteError("Team is full — revoke a pending invite before sending new ones.");
       return;
     }
     setInviteSending(true);
@@ -187,22 +180,25 @@ export default function TeamWorkspaceCard() {
       </div>
 
       <div className="mt-6">
-        <span className="text-xs font-bold tracking-tight text-brand-deep">Roster Capacity</span>
-        <div className="mt-2 flex w-44 items-center gap-1.5 sm:w-56">
-          {Array.from({ length: capacity }).map((_, idx) => {
-            const isFilled = idx < confirmedMembers.length;
-            const isPending = !isFilled && idx < confirmedMembers.length + invites.length;
-            return (
-              <div
-                key={idx}
-                className={`h-2 flex-1 rounded-full transition-all duration-300 ${
-                  isFilled ? "bg-[#C25E26]" : isPending ? "animate-pulse bg-amber-300" : "bg-brand-softline/60"
-                }`}
-                title={`Slot ${idx + 1}: ${isFilled ? "Confirmed" : isPending ? "Pending Invite" : "Open Slot"}`}
-              />
-            );
-          })}
-        </div>
+        <span className="text-xs font-bold tracking-tight text-brand-deep">
+          Roster · {confirmedMembers.length} {confirmedMembers.length === 1 ? "member" : "members"}
+        </span>
+        {totalOccupied > 0 && (
+          <div className="mt-2 flex w-44 items-center gap-1.5 sm:w-56">
+            {Array.from({ length: totalOccupied }).map((_, idx) => {
+              const isFilled = idx < confirmedMembers.length;
+              return (
+                <div
+                  key={idx}
+                  className={`h-2 flex-1 rounded-full transition-all duration-300 ${
+                    isFilled ? "bg-[#C25E26]" : "animate-pulse bg-amber-300"
+                  }`}
+                  title={`Member ${idx + 1}: ${isFilled ? "Confirmed" : "Pending Invite"}`}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="mt-6">
@@ -210,7 +206,7 @@ export default function TeamWorkspaceCard() {
           <div className="flex items-baseline gap-2.5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#786C65]">Team Roster</h3>
             <span className="rounded-full bg-brand-cream px-2.5 py-1 text-[11px] font-bold text-brand-primary">
-              {confirmedMembers.length}/{capacity} filled
+              {confirmedMembers.length} {confirmedMembers.length === 1 ? "member" : "members"}
             </span>
           </div>
         </div>
@@ -289,85 +285,84 @@ export default function TeamWorkspaceCard() {
             </div>
           ))}
 
-          {slotsLeft > 0 &&
-            (isLead ? (
-              isInviting ? (
-                <div className="rounded-2xl border border-brand-primary/25 bg-brand-cream/60 p-4 shadow-[0_2px_8px_rgba(91,46,16,0.06)]">
-                  <div className="mb-2.5 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#C25E26]">
-                      <MailIcon className="h-3.5 w-3.5" />
-                      <span>Invite Team Member</span>
-                    </div>
+          {isLead ? (
+            isInviting ? (
+              <div className="rounded-2xl border border-brand-primary/25 bg-brand-cream/60 p-4 shadow-[0_2px_8px_rgba(91,46,16,0.06)]">
+                <div className="mb-2.5 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#C25E26]">
+                    <MailIcon className="h-3.5 w-3.5" />
+                    <span>Invite Team Member</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeInviteForm}
+                    className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-brand-muted transition-colors hover:bg-white hover:text-brand-deep"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <form
+                  className="space-y-2.5"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void handleSendInvite();
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="email"
+                      autoFocus
+                      required
+                      placeholder="student@institution.edu.in"
+                      aria-label="Teammate's email address"
+                      value={inviteEmail}
+                      onChange={(e) => {
+                        setInviteEmail(e.target.value);
+                        setInviteError("");
+                      }}
+                      className="h-10 flex-1 rounded-xl border border-brand-softline bg-white px-3.5 py-2 text-xs font-medium text-brand-charcoal outline-none transition-all placeholder:text-brand-charcoal/45 focus:border-transparent focus:ring-2 focus:ring-brand-primary/30"
+                    />
                     <button
-                      type="button"
-                      onClick={closeInviteForm}
-                      className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-brand-muted transition-colors hover:bg-white hover:text-brand-deep"
+                      type="submit"
+                      disabled={inviteSending || !inviteEmail.trim()}
+                      className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-xs font-bold text-white shadow-md shadow-brand-primary/25 transition-all duration-150 hover:bg-brand-hover active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      Cancel
+                      <SendIcon className="h-3.5 w-3.5" /> {inviteSending ? "Sending…" : "Send"}
                     </button>
                   </div>
-
-                  <form
-                    className="space-y-2.5"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      void handleSendInvite();
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="email"
-                        autoFocus
-                        required
-                        placeholder="student@institution.edu.in"
-                        aria-label="Teammate's email address"
-                        value={inviteEmail}
-                        onChange={(e) => {
-                          setInviteEmail(e.target.value);
-                          setInviteError("");
-                        }}
-                        className="h-10 flex-1 rounded-xl border border-brand-softline bg-white px-3.5 py-2 text-xs font-medium text-brand-charcoal outline-none transition-all placeholder:text-brand-charcoal/45 focus:border-transparent focus:ring-2 focus:ring-brand-primary/30"
-                      />
-                      <button
-                        type="submit"
-                        disabled={inviteSending || !inviteEmail.trim()}
-                        className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-xs font-bold text-white shadow-md shadow-brand-primary/25 transition-all duration-150 hover:bg-brand-hover active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        <SendIcon className="h-3.5 w-3.5" /> {inviteSending ? "Sending…" : "Send"}
-                      </button>
-                    </div>
-                    {inviteError ? (
-                      <p className="text-[11px] font-semibold text-red-600">{inviteError}</p>
-                    ) : null}
-                    {inviteSuccess ? (
-                      <p className="inline-flex items-center gap-1.5 text-[11px] font-bold text-brand-approved">
-                        <CheckIcon className="h-3.5 w-3.5" /> {inviteSuccess}
-                      </p>
-                    ) : null}
-                    <p className="text-[11px] leading-relaxed text-brand-muted">
-                      We'll email them an invite link. Teammates must join using their invited email
-                      address.
+                  {inviteError ? (
+                    <p className="text-[11px] font-semibold text-red-600">{inviteError}</p>
+                  ) : null}
+                  {inviteSuccess ? (
+                    <p className="inline-flex items-center gap-1.5 text-[11px] font-bold text-brand-approved">
+                      <CheckIcon className="h-3.5 w-3.5" /> {inviteSuccess}
                     </p>
-                  </form>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsInviting(true)}
-                  className="group flex w-full items-center justify-center gap-2.5 rounded-xl border-2 border-dashed border-brand-softline bg-[#FAF7F2]/40 p-4 text-sm font-semibold text-brand-muted transition-all duration-200 hover:border-[#C25E26] hover:bg-white hover:text-[#C25E26]"
-                >
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full border border-brand-softline bg-white text-current shadow-sm transition-colors group-hover:border-[#C25E26]">
-                    <PlusIcon className="h-4 w-4" />
-                  </div>
-                  <span>Add Teammate</span>
-                </button>
-              )
-            ) : (
-              <div className="flex items-center justify-center gap-2 rounded-xl border border-brand-softline bg-brand-cream px-4 py-4 text-xs font-semibold text-brand-muted">
-                <LockIcon className="h-4 w-4" />
-                Read Only — Group managed by Team Lead
+                  ) : null}
+                  <p className="text-[11px] leading-relaxed text-brand-muted">
+                    We'll email them an invite link. Teammates must join using their invited email
+                    address.
+                  </p>
+                </form>
               </div>
-            ))}
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsInviting(true)}
+                className="group flex w-full items-center justify-center gap-2.5 rounded-xl border-2 border-dashed border-brand-softline bg-[#FAF7F2]/40 p-4 text-sm font-semibold text-brand-muted transition-all duration-200 hover:border-[#C25E26] hover:bg-white hover:text-[#C25E26]"
+              >
+                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-brand-softline bg-white text-current shadow-sm transition-colors group-hover:border-[#C25E26]">
+                  <PlusIcon className="h-4 w-4" />
+                </div>
+                <span>Add Teammate</span>
+              </button>
+            )
+          ) : (
+            <div className="flex items-center justify-center gap-2 rounded-xl border border-brand-softline bg-brand-cream px-4 py-4 text-xs font-semibold text-brand-muted">
+              <LockIcon className="h-4 w-4" />
+              Read Only — Group managed by Team Lead
+            </div>
+          )}
         </div>
       </div>
 

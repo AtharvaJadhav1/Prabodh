@@ -5,23 +5,17 @@ import { useTeam } from "./TeamProvider";
 import { MailIcon, SendIcon, CheckIcon, LockIcon } from "./icons";
 
 export default function DispatchInviteCard() {
-  const { isLead, sendInvite, filledCount, invites, capacity } = useTeam();
+  const { isLead, sendInvite, invites } = useTeam();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [sending, setSending] = useState(false);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const seatsLeft = capacity - filledCount;
-
   const handleSend = async () => {
     const trimmed = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setError("Enter a valid institute email, e.g. name@mituniversity.edu.in");
-      return;
-    }
-    if (seatsLeft <= 0 || filledCount + invites.length >= capacity) {
-      setError("Team is full — revoke a pending invite before sending new ones.");
       return;
     }
     setSending(true);
@@ -78,7 +72,7 @@ export default function DispatchInviteCard() {
                   handleSend();
                 }
               }}
-              placeholder="student@institution.edu.in"
+              placeholder="student@example.com"
               aria-label="Teammate's email address"
               className="h-10 w-full px-3 py-2 text-xs rounded-xl border border-brand-softline bg-brand-cream font-medium text-brand-charcoal transition-all placeholder:text-brand-charcoal/45 focus:border-transparent focus:ring-2 focus:ring-brand-primary/30 focus:bg-white outline-none sm:h-11"
             />

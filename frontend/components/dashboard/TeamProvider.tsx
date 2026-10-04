@@ -41,7 +41,6 @@ type TeamContextValue = {
   teamId: string | null;
   teamCode: string;
   teamName: string;
-  capacity: number;
   teamAvatarCount: number;
   cycleTeamAvatar: () => void;
   members: Member[];
@@ -95,9 +94,9 @@ type TeamContextValue = {
 
 const TeamContext = createContext<TeamContextValue | null>(null);
 
-function mapMembers(team: PortalTeam, cap: number): Member[] {
+function mapMembers(team: PortalTeam): Member[] {
   const live = team.members.filter((m) => m.inviteStatus === "pending" || m.inviteStatus === "accepted");
-  const mapped: Member[] = live.map((m) => {
+  return live.map((m) => {
     const name = m.user?.fullName ?? m.invitedEmail;
     const accepted = m.inviteStatus === "accepted";
     return {
@@ -112,17 +111,6 @@ function mapMembers(team: PortalTeam, cap: number): Member[] {
       avatarUrl: accepted ? avatarUrlFrom(m.user?.profileJson) : null,
     };
   });
-  while (mapped.length < cap) {
-    mapped.push({
-      name: "Open Slot — Awaiting Member",
-      initials: "?",
-      prn: "",
-      branch: "",
-      role: null,
-      status: "Empty",
-    });
-  }
-  return mapped;
 }
 
 function initials(name: string) {
@@ -200,7 +188,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
 
   const applyTeamDetail = useCallback((detail: PortalTeam) => {
     setTeam(detail);
-    setMembers(mapMembers(detail, detail.memberCap));
+    setMembers(mapMembers(detail));
     const pending = detail.members.filter((m) => m.inviteStatus === "pending");
     setInvites(
       pending.map((m) => ({
@@ -532,7 +520,6 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         teamId: team?.id ?? null,
         teamCode: team?.teamCode ?? "—",
         teamName: team?.name ?? "Your team",
-        capacity: team?.memberCap ?? 6,
         teamAvatarCount,
         cycleTeamAvatar,
         members,

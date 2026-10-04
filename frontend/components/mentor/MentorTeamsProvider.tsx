@@ -12,7 +12,6 @@ export type MentorTeamRow = {
     name: string;
     teamCode: string;
     theme?: string | null;
-    memberCap?: number;
     leader?: { id: string; fullName: string; email: string } | null;
     members?: Array<{ id: string }>;
     problemStatement?: {

@@ -7,10 +7,6 @@ type Props = {
 };
 
 export default function GroupCard({ group }: Props) {
-  const [filled, cap] = group.capacity.split("/").map((n) => Number.parseInt(n, 10));
-  const isFull = Number.isFinite(filled) && Number.isFinite(cap) && cap > 0 && filled >= cap;
-  const capacityColor = isFull ? "bg-brand-approved/10 text-brand-approved" : "bg-brand-lightOrange text-brand-primary";
-
   return (
     <div className="flex flex-col rounded-2xl border border-neutral-200/80 bg-white px-6 py-6 shadow-sm transition-all hover:shadow-md gap-6 lg:flex-row lg:items-center justify-between mb-3">
       {/* Content */}
@@ -21,8 +17,8 @@ export default function GroupCard({ group }: Props) {
           <span className="rounded border border-brand-sand bg-brand-cream px-2 py-0.5 font-mono text-[11px] text-brand-muted">
             {group.teamId}
           </span>
-          <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${capacityColor}`}>
-            Team: {group.capacity}
+          <span className="rounded-full bg-brand-lightOrange px-2 py-0.5 text-[11px] font-semibold text-brand-primary">
+            Team: {group.memberCount} {group.memberCount === 1 ? "member" : "members"}
           </span>
           <span className="rounded-full border border-brand-sand bg-brand-cream px-2 py-0.5 text-[11px] font-medium text-brand-deep">
             {group.track}

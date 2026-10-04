@@ -52,7 +52,6 @@ const TEAM_SUMMARY = {
   theme: true,
   institute: true,
   status: true,
-  memberCap: true,
   _count: { select: { members: true } },
 } as const;
 

@@ -7,7 +7,7 @@ export type Member = {
   prn: string;
   branch: string;
   role: "Leader" | "Member" | null;
-  status: "Verified" | "Invite Pending" | "Empty";
+  status: "Verified" | "Invite Pending";
   female?: boolean;
   inviteEmail?: string;
   avatarUrl?: string | null;

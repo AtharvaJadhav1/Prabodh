@@ -55,7 +55,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { session, logout } = useAuth();
-  const { filledCount, pendingRequestCount, role, teamName, capacity, team, isLead, renameTeam, incomingInvites } = useTeam();
+  const { filledCount, pendingRequestCount, role, teamName, team, isLead, renameTeam, incomingInvites } = useTeam();
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(teamName);
   const [savingName, setSavingName] = useState(false);
@@ -197,7 +197,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 </div>
               )}
               <span className="shrink-0 font-semibold text-brand-muted">
-                {filledCount}/{capacity}
+                {filledCount} {filledCount === 1 ? "member" : "members"}
               </span>
             </div>
           </div>

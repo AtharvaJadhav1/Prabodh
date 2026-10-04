@@ -209,7 +209,7 @@ export default function MentorTeamsPage() {
                       <td className={`${COL_SIZES.members} px-4 py-4 text-center align-middle`}>
                         <span className="inline-flex items-center gap-1 rounded-full border border-brand-sand bg-brand-cream px-2.5 py-1 font-bold text-brand-deep">
                           <UsersIcon className="h-3.5 w-3.5 text-brand-muted" />
-                          {memberCount}/{team.memberCap ?? 6}
+                          {memberCount}
                         </span>
                       </td>
                       <td className={`${COL_SIZES.chevron} px-4 py-4 text-right align-middle`}>

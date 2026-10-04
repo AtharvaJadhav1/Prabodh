@@ -38,7 +38,6 @@ export class MentorsRepository {
             teamCode: true,
             theme: true,
             institute: true,
-            memberCap: true,
             status: true,
             leader: { select: { id: true, fullName: true, email: true } },
             members: {

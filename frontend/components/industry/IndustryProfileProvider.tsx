@@ -83,10 +83,7 @@ const defaultProfile: IndustryProfile = {
 };
 
 function studentsGuidedFrom(cohorts: MentorGroup[]): number {
-  return cohorts.reduce((sum, cohort) => {
-    const num = Number.parseInt(cohort.capacity.split("/")[0] ?? "0", 10);
-    return sum + (Number.isFinite(num) ? num : 0);
-  }, 0);
+  return cohorts.reduce((sum, cohort) => sum + cohort.memberCount, 0);
 }
 
 export function IndustryProfileProvider({ children }: { children: ReactNode }) {

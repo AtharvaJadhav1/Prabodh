@@ -421,6 +421,9 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
   const pendingInvite = mentors?.pendingIndustryInvite ?? null;
   const deliverables = (team.deliverables ?? []).slice().sort((a, b) => b.version - a.version);
   const showActions = canLock || canDisqualify;
+  const liveMembers = team.members.filter(
+    (m) => m.inviteStatus === "pending" || m.inviteStatus === "accepted",
+  );
 
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
@@ -459,7 +462,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
-          <Card title={`Members (${team.members.length}/${team.memberCap})`}>
+          <Card title={`Members (${liveMembers.length})`}>
             <div className="flex flex-col divide-y divide-neutral-100">
               {team.members.length === 0 ? (
                 <p className="py-2 text-sm text-neutral-500">No members found for this team.</p>

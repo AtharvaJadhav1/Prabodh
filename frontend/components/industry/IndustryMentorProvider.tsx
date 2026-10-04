@@ -50,7 +50,6 @@ type TeamApiRow = {
     leader?: { fullName: string; email: string } | null;
     problemStatement?: { code: string; title: string } | null;
     members?: unknown[];
-    memberCap?: number;
     mentorAssignments?: Array<{ mentorType: string; mentor: { id: string; fullName: string; email: string } }>;
   };
   pendingInvite?: boolean;
@@ -135,7 +134,7 @@ export function IndustryMentorProvider({ children }: { children: ReactNode }) {
               id: row.team.id,
               teamName: row.team.name,
               teamId: row.team.teamCode,
-              capacity: `${row.team.members?.length ?? "?"}/${row.team.memberCap ?? 6}`,
+              memberCount: row.team.members?.length ?? 0,
               track: row.team.theme ?? "Unassigned",
               problemCode: row.team.problemStatement?.code ?? "—",
               problemTitle: row.team.problemStatement?.title ?? "No PS locked yet",

@@ -165,7 +165,6 @@ model Team {
   leaderUserId       String     @map("leader_user_id")
   psId               String?    @map("ps_id")
   status             TeamStatus @default(forming)
-  memberCap          Int        @default(6) @map("member_cap")
   detailsLockAt      DateTime?  @map("details_lock_at")
   mentorLockedAt     DateTime?  @map("mentor_locked_at")
   facultyMentorId    String?    @map("faculty_mentor_id")

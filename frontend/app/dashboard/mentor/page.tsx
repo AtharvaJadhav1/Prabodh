@@ -27,7 +27,7 @@ export default function MentorDashboardPage() {
         id: row.team.id,
         teamName: row.team.name,
         teamId: row.team.teamCode,
-        capacity: `${row.team.members?.length ?? "?"}/${row.team.memberCap ?? 6}`,
+        memberCount: row.team.members?.length ?? 0,
         track: row.team.theme ?? "Unassigned",
         problemCode: row.team.problemStatement?.code ?? "—",
         problemTitle: row.team.problemStatement?.title ?? "No PS locked yet",
@@ -72,7 +72,7 @@ export default function MentorDashboardPage() {
       <MentorShell>
       <MetricCards
         assignedTeams={groups.length}
-        totalStudents={groups.reduce((n, g) => n + Number.parseInt(g.capacity.split("/")[0] || "0", 10) || 0, 0)}
+        totalStudents={groups.reduce((n, g) => n + g.memberCount, 0)}
       />
 
       {pendingInviteCount > 0 ? (

@@ -21,13 +21,11 @@ export default function GroupDrawer() {
     invites,
     requests,
     requestResults,
-    filledCount,
     sendInvite,
     revokeInvite,
     approveRequest,
     rejectRequest,
     isLead,
-    capacity,
   } = useTeam();
 
   const [email, setEmail] = useState("");
@@ -66,10 +64,6 @@ export default function GroupDrawer() {
     const trimmed = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setInviteError("Enter a valid institute email, e.g. name@mituniversity.edu.in");
-      return;
-    }
-    if (filledCount + invites.length >= capacity) {
-      setInviteError("Team is full — revoke a pending invite before sending new ones.");
       return;
     }
     setSending(true);
@@ -129,8 +123,6 @@ export default function GroupDrawer() {
     }
     resultFlashTimer.current = setTimeout(() => setResultFlash(null), 3000);
   };
-
-  const seatsLeft = capacity - filledCount;
 
   return (
     <div
@@ -337,8 +329,7 @@ export default function GroupDrawer() {
                         <button
                           type="button"
                           onClick={() => handleApprove(req.id)}
-                          disabled={seatsLeft <= 0}
-                          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-approved px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-brand-approved/90 disabled:cursor-not-allowed disabled:bg-brand-sand disabled:text-brand-muted sm:flex-none"
+                          className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-approved px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-brand-approved/90 sm:flex-none"
                         >
                           <UserCheckIcon className="h-3.5 w-3.5" /> Approve
                         </button>
@@ -365,8 +356,7 @@ export default function GroupDrawer() {
         <div className="border-t border-brand-softline px-5 py-4">
           <p className="flex items-start gap-2 rounded-xl bg-brand-cream p-3 text-xs leading-relaxed text-brand-charcoal/75">
             <LockIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" />
-            Roster locks automatically at <span className="font-bold">6/6 members</span>. Only the
-            Team Lead can manage requests.
+            Roster grows as teammates join. Only the Team Lead can manage requests.
           </p>
           <button
             type="button"

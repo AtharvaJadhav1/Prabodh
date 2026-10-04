@@ -18,7 +18,6 @@ type AdminTeam = {
   theme?: string | null;
   institute: string;
   status: TeamStatus;
-  memberCap: number;
   createdAt: string;
   leader: {
     id: string;
@@ -263,7 +262,7 @@ export default function AdminTeamsPage() {
                     <td className={`${COL_SIZES.members} px-3 py-4 text-right align-middle`}>
                       <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 font-bold text-neutral-900">
                         <UsersIcon className="h-3.5 w-3.5 text-neutral-400" />
-                        {t._count?.members ?? 0}/{t.memberCap}
+                        {t._count?.members ?? 0}
                       </span>
                     </td>
                     <td className={`${COL_SIZES.chevron} px-3 py-4 text-right align-middle`}>

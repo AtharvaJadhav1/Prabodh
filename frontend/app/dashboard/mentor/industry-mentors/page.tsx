@@ -23,7 +23,6 @@ export default function IndustryMentorsPage() {
           name: string;
           teamCode: string;
           theme?: string | null;
-          memberCap?: number;
           members?: unknown[];
           leader?: { fullName: string; email: string };
           problemStatement?: { code: string; title: string } | null;
@@ -50,7 +49,7 @@ export default function IndustryMentorsPage() {
             id: row.team.id,
             teamName: row.team.name,
             teamId: row.team.teamCode,
-            capacity: `${row.team.members?.length ?? "?"}/${row.team.memberCap ?? 6}`,
+            memberCount: row.team.members?.length ?? 0,
             track: row.team.theme ?? "Unassigned",
             problemCode: row.team.problemStatement?.code ?? "—",
             problemTitle: row.team.problemStatement?.title ?? "No PS locked yet",

@@ -70,7 +70,7 @@ export default function IndustryOverviewPanel() {
                     {cohort.problemTitle} &middot; {cohort.track}
                   </p>
                   <p className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-brand-muted">
-                    <span>{cohort.capacity} members</span>
+                    <span>{cohort.memberCount} {cohort.memberCount === 1 ? "member" : "members"}</span>
                     <span className="flex items-center gap-1">
                       <MailIcon className="h-3 w-3 text-brand-primary" />
                       {cohort.leader}

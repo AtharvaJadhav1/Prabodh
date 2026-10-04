@@ -4,9 +4,10 @@ import { useTeam } from "./TeamProvider";
 import InteractiveTeamAvatar from "./InteractiveTeamAvatar";
 
 export default function HeaderZone() {
-  const { filledCount, invites, teamName, teamCode, capacity, teamId } = useTeam();
+  const { filledCount, invites, teamName, teamCode, teamId } = useTeam();
   const confirmedCount = filledCount;
   const pendingCount = invites.length;
+  const rosterSize = confirmedCount + pendingCount;
 
   return (
     <div className="space-y-4">
@@ -25,30 +26,28 @@ export default function HeaderZone() {
         </div>
 
         <div className="w-full lg:w-96 flex flex-col justify-center">
-          <span className="text-xs font-bold tracking-tight text-brand-deep">Roster Capacity</span>
+          <span className="text-xs font-bold tracking-tight text-brand-deep">
+            Roster · {confirmedCount} {confirmedCount === 1 ? "member" : "members"}
+            {pendingCount > 0 ? ` · ${pendingCount} pending` : ""}
+          </span>
 
-          <div className="mt-2 flex w-44 items-center gap-1.5 sm:w-56">
-            {Array.from({ length: capacity }).map((_, idx) => {
-              const isFilled = idx < confirmedCount;
-              const isPending = !isFilled && idx < confirmedCount + pendingCount;
+          {rosterSize > 0 && (
+            <div className="mt-2 flex w-44 items-center gap-1.5 sm:w-56">
+              {Array.from({ length: rosterSize }).map((_, idx) => {
+                const isFilled = idx < confirmedCount;
 
-              return (
-                <div
-                  key={idx}
-                  className={`h-2 flex-1 rounded-full transition-all duration-300 ${
-                    isFilled
-                      ? "bg-[#C25E26]"
-                      : isPending
-                        ? "animate-pulse bg-amber-300"
-                        : "bg-brand-softline/60"
-                  }`}
-                  title={`Slot ${idx + 1}: ${
-                    isFilled ? "Confirmed" : isPending ? "Pending Invite" : "Open Slot"
-                  }`}
-                />
-              );
-            })}
-          </div>
+                return (
+                  <div
+                    key={idx}
+                    className={`h-2 flex-1 rounded-full transition-all duration-300 ${
+                      isFilled ? "bg-[#C25E26]" : "animate-pulse bg-amber-300"
+                    }`}
+                    title={`Member ${idx + 1}: ${isFilled ? "Confirmed" : "Pending Invite"}`}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
       </div>

@@ -25,7 +25,6 @@ export class TeamsRepository {
         teamCode: true,
         status: true,
         detailsLockAt: true,
-        memberCap: true,
         members: { select: { userId: true } },
         mentorAssignments: { where: { active: true }, select: { mentorUserId: true } },
       },
@@ -208,7 +207,6 @@ export class TeamsRepository {
         institute: true,
         leaderUserId: true,
         status: true,
-        memberCap: true,
         psId: true,
         createdAt: true,
         updatedAt: true,
@@ -232,7 +230,6 @@ export class TeamsRepository {
         institute: true,
         leaderUserId: true,
         status: true,
-        memberCap: true,
         psId: true,
         createdAt: true,
         updatedAt: true,
@@ -252,12 +249,6 @@ export class TeamsRepository {
 
   addMember(data: Prisma.TeamMemberCreateInput) {
     return this.prisma.teamMember.create({ data });
-  }
-
-  countActiveMembers(teamId: string) {
-    return this.prisma.teamMember.count({
-      where: { teamId, inviteStatus: { in: [InviteStatus.pending, InviteStatus.accepted] } },
-    });
   }
 
   findMemberByEmail(teamId: string, email: string) {

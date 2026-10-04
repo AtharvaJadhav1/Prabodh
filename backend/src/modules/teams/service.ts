@@ -69,8 +69,6 @@ export class TeamsService {
     }
 
     try {
-      const defaultCap = await getSettingNumber(this.prisma, 'member_cap');
-
       for (let attempt = 1; attempt <= MAX_TEAM_CODE_ATTEMPTS; attempt++) {
         const teamCode = await generateTeamCode(this.prisma);
 
@@ -80,7 +78,6 @@ export class TeamsService {
             name: body.name,
             institute: body.institute,
             theme: body.theme,
-            memberCap: body.memberCap ?? defaultCap,
             status: TeamStatus.forming,
             leader: { connect: { id: user.id } },
             members: {
@@ -342,7 +339,6 @@ export class TeamsService {
               institute: true,
               leaderUserId: true,
               status: true,
-              memberCap: true,
               psId: true,
               createdAt: true,
               updatedAt: true,
@@ -413,10 +409,6 @@ export class TeamsService {
     const existing = await this.repo.findMemberByEmail(teamId, email);
     if (existing && existing.inviteStatus !== InviteStatus.revoked && existing.inviteStatus !== InviteStatus.expired) {
       throw new BadRequestException('This email is already invited');
-    }
-    const count = await this.repo.countActiveMembers(teamId);
-    if (count >= team.memberCap) {
-      throw new BadRequestException(`Team is at member cap (${team.memberCap})`);
     }
 
     const member =
@@ -623,7 +615,7 @@ export class TeamsService {
   async createJoinRequest(user: AuthUser, teamId: string) {
     const team = await this.prisma.team.findUnique({
       where: { id: teamId },
-      select: { id: true, name: true, leaderUserId: true, memberCap: true },
+      select: { id: true, name: true, leaderUserId: true },
     });
     if (!team) throw new NotFoundException('Team not found');
 
@@ -646,9 +638,6 @@ export class TeamsService {
     const count = await this.prisma.teamMember.count({
       where: { teamId, inviteStatus: { in: [InviteStatus.pending, InviteStatus.accepted] } },
     });
-    if (count >= team.memberCap) {
-      throw new BadRequestException(`Team is at member cap (${team.memberCap})`);
-    }
 
     const request =
       existing && existing.status === JoinRequestStatus.rejected
@@ -711,7 +700,7 @@ export class TeamsService {
     }
     const team = await this.prisma.team.findUnique({
       where: { id: request.teamId },
-      select: { id: true, name: true, leaderUserId: true, memberCap: true },
+      select: { id: true, name: true, leaderUserId: true },
     });
     if (!team) throw new NotFoundException('Team not found');
     if (team.leaderUserId !== user.id && user.platformRole !== 'admin') {
@@ -721,7 +710,7 @@ export class TeamsService {
     const member = await this.prisma.$transaction(async (tx) => {
       const verified = await tx.team.findUnique({
         where: { id: team.id },
-        select: { id: true, leaderUserId: true, memberCap: true },
+        select: { id: true, leaderUserId: true },
       });
       if (!verified) throw new NotFoundException('Team not found');
       if (verified.leaderUserId !== user.id && user.platformRole !== 'admin') {
@@ -744,13 +733,6 @@ export class TeamsService {
       });
       if (alreadyPlaced) {
         throw new ConflictException('This student has already joined another team');
-      }
-
-      const count = await tx.teamMember.count({
-        where: { teamId: team.id, inviteStatus: { in: [InviteStatus.pending, InviteStatus.accepted] } },
-      });
-      if (count >= verified.memberCap) {
-        throw new BadRequestException(`Team is at member cap (${verified.memberCap})`);
       }
 
       const email = request.student.email.toLowerCase();
@@ -776,15 +758,6 @@ export class TeamsService {
         },
         data: { status: JoinRequestStatus.rejected, respondedAt: new Date() },
       });
-      const remaining = await tx.teamMember.count({
-        where: { teamId: team.id, inviteStatus: { in: [InviteStatus.pending, InviteStatus.accepted] } },
-      });
-      if (remaining >= verified.memberCap) {
-        await tx.joinRequest.updateMany({
-          where: { teamId: team.id, status: JoinRequestStatus.pending },
-          data: { status: JoinRequestStatus.rejected, respondedAt: new Date() },
-        });
-      }
       return placed;
     });
 

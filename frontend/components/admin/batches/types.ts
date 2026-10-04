@@ -8,7 +8,6 @@ export type BatchTeam = {
   theme?: string | null;
   institute: string;
   status: TeamStatus;
-  memberCap: number;
   _count?: { members: number };
 };
 

@@ -254,7 +254,7 @@ export default function BatchDetailPage() {
                       <div className="flex shrink-0 items-center gap-3">
                         <span className="hidden items-center gap-1 text-xs font-bold text-neutral-900 sm:inline-flex">
                           <UsersIcon className="h-3.5 w-3.5 text-neutral-400" />
-                          {t._count?.members ?? 0}/{t.memberCap}
+                          {t._count?.members ?? 0}
                         </span>
                         <StatusPill status={t.status} />
                         <button
