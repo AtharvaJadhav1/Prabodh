@@ -47,6 +47,7 @@ type SavedIndustryProfile = {
   company?: string;
   roleBadge?: string;
   location?: string;
+  /** Legacy pre-column value; the backfill migration copied these into linkedin_url. */
   linkedinUrl?: string;
   domainExpertise?: string[];
   coreSkills?: string[];
@@ -149,7 +150,7 @@ export function IndustryProfileProvider({ children }: { children: ReactNode }) {
       designation: session.department ?? saved.designation ?? "",
       roleBadge: saved.roleBadge ?? "",
       location: saved.location ?? "",
-      linkedinUrl: saved.linkedinUrl ?? "",
+      linkedinUrl: session.linkedinUrl ?? saved.linkedinUrl ?? "",
       domainExpertise: saved.domainExpertise ?? [],
       coreSkills: saved.coreSkills ?? [],
       experienceYears: saved.experienceYears ?? "",
@@ -174,12 +175,12 @@ export function IndustryProfileProvider({ children }: { children: ReactNode }) {
         institute: next.company,
         department: next.designation,
         phone: next.phone,
+        linkedinUrl: next.linkedinUrl,
         profileJson: {
           designation: next.designation,
           company: next.company,
           roleBadge: next.roleBadge,
           location: next.location,
-          linkedinUrl: next.linkedinUrl,
           domainExpertise: next.domainExpertise,
           coreSkills: next.coreSkills,
           experienceYears: next.experienceYears,

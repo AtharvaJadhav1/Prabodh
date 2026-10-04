@@ -10,3 +10,13 @@ export function normalizeExternalUrl(raw: string | null | undefined): string {
 export function isHttpUrl(url: string): boolean {
   return /^https?:\/\//i.test(url);
 }
+
+/**
+ * Shorten a profile URL for display: strips the scheme and trailing slash, and when the host
+ * matches `domain` reduces the rest to an @handle (e.g. "https://linkedin.com/in/neha" -> "@neha").
+ */
+export function handleFromUrl(url: string, domain: string): string {
+  const cleaned = url.replace(/^https?:\/\//, "").replace(/^\//, "").replace(/\/$/, "");
+  const prefix = `${domain}/`;
+  return cleaned.toLowerCase().startsWith(prefix) ? `@${cleaned.slice(prefix.length)}` : cleaned;
+}

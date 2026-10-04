@@ -11,6 +11,7 @@ export type PortalUser = {
   department?: string | null;
   phone?: string | null;
   avatarUrl?: string | null;
+  linkedinUrl?: string | null;
 };
 
 export type PortalCommentAuthor = {
@@ -90,6 +91,8 @@ export type PortalTeam = {
       institute?: string | null;
       department?: string | null;
       domainTags?: string[];
+      /** Public LinkedIn link — drives the clickable icon beside the mentor's name. */
+      linkedinUrl?: string | null;
     };
     industrialMentor?: {
       id: string;
@@ -107,7 +110,7 @@ export type PortalTeam = {
     invitedEmail: string;
     mentorType: string;
     inviteStatus: InviteStatus;
-    mentor?: { id: string; fullName: string; email: string } | null;
+    mentor?: { id: string; fullName: string; email: string; linkedinUrl?: string | null } | null;
   }>;
   ideaSubmissions?: Array<{
     id: string;

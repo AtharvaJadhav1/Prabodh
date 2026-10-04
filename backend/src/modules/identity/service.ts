@@ -599,6 +599,7 @@ export class IdentityService {
       phone?: string;
       department?: string;
       institute?: string;
+      linkedinUrl?: string | null;
       profileJson?: Record<string, unknown>;
     },
   ) {
@@ -620,6 +621,7 @@ export class IdentityService {
         ...(body.phone !== undefined ? { phone: body.phone } : {}),
         ...(body.department !== undefined ? { department: body.department } : {}),
         ...(body.institute !== undefined ? { institute: body.institute } : {}),
+        ...(body.linkedinUrl !== undefined ? { linkedinUrl: body.linkedinUrl } : {}),
         ...(mergedProfile !== undefined
           ? { profileJson: mergedProfile as Prisma.InputJsonValue }
           : {}),

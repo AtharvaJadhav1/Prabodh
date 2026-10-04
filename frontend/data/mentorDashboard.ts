@@ -71,6 +71,8 @@ export type MentorProfile = {
   roleBadge: string;
   email: string;
   location: string;
+  /** Public LinkedIn profile link. Saved to its own column, not profileJson. */
+  linkedinUrl: string;
   socials: Array<{ label: string; href: string }>;
   stats: {
     assignedTeams: number;
@@ -97,6 +99,7 @@ export const mentorProfile: MentorProfile = {
   roleBadge: "Institute mentor",
   email: "",
   location: "",
+  linkedinUrl: "",
   socials: [],
   stats: {
     assignedTeams: 0,

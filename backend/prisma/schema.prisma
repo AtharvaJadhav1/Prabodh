@@ -124,6 +124,9 @@ model User {
   department   String?
   phone        String?
   passwordHash String?      @map("password_hash")
+  // Public LinkedIn profile link. Shown to students as a clickable icon beside the
+  // mentor's name; kept out of profileJson so mentor lists can select it alone.
+  linkedinUrl  String?      @map("linkedin_url")
   profileJson  Json?        @map("profile_json")
   domainTags   String[]     @default([]) @map("domain_tags")
   isActive     Boolean      @default(true) @map("is_active")

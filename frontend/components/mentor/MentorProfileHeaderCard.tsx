@@ -2,6 +2,7 @@
 
 import { useMentorProfile } from "./MentorProfileProvider";
 import ExpandableContactItem from "../dashboard/ExpandableContactItem";
+import { handleFromUrl, isHttpUrl, normalizeExternalUrl } from "../../lib/url";
 import {
   HashIcon,
   ShieldCheckIcon,
@@ -15,7 +16,14 @@ import {
 
 export default function MentorProfileHeaderCard() {
   const { profile, openDrawer } = useMentorProfile();
-  const { initials, fullName, designation, department, facultyId, roleBadge, email, location, socials } = profile;
+  const { initials, fullName, designation, department, facultyId, roleBadge, email, location, linkedinUrl, socials } =
+    profile;
+
+  const linkedinHref = normalizeExternalUrl(linkedinUrl);
+  const hasLinkedin = Boolean(linkedinHref) && isHttpUrl(linkedinHref);
+  // The dedicated LinkedIn field above owns LinkedIn now, so a leftover entry in the generic
+  // link list would otherwise render a second icon beside it.
+  const otherSocials = socials.filter((link) => link.label.trim().toLowerCase() !== "linkedin");
 
   return (
     <section className="rounded-2xl border border-brand-sand bg-white shadow-sm">
@@ -77,9 +85,17 @@ export default function MentorProfileHeaderCard() {
               value={location || "empty"}
               onAction={location ? undefined : () => openDrawer("basic")}
             />
+            <ExpandableContactItem
+              icon={<LinkedinIcon className="h-4 w-4" />}
+              label={hasLinkedin ? "LinkedIn Profile" : "Add your LinkedIn profile link"}
+              value={hasLinkedin ? handleFromUrl(linkedinHref, "linkedin.com/in") : "empty"}
+              isLink={hasLinkedin}
+              href={hasLinkedin ? linkedinHref : undefined}
+              onAction={hasLinkedin ? undefined : () => openDrawer("socials")}
+            />
           </div>
           <div className="flex items-center gap-3">
-            {socials.map((link, i) => (
+            {otherSocials.map((link, i) => (
               <span key={link.label} className="flex items-center gap-3">
                 {i > 0 && <span className="text-brand-sand">&bull;</span>}
                 <a
@@ -90,7 +106,6 @@ export default function MentorProfileHeaderCard() {
                 >
                   {link.label === "Scholar" && <BookOpenIcon className="h-3.5 w-3.5" />}
                   {link.label === "ResearchGate" && <Share2Icon className="h-3.5 w-3.5" />}
-                  {link.label === "LinkedIn" && <LinkedinIcon className="h-3.5 w-3.5" />}
                   {link.label}
                 </a>
               </span>

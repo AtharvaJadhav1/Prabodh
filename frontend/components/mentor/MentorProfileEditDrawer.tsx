@@ -235,6 +235,16 @@ export default function MentorProfileEditDrawer() {
           <h3 className="text-xs font-bold uppercase tracking-wider text-brand-deep">
             Social &amp; Research Links
           </h3>
+          <TextInput
+            label="LinkedIn Profile URL"
+            type="url"
+            value={draft.linkedinUrl}
+            onChange={(linkedinUrl) => patch({ linkedinUrl })}
+            placeholder="https://linkedin.com/in/..."
+          />
+          <p className="text-xs text-brand-muted">
+            Students see this as a LinkedIn icon beside your name when they invite you. Leave blank to hide it.
+          </p>
           <ItemListEditor<{ label: string; href: string }>
             items={draft.socials}
             onChange={(socials) => patch({ socials })}

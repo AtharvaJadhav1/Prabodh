@@ -5,6 +5,7 @@ import { useProfile } from "./ProfileProvider";
 import ExpandableContactItem from "./ExpandableContactItem";
 import AvatarPickerModal from "./AvatarPickerModal";
 import Avatar from "../Avatar";
+import { handleFromUrl } from "../../lib/url";
 import {
   CameraIcon,
   FlagIcon,
@@ -13,14 +14,6 @@ import {
   LinkedinIcon,
   PencilIcon,
 } from "./icons";
-
-function handleFromUrl(url: string, domain: string) {
-  const cleaned = url.replace(/^https?:\/\//, "").replace(/^\//, "").replace(/\/$/, "");
-  const prefix = `${domain}/`;
-  return cleaned.toLowerCase().startsWith(prefix)
-    ? `@${cleaned.slice(prefix.length)}`
-    : cleaned;
-}
 
 export default function ProfileHeaderCard() {
   const { profile, openDrawer } = useProfile();

@@ -38,6 +38,8 @@ const faculty: Array<{
   department: string;
   role: PlatformRole;
   domainTags: string[];
+  /** Public profile link — students see a clickable LinkedIn icon when this is set. */
+  linkedinUrl?: string;
 }> = [
   {
     email: 'faculty@institute.edu',
@@ -59,6 +61,7 @@ const faculty: Array<{
     department: 'Computer Science',
     role: PlatformRole.institute_mentor,
     domainTags: ['HealthTech', 'AI', 'Software'],
+    linkedinUrl: 'https://www.linkedin.com/in/neha-kulkarni',
   },
   {
     email: 'rajesh.patil@mituniversity.edu.in',
@@ -66,6 +69,7 @@ const faculty: Array<{
     department: 'Information Technology',
     role: PlatformRole.institute_mentor,
     domainTags: ['Smart Education', 'Cybersecurity'],
+    linkedinUrl: 'https://www.linkedin.com/in/rajesh-patil',
   },
   {
     email: 'sunita.desai@mituniversity.edu.in',
@@ -121,6 +125,7 @@ async function upsertUser(data: {
   institute?: string;
   department?: string;
   domainTags?: string[];
+  linkedinUrl?: string;
 }) {
   const passwordHash = hashPassword(DEFAULT_PASSWORD);
   return prisma.user.upsert({
@@ -131,6 +136,7 @@ async function upsertUser(data: {
       institute: data.institute,
       department: data.department,
       domainTags: data.domainTags ?? [],
+      ...(data.linkedinUrl !== undefined ? { linkedinUrl: data.linkedinUrl } : {}),
       isActive: true,
       passwordHash,
     },
@@ -222,6 +228,7 @@ async function main() {
         institute: INSTITUTE,
         department: f.department,
         domainTags: f.domainTags,
+        linkedinUrl: f.linkedinUrl,
       }),
     );
   }

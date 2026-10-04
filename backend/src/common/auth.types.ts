@@ -22,6 +22,7 @@ export type AuthDbUser = {
   institute: string | null;
   department: string | null;
   phone: string | null;
+  linkedinUrl: string | null;
   profileJson: unknown;
   domainTags: string[];
   isActive: boolean;
@@ -38,6 +39,7 @@ export const AUTH_USER_SELECT = {
   institute: true,
   department: true,
   phone: true,
+  linkedinUrl: true,
   profileJson: true,
   domainTags: true,
   isActive: true,

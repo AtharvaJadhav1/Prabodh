@@ -90,6 +90,7 @@ function toSession(user: {
   department?: string | null;
   phone?: string | null;
   accessToken?: string;
+  linkedinUrl?: string | null;
   profileJson?: Record<string, unknown> | null;
 }): Session {
   const userId = user.userId ?? user.id ?? "";
@@ -117,6 +118,7 @@ function toSession(user: {
     department: user.department,
     phone: user.phone,
     accessToken: user.accessToken,
+    linkedinUrl: user.linkedinUrl ?? null,
     profileJson: user.profileJson ?? undefined,
   };
 }
@@ -173,6 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       institute?: string | null;
       department?: string | null;
       phone?: string | null;
+      linkedinUrl?: string | null;
       profileJson?: Record<string, unknown> | null;
     }>("/me");
     const next = toSession({ ...me, userId: me.id, accessToken: cached.accessToken, profileJson: me.profileJson });

@@ -10,6 +10,7 @@ import {
 } from "../../data/mentorDashboard";
 import { useAuth, initialsFrom } from "../auth/AuthProvider";
 import { apiPatch } from "../../lib/api";
+import { normalizeExternalUrl } from "../../lib/url";
 import { useMentorTeams } from "./MentorTeamsProvider";
 
 export type MentorEditSection = "basic" | "socials" | "overview" | "expertise" | "record";
@@ -18,6 +19,8 @@ type SavedMentorProfile = {
   designation?: string;
   roleBadge?: string;
   location?: string;
+  /** Legacy pre-column value; the backfill migration copied these into linkedin_url. */
+  linkedinUrl?: string;
   socials?: MentorProfile["socials"];
   nextAction?: string;
   cohorts?: MentorCohort[];
@@ -57,6 +60,7 @@ export function MentorProfileProvider({ children }: { children: ReactNode }) {
       designation: saved.designation ?? prev.designation,
       roleBadge: saved.roleBadge ?? prev.roleBadge,
       location: saved.location ?? prev.location,
+      linkedinUrl: session.linkedinUrl ?? saved.linkedinUrl ?? prev.linkedinUrl,
       socials: saved.socials ?? prev.socials,
       nextAction: saved.nextAction ?? prev.nextAction,
       domainExpertise: saved.domainExpertise ?? prev.domainExpertise,
@@ -103,10 +107,12 @@ export function MentorProfileProvider({ children }: { children: ReactNode }) {
 
   const saveProfile: MentorProfileContextValue["saveProfile"] = async (next) => {
     setSaving(true);
+    const linkedinUrl = normalizeExternalUrl(next.linkedinUrl);
     try {
       await apiPatch("/me", {
         fullName: next.fullName,
         department: next.department,
+        linkedinUrl,
         profileJson: {
           designation: next.designation,
           roleBadge: next.roleBadge,
@@ -117,7 +123,7 @@ export function MentorProfileProvider({ children }: { children: ReactNode }) {
           trackRecord: next.trackRecord,
         },
       });
-      setProfile(next);
+      setProfile({ ...next, linkedinUrl });
       await refreshMe();
     } finally {
       setSaving(false);

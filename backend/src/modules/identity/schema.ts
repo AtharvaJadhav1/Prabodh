@@ -49,11 +49,32 @@ export const passwordResetSchema = z.object({
   password: z.string().min(8).max(128),
 });
 
+/**
+ * Public LinkedIn profile link. A bare host ("linkedin.com/in/x") gets an https
+ * scheme so the stored value is always a safe link target; anything that is not
+ * http(s) once normalized (e.g. "javascript:") is rejected. "" clears the link,
+ * while omitting the key entirely leaves the stored value untouched.
+ */
+const linkedinUrlSchema = z
+  .string()
+  .trim()
+  .max(300)
+  .optional()
+  .transform((v) => {
+    if (v === undefined) return undefined;
+    if (!v) return null;
+    return /^[a-z][a-z0-9+.-]*:/i.test(v) ? v : `https://${v.replace(/^\/\//, '')}`;
+  })
+  .refine((v) => v === undefined || v === null || /^https?:\/\//i.test(v), {
+    message: 'LinkedIn URL must be an http(s) link',
+  });
+
 export const patchMeSchema = z.object({
   fullName: z.string().min(2).max(120).optional(),
   phone: z.string().max(30).optional(),
   department: z.string().max(120).optional(),
   institute: z.string().max(200).optional(),
+  linkedinUrl: linkedinUrlSchema,
   profileJson: z.record(z.unknown()).optional(),
 });
 

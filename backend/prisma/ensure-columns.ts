@@ -13,6 +13,9 @@ async function main() {
     `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "additional_roles" "PlatformRole"[] NOT NULL DEFAULT '{}'`,
     `ALTER TABLE "deliverables" ADD COLUMN IF NOT EXISTS "ppt_file_name" TEXT`,
     `ALTER TABLE "deliverables" ADD COLUMN IF NOT EXISTS "report_file_name" TEXT`,
+    // Mentor LinkedIn link (20261004120000). The backfill from profileJson lives in
+    // that migration; this only keeps the column itself present on drifted DBs.
+    `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "linkedin_url" TEXT`,
     // Partial unique index — one pending join request per student per team.
     // Prisma's db push cannot create partial indexes, so it lives here (and in
     // prisma/migrations/20260919000000_add_join_requests/migration.sql).

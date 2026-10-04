@@ -14,6 +14,8 @@ export type Session = {
   institute?: string | null;
   department?: string | null;
   phone?: string | null;
+  /** Public LinkedIn link set on the mentor's own profile. */
+  linkedinUrl?: string | null;
   accessToken?: string;
   profileJson?: Record<string, unknown>;
 };
@@ -53,6 +55,7 @@ function normalizeSession(raw: unknown): Session | null {
     institute: typeof r.institute === "string" ? r.institute : null,
     department: typeof r.department === "string" ? r.department : null,
     phone: typeof r.phone === "string" ? r.phone : null,
+    linkedinUrl: typeof r.linkedinUrl === "string" ? r.linkedinUrl : null,
     accessToken: typeof r.accessToken === "string" ? r.accessToken : undefined,
     profileJson:
       r.profileJson && typeof r.profileJson === "object" && !Array.isArray(r.profileJson)

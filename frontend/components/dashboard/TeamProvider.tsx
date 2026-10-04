@@ -80,6 +80,7 @@ type TeamContextValue = {
     platformRole: string;
     additionalRoles?: string[];
     domainTags: string[];
+    linkedinUrl?: string | null;
   }>;
   loadFacultyDirectory: () => Promise<void>;
   reload: () => Promise<void>;
@@ -151,6 +152,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       platformRole: string;
       additionalRoles?: string[];
       domainTags: string[];
+      linkedinUrl?: string | null;
     }>
   >([]);
   const [error, setError] = useState<string | null>(null);
@@ -315,6 +317,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           platformRole: string;
           additionalRoles?: string[];
           domainTags: string[];
+          linkedinUrl?: string | null;
         }>
       >("/mentors/faculty");
       setFacultyDirectory(faculty);

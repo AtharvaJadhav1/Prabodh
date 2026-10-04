@@ -96,7 +96,7 @@ export default function MentorInvitePanel() {
               <li key={a.id} className="rounded-xl border border-brand-softline p-4">
                 <p className="flex items-center gap-1.5 text-sm font-bold text-brand-deep">
                   {a.mentor.fullName}
-                  <MentorLinkedinIcon />
+                  <MentorLinkedinIcon url={a.mentor.linkedinUrl} name={a.mentor.fullName} />
                 </p>
                 <p className="text-xs text-brand-muted">{mentorKindLabel(a.mentorType)}</p>
                 <span className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-brand-approved">
@@ -108,7 +108,9 @@ export default function MentorInvitePanel() {
               <li key={i.id} className="rounded-xl border border-brand-softline p-3.5">
                 <p className="flex items-center gap-1.5 text-sm font-bold text-brand-deep">
                   <span className="truncate">{i.mentor?.fullName ?? i.invitedEmail}</span>
-                  {i.mentor?.fullName ? <MentorLinkedinIcon /> : null}
+                  {i.mentor ? (
+                    <MentorLinkedinIcon url={i.mentor.linkedinUrl} name={i.mentor.fullName} />
+                  ) : null}
                 </p>
                 <p className="text-xs text-brand-muted">{mentorKindLabel(i.mentorType ?? "institute")}</p>
                 <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-t border-brand-softline pt-2.5">
@@ -218,7 +220,10 @@ export default function MentorInvitePanel() {
                   filteredDirectory.map((f) => (
                     <li key={f.id} className="flex items-center justify-between gap-3 px-4 py-3">
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-bold text-brand-deep">{f.fullName}</p>
+                        <p className="flex items-center gap-1.5 truncate text-sm font-bold text-brand-deep">
+                          <span className="truncate">{f.fullName}</span>
+                          <MentorLinkedinIcon url={f.linkedinUrl} name={f.fullName} />
+                        </p>
                         <p className="truncate text-[11px] text-brand-muted">
                           {f.email}
                           {f.department ? ` · ${f.department}` : ""}

@@ -68,7 +68,9 @@ export class TeamsRepository {
     problemStatement: { select: this.psSelect },
     mentorInvites: {
       where: { inviteStatus: InviteStatus.pending },
-      include: { mentor: { select: { id: true, fullName: true, email: true } } },
+      include: {
+        mentor: { select: { id: true, fullName: true, email: true, linkedinUrl: true } },
+      },
     },
     mentorAssignments: {
       where: { active: true },
@@ -83,6 +85,8 @@ export class TeamsRepository {
             institute: true,
             department: true,
             domainTags: true,
+            // Public LinkedIn link — rendered as a clickable icon beside the name.
+            linkedinUrl: true,
           },
         },
         industrialMentor: true,

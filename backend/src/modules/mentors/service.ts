@@ -585,6 +585,8 @@ export class MentorsService {
         domainTags: true,
         platformRole: true,
         additionalRoles: true,
+        // Public LinkedIn link — students see a clickable icon beside the name.
+        linkedinUrl: true,
       },
       orderBy: { fullName: 'asc' },
     });
