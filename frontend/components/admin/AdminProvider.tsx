@@ -2,12 +2,15 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { platformMetrics, type AdminAllocation } from "../../data/adminDashboard";
-import { api, apiPost } from "../../lib/api";
+import { api, apiPost, ApiError } from "../../lib/api";
 import { holdsRole } from "../../lib/session";
 import { useAuth } from "../auth/AuthProvider";
 import type { PortalUser } from "../../lib/types";
+import { Toaster, toast } from "sonner";
 
 export type LiveMentor = { id: string; name: string; title: string };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type StageFunnel = {
   id: string;
@@ -178,16 +181,24 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [allocationError, setAllocationError] = useState<string | null>(null);
   const [pendingTeams, setPendingTeams] = useState<Set<string>>(new Set());
 
-  /** Run one allocation change: lock the row, show failures, and always re-sync from the server. */
+  /** Run one allocation change: lock the row, toast the result, and always re-sync from the server. */
   const runAllocation = useCallback(
-    async (teamId: string, optimistic: (a: AdminAllocation) => AdminAllocation, action: () => Promise<unknown>) => {
+    async (
+      teamId: string,
+      optimistic: (a: AdminAllocation) => AdminAllocation,
+      action: () => Promise<string>,
+      fallbackError: string,
+    ) => {
       setAllocationError(null);
       setPendingTeams((prev) => new Set(prev).add(teamId));
       setAllocations((prev) => prev.map((a) => (a.teamId === teamId ? optimistic(a) : a)));
       try {
-        await action();
+        toast.success(await action());
       } catch (err) {
-        setAllocationError(err instanceof Error && err.message ? err.message : "Could not update the mentor allocation.");
+        const message = err instanceof ApiError || err instanceof Error ? err.message || fallbackError : fallbackError;
+        setAllocationError(message);
+        toast.error(message);
+        console.error("[allocation]", teamId, err);
       } finally {
         await load();
         setPendingTeams((prev) => {
@@ -200,61 +211,81 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     [load],
   );
 
+  /** Reject malformed mentor ids client-side instead of round-tripping to the API. */
+  const failFast = useCallback((message: string) => {
+    setAllocationError(message);
+    toast.error(message);
+  }, []);
+
   const assignTeam = useCallback(
     (teamId: string, mentorId: string) => {
       const current = allocations.find((a) => a.teamId === teamId);
       if (!current || pendingTeams.has(teamId)) return;
-      const name = mentors.find((m) => m.id === mentorId)?.name ?? null;
+      const target = (mentorId || "").trim();
+      if (target && !UUID_RE.test(target)) {
+        failFast("Invalid mentor ID format");
+        return;
+      }
+      const name = mentors.find((m) => m.id === target)?.name ?? null;
       void runAllocation(
         teamId,
-        (a) => ({ ...a, assignedMentorId: mentorId || null, assignedMentorName: mentorId ? name : null }),
+        (a) => ({ ...a, assignedMentorId: target || null, assignedMentorName: target ? name : null }),
         async () => {
-          if (!mentorId) {
+          if (!target) {
             if (current.assignedMentorAssignmentId) {
               await apiPost(`/mentors/${current.assignedMentorAssignmentId}/unassign`, {});
             }
-            return;
+            return "Institute mentor unassigned";
           }
           if (current.assignedMentorAssignmentId) {
-            await apiPost(`/mentors/${current.assignedMentorAssignmentId}/reassign`, { mentorUserId: mentorId });
+            await apiPost(`/mentors/${current.assignedMentorAssignmentId}/reassign`, { mentorUserId: target });
           } else {
             await apiPost("/mentors/allocate", {
               teamId,
-              mentorUserId: mentorId,
+              mentorUserId: target,
               mentorType: "institute",
               assignmentMethod: "manual",
             });
           }
+          return "Institute mentor assigned successfully";
         },
+        "Failed to assign institute mentor. Please try again.",
       );
     },
-    [allocations, mentors, pendingTeams, runAllocation],
+    [allocations, failFast, mentors, pendingTeams, runAllocation],
   );
 
   const assignIndustryMentor = useCallback(
     (teamId: string, mentorUserId: string) => {
       const current = allocations.find((a) => a.teamId === teamId);
       if (!current || pendingTeams.has(teamId)) return;
-      const name = industryMentorOptions.find((m) => m.id === mentorUserId)?.name ?? null;
+      const target = (mentorUserId || "").trim();
+      if (target && !UUID_RE.test(target)) {
+        failFast("Invalid mentor ID format");
+        return;
+      }
+      const name = industryMentorOptions.find((m) => m.id === target)?.name ?? null;
       void runAllocation(
         teamId,
         (a) => ({
           ...a,
-          assignedIndustryMentorId: mentorUserId || null,
-          assignedIndustryMentorName: mentorUserId ? name : null,
+          assignedIndustryMentorId: target || null,
+          assignedIndustryMentorName: target ? name : null,
         }),
         async () => {
-          if (!mentorUserId) {
+          if (!target) {
             if (current.assignedIndustryMentorAssignmentId) {
               await apiPost(`/mentors/${current.assignedIndustryMentorAssignmentId}/unassign`, {});
             }
-            return;
+            return "Industrial mentor unassigned";
           }
-          await apiPost(`/teams/${teamId}/assign-industrial-mentor`, { userId: mentorUserId });
+          await apiPost(`/teams/${teamId}/assign-industrial-mentor`, { userId: target });
+          return "Industrial mentor assigned successfully";
         },
+        "Failed to assign industrial mentor. Please try again.",
       );
     },
-    [allocations, industryMentorOptions, pendingTeams, runAllocation],
+    [allocations, failFast, industryMentorOptions, pendingTeams, runAllocation],
   );
 
   const metrics = useMemo(() => {
@@ -281,6 +312,19 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      <Toaster
+        position="top-right"
+        theme="light"
+        toastOptions={{
+          classNames: {
+            toast: "rounded-xl border border-brand-sand bg-white px-4 py-3 shadow-lg text-sm",
+            description: "text-brand-charcoal",
+            actionButton: "rounded-lg bg-brand-primary text-white px-3 py-1 text-xs font-medium",
+            cancelButton: "rounded-lg border border-brand-sand bg-white text-brand-charcoal px-3 py-1 text-xs font-medium",
+            closeButton: "text-brand-muted hover:text-brand-charcoal",
+          },
+        }}
+      />
     </AdminContext.Provider>
   );
 }
