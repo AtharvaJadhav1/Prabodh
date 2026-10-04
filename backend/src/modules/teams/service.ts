@@ -265,6 +265,9 @@ export class TeamsService {
     if (!team) throw new NotFoundException('Team not found');
 
     const cap = await getSettingNumber(this.prisma, 'industry_mentor_cap');
+    if (cap < 1) {
+      throw new BadRequestException('Industrial mentor assignments are disabled for this team.');
+    }
     const activeAssignments = await this.prisma.mentorAssignment.findMany({
       where: { teamId, mentorType: 'industry', active: true },
     });
@@ -275,9 +278,11 @@ export class TeamsService {
     });
     const seatProblem = seatConflict(facultySeats, profile.user.id, 'industry');
     if (seatProblem) throw new BadRequestException(seatProblem);
-    const alreadyActive = activeAssignments.some((a) => a.industrialMentorId === profile.id);
-    if (!alreadyActive && activeAssignments.length >= cap) {
-      throw new BadRequestException(`Team already has ${cap} industrial mentor(s)`);
+    // This always replaces the team's whole active industry slate with this one mentor (see the
+    // transaction below), so an existing active mentor of a different person is not a cap breach —
+    // only re-picking the SAME person already assigned is a no-op worth rejecting.
+    if (activeAssignments.some((a) => a.industrialMentorId === profile.id)) {
+      throw new BadRequestException('That mentor is already assigned to this team.');
     }
 
     const assignment = await this.prisma.$transaction(async (tx) => {
