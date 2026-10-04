@@ -175,15 +175,6 @@ export default function TeamWorkspaceCard() {
       </div>
 
       <div className="mt-6">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <div className="flex items-baseline gap-2.5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-[#786C65]">Team Roster</h3>
-            <span className="rounded-full bg-brand-cream px-2.5 py-1 text-[11px] font-bold text-brand-primary">
-              {confirmedMembers.length} {confirmedMembers.length > 1 ? "Peers" : "Peer"}
-            </span>
-          </div>
-        </div>
-
         <div className="space-y-2.5">
           {confirmedMembers.map((member) => (
             <div

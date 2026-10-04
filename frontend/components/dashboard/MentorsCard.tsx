@@ -1,9 +1,11 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import MentorLinkedinIcon from "./MentorLinkedinIcon";
 import { useTeam } from "./TeamProvider";
 import { GradCapIcon, BriefcaseIcon, PersonIcon, CheckIcon, ClockIcon, ArrowRightIcon } from "./icons";
+
+const MENTORS_HREF = "/dashboard/student/mentors";
 
 function StatusPill({ label, pending }: { label: string; pending?: boolean }) {
   return (
@@ -19,6 +21,7 @@ function StatusPill({ label, pending }: { label: string; pending?: boolean }) {
 
 export default function MentorsCard() {
   const { team, isLead } = useTeam();
+  const router = useRouter();
   const assignments = team?.mentorAssignments ?? [];
   const invites = team?.mentorInvites ?? [];
 
@@ -26,8 +29,29 @@ export default function MentorsCard() {
   const industrial = assignments.find((a) => a.mentorType === "industry");
   const pendingIndustry = invites.find((i) => i.mentorType === "industry" && i.inviteStatus === "pending");
 
+  /**
+   * Whole-card navigation via a click handler rather than a wrapping Link: the CTA at the foot
+   * of the card would otherwise become an anchor inside an anchor, which is invalid HTML and
+   * makes the inner link unreachable. The CTA keeps its look and is decorative — the card
+   * handles the navigation. Key handling ignores events bubbling from inside so the mentor
+   * sub-cards stay inert to keyboard traversal.
+   */
+  const goToMentors = () => router.push(MENTORS_HREF);
+
   return (
-    <section className="rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)] sm:p-6">
+    <section
+      role="link"
+      tabIndex={0}
+      onClick={goToMentors}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          goToMentors();
+        }
+      }}
+      className="cursor-pointer rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)] transition hover:border-brand-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/50 sm:p-6"
+    >
       <h2 className="flex items-center gap-2 text-base font-bold text-brand-deep">
         <GradCapIcon className="h-5 w-5 text-brand-amber" />
         Mentors
@@ -107,13 +131,10 @@ export default function MentorsCard() {
         </div>
       </div>
 
-      <Link
-        href="/dashboard/student/mentors"
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-brand-softline px-4 py-2.5 text-sm font-bold"
-      >
+      <span className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-brand-softline px-4 py-2.5 text-sm font-bold">
         {isLead ? "Invite or view mentors" : "View mentors"}
         <ArrowRightIcon className="h-4 w-4" />
-      </Link>
+      </span>
     </section>
   );
 }

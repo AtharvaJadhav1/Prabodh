@@ -1,19 +1,46 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTeam } from "./TeamProvider";
 import { LockIcon, ChevronUpIcon } from "./icons";
 
+const PS_HREF = "/dashboard/student/problem-statements";
+
 export default function ProblemStatementCard() {
   const { team } = useTeam();
+  const router = useRouter();
   const [expanded, setExpanded] = useState(false);
   const idea = team?.ideaSubmissions?.[0];
   const ps = team?.problemStatement ?? idea?.problemStatement;
   const locked = Boolean(team?.problemStatement);
 
+  /**
+   * Whole-card navigation is done with a click handler rather than wrapping the card in a Link:
+   * the expand toggle is a real button, and nesting interactive content inside an anchor is
+   * invalid HTML and breaks keyboard traversal. The handlers below keep the card reachable
+   * without a mouse.
+   */
+  const goToPreferences = () => router.push(PS_HREF);
+
+  const cardShell =
+    "relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-brand-softline/80 bg-white p-6 shadow-sm transition hover:border-brand-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/50";
+
   if (!ps) {
     return (
-      <section className="rounded-2xl border border-brand-softline bg-white p-6 shadow-sm">
+      <section
+        role="link"
+        tabIndex={0}
+        onClick={goToPreferences}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return;
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            goToPreferences();
+          }
+        }}
+        className={cardShell}
+      >
         <p className="text-xs font-bold uppercase tracking-wider text-brand-muted">Selected Problem Statement</p>
         <h3 className="mt-2 text-lg font-bold text-brand-deep">None locked yet</h3>
         <p className="mt-2 text-sm text-brand-muted">
@@ -25,7 +52,19 @@ export default function ProblemStatementCard() {
   }
 
   return (
-    <section className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-brand-softline/80 bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+    <section
+      role="link"
+      tabIndex={0}
+      onClick={goToPreferences}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          goToPreferences();
+        }
+      }}
+      className={cardShell}
+    >
       <div className="absolute left-0 right-0 top-0 h-1 rounded-t-2xl bg-brand-deep" />
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -70,8 +109,12 @@ export default function ProblemStatementCard() {
 
       <button
         type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="inline-flex cursor-pointer items-center gap-1.5 pt-2 text-xs font-bold text-[#C25E26] transition-colors hover:text-[#A84E1D]"
+        // Expand, don't navigate: without this the whole-card click handler would swallow it.
+        onClick={(e) => {
+          e.stopPropagation();
+          setExpanded((v) => !v);
+        }}
+        className="inline-flex w-fit cursor-pointer items-center gap-1.5 pt-2 text-xs font-bold text-[#C25E26] transition-colors hover:text-[#A84E1D]"
       >
         <ChevronUpIcon className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
         {expanded ? "Hide Details" : "View Full Details"}
