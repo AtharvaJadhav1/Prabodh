@@ -102,7 +102,6 @@ export function MentorProfileProvider({ children }: { children: ReactNode }) {
   const closeDrawer = () => setDrawerOpen(false);
 
   const saveProfile: MentorProfileContextValue["saveProfile"] = async (next) => {
-    setProfile(next);
     setSaving(true);
     try {
       await apiPatch("/me", {
@@ -118,6 +117,7 @@ export function MentorProfileProvider({ children }: { children: ReactNode }) {
           trackRecord: next.trackRecord,
         },
       });
+      setProfile(next);
       await refreshMe();
     } finally {
       setSaving(false);

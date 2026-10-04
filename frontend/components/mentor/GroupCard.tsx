@@ -7,7 +7,9 @@ type Props = {
 };
 
 export default function GroupCard({ group }: Props) {
-  const capacityColor = group.capacity === "6/6" ? "bg-brand-approved/10 text-brand-approved" : "bg-brand-lightOrange text-brand-primary";
+  const [filled, cap] = group.capacity.split("/").map((n) => Number.parseInt(n, 10));
+  const isFull = Number.isFinite(filled) && Number.isFinite(cap) && cap > 0 && filled >= cap;
+  const capacityColor = isFull ? "bg-brand-approved/10 text-brand-approved" : "bg-brand-lightOrange text-brand-primary";
 
   return (
     <div className="flex flex-col rounded-2xl border border-neutral-200/80 bg-white px-6 py-6 shadow-sm transition-all hover:shadow-md gap-6 lg:flex-row lg:items-center justify-between mb-3">

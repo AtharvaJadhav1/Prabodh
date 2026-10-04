@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { GroupRequest } from "../../data/mentorDashboard";
-import { UsersIcon, BriefcaseIcon, ExternalLinkIcon, FileTextIcon } from "../dashboard/icons";
+import { UsersIcon, BriefcaseIcon } from "../dashboard/icons";
 import Avatar from "../Avatar";
 import ConfirmDialog from "./ConfirmDialog";
 
@@ -66,25 +66,13 @@ export default function GroupRequestCard({ request, busy = false, onAccept, onDe
           <span className="text-brand-muted">Allocated: {request.allocatedAt}</span>
         </div>
 
-        {/* Meta Tags */}
+        {/* Meta */}
         <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px]">
           <span className="inline-flex items-center gap-1 rounded border border-brand-sand bg-brand-cream px-2 py-0.5 font-medium text-brand-deep">
             <UsersIcon className="h-3 w-3 text-brand-muted" />
-            {request.memberCount} members
-          </span>
-          <span className="inline-flex items-center gap-1 rounded border border-brand-sand bg-brand-cream px-2 py-0.5 font-medium text-brand-deep">
-            <BriefcaseIcon className="h-3 w-3 text-brand-muted" />
-            {request.allocatedRole}
-          </span>
-          <span className="inline-flex items-center rounded border border-brand-sand bg-brand-cream px-2 py-0.5 font-medium text-brand-deep">
-            {request.allocatedRole}
+            {request.memberCount} member{request.memberCount === 1 ? "" : "s"}
           </span>
         </div>
-
-        {/* Problem Statement */}
-        <p className="mb-1.5 text-xs font-bold text-brand-charcoal">
-          {request.teamName}
-        </p>
 
         {/* Domains */}
         <div className="mb-3 flex flex-wrap gap-1.5">
@@ -93,20 +81,6 @@ export default function GroupRequestCard({ request, busy = false, onAccept, onDe
               {d}
             </span>
           ))}
-        </div>
-
-        {/* Placeholder Links */}
-        <div className="mb-3 flex items-center gap-4">
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-muted/60 cursor-not-allowed">
-            <ExternalLinkIcon className="h-3.5 w-3.5" />
-            View Team Profile
-            <span className="ml-1 rounded bg-brand-sand px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-brand-muted/70">Coming soon</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-muted/60 cursor-not-allowed">
-            <FileTextIcon className="h-3.5 w-3.5" />
-            Download Synopsis
-            <span className="ml-1 rounded bg-brand-sand px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-brand-muted/70">Coming soon</span>
-          </span>
         </div>
 
         {/* Actions */}

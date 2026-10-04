@@ -2,15 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronDownIcon, ChevronUpIcon } from "../dashboard/icons";
-import { tracks as defaultTracks } from "../../data/mentorDashboard";
 
 type Props = {
   value: string;
   onChange: (value: string) => void;
-  options?: string[];
+  options: string[];
 };
 
-export default function TrackDropdown({ value, onChange, options = defaultTracks }: Props) {
+export default function TrackDropdown({ value, onChange, options }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 

@@ -1,11 +1,3 @@
-export const mentor = {
-  name: "",
-  initials: "",
-  title: "",
-  empId: "",
-  role: "Institute Evaluator",
-};
-
 export type MentorGroup = {
   id?: string;
   teamName: string;
@@ -21,22 +13,6 @@ export type MentorGroup = {
   score?: number;
   grade?: string;
   publishStatus?: "submitted" | "published";
-};
-
-export type GroupStatus = "pending" | "evaluated";
-
-export const pendingGroups: MentorGroup[] = [];
-export const evaluatedGroups: MentorGroup[] = [];
-export const allGroups: MentorGroup[] = [];
-
-export const tracks = ["All Tracks", "Software", "Hardware", "AI", "FinTech", "AgriTech"];
-
-export const metrics = {
-  assignedTeams: 0,
-  totalStudents: 0,
-  pendingReviews: 0,
-  milestoneDate: "—",
-  daysLeft: 0,
 };
 
 export type IndustryMentor = {
@@ -63,8 +39,6 @@ export const domainExpertiseOptions = [
   "Cloud",
   "IoT",
 ];
-
-export const initialIndustryMentors: IndustryMentor[] = [];
 
 export type MentorCohort = {
   teamName: string;
@@ -165,5 +139,3 @@ export type GroupRequestHistoryEntry = {
   respondedDate: string;
 };
 
-export const initialPendingRequests: GroupRequest[] = [];
-export const initialRequestHistory: GroupRequestHistoryEntry[] = [];

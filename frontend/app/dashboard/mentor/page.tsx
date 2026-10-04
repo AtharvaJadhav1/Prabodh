@@ -39,6 +39,15 @@ export default function MentorDashboardPage() {
     [assignedRows],
   );
 
+  const trackOptions = useMemo(
+    () => [
+      "All Tracks",
+      ...[...new Set(groups.map((g) => g.track).filter((t) => t && t !== "Unassigned"))].sort((a, b) => a.localeCompare(b)),
+      ...(groups.some((g) => g.track === "Unassigned") ? ["Unassigned"] : []),
+    ],
+    [groups],
+  );
+
   const filtered = useMemo(() => {
     let list = groups;
     if (search.trim()) {
@@ -52,7 +61,7 @@ export default function MentorDashboardPage() {
       );
     }
     if (track !== "All Tracks") {
-      list = list.filter((g) => g.track.toLowerCase().includes(track.toLowerCase()));
+      list = list.filter((g) => g.track === track);
     }
     return list;
   }, [groups, search, track]);
@@ -84,6 +93,7 @@ export default function MentorDashboardPage() {
         onSearchChange={setSearch}
         track={track}
         onTrackChange={setTrack}
+        trackOptions={trackOptions}
       />
 
       {filtered.length === 0 ? (

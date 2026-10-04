@@ -81,7 +81,7 @@ export default function MentorPsApprovalsPage() {
     setError(null);
     try {
       await apiPost(`/teams/${teamId}/ps-preferences/${preferenceId}/approve`, {});
-      await refresh();
+      await refresh(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not approve this preference");
     } finally {

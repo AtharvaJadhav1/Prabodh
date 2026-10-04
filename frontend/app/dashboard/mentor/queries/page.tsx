@@ -5,6 +5,7 @@ import MentorShell from "../../../../components/mentor/MentorShell";
 import EmptyState from "../../../../components/mentor/EmptyState";
 import LoadingState from "../../../../components/LoadingState";
 import { useMentorTeams } from "../../../../components/mentor/MentorTeamsProvider";
+import { useMentorRequests } from "../../../../components/mentor/MentorRequestProvider";
 import { useAuth } from "../../../../components/auth/AuthProvider";
 import { api, apiDelete, apiPost } from "../../../../lib/api";
 import type { PortalComment } from "../../../../lib/types";
@@ -32,6 +33,7 @@ function flattenComments(comments: PortalComment[]): FlatComment[] {
 export default function MentorQueriesPage() {
   const { teams, loading, error: loadError } = useMentorTeams();
   const { session } = useAuth();
+  const { unreadByTeam, markTeamCommentsRead } = useMentorRequests();
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
   const [comments, setComments] = useState<PortalComment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
@@ -53,10 +55,10 @@ export default function MentorQueriesPage() {
   }, [assignedTeams, activeTeamId]);
 
   useEffect(() => {
-    if (!activeTeamId) {
-      setComments([]);
-      return;
-    }
+    // Start every team with a clean thread so a message you just sent to another team
+    // (or the previous team's thread) can never show up here while this one loads.
+    setComments([]);
+    if (!activeTeamId) return;
     let cancelled = false;
 
     const mergeComments = (rows: PortalComment[]) => {
@@ -117,6 +119,12 @@ export default function MentorQueriesPage() {
   }, [activeTeamId]);
 
   const flatComments = useMemo(() => flattenComments(comments), [comments]);
+
+  // Only the thread that is open counts as read; other teams keep their unread badge.
+  const activeUnread = activeTeamId ? (unreadByTeam[activeTeamId] ?? 0) : 0;
+  useEffect(() => {
+    if (activeTeamId && activeUnread > 0) markTeamCommentsRead(activeTeamId);
+  }, [activeTeamId, activeUnread, markTeamCommentsRead]);
 
   useEffect(() => {
     // Scroll only the message list; scrollIntoView would also scroll the whole page.
@@ -219,6 +227,11 @@ export default function MentorQueriesPage() {
                   >
                     <span className="flex items-center gap-2">
                       <span className="truncate text-sm font-bold text-brand-deep">{team.name}</span>
+                      {(unreadByTeam[team.id] ?? 0) > 0 && !selected ? (
+                        <span className="ml-auto shrink-0 rounded-full bg-brand-primary px-2 py-0.5 text-[10px] font-bold text-white">
+                          {unreadByTeam[team.id]} new
+                        </span>
+                      ) : null}
                     </span>
                     <span className="flex items-center gap-2">
                       <span className="rounded-lg border border-brand-warmBorder bg-white px-2 py-0.5 font-mono text-[10px] font-bold text-brand-deep">

@@ -16,6 +16,8 @@ export default function GroupRequestsPage() {
     acceptRequest,
     declineRequest,
     processingId,
+    requestError,
+    clearRequestError,
   } = useMentorRequests();
   const { psApprovalsCount } = useMentorTeams();
 
@@ -36,6 +38,18 @@ export default function GroupRequestsPage() {
               )}
             </h2>
           </div>
+
+          {requestError ? (
+            <div
+              role="alert"
+              className="flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700"
+            >
+              <span>{requestError}</span>
+              <button type="button" onClick={clearRequestError} className="shrink-0 font-bold hover:underline">
+                Dismiss
+              </button>
+            </div>
+          ) : null}
 
           {pendingRequests.length === 0 ? (
             <GroupRequestEmptyState />

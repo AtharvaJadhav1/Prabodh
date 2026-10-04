@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
 import type { GroupRequest, GroupRequestHistoryEntry } from "../../data/mentorDashboard";
 import { api, apiPatch, apiPost } from "../../lib/api";
 import { avatarUrlFrom } from "../../lib/avatar";
@@ -33,6 +32,13 @@ type MentorRequestContextValue = {
   declineRequest: (id: string) => void;
   processingId: string | null;
   unreadCommentCount: number;
+  /** Unread comment notifications per team id. */
+  unreadByTeam: Record<string, number>;
+  /** Mark only this team's comment notifications as read (call when its thread is open). */
+  markTeamCommentsRead: (teamId: string) => void;
+  /** Last accept/decline failure, shown on the Group Requests page. */
+  requestError: string | null;
+  clearRequestError: () => void;
 };
 
 const MentorRequestContext = createContext<MentorRequestContextValue | null>(null);
@@ -75,13 +81,13 @@ function mapHistory(row: MentorInviteRow): GroupRequestHistoryEntry {
 export function MentorRequestProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth();
   const { refresh: refreshMentorTeams } = useMentorTeams();
-  const pathname = usePathname();
-  const onQueriesPage = pathname?.startsWith("/dashboard/mentor/queries");
   const [pendingRequests, setPendingRequests] = useState<GroupRequest[]>([]);
   const [requestHistory, setRequestHistory] = useState<GroupRequestHistoryEntry[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [unreadCommentCount, setUnreadCommentCount] = useState(0);
-  const unreadCommentIdsRef = useRef<string[]>([]);
+  const [requestError, setRequestError] = useState<string | null>(null);
+  const [unreadByTeam, setUnreadByTeam] = useState<Record<string, number>>({});
+  // notification ids per team, so opening one team marks only that team's messages as read
+  const unreadIdsByTeamRef = useRef<Record<string, string[]>>({});
 
   const reload = useCallback(async () => {
     if (!session) return;
@@ -105,12 +111,17 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
   const refreshUnreadComments = useCallback(async () => {
     if (!session) return;
     try {
-      const rows = await api<Array<{ id: string; type: string; readAt: string | null }>>(
+      const rows = await api<Array<{ id: string; type: string; readAt: string | null; relatedEntity?: string | null }>>(
         "/notifications?unread=true",
       );
-      const ids = rows.filter((n) => n.type === "comment" && !n.readAt).map((n) => n.id);
-      unreadCommentIdsRef.current = ids;
-      setUnreadCommentCount(ids.length);
+      const byTeam: Record<string, string[]> = {};
+      for (const n of rows) {
+        if (n.type !== "comment" || n.readAt) continue;
+        const teamId = n.relatedEntity?.startsWith("team:") ? n.relatedEntity.slice(5) : "unknown";
+        (byTeam[teamId] ??= []).push(n.id);
+      }
+      unreadIdsByTeamRef.current = byTeam;
+      setUnreadByTeam(Object.fromEntries(Object.entries(byTeam).map(([t, ids]) => [t, ids.length])));
     } catch {
       // keep the last known unread state on transient errors
     }
@@ -122,21 +133,24 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(timer);
   }, [refreshUnreadComments]);
 
-  const markCommentNotificationsRead = useCallback(() => {
-    const ids = unreadCommentIdsRef.current;
-    if (!ids.length) return;
-    unreadCommentIdsRef.current = [];
-    setUnreadCommentCount(0);
+  const unreadCommentCount = useMemo(
+    () => Object.values(unreadByTeam).reduce((n, c) => n + c, 0),
+    [unreadByTeam],
+  );
+
+  const markTeamCommentsRead = useCallback((teamId: string) => {
+    const ids = unreadIdsByTeamRef.current[teamId];
+    if (!ids?.length) return;
+    delete unreadIdsByTeamRef.current[teamId];
+    setUnreadByTeam((prev) => {
+      const next = { ...prev };
+      delete next[teamId];
+      return next;
+    });
     for (const id of ids) {
       void apiPatch(`/notifications/${id}/read`, {}).catch(() => undefined);
     }
   }, []);
-
-  useEffect(() => {
-    if (onQueriesPage && unreadCommentCount > 0) {
-      markCommentNotificationsRead();
-    }
-  }, [onQueriesPage, unreadCommentCount, markCommentNotificationsRead]);
 
   const pendingCount = pendingRequests.length;
   const acceptedCount = useMemo(
@@ -149,12 +163,16 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
       if (processingId === id) return;
       const target = pendingRequests.find((r) => r.id === id);
       setProcessingId(id);
+      setRequestError(null);
       setPendingRequests((prev) => prev.filter((r) => r.id !== id));
       void apiPost<{ accepted?: boolean } | null>(`/mentors/invites/${id}/accept`, {})
         .then((result) => {
           // The server expires the invite (team already has a mentor, locked, or you already hold a
           // seat on it) and answers accepted:false — that is not an acceptance.
           if (result && result.accepted === false) {
+            setRequestError(
+              `That invitation could not be accepted — the team already has a faculty mentor, is locked, or the invitation expired.`,
+            );
             void reload();
             void refreshMentorTeams(true);
             return;
@@ -162,7 +180,8 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
           void refreshMentorTeams(true);
           void reload();
         })
-        .catch(() => {
+        .catch((err: unknown) => {
+          setRequestError(err instanceof Error && err.message ? err.message : "Something went wrong. Please try again.");
           if (target) {
             setPendingRequests((prev) => (prev.some((r) => r.id === id) ? prev : [target, ...prev]));
           }
@@ -181,11 +200,13 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
       const target = pendingRequests.find((r) => r.id === id);
       setProcessingId(id);
       setPendingRequests((prev) => prev.filter((r) => r.id !== id));
+      setRequestError(null);
       void apiPost(`/mentors/invites/${id}/decline`, {})
         .then(() => {
           void reload();
         })
-        .catch(() => {
+        .catch((err: unknown) => {
+          setRequestError(err instanceof Error && err.message ? err.message : "Something went wrong. Please try again.");
           if (target) {
             setPendingRequests((prev) => (prev.some((r) => r.id === id) ? prev : [target, ...prev]));
           }
@@ -209,6 +230,10 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
         declineRequest,
         processingId,
         unreadCommentCount,
+        unreadByTeam,
+        markTeamCommentsRead,
+        requestError,
+        clearRequestError: () => setRequestError(null),
       }}
     >
       {children}

@@ -8,9 +8,11 @@ type Props = {
   onSearchChange: (search: string) => void;
   track: string;
   onTrackChange: (track: string) => void;
+  /** "All Tracks" plus the themes your teams actually use. */
+  trackOptions: string[];
 };
 
-export default function FilterBar({ search, onSearchChange, track, onTrackChange }: Props) {
+export default function FilterBar({ search, onSearchChange, track, onTrackChange, trackOptions }: Props) {
   return (
     <div
       id="tour-mentor-filters"
@@ -30,7 +32,7 @@ export default function FilterBar({ search, onSearchChange, track, onTrackChange
 
       {/* Right: Custom dropdown pinned to the corner */}
       <div className="min-w-[160px] shrink-0 self-end sm:self-auto">
-        <TrackDropdown value={track} onChange={onTrackChange} />
+        <TrackDropdown value={track} onChange={onTrackChange} options={trackOptions} />
       </div>
     </div>
   );
