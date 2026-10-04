@@ -151,23 +151,21 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
             <Link
               href="/dashboard/industry/profile"
               onClick={onCloseMobile}
-              className="group flex items-center justify-between p-3 bg-white border border-brand-softline rounded-xl shadow-sm hover:border-brand-softline hover:bg-brand-cream/80 hover:shadow-md transition-all duration-200 w-full cursor-pointer"
+              className="group flex w-full cursor-pointer items-center gap-3 rounded-xl border border-brand-softline bg-white p-3 shadow-sm transition-all duration-200 hover:border-brand-softline hover:bg-brand-cream/80 hover:shadow-md"
             >
-              <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-brand-deep text-white font-bold">
-                  {initialsFrom(fullName)}
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-sm font-bold text-brand-deep leading-tight truncate">
-                    {displayName}
-                  </span>
-                  <span className="text-xs text-brand-muted font-medium truncate">
-                    {role}
-                  </span>
-                </div>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-deep font-bold text-white">
+                {initialsFrom(fullName)}
               </div>
-              <div className="text-brand-muted group-hover:text-brand-deep transition-colors duration-200 flex-shrink-0">
-                <ChevronRightIcon className="w-5 h-5" />
+              <div className="flex min-w-0 flex-1 flex-col items-start">
+                <span className="max-w-full truncate text-sm font-semibold leading-tight text-brand-deep">
+                  {displayName}
+                </span>
+                <span className="mt-1 inline-flex max-w-full items-center rounded-full bg-brand-cream px-2 py-0.5 text-xs font-medium leading-tight text-brand-muted">
+                  <span className="truncate">{role}</span>
+                </span>
+              </div>
+              <div className="ml-auto flex-shrink-0 text-brand-muted transition-colors duration-200 group-hover:text-brand-deep">
+                <ChevronRightIcon className="h-4 w-4" />
               </div>
             </Link>
             <button

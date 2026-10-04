@@ -204,6 +204,74 @@ export class MentorsService {
     return next;
   }
 
+  /**
+   * Admin override for the institute-mentor slot, decided entirely server-side: looks up whatever
+   * is currently active for (teamId, institute) inside the same transaction that replaces it, so the
+   * caller never has to know (or guess, from possibly-stale client state) whether this is a first
+   * allocation or an override. Mirrors TeamsService.assignIndustrialMentor's approach for industry.
+   */
+  async assignInstituteMentor(admin: AuthUser, teamId: string, mentorUserId: string) {
+    const team = await this.prisma.team.findUnique({ where: { id: teamId } });
+    if (!team) throw new NotFoundException('Team not found');
+    const current = await this.repo.activeForTeam(teamId, 'institute');
+    if (current?.mentorUserId === mentorUserId) {
+      throw new BadRequestException('That mentor is already assigned to this team.');
+    }
+    // The seat being replaced doesn't count as a conflict for the incoming mentor.
+    await this.assertSeatEligible(teamId, mentorUserId, 'institute', current?.id);
+
+    let assignment;
+    try {
+      assignment = await this.prisma.$transaction(async (tx) => {
+        if (current) {
+          await tx.mentorAssignment.update({ where: { id: current.id }, data: { active: false } });
+        }
+        return tx.mentorAssignment.create({
+          data: {
+            team: { connect: { id: teamId } },
+            mentor: { connect: { id: mentorUserId } },
+            assignedBy: { connect: { id: admin.id } },
+            mentorType: 'institute',
+            assignmentMethod: 'manual',
+            ...(current ? { reassignedFrom: { connect: { id: current.id } } } : {}),
+          },
+          include: { mentor: true, team: true },
+        });
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new BadRequestException('Team already has an active mentor of this type. Refresh and try again.');
+      }
+      throw err;
+    }
+    await this.syncTeamMentorPointers(this.prisma, teamId);
+    await writeAudit(this.prisma, {
+      actorUserId: admin.id,
+      action: current ? 'mentor.reassign' : 'mentor.allocate',
+      entityType: 'mentor_assignment',
+      entityId: assignment.id,
+      ...(current
+        ? {
+            before: { assignmentId: current.id, mentorUserId: current.mentorUserId },
+            after: { assignmentId: assignment.id, mentorUserId, teamId },
+          }
+        : { after: assignment as never }),
+    });
+    await notifyUsers(this.prisma, [assignment.mentor.id], {
+      type: 'allocation',
+      template: 'mentor_allocation',
+      title: current ? 'Team reassigned to you' : 'New team allocated',
+      body: `You have been allocated as mentor to ${assignment.team.name}.`,
+      relatedEntity: `team:${teamId}`,
+    });
+    try {
+      await this.psPreferences.promoteSavedOnMentorAssigned(teamId);
+    } catch {
+      /* PS auto-submit is best-effort */
+    }
+    return assignment;
+  }
+
   async unassign(admin: AuthUser, assignmentId: string) {
     const current = await this.repo.findById(assignmentId);
     if (!current) throw new NotFoundException('Assignment not found');

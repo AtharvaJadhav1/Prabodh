@@ -237,16 +237,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
             }
             return "Institute mentor unassigned";
           }
-          if (current.assignedMentorAssignmentId) {
-            await apiPost(`/mentors/${current.assignedMentorAssignmentId}/reassign`, { mentorUserId: target });
-          } else {
-            await apiPost("/mentors/allocate", {
-              teamId,
-              mentorUserId: target,
-              mentorType: "institute",
-              assignmentMethod: "manual",
-            });
-          }
+          // Server decides allocate-vs-reassign from its own fresh read, so a stale
+          // client copy of `current` can never pick the wrong endpoint or fail spuriously.
+          await apiPost("/mentors/assign-institute", { teamId, mentorUserId: target });
           return "Institute mentor assigned successfully";
         },
         "Failed to assign institute mentor. Please try again.",

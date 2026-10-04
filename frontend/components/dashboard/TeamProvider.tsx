@@ -340,6 +340,22 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     void reload();
   }, [ready, userId, reload]);
 
+  // An admin mentor override in another session won't push to this tab —
+  // reconcile whenever the student comes back to this tab/window.
+  useEffect(() => {
+    if (!ready || !userId) return;
+    const onFocus = () => void reload();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void reload();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [ready, userId, reload]);
+
   // Keep the Group Requests badge + incoming invites fresh without a full reload.
   useEffect(() => {
     if (!ready || !userId) return;

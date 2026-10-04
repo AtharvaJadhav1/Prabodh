@@ -8,7 +8,7 @@ import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
 import { ZodPipe } from '../../common/zod.pipe';
 import { parseMentorTypeQuery } from '../../lib/mentor-rules';
-import { allocateSchema, autoAllocateSchema, mentorInviteSchema } from './schema';
+import { allocateSchema, assignInstituteMentorSchema, autoAllocateSchema, mentorInviteSchema } from './schema';
 import { MentorsService } from './service';
 
 const reassignSchema = z.object({ mentorUserId: z.string().uuid() });
@@ -65,6 +65,13 @@ export class MentorsController {
   @Roles(PlatformRole.admin)
   allocate(@CurrentUser() user: AuthUser, @Body(new ZodPipe(allocateSchema)) body: unknown) {
     return this.mentors.allocate(user, body as never);
+  }
+
+  @Post('assign-institute')
+  @Roles(PlatformRole.admin)
+  assignInstituteMentor(@CurrentUser() user: AuthUser, @Body(new ZodPipe(assignInstituteMentorSchema)) body: unknown) {
+    const parsed = body as z.infer<typeof assignInstituteMentorSchema>;
+    return this.mentors.assignInstituteMentor(user, parsed.teamId, parsed.mentorUserId);
   }
 
   @Post('auto-allocate')

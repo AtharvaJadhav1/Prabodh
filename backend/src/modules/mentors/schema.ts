@@ -7,6 +7,11 @@ export const allocateSchema = z.object({
   assignmentMethod: z.enum(['manual', 'auto_rule']).default('manual'),
 });
 
+export const assignInstituteMentorSchema = z.object({
+  teamId: z.string().uuid(),
+  mentorUserId: z.string().uuid(),
+});
+
 export const autoAllocateSchema = z.object({
   mentorType: z.enum(['institute', 'industry']),
 });

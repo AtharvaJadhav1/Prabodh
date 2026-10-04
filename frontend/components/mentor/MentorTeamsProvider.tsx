@@ -87,6 +87,21 @@ export function MentorTeamsProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
+  // An admin override in another session won't push to this tab — reconcile
+  // (soft, no loading flash) whenever the mentor comes back to this tab/window.
+  useEffect(() => {
+    const onFocus = () => void refresh(true);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void refresh(true);
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [refresh]);
+
   const psApprovalsCount = useMemo(
     () =>
       teams.filter(

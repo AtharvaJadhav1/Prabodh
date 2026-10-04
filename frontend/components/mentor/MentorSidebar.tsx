@@ -144,15 +144,18 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold text-white">
                 {initialsFrom(fullName)}
               </div>
-              <div className="min-w-0 flex-1">
-                <p title={fullName} className="truncate max-w-full text-sm font-bold text-[#3C1D06]">
+              <div className="flex min-w-0 flex-1 flex-col items-start">
+                <p
+                  title={fullName}
+                  className="max-w-full truncate text-sm font-semibold leading-tight text-[#3C1D06]"
+                >
                   {displayName}
                 </p>
-                <span className="inline-flex max-w-full items-center truncate text-xs font-semibold bg-amber-100 text-amber-800 rounded-full px-2.5 py-0.5">
-                  {role}
+                <span className="mt-1 inline-flex max-w-full items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold leading-tight text-amber-800">
+                  <span className="truncate">{role}</span>
                 </span>
               </div>
-              <ChevronRightIcon className="h-4 w-4 shrink-0 text-stone-400 group-hover:translate-x-1 group-hover:text-amber-600 transition-transform duration-200" />
+              <ChevronRightIcon className="ml-auto h-4 w-4 shrink-0 text-stone-400 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-amber-600" />
             </Link>
             <button
               type="button"

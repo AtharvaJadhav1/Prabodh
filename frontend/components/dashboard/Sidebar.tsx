@@ -276,23 +276,26 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                   className="h-full w-full object-cover select-none"
                 />
               </div>
-              <div className="min-w-0 flex-1">
-                <p title={fullName} className="truncate max-w-full text-sm font-bold text-[#3C1D06]">
+              <div className="flex min-w-0 flex-1 flex-col items-start">
+                <p
+                  title={fullName}
+                  className="max-w-full truncate text-sm font-semibold leading-tight text-[#3C1D06]"
+                >
                   {displayName}
                 </p>
                 {rolePill ? (
                   <span
-                    className={`inline-flex max-w-full items-center truncate text-xs font-semibold ${rolePill.className} rounded-full px-2.5 py-0.5`}
+                    className={`mt-1 inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-xs font-semibold leading-tight ${rolePill.className}`}
                   >
-                    {rolePill.label}
+                    <span className="truncate">{rolePill.label}</span>
                   </span>
                 ) : (
-                  <span className="inline-flex max-w-full items-center truncate text-xs font-semibold bg-amber-100 text-amber-800 rounded-full px-2.5 py-0.5">
-                    Solo / No Team
+                  <span className="mt-1 inline-flex max-w-full items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold leading-tight text-amber-800">
+                    <span className="truncate">Solo / No Team</span>
                   </span>
                 )}
               </div>
-              <ChevronRightIcon className="h-4 w-4 shrink-0 text-stone-400 group-hover:translate-x-1 group-hover:text-amber-600 transition-transform duration-200" />
+              <ChevronRightIcon className="ml-auto h-4 w-4 shrink-0 text-stone-400 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-amber-600" />
             </Link>
             <button
               type="button"

@@ -171,6 +171,24 @@ export function IndustryMentorProvider({ children }: { children: ReactNode }) {
     void loadInvites();
   }, [loadTeams, loadInvites]);
 
+  // An admin override in another session won't push to this tab — reconcile
+  // whenever the mentor comes back to this tab/window.
+  useEffect(() => {
+    const onFocus = () => {
+      void loadTeams();
+      void loadInvites();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") onFocus();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [loadTeams, loadInvites]);
+
   const pendingCount = pendingInvites.length;
 
   const acceptedInvites = useMemo(

@@ -120,11 +120,16 @@ export default function ExpertSidebar({ mobileOpen, onCloseMobile }: Props) {
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold text-white">
                 {initialsFrom(fullName)}
               </div>
-              <div className="min-w-0">
-                <p title={fullName} className="truncate max-w-full text-sm font-bold text-brand-deep">
+              <div className="flex min-w-0 flex-1 flex-col items-start">
+                <span
+                  title={fullName}
+                  className="max-w-full truncate text-sm font-semibold leading-tight text-brand-deep"
+                >
                   {displayName}
-                </p>
-                <p className="truncate text-xs font-medium text-brand-muted">{role}</p>
+                </span>
+                <span className="mt-1 inline-flex max-w-full items-center rounded-full bg-brand-cream px-2 py-0.5 text-xs font-medium leading-tight text-brand-muted">
+                  <span className="truncate">{role}</span>
+                </span>
               </div>
             </div>
             <button
