@@ -286,7 +286,7 @@ shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
                   <h3 className="mt-3 text-base font-bold text-brand-deep sm:text-lg">{stmt.title}</h3>
                   {/* Description with Read more clamp */}
                   <div className="mt-2">
-                    <p className={`text-sm leading-relaxed text-brand-muted ${isExpanded ? "" : "line-clamp-3"}`}>
+                    <p className={`text-sm leading-relaxed text-brand-muted hyphens-none ${isExpanded ? "" : "line-clamp-3"}`}>
                       {stmt.description}
                     </p>
                     {stmt.description.length > 180 && (

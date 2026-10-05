@@ -35,7 +35,7 @@ type NavItem = {
 
 export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
   const pathname = usePathname();
-  const { pendingCount, allTeams: visibleTeams } = useIndustryMentor();
+  const { pendingCount } = useIndustryMentor();
   const { session, logout } = useAuth();
   const role = roleLabel(session?.activeRole ?? session?.platformRole ?? "industry_mentor");
   const fullName = session?.fullName ?? "Industry Mentor";
@@ -113,22 +113,6 @@ export default function IndustrySidebar({ mobileOpen, onCloseMobile }: Props) {
             >
               <XIcon className="h-5 w-5" />
             </button>
-          </div>
-        </div>
-
-        <div className="border-b border-brand-softline px-4 py-4">
-          <div className="rounded-2xl border border-brand-softline bg-white p-4">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-brand-muted">Workspace Overview</p>
-            </div>
-            <div className="mt-1.5 flex items-center justify-between gap-2 text-sm">
-              <span className="truncate font-extrabold text-brand-deep">
-                {visibleTeams.length} assigned {visibleTeams.length === 1 ? "team" : "teams"}
-              </span>
-              {pendingCount > 0 ? (
-                <span className="shrink-0 font-semibold text-brand-muted">{pendingCount} pending</span>
-              ) : null}
-            </div>
           </div>
         </div>
 

@@ -1,0 +1,193 @@
+CLEAR DB / RESEED PLAN — DO NOT RUN AUTOMATICALLY. FOR MANUAL EXECUTION ONLY.
+================================================================================
+
+!! WARNING !!
+backend/.env DATABASE_URL currently points to:
+  psql-prabodh-prod.postgres.database.azure.com
+This is the LIVE production database behind https://incubation.prabodh.app.
+
+`npx prisma migrate reset --force` DROPS THE ENTIRE DATABASE and rebuilds it
+from migrations + the seed script. This permanently deletes ALL real data —
+every team, student, mentor, submission, evaluation, comment, audit log,
+problem statement, everything — not just the old demo accounts. There is
+no undo unless you have a separate backup/snapshot of the Azure Postgres
+instance taken beforehand.
+
+Before running anything below:
+  - Confirm you actually want to wipe the LIVE production database (not a
+    staging/local copy), and that you have a recent Azure Postgres backup
+    or snapshot if you might need to roll back.
+  - Double-check backend/.env DATABASE_URL still points where you expect.
+
+================================================================================
+GOAL
+================================================================================
+After the reset, the only data in the database should be:
+  - The existing admin account (admin@institute.edu), kept as-is.
+  - 4 test student accounts.
+  - 3 test mentor accounts (1 institute, 1 industry, 1 dual-role).
+  - 1 demo team linking them together.
+  - Reference data needed for the app to function: the 4 pipeline stages
+    (+ their rubrics), platform settings, and the 192 problem statements
+    reloaded from the CSV.
+Everything else — old demo accounts, the 18 old students, the ~10 old
+faculty — gets removed because they are simply not upserted by the new
+seed script, and `migrate reset` wipes the table before reseeding.
+
+================================================================================
+STEP 1 — Edit backend/prisma/seed.ts
+================================================================================
+
+1. Replace the `students` array with:
+
+const students: Array<{ email: string; fullName: string; department: string }> = [
+  { email: 'test1@prabodh.app', fullName: 'test1', department: 'CSE' },
+  { email: 'test2@prabodh.app', fullName: 'test2', department: 'CSE' },
+  { email: 'test3@prabodh.app', fullName: 'test3', department: 'CSE' },
+  { email: 'test4@prabodh.app', fullName: 'test4', department: 'CSE' },
+];
+
+2. Replace the `faculty` array with:
+
+const faculty: Array<{
+  email: string;
+  fullName: string;
+  department: string;
+  role: PlatformRole;
+  domainTags: string[];
+  linkedinUrl?: string;
+  additionalRoles?: PlatformRole[];
+}> = [
+  {
+    email: 'testfaculty@prabodh.app',
+    fullName: 'test faculty',
+    department: 'CSE',
+    role: PlatformRole.institute_mentor,
+    domainTags: ['Test'],
+  },
+  {
+    email: 'testindustry@prabodh.app',
+    fullName: 'test industry',
+    department: 'Industry',
+    role: PlatformRole.industry_mentor,
+    domainTags: ['Test'],
+  },
+  {
+    email: 'testdual@prabodh.app',
+    fullName: 'test dual',
+    department: 'CSE',
+    role: PlatformRole.institute_mentor,
+    domainTags: ['Test'],
+    additionalRoles: [PlatformRole.industry_mentor], // dual role
+  },
+];
+
+NOTE: the original pasted plan said to add `emailVerified: true` to
+upsertUser's update/create. There is NO `emailVerified` field on the
+`User` model in backend/prisma/schema.prisma — that step does not apply
+to this codebase. Skip it; `isActive: true` (already set in upsertUser)
+is the equivalent "account is usable" flag here.
+
+3. Update `upsertUser`'s type + upsert call to also accept and pass through
+   `additionalRoles?: PlatformRole[]` (needed for the dual-role mentor):
+
+async function upsertUser(data: {
+  email: string;
+  fullName: string;
+  platformRole: PlatformRole;
+  institute?: string;
+  department?: string;
+  domainTags?: string[];
+  linkedinUrl?: string;
+  additionalRoles?: PlatformRole[];
+}) {
+  const passwordHash = hashPassword(DEFAULT_PASSWORD);
+  return prisma.user.upsert({
+    where: { email: data.email },
+    update: {
+      fullName: data.fullName,
+      platformRole: data.platformRole,
+      institute: data.institute,
+      department: data.department,
+      domainTags: data.domainTags ?? [],
+      ...(data.linkedinUrl !== undefined ? { linkedinUrl: data.linkedinUrl } : {}),
+      ...(data.additionalRoles !== undefined ? { additionalRoles: data.additionalRoles } : {}),
+      isActive: true,
+      passwordHash,
+    },
+    create: { ...data, passwordHash },
+  });
+}
+
+   And when building `facultyRows`, pass `additionalRoles: f.additionalRoles`
+   through alongside the other fields in the `upsertUser({...})` call.
+
+4. Update the industrial-mentor upsert loop (the one that currently checks
+   `f.platformRole === PlatformRole.industry_mentor`) to ALSO include the
+   dual-role account, since its primary role is institute_mentor but it
+   should still get an IndustrialMentor profile row. Change the condition to:
+
+   if (f.platformRole === PlatformRole.industry_mentor || f.additionalRoles?.includes(PlatformRole.industry_mentor)) {
+     ...
+   }
+
+   (You'll need to carry `additionalRoles` onto the row returned from
+   upsertUser, or look it up from the `faculty` source array by email
+   inside this loop — whichever is less invasive given the current code
+   shape.)
+
+5. Replace the demo-team block (the part that currently looks for
+   `leader@institute.edu`, `newlead@institute.edu`, `newlead2@institute.edu`)
+   with a single team:
+   - Leader = test1
+   - Members = test1 (leader) + test2, test3, test4 (accepted)
+   - Mentor assignments = testfaculty (institute), testindustry (industry,
+     via its IndustrialMentor profile), testdual (institute or industry —
+     decide which seat; a team can only have one active seat per type, so
+     testdual likely best left unassigned to avoid a seat conflict with
+     testfaculty/testindustry, or swap testfaculty out and use testdual
+     for the institute seat instead).
+   - Remove the old `ensureDemoTeam` calls for DEMO02 / DEMO03 (newlead /
+     newlead2) entirely, since those users no longer exist in `students`.
+
+6. Nothing else needs to change by name — old accounts (leader@institute.edu,
+   newlead@institute.edu, newlead2@institute.edu, newstudent@institute.edu,
+   all 14 mituniversity.edu.in students, the 8 old faculty rows) are removed
+   automatically by no longer being upserted, combined with `migrate reset`
+   wiping the table first.
+
+7. Leave `admin@institute.edu` and `expert@institute.edu` upserts untouched
+   — the task said "keep admin as is."
+
+================================================================================
+STEP 2 — Run the reset (THIS IS THE DESTRUCTIVE STEP)
+================================================================================
+
+cd backend
+npx prisma migrate reset --force   # wipes DB, reapplies all migrations, runs seed.ts
+npx tsx scripts/import-ps.ts       # reloads the 192 problem statements from CSV
+
+================================================================================
+STEP 3 — Verify
+================================================================================
+
+Check                       Expected
+---------------------------  ------------------------------------------------
+User.count()                 admin + expert + 4 students + 3 mentors = 7
+                              (adjust if you decide to drop/keep expert@institute.edu)
+Roles present                admin, student_expert, student x4,
+                              institute_mentor x1-2, industry_mentor x1-2
+Dual role user                testdual@prabodh.app has
+                              additionalRoles: ['industry_mentor']
+Team                          1 team (DEMO01), 4 student members,
+                              mentor assignment(s) present
+isActive on all users          true
+Login works                    All seeded accounts use password: Prabodh@123
+Problem statements             192 rows present after import-ps.ts
+
+================================================================================
+ROLLBACK NOTE
+================================================================================
+If anything looks wrong after the reset and you need the old data back,
+you will need a pre-reset Azure Postgres backup/point-in-time-restore —
+there is no in-app undo for `migrate reset`.

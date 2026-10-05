@@ -12,6 +12,34 @@ import MentorOnboardingTour from "../../../components/onboarding/MentorOnboardin
 import Link from "next/link";
 import { DashboardIcon } from "../../../components/dashboard/icons";
 
+type PsStatus = "pending" | "locked" | "awaiting" | "none";
+
+function psStatusOf(row: {
+  pendingInvite?: boolean;
+  team: {
+    problemStatement?: unknown;
+    psPreferences?: Array<{ status: string }>;
+  };
+}): PsStatus {
+  if (row.pendingInvite) return "pending";
+  if (row.team.problemStatement) return "locked";
+  if ((row.team.psPreferences ?? []).some((p) => p.status === "submitted")) return "awaiting";
+  return "none";
+}
+
+function milestoneLabel(status: PsStatus): string {
+  switch (status) {
+    case "locked":
+      return "PS Locked";
+    case "awaiting":
+      return "Awaiting Approval";
+    case "pending":
+      return "Invite Pending";
+    default:
+      return "Assigned";
+  }
+}
+
 export default function MentorDashboardPage() {
   const { teams } = useMentorTeams();
   const [search, setSearch] = useState("");
@@ -23,19 +51,22 @@ export default function MentorDashboardPage() {
 
   const groups = useMemo(
     () =>
-      assignedRows.map((row) => ({
-        id: row.team.id,
-        teamName: row.team.name,
-        teamId: row.team.teamCode,
-        memberCount: row.team.members?.length ?? 0,
-        track: row.team.theme ?? "Unassigned",
-        problemCode: row.team.problemStatement?.code ?? "—",
-        problemTitle: row.team.problemStatement?.title ?? "No PS locked yet",
-        leader: row.team.leader?.fullName ?? "—",
-        leaderPrn: row.team.leader?.email ?? "",
-        milestone: "Assigned",
-        domains: row.team.theme ? [row.team.theme] : [],
-      })),
+      assignedRows.map((row) => {
+        const psStatus = psStatusOf(row);
+        return {
+          id: row.team.id,
+          teamName: row.team.name,
+          teamId: row.team.teamCode,
+          memberCount: row.team.members?.length ?? 0,
+          track: row.team.theme ?? "Unassigned",
+          problemCode: row.team.problemStatement?.code ?? "—",
+          problemTitle: row.team.problemStatement?.title ?? "No PS locked yet",
+          leader: row.team.leader?.fullName ?? "—",
+          leaderPrn: row.team.leader?.email ?? "",
+          milestone: milestoneLabel(psStatus),
+          domains: row.team.theme ? [row.team.theme] : [],
+        };
+      }),
     [assignedRows],
   );
 

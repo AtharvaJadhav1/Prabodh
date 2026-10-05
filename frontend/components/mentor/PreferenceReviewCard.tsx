@@ -43,7 +43,7 @@ export default function PreferenceReviewCard({ preference, teamName, busy, onApp
         <p className="mt-1 text-xs font-medium text-brand-muted">
           {preference.theme} · {preference.organisation}
         </p>
-        <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-brand-charcoal">{preference.description}</p>
+        <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-brand-charcoal text-justify [text-justify:inter-word] hyphens-none">{preference.description}</p>
 
         <div className="mt-4 flex justify-end border-t border-brand-sand pt-3">
           <button

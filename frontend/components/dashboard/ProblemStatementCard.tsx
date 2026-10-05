@@ -89,7 +89,7 @@ export default function ProblemStatementCard() {
         </div>
 
         <h3 className="mb-2 mt-3 text-lg font-extrabold leading-snug text-brand-deep sm:text-xl">{ps.title}</h3>
-        <p className="line-clamp-3 text-sm leading-relaxed text-brand-charcoal/80">{ps.description}</p>
+        <p className="line-clamp-3 text-sm leading-relaxed text-brand-charcoal/80 hyphens-none">{ps.description}</p>
 
         <div className="mt-4 flex items-center gap-2 border-t border-brand-softline/60 pt-3 text-xs text-brand-muted">
           <span className="h-2 w-2 rounded-full bg-brand-deep" /> Final Project Submission Track

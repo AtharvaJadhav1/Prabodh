@@ -17,7 +17,7 @@ import {
   SendIcon,
   ClockIcon,
   CheckIcon,
-  AlertTriangleIcon,
+  TrashIcon,
 } from "./icons";
 
 export default function TeamWorkspaceCard() {
@@ -157,11 +157,11 @@ export default function TeamWorkspaceCard() {
             type="button"
             onClick={() => setUndoOpen(true)}
             title="Undo Team Creation"
-            className="group flex shrink-0 cursor-pointer items-center gap-0 overflow-hidden rounded-full border border-red-200 bg-red-50 px-2.5 py-1.5 text-red-600 transition-all duration-300 hover:gap-2 hover:bg-red-100"
+            className="group flex shrink-0 cursor-pointer items-center gap-0 overflow-hidden rounded-full border border-stone-200/80 bg-white/60 px-2 py-1.5 text-stone-400 transition-all duration-200 hover:gap-1.5 hover:bg-stone-100/80 hover:border-stone-300 hover:text-stone-700"
           >
-            <AlertTriangleIcon className="h-4 w-4 shrink-0 text-red-600" />
-            <span className="max-w-0 whitespace-nowrap text-xs font-bold opacity-0 transition-all duration-300 ease-in-out group-hover:max-w-xs group-hover:opacity-100">
-              Undo Team Creation
+            <TrashIcon className="w-3.5 h-3.5 shrink-0" />
+            <span className="max-w-0 opacity-0 group-hover:max-w-xs group-hover:opacity-100 whitespace-nowrap text-xs font-medium text-stone-600 transition-all duration-200 ease-in-out">
+              Undo Team
             </span>
           </button>
         )}
@@ -300,7 +300,7 @@ export default function TeamWorkspaceCard() {
                       type="email"
                       autoFocus
                       required
-                      placeholder="student@institution.edu.in"
+                      placeholder="student@example.com"
                       aria-label="Teammate's email address"
                       value={inviteEmail}
                       onChange={(e) => {

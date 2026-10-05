@@ -535,7 +535,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
                 <div className="text-xs font-medium text-neutral-500">
                   {team.problemStatement.organisation} · {team.problemStatement.theme} · {team.problemStatement.category}
                 </div>
-                <p className="text-sm text-neutral-700">{team.problemStatement.description}</p>
+                <p className="text-sm text-neutral-700 text-justify [text-justify:inter-word] hyphens-none leading-relaxed">{team.problemStatement.description}</p>
               </div>
             ) : (
               <p className="text-sm text-neutral-500">No Problem Statement selected yet</p>

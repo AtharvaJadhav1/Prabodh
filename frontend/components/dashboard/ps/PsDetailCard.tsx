@@ -24,7 +24,7 @@ export default function PsDetailCard({ ps, statusLabel }: { ps: Ps; statusLabel:
         </span>
       </div>
       <h3 className="mt-4 text-lg font-bold tracking-tight text-brand-deep sm:text-xl">{ps.title}</h3>
-      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-brand-muted">{ps.description}</p>
+      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-brand-muted hyphens-none">{ps.description}</p>
     </div>
   );
 }

@@ -246,7 +246,7 @@ export default function PreferenceSlotsPanel() {
                     {slot.kind === "catalog" ? `Catalog · ${slot.code}` : "Custom Proposal"}
                   </span>
                   <h4 className="text-sm font-bold text-brand-deep">{slot.title}</h4>
-                  <p className="line-clamp-2 text-xs text-brand-muted">{slot.description}</p>
+                  <p className="line-clamp-2 text-xs text-brand-muted hyphens-none">{slot.description}</p>
                   {isLead ? (
                     <button
                       type="button"

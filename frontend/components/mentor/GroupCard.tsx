@@ -1,67 +1,65 @@
 import type { MentorGroup } from "../../data/mentorDashboard";
 import Link from "next/link";
-import { UsersIcon, ChevronRightIcon } from "../dashboard/icons";
+import { UsersIcon, ChevronRightIcon, FileTextIcon, UserIcon } from "../dashboard/icons";
 
 type Props = {
   group: MentorGroup;
 };
 
 export default function GroupCard({ group }: Props) {
+  const hasProblemStatement = group.problemCode !== "—" && group.problemTitle !== "No PS locked yet";
+
   return (
-    <div className="flex flex-col rounded-2xl border border-neutral-200/80 bg-white px-6 py-6 shadow-sm transition-all hover:shadow-md gap-6 lg:flex-row lg:items-center justify-between mb-3">
-      {/* Content */}
-      <div className="min-w-0 flex-1 space-y-3">
-        {/* Header Line */}
+    <div className="bg-white rounded-2xl border border-stone-200/80 p-5 shadow-sm transition-all duration-200 hover:border-[#D95D28]/40 hover:shadow-md hover:-translate-y-0.5 flex flex-col gap-3.5">
+      {/* Header Row: Identity & Action */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        {/* Left Group: Team Name + Code */}
         <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="text-base font-bold text-brand-deep">{group.teamName}</h3>
-          <span className="rounded border border-brand-sand bg-brand-cream px-2 py-0.5 font-mono text-[11px] text-brand-muted">
+          <h3 className="text-lg font-bold text-stone-900">{group.teamName}</h3>
+          <span className="rounded-md border border-stone-200 bg-stone-100 px-2 py-0.5 font-mono text-xs text-stone-600 shrink-0">
             {group.teamId}
-          </span>
-          <span className="rounded-full bg-brand-lightOrange px-2 py-0.5 text-[11px] font-semibold text-brand-primary">
-            Team: {group.memberCount} {group.memberCount === 1 ? "member" : "members"}
-          </span>
-          <span className="rounded-full border border-brand-sand bg-brand-cream px-2 py-0.5 text-[11px] font-medium text-brand-deep">
-            {group.track}
           </span>
         </div>
 
-        {/* Problem Title */}
-        <p className="text-xs font-semibold text-brand-deep line-clamp-1">
-          <span className="mr-1.5 font-bold text-brand-primary">{group.problemCode}:</span>
-          {group.problemTitle}
-        </p>
-
-        {/* Leader + Milestone */}
-        <div className="flex items-center gap-4 text-[11px] text-brand-muted flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <svg className="h-3.5 w-3.5 shrink-0 text-brand-primary" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="12" cy="7" r="4" />
-              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="font-bold text-brand-deep">{group.leader}</span>
-            <span className="font-mono text-brand-muted">({group.leaderPrn})</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <svg className="h-3.5 w-3.5 shrink-0 text-brand-amber" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 20a8 8 0 100-16 8 8 0 000 16zM12 8v4l3 2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span>Milestone: <strong className="text-brand-deep">{group.milestone}</strong></span>
-          </div>
+        {/* Right Group: View Team Button */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {group.id ? (
+            <Link
+              href={`/dashboard/mentor/teams/${group.id}`}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-stone-200 px-3.5 py-1.5 text-sm font-medium text-stone-700 hover:bg-stone-50 hover:border-stone-300 transition-colors"
+            >
+              <UsersIcon className="h-4 w-4" />
+              <span>View Team</span>
+              <ChevronRightIcon className="h-4 w-4" />
+            </Link>
+          ) : null}
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex shrink-0 items-center justify-end border-t border-neutral-200/80 pt-4 lg:border-t-0 lg:pt-0">
-        {group.id ? (
-          <Link
-            href={`/dashboard/mentor/teams/${group.id}`}
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-[#fbd3bc] bg-[#fff5ee] px-5 py-2.5 text-xs font-semibold text-[#d95c26] shadow-sm transition-all hover:bg-[#ffe8d6] active:scale-[0.98]"
-          >
-            <UsersIcon className="h-3.5 w-3.5 text-[#d95c26]" />
-            <span>View Team</span>
-            <ChevronRightIcon className="h-3.5 w-3.5 text-[#d95c26]/70" />
-          </Link>
-        ) : null}
+      {/* Body Details: Structured & Readable */}
+      <div className="flex flex-col gap-2.5 pt-1 border-t border-stone-100">
+        {/* Problem Statement Row */}
+        <div className="flex items-center gap-2 text-sm">
+          <FileTextIcon className="w-4 h-4 text-stone-400 shrink-0" />
+          <span className="text-stone-500 font-medium">Problem Statement:</span>
+          <span className={hasProblemStatement ? "text-stone-800 font-medium" : "text-stone-400 italic"}>
+            {hasProblemStatement ? `${group.problemCode}: ${group.problemTitle}` : "None locked yet"}
+          </span>
+        </div>
+
+        {/* Team Lead & Peer Count Row */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs md:text-sm text-stone-600">
+          <div className="flex items-center gap-1.5">
+            <UserIcon className="w-3.5 h-3.5 text-stone-400" />
+            <span className="font-semibold text-stone-800">{group.leader}</span>
+            <span className="text-stone-400">({group.leaderPrn})</span>
+          </div>
+          <span className="text-stone-300">•</span>
+          <div className="flex items-center gap-1.5">
+            <UsersIcon className="w-3.5 h-3.5 text-stone-400" />
+            <span>{group.memberCount} {group.memberCount === 1 ? "Peer" : "Peers"}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
