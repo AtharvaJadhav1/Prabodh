@@ -4,7 +4,14 @@ import { useState, useMemo, type ReactNode } from "react";
 import { SearchIcon } from "../dashboard/icons";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../ui/table";
 
-type Column<T> = { label: string; render: (row: T) => React.ReactNode; width?: string; minWidth?: string };
+type Column<T> = {
+  label: string;
+  render: (row: T) => React.ReactNode;
+  width?: string;
+  minWidth?: string;
+  /** Right-aligned columns get tighter right padding so the cell border is not clipped. */
+  align?: "left" | "right";
+};
 
 type Props<T> = {
   rows: T[];
@@ -51,13 +58,15 @@ export default function UserTable<T>({
         </div>
       </div>
 
-      <Table className="table-fixed text-left min-w-[1050px]">
+      <Table className="table-fixed text-left min-w-[1090px]">
         <TableHeader className="bg-stone-50/80 text-xs font-semibold text-stone-500 uppercase tracking-wider">
           <TableRow className="hover:bg-transparent">
             {columns.map((col) => (
               <TableHead
                 key={col.label}
-                className="h-auto px-6 py-3.5 font-semibold text-stone-500 uppercase tracking-wider whitespace-nowrap truncate"
+                className={`h-auto py-3.5 font-semibold text-stone-500 uppercase tracking-wider whitespace-nowrap truncate ${
+                  col.align === "right" ? "pl-6 pr-4 text-right" : "px-6"
+                }`}
                 style={{ width: col.width, minWidth: col.minWidth }}
               >
                 {col.label}
@@ -71,7 +80,9 @@ export default function UserTable<T>({
               {columns.map((col) => (
                 <TableCell
                   key={col.label}
-                  className="px-6 py-4 align-middle whitespace-nowrap overflow-hidden"
+                  className={`py-4 align-middle whitespace-nowrap overflow-hidden ${
+                    col.align === "right" ? "pl-6 pr-4 text-right" : "px-6"
+                  }`}
                   style={{ width: col.width, minWidth: col.minWidth }}
                 >
                   {col.render(row)}

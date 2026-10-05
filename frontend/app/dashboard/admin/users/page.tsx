@@ -859,21 +859,22 @@ export default function AdminUsersPage() {
             },
             {
               label: "Actions",
-              width: "110px",
-              minWidth: "110px",
+              align: "right",
+              width: "140px",
+              minWidth: "140px",
               render: (u) =>
                 u.id === session?.userId ? (
                   <span className="text-[11px] font-medium text-neutral-400">You</span>
                 ) : (
-                  <div className="flex justify-end">
+                  <div className="flex items-center justify-end">
                     <button
                       type="button"
                       onClick={() => void openRemove(u)}
                       title={`Remove ${u.fullName}`}
-                      className="group flex items-center justify-center gap-0 hover:gap-1.5 px-2 py-1.5 rounded-full border border-stone-200 bg-white hover:bg-stone-100 hover:border-stone-300 text-stone-400 hover:text-stone-700 transition-all duration-200 cursor-pointer overflow-hidden shadow-xs"
+                      className="group flex w-auto min-w-[32px] items-center justify-center gap-0 hover:gap-1.5 px-2.5 py-1.5 rounded-full border border-stone-200 bg-white hover:bg-stone-100 hover:border-stone-300 text-stone-400 hover:text-stone-700 transition-all duration-200 cursor-pointer overflow-hidden shadow-xs"
                     >
                       <TrashIcon className="w-3.5 h-3.5 shrink-0 transition-colors" />
-                      <span className="max-w-0 opacity-0 group-hover:max-w-[60px] group-hover:opacity-100 whitespace-nowrap text-xs font-medium text-stone-600 transition-all duration-200 ease-in-out overflow-hidden">
+                      <span className="max-w-0 opacity-0 group-hover:max-w-[90px] group-hover:opacity-100 whitespace-nowrap text-xs font-medium text-stone-600 transition-all duration-200 ease-in-out overflow-hidden">
                         Remove
                       </span>
                     </button>
