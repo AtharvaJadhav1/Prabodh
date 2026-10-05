@@ -14,8 +14,9 @@ import {
   XIcon,
   ChevronRightIcon,
 } from "../dashboard/icons";
-import { useAuth, initialsFrom } from "../auth/AuthProvider";
+import { useAuth } from "../auth/AuthProvider";
 import { useAdmin } from "./AdminProvider";
+import { getUserAvatarUrl } from "../../lib/avatar";
 
 type Props = {
   mobileOpen: boolean;
@@ -158,9 +159,12 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }: Props) {
                 : "border-amber-900/10 hover:bg-white"
             }`}
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#3c2415] text-sm font-bold text-[#ffddb8]">
-              {initialsFrom(session?.fullName ?? "AD")}
-            </div>
+            <img
+              src={getUserAvatarUrl(session)}
+              alt={session?.fullName ?? "Platform Administrator"}
+              loading="lazy"
+              className="h-10 w-10 shrink-0 rounded-full border border-amber-900/10 bg-[#3c2415] object-cover"
+            />
             <span
               title={session?.fullName ?? "Platform Administrator"}
               className="min-w-0 flex-1 truncate text-sm font-semibold leading-tight text-[#3C1D06]"

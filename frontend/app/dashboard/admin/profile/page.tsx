@@ -4,8 +4,12 @@ import { useEffect, useState } from "react";
 import DangerZoneDeleteAccount from "../../../../components/account/DangerZoneDeleteAccount";
 import AdminShell from "../../../../components/admin/AdminShell";
 import TextInput from "../../../../components/profile/TextInput";
-import { useAuth, initialsFrom } from "../../../../components/auth/AuthProvider";
+import AvatarPickerModal from "../../../../components/dashboard/AvatarPickerModal";
+import Avatar from "../../../../components/Avatar";
+import { CameraIcon } from "../../../../components/dashboard/icons";
+import { useAuth } from "../../../../components/auth/AuthProvider";
 import { apiPatch } from "../../../../lib/api";
+import { avatarUrlFrom, getUserAvatarUrl } from "../../../../lib/avatar";
 
 export default function AdminProfilePage() {
   const { session, refreshMe } = useAuth();
@@ -13,6 +17,8 @@ export default function AdminProfilePage() {
   const [department, setDepartment] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -20,18 +26,56 @@ export default function AdminProfilePage() {
     setDepartment(session.department ?? "");
   }, [session]);
 
+  const saveAvatar = async (avatarUrl: string | null) => {
+    setAvatarBusy(true);
+    try {
+      await apiPatch("/me", { profileJson: { avatarUrl } });
+      await refreshMe();
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const hasCustomAvatar = Boolean(avatarUrlFrom(session?.profileJson));
+
   return (
     <AdminShell title="Admin Profile">
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="flex items-center gap-4 rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand-deep text-lg font-bold tracking-wider text-white shadow-xs">
-            {initialsFrom(session?.fullName ?? "A")}
+          <div className="relative shrink-0">
+            <Avatar
+              src={getUserAvatarUrl(session)}
+              seed={session?.fullName || session?.email || "admin"}
+              alt={session?.fullName ?? "Administrator"}
+              className="h-16 w-16"
+            />
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              disabled={avatarBusy}
+              className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-brand-primary text-white shadow-sm transition-colors hover:bg-brand-hover disabled:opacity-60"
+              aria-label="Change profile photo"
+            >
+              <CameraIcon className="h-3 w-3" />
+            </button>
           </div>
           <div>
             <h2 className="text-lg font-bold text-brand-deep">{name || session?.fullName}</h2>
             <p className="text-xs text-brand-muted">Administrator &middot; {session?.email}</p>
+            {hasCustomAvatar ? (
+              <button
+                type="button"
+                disabled={avatarBusy}
+                onClick={() => void saveAvatar(null)}
+                className="mt-1 text-xs font-semibold text-brand-overdue hover:underline disabled:opacity-60"
+              >
+                Remove photo
+              </button>
+            ) : null}
           </div>
         </div>
+
+        <AvatarPickerModal open={pickerOpen} onClose={() => setPickerOpen(false)} onSaved={saveAvatar} />
 
         <div className="grid grid-cols-1 gap-4 rounded-2xl border border-brand-sand bg-white p-6 shadow-sm sm:grid-cols-2">
           <TextInput label="Full Name" value={name} onChange={setName} required />
