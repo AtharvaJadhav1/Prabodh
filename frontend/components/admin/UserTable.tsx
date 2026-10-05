@@ -41,50 +41,58 @@ export default function UserTable<T>({
           <span className="text-xs font-medium text-stone-500 whitespace-nowrap bg-stone-100 px-3 py-1.5 rounded-lg border border-stone-200/60">
             {filtered.length} of {rows.length}
           </span>
-          <div className="relative flex-1 sm:w-72">
+          <div className="relative flex-1 sm:w-80">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
             <input
               type="text"
               placeholder={searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-stone-200 bg-white outline-none focus:border-stone-400 transition"
+              className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-stone-200 bg-white outline-none focus:border-stone-400 transition h-10"
             />
           </div>
         </div>
       </div>
 
-      <div className="w-full overflow-x-auto">
-        <table className="w-full table-fixed divide-y divide-stone-200 text-left">
-          <thead className="bg-stone-50/80 text-xs font-semibold text-stone-500 uppercase tracking-wider">
-            <tr>
-              {columns.map((col) => (
-                <th key={col.label} className="px-4 py-3.5" style={{ width: col.width, minWidth: col.minWidth }}>
-                  {col.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-stone-100 text-sm text-stone-700">
-            {filtered.map((row) => (
-              <tr key={rowKey(row)} className="hover:bg-stone-50/60 transition-colors">
+        <div className="w-full overflow-x-auto">
+          <table className="w-full table-fixed divide-y divide-stone-200 text-left">
+            <thead className="bg-stone-50/80 text-xs font-semibold text-stone-500 uppercase tracking-wider">
+              <tr>
                 {columns.map((col) => (
-                  <td key={col.label} className="px-4 py-3 align-middle" style={{ width: col.width, minWidth: col.minWidth }}>
-                    {col.render(row)}
-                  </td>
+                  <th
+                    key={col.label}
+                    className="px-6 py-3.5"
+                    style={{ width: col.width, minWidth: col.minWidth }}
+                  >
+                    {col.label}
+                  </th>
                 ))}
               </tr>
-            ))}
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={columns.length} className="px-4 py-12 text-center text-xs font-medium text-stone-500">
-                  {emptyLabel}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-stone-100 text-sm text-stone-700">
+              {filtered.map((row) => (
+                <tr key={rowKey(row)} className="hover:bg-stone-50/60 transition-colors">
+                  {columns.map((col) => (
+                    <td
+                      key={col.label}
+                      className="px-6 py-4 align-middle"
+                      style={{ width: col.width, minWidth: col.minWidth }}
+                    >
+                      {col.render(row)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={columns.length} className="px-6 py-12 text-center text-xs font-medium text-stone-500">
+                    {emptyLabel}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
     </section>
   );
 }
