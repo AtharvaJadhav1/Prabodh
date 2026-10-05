@@ -9,7 +9,8 @@ import Avatar from "../../../../components/Avatar";
 import { CameraIcon } from "../../../../components/dashboard/icons";
 import { useAuth } from "../../../../components/auth/AuthProvider";
 import { apiPatch } from "../../../../lib/api";
-import { avatarUrlFrom, getUserAvatarUrl } from "../../../../lib/avatar";
+import { avatarUrlFrom } from "../../../../lib/avatar";
+import { WAVES_PRESET_LIST, buildWavesAvatarUrl } from "../../../../lib/mentorAvatar";
 
 export default function AdminProfilePage() {
   const { session, refreshMe } = useAuth();
@@ -37,6 +38,8 @@ export default function AdminProfilePage() {
   };
 
   const hasCustomAvatar = Boolean(avatarUrlFrom(session?.profileJson));
+  const avatarSeed = session?.fullName || session?.email || "admin";
+  const avatarSrc = avatarUrlFrom(session?.profileJson) || buildWavesAvatarUrl("muted", avatarSeed);
 
   return (
     <AdminShell title="Admin Profile">
@@ -44,8 +47,8 @@ export default function AdminProfilePage() {
         <div className="flex items-center gap-4 rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
           <div className="relative shrink-0">
             <Avatar
-              src={getUserAvatarUrl(session)}
-              seed={session?.fullName || session?.email || "admin"}
+              src={avatarSrc}
+              seed={avatarSeed}
               alt={session?.fullName ?? "Administrator"}
               className="h-16 w-16"
             />
@@ -75,7 +78,20 @@ export default function AdminProfilePage() {
           </div>
         </div>
 
-        <AvatarPickerModal open={pickerOpen} onClose={() => setPickerOpen(false)} onSaved={saveAvatar} />
+        <AvatarPickerModal
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          onSaved={saveAvatar}
+          presetStyle={{
+            previewSeed: avatarSeed,
+            presets: WAVES_PRESET_LIST.map((p) => ({
+              key: p.key,
+              label: p.label,
+              description: p.description,
+              buildUrl: (seed) => buildWavesAvatarUrl(p.key, seed),
+            })),
+          }}
+        />
 
         <div className="grid grid-cols-1 gap-4 rounded-2xl border border-brand-sand bg-white p-6 shadow-sm sm:grid-cols-2">
           <TextInput label="Full Name" value={name} onChange={setName} required />

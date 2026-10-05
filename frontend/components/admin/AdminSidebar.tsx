@@ -16,7 +16,8 @@ import {
 } from "../dashboard/icons";
 import { useAuth } from "../auth/AuthProvider";
 import { useAdmin } from "./AdminProvider";
-import { getUserAvatarUrl } from "../../lib/avatar";
+import { avatarUrlFrom } from "../../lib/avatar";
+import { buildWavesAvatarUrl } from "../../lib/mentorAvatar";
 
 type Props = {
   mobileOpen: boolean;
@@ -160,7 +161,10 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }: Props) {
             }`}
           >
             <img
-              src={getUserAvatarUrl(session)}
+              src={
+                avatarUrlFrom(session?.profileJson) ||
+                buildWavesAvatarUrl("muted", session?.fullName || session?.email || "admin")
+              }
               alt={session?.fullName ?? "Platform Administrator"}
               loading="lazy"
               className="h-10 w-10 shrink-0 rounded-full border border-amber-900/10 bg-[#3c2415] object-cover"
