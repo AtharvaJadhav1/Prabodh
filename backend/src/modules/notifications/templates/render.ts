@@ -111,8 +111,6 @@ export type LayoutOptions = {
   cta?: { label: string; url: string };
   /** Extra block rendered between body and CTA (e.g. the OTP code block). */
   middleHtml?: string;
-  /** Small label under the brand wordmark (e.g. Student Portal). */
-  portalLabel?: string;
   /** Replaces the default "Yours sincerely, The Prabodh Team" closing (plain text). */
   signOff?: string;
   footerNote?: string;
@@ -121,10 +119,6 @@ export type LayoutOptions = {
 };
 
 export function layout(opts: LayoutOptions) {
-  const portal = opts.portalLabel ?? 'Student Portal';
-  const portalLine = portal
-    ? `<div style="margin-top:12px;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:${BRAND.muted}">${escapeHtml(portal)}</div>`
-    : '';
   const footer =
     opts.footerNote ??
     'This message was sent by Prabodh. Scores and sensitive evaluation data are shown only after you sign in.';
@@ -160,7 +154,6 @@ export function layout(opts: LayoutOptions) {
           <!-- Header: Prabodh logo -->
           <tr><td align="center" style="padding:32px 32px 24px;background:${BRAND.cream}">
             <img src="${logoUrl()}" width="180" alt="Prabodh" style="display:block;width:180px;max-width:100%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic" />
-            ${portalLine}
           </td></tr>
           <!-- Divider -->
           <tr><td style="padding:0 32px"><div style="height:1px;background:${BRAND.softline};line-height:1px;font-size:1px">&nbsp;</div></td></tr>
@@ -219,7 +212,6 @@ export function renderEmailHtml(
         greeting,
         bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Kindly use the same email address when you register so that your invitation is linked automatically.</p>`,
         cta: cta ?? { label: 'Register & join team', url: `${origin}/register` },
-        portalLabel: 'Student Portal',
       });
     case 'mentor_allocation':
       return layout({
@@ -227,7 +219,6 @@ export function renderEmailHtml(
         greeting,
         bodyHtml: `${bodyHtml}<p style="margin:12px 0 0;color:${BRAND.muted};font-size:14px">Please sign in to Prabodh with the email address above to continue.</p>`,
         cta: cta ?? { label: 'Open mentor dashboard', url: `${origin}/login` },
-        portalLabel: 'Student Portal',
       });
     case 'staff_credentials':
       return layout({
@@ -235,7 +226,6 @@ export function renderEmailHtml(
         greeting,
         bodyHtml,
         cta: cta ?? { label: 'Sign in to Prabodh', url: `${origin}/login?switch=1` },
-        portalLabel: '',
         signOff: '- Team Prabodh',
         footerNote: 'Please keep this password confidential. You may change it after signing in.',
       });
@@ -245,7 +235,6 @@ export function renderEmailHtml(
         greeting,
         bodyHtml,
         cta: cta ?? { label: 'Sign in to Prabodh', url: `${origin}/login?switch=1` },
-        portalLabel: '',
         footerNote: 'Your existing password keeps working — no change needed unless you use Forgot password.',
       });
     case 'evaluation_published':
@@ -296,7 +285,6 @@ export function renderEmailHtml(
         greeting,
         bodyHtml,
         middleHtml: undefined,
-        portalLabel: 'Student Portal',
         footerNote: 'If you did not request this code, you can safely ignore this email.',
       });
     default:
@@ -331,7 +319,6 @@ export function renderOtpEmail(opts: {
     greeting: opts.recipientName?.trim() ? `Dear ${opts.recipientName.trim()},` : 'Dear User,',
     bodyHtml,
     middleHtml: emailCodeBlock(opts.code, { caption: 'Enter this code on the verification page' }),
-    portalLabel: 'Student Portal',
     footerNote: `This code expires in ${opts.expiresMinutes} minutes. If you did not request this code, please disregard this email.`,
   });
 }
