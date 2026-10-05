@@ -757,27 +757,20 @@ export default function AdminUsersPage() {
         <UserTable<PortalUser>
           toolbar={
             <>
-              <div className="flex items-center gap-1 rounded-2xl bg-stone-100/70 border border-stone-200/60 p-1.5">
-                {tabs.map((t) => (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => setTab(t.key)}
-                    className={`whitespace-nowrap rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
-                      tab === t.key
-                        ? "bg-white text-stone-900 shadow-sm"
-                        : "text-stone-500 hover:text-stone-800 hover:bg-white/50"
-                    }`}
-                  >
-                    {t.label} <span className="font-normal text-stone-400">({t.count})</span>
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="flex items-center px-3.5 py-1.5 text-xs font-medium text-stone-500">
-                  {rowsFor.length} of {totalUsersCount}
-                </span>
-              </div>
+              {tabs.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setTab(t.key)}
+                  className={`whitespace-nowrap rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
+                    tab === t.key
+                      ? "bg-white text-stone-900 shadow-sm"
+                      : "text-stone-500 hover:text-stone-800 hover:bg-white/50"
+                  }`}
+                >
+                  {t.label} <span className="font-normal text-stone-400">({t.count})</span>
+                </button>
+              ))}
             </>
           }
           rows={rowsFor}
@@ -788,48 +781,83 @@ export default function AdminUsersPage() {
           columns={[
             {
               label: "Name",
+              width: "22%",
+              minWidth: "200px",
               render: (u) => {
                 const mentorType =
                   tab === "industry-mentors" ? "INDUSTRY" : tab === "institute-mentors" ? "INSTITUTE" : null;
                 const avatarSrc =
                   u.avatarUrl || (mentorType ? getMentorWavesAvatarUrl(mentorType, u.email || u.fullName || "mentor") : null);
                 return (
-                  <span className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-3 min-w-0">
                     <Avatar src={avatarSrc} seed={u.fullName || u.email || "user"} className="h-8 w-8" />
-                    <span className="font-bold text-brand-deep">{u.fullName}</span>
+                    <span className="font-semibold text-stone-900 truncate" title={u.fullName}>{u.fullName}</span>
+                  </div>
+                );
+              },
+            },
+            {
+              label: "Email",
+              width: "24%",
+              minWidth: "220px",
+              render: (u) => (
+                <span className="block truncate text-stone-600 font-mono text-xs pr-4" title={u.email}>
+                  {u.email}
+                </span>
+              ),
+            },
+            {
+              label: "Role",
+              width: "14%",
+              minWidth: "120px",
+              render: (u) => {
+                const extras = (u.additionalRoles ?? []).filter((r) => r !== u.platformRole);
+                const base = ROLE_LABEL[u.platformRole] ?? u.platformRole;
+                const label = extras.length > 0 ? `${base} + ${extras.map((r) => ROLE_LABEL[r] ?? r).join(", ")}` : base;
+                return (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-stone-100 text-stone-700 border border-stone-200/60">
+                    {label}
                   </span>
                 );
               },
             },
-            { label: "Email", render: (u) => <span className="font-mono text-brand-muted">{u.email}</span> },
             {
-              label: "Role",
-              render: (u) => {
-                const extras = (u.additionalRoles ?? []).filter((r) => r !== u.platformRole);
-                const base = ROLE_LABEL[u.platformRole] ?? u.platformRole;
-                return extras.length > 0
-                  ? `${base} + ${extras.map((r) => ROLE_LABEL[r] ?? r).join(", ")}`
-                  : base;
-              },
+              label: "Institute",
+              width: "20%",
+              minWidth: "180px",
+              render: (u) => (
+                <span className="truncate text-stone-600 text-xs" title={u.institute || "N/A"}>
+                  {u.institute || <span className="text-stone-300">—</span>}
+                </span>
+              ),
             },
-            { label: "Institute", render: (u) => u.institute ?? "—" },
-            { label: "Department", render: (u) => u.department ?? "—" },
+            {
+              label: "Department",
+              width: "12%",
+              minWidth: "110px",
+              render: (u) => (
+                <span className="truncate text-stone-600 text-xs" title={u.department || "N/A"}>
+                  {u.department || <span className="text-stone-300">—</span>}
+                </span>
+              ),
+            },
             {
               label: "Actions",
-              width: "110px",
+              width: "8%",
+              minWidth: "90px",
               render: (u) =>
                 u.id === session?.userId ? (
                   <span className="text-[11px] font-medium text-neutral-400">You</span>
                 ) : (
-                  <div className="flex items-center justify-end pr-2">
+                  <div className="flex justify-end">
                     <button
                       type="button"
                       onClick={() => void openRemove(u)}
                       title={`Remove ${u.fullName}`}
-                      className="group flex items-center gap-0 hover:gap-1.5 px-2.5 py-1.5 rounded-full border border-stone-200 bg-white/70 hover:bg-stone-100 hover:border-stone-300 text-stone-400 hover:text-stone-700 transition-all duration-200 cursor-pointer overflow-hidden"
+                      className="group flex items-center justify-center gap-0 hover:gap-1.5 px-2 py-1.5 rounded-full border border-stone-200 bg-white hover:bg-stone-100 hover:border-stone-300 text-stone-400 hover:text-stone-700 transition-all duration-200 cursor-pointer overflow-hidden shadow-xs"
                     >
                       <TrashIcon className="w-3.5 h-3.5 shrink-0 transition-colors" />
-                      <span className="max-w-0 opacity-0 group-hover:max-w-[70px] group-hover:opacity-100 whitespace-nowrap text-xs font-medium text-stone-600 transition-all duration-200 ease-in-out">
+                      <span className="max-w-0 opacity-0 group-hover:max-w-[60px] group-hover:opacity-100 whitespace-nowrap text-xs font-medium text-stone-600 transition-all duration-200 ease-in-out overflow-hidden">
                         Remove
                       </span>
                     </button>
