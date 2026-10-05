@@ -5,6 +5,7 @@ import AdminShell from "../../../../components/admin/AdminShell";
 import UserTable from "../../../../components/admin/UserTable";
 import MentorDropdown from "../../../../components/admin/MentorDropdown";
 import Avatar from "../../../../components/Avatar";
+import { getMentorWavesAvatarUrl } from "../../../../lib/mentorAvatar";
 import { useAdmin } from "../../../../components/admin/AdminProvider";
 import { useAuth } from "../../../../components/auth/AuthProvider";
 import { api, apiPost, ApiError } from "../../../../lib/api";
@@ -769,12 +770,18 @@ export default function AdminUsersPage() {
           columns={[
             {
               label: "Name",
-              render: (u) => (
-                <span className="flex items-center gap-2.5">
-                  <Avatar src={u.avatarUrl || null} seed={u.fullName || u.email || "user"} className="h-8 w-8" />
-                  <span className="font-bold text-brand-deep">{u.fullName}</span>
-                </span>
-              ),
+              render: (u) => {
+                const mentorType =
+                  tab === "industry-mentors" ? "INDUSTRY" : tab === "institute-mentors" ? "INSTITUTE" : null;
+                const avatarSrc =
+                  u.avatarUrl || (mentorType ? getMentorWavesAvatarUrl(mentorType, u.email || u.fullName || "mentor") : null);
+                return (
+                  <span className="flex items-center gap-2.5">
+                    <Avatar src={avatarSrc} seed={u.fullName || u.email || "user"} className="h-8 w-8" />
+                    <span className="font-bold text-brand-deep">{u.fullName}</span>
+                  </span>
+                );
+              },
             },
             { label: "Email", render: (u) => <span className="font-mono text-brand-muted">{u.email}</span> },
             {
