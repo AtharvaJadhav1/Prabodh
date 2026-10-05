@@ -13,6 +13,8 @@ const neverCachePaths = [
   // serve a stale copy persisted in localStorage.
   /^\/mentors\/faculty/,
   /^\/admin\/(audit-log|logs)/,
+  // Direct chat, people search and friend state are always live.
+  /^\/chat\//,
   // Chat must stay live — never serve stale comment threads from the 60s API cache.
   /\/comments($|\?)/,
   /\/deliverables($|\?)/,

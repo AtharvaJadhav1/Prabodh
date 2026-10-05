@@ -155,6 +155,11 @@ model User {
   joinRequestsSent        JoinRequest[]      @relation("JoinRequester")
   psPreferencesSubmitted  TeamPsPreference[] @relation("PsPreferenceSubmitter")
   psPreferencesDecided    TeamPsPreference[] @relation("PsPreferenceDecider")
+  friendshipsSent         Friendship[]       @relation("FriendshipRequester")
+  friendshipsReceived     Friendship[]       @relation("FriendshipAddressee")
+  dmSent                  DirectMessage[]    @relation("DmSender")
+  dmReceived              DirectMessage[]    @relation("DmRecipient")
+  chatReadStates          ChatReadState[]
 
   @@index([isActive])
   @@index([platformRole, isActive])
@@ -194,6 +199,7 @@ model Team {
   mentorInvites        MentorInvite[]
   psPreferences        TeamPsPreference[]
   joinRequestsReceived JoinRequest[]
+  chatReadStates       ChatReadState[]
 
   @@index([status])
   @@index([theme])
@@ -661,4 +667,64 @@ model UserImportRow {
   batch UserImportBatch @relation(fields: [batchId], references: [id])
 
   @@map("user_import_rows")
+}
+
+enum FriendshipStatus {
+  pending
+  accepted
+  declined
+}
+
+// Friend link between two users. pairKey is the two user ids sorted and joined with ':' so a pair
+// can only ever have one row regardless of who asked first.
+model Friendship {
+  id          String           @id @default(uuid())
+  requesterId String           @map("requester_id")
+  addresseeId String           @map("addressee_id")
+  pairKey     String           @unique @map("pair_key")
+  status      FriendshipStatus @default(pending)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  respondedAt DateTime?        @map("responded_at")
+
+  requester User @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@index([addresseeId, status])
+  @@index([requesterId, status])
+  @@map("friendships")
+}
+
+model DirectMessage {
+  id          String    @id @default(uuid())
+  pairKey     String    @map("pair_key")
+  senderId    String    @map("sender_id")
+  recipientId String    @map("recipient_id")
+  body        String
+  // Client-generated id so a retried send is idempotent per sender.
+  clientId    String?   @map("client_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  readAt      DateTime? @map("read_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  sender    User @relation("DmSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User @relation("DmRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, clientId])
+  @@index([pairKey, createdAt])
+  @@index([recipientId, readAt])
+  @@map("direct_messages")
+}
+
+// Per-user read marker for a team's group thread (the team comments).
+model ChatReadState {
+  userId     String   @map("user_id")
+  teamId     String   @map("team_id")
+  lastReadAt DateTime @map("last_read_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([userId, teamId])
+  @@index([teamId])
+  @@map("chat_read_states")
 }

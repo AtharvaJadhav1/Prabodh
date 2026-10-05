@@ -128,7 +128,9 @@ export async function api<T>(path: string, init: RequestInit = {}, options: ApiO
     } else if (method !== "GET") {
       // Targeted invalidation — wiping the entire cache on every POST made page
       // switches wait on cold network fetches again.
-      if (path.includes("/comments")) {
+      if (path.startsWith("/chat/")) {
+        // Chat reads are never cached, so there is nothing to invalidate.
+      } else if (path.includes("/comments")) {
         invalidateApiCache(/\/teams(\/|$)/);
       } else if (path.includes("/admin")) {
         invalidateApiCache(/\/(admin|industrial-mentors)(\/|$)/);
@@ -165,7 +167,9 @@ export async function api<T>(path: string, init: RequestInit = {}, options: ApiO
     }
   }
 
-  return dedupe ? runDeduped(key, fetchIt) : fetchIt();
+  // cacheKey drops the query string, so include it here or two searches/cursors would share one request.
+  const dedupeKey = path.includes("?") ? `${key}?${path.split("?").slice(1).join("?")}` : key;
+  return dedupe ? runDeduped(dedupeKey, fetchIt) : fetchIt();
 }
 
 export function apiPost<T>(path: string, body: unknown, options?: ApiOptions) {

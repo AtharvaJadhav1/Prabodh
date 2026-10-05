@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../auth/AuthProvider";
 import { getUserAvatarUrl } from "../../lib/avatar";
 import { useTeam } from "./TeamProvider";
+import { useChatUnread } from "../chat/chatUnreadStore";
 import {
   DashboardIcon,
   FileCodeIcon,
@@ -56,6 +57,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { session, logout } = useAuth();
+  const chatUnread = useChatUnread(!!session);
   const { filledCount, pendingRequestCount, teamName, team, isLead, renameTeam, incomingInvites } = useTeam();
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState(teamName);
@@ -217,7 +219,16 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 : pendingRequestCount > 0
                   ? pendingRequestCount
                   : 0;
-            const chip = item.badge && groupBadge > 0 ? String(groupBadge) : null;
+            const chip =
+              item.label === "Discussion"
+                ? chatUnread.total > 0
+                  ? chatUnread.total > 99
+                    ? "99+"
+                    : String(chatUnread.total)
+                  : null
+                : item.badge && groupBadge > 0
+                  ? String(groupBadge)
+                  : null;
 
             return (
               <Link
@@ -242,7 +253,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 {chip && (
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      item.badge
+                      item.badge || item.label === "Discussion"
                         ? "bg-brand-primary text-white"
                         : active
                           ? "bg-white/20 text-white"

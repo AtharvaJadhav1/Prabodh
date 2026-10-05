@@ -16,6 +16,7 @@ import {
 import { useAuth } from "../auth/AuthProvider";
 import RoleSwitcher from "../auth/RoleSwitcher";
 import { useMentorRequests } from "./MentorRequestProvider";
+import { useChatUnread } from "../chat/chatUnreadStore";
 import Avatar from "../Avatar";
 import { resolveMentorAvatarUrl } from "../../lib/mentorAvatar";
 
@@ -36,6 +37,9 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
   const pathname = usePathname();
   const { pendingCount, unreadCommentCount } = useMentorRequests();
   const { session, logout } = useAuth();
+  const chatUnread = useChatUnread(!!session);
+  // Prefer the chat unread total; fall back to the notification-based count until/unless it answers.
+  const queriesUnread = chatUnread.ok ? chatUnread.total : unreadCommentCount;
   const fullName = session?.fullName ?? "Mentor";
   const displayName = fullName.length > 16 ? fullName.split(" ")[0] : fullName;
 
@@ -50,7 +54,7 @@ export default function MentorSidebar({ mobileOpen, onCloseMobile }: Props) {
       badge: pendingCount > 0 ? String(pendingCount) : undefined,
     },
     { label: "PS Approvals", href: "/dashboard/mentor/ps-approvals", match: "start", icon: CompassIcon },
-    { label: "Team Queries", href: "/dashboard/mentor/queries", match: "start", icon: MessageIcon, badge: unreadCommentCount > 0 ? String(unreadCommentCount) : undefined },
+    { label: "Team Queries", href: "/dashboard/mentor/queries", match: "start", icon: MessageIcon, badge: queriesUnread > 0 ? (queriesUnread > 99 ? "99+" : String(queriesUnread)) : undefined },
   ];
 
   return (

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import TeamCommentsCard from "../../../../components/dashboard/TeamCommentsCard";
+import ChatWorkspace from "../../../../components/chat/ChatWorkspace";
 
 export const metadata: Metadata = {
   title: "Discussion",
@@ -8,8 +8,8 @@ export const metadata: Metadata = {
 
 export default function DiscussionPage() {
   return (
-    <div className="mx-auto max-w-3xl [&>section]:h-[calc(100dvh-9rem)]">
-      <TeamCommentsCard />
+    <div className="mx-auto max-w-5xl">
+      <ChatWorkspace variant="page" />
     </div>
   );
 }

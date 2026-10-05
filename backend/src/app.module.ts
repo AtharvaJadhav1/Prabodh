@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { HealthController } from './health.controller';
 import { AdminModule } from './modules/admin/admin.module';
+import { ChatModule } from './modules/chat/chat.module';
 import { EvaluationsModule } from './modules/evaluations/evaluations.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { MentorsModule } from './modules/mentors/mentors.module';
@@ -25,6 +26,7 @@ import { PrismaModule } from './lib/prisma.module';
     StagesModule,
     EvaluationsModule,
     NotificationsModule,
+    ChatModule,
     AdminModule,
   ],
 })
