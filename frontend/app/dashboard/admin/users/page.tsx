@@ -816,6 +816,7 @@ export default function AdminUsersPage() {
             { label: "Department", render: (u) => u.department ?? "—" },
             {
               label: "Actions",
+              width: "110px",
               render: (u) =>
                 u.id === session?.userId ? (
                   <span className="text-[11px] font-medium text-neutral-400">You</span>
@@ -828,7 +829,7 @@ export default function AdminUsersPage() {
                       className="group flex items-center gap-0 hover:gap-1.5 px-2.5 py-1.5 rounded-full border border-stone-200 bg-white/70 hover:bg-stone-100 hover:border-stone-300 text-stone-400 hover:text-stone-700 transition-all duration-200 cursor-pointer overflow-hidden"
                     >
                       <TrashIcon className="w-3.5 h-3.5 shrink-0 transition-colors" />
-                      <span className="max-w-0 opacity-0 group-hover:max-w-xs group-hover:opacity-100 whitespace-nowrap text-xs font-medium text-stone-600 transition-all duration-200 ease-in-out">
+                      <span className="max-w-0 opacity-0 group-hover:max-w-[70px] group-hover:opacity-100 whitespace-nowrap text-xs font-medium text-stone-600 transition-all duration-200 ease-in-out">
                         Remove
                       </span>
                     </button>

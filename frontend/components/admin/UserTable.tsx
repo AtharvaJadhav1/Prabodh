@@ -3,7 +3,7 @@
 import { useState, useMemo, type ReactNode } from "react";
 import { SearchIcon } from "../dashboard/icons";
 
-type Column<T> = { label: string; render: (row: T) => React.ReactNode };
+type Column<T> = { label: string; render: (row: T) => React.ReactNode; width?: string };
 
 type Props<T> = {
   rows: T[];
@@ -55,11 +55,11 @@ export default function UserTable<T>({
       </div>
 
       <div className="w-full overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse text-left text-xs">
+        <table className="w-full min-w-[720px] border-collapse table-fixed text-left text-xs">
           <thead>
             <tr className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
               {columns.map((col) => (
-                <th key={col.label} className="border-b border-neutral-100 px-3 py-3 font-semibold">
+                <th key={col.label} className="border-b border-neutral-100 px-3 py-3 font-semibold" style={{ width: col.width }}>
                   {col.label}
                 </th>
               ))}
@@ -72,7 +72,7 @@ export default function UserTable<T>({
                 className="border-b border-neutral-100 transition-colors last:border-b-0 hover:bg-neutral-50/60"
               >
                 {columns.map((col) => (
-                  <td key={col.label} className="px-3 py-4 align-middle">
+                  <td key={col.label} className="px-3 py-4 align-middle" style={{ width: col.width }}>
                     {col.render(row)}
                   </td>
                 ))}
