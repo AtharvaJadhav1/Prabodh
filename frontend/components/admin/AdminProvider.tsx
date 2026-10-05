@@ -43,6 +43,8 @@ type AdminContextValue = {
   industryMentorOptions: LiveMentor[];
   users: PortalUser[];
   reload: () => Promise<void>;
+  /** Patches one user's avatarUrl in local state without a full bootstrap refetch. */
+  updateUserAvatar: (userId: string, avatarUrl: string | null) => void;
 };
 
 const AdminContext = createContext<AdminContextValue | null>(null);
@@ -289,6 +291,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     [allocations, failFast, industryMentorOptions, pendingTeams, runAllocation],
   );
 
+  const updateUserAvatar = useCallback((userId: string, avatarUrl: string | null) => {
+    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, avatarUrl } : u)));
+  }, []);
+
   const metrics = useMemo(() => {
     if (metricsLive) return { ...metricsLive, pendingAllocations: allocations.filter((a) => a.status === "unassigned").length };
     const base = platformMetrics();
@@ -310,6 +316,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         industryMentorOptions,
         users,
         reload: load,
+        updateUserAvatar,
       }}
     >
       {children}

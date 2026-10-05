@@ -929,6 +929,39 @@ export class AdminService {
     };
   }
 
+  async setUserAvatar(
+    actor: AuthUser,
+    userId: string,
+    body: { filename: string; contentType: string; dataBase64: string },
+  ) {
+    const result = await this.identity.uploadAvatar(userId, body);
+    await writeAudit(this.prisma, {
+      actorUserId: actor.id,
+      action: 'user.avatar.set',
+      entityType: 'user',
+      entityId: userId,
+    });
+    return result;
+  }
+
+  async resetUserAvatar(actor: AuthUser, userId: string) {
+    const existing = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!existing) throw new NotFoundException('User not found');
+    const profileJson = { ...((existing.profileJson as Record<string, unknown> | null) ?? {}) };
+    delete profileJson.avatarUrl;
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { profileJson: profileJson as Prisma.InputJsonValue },
+    });
+    await writeAudit(this.prisma, {
+      actorUserId: actor.id,
+      action: 'user.avatar.reset',
+      entityType: 'user',
+      entityId: userId,
+    });
+    return { avatarUrl: null };
+  }
+
   async removeUser(actor: AuthUser, userId: string, confirm: string) {
     const startedAt = Date.now();
     const log = (event: string, extra: Record<string, unknown> = {}) =>

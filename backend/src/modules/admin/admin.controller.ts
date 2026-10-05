@@ -7,6 +7,7 @@ import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
 import { ZodPipe } from '../../common/zod.pipe';
 import { adminInviteUserSchema, exportSchema, settingsSchema } from './schema';
+import { avatarUploadSchema } from '../identity/schema';
 import { AdminService } from './service';
 import { StagesService } from '../stages/service';
 
@@ -174,6 +175,20 @@ export class AdminController {
   @Post('users/:id/remove')
   remove(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body() body: { confirm?: string }) {
     return this.admin.removeUser(user, id, String(body?.confirm ?? ''));
+  }
+
+  @Post('users/:id/avatar')
+  setUserAvatar(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(new ZodPipe(avatarUploadSchema)) body: unknown,
+  ) {
+    return this.admin.setUserAvatar(user, id, body as never);
+  }
+
+  @Post('users/:id/avatar/reset')
+  resetUserAvatar(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.admin.resetUserAvatar(user, id);
   }
 
   @Post('ops/clear-seed')

@@ -4,9 +4,10 @@ import { useRef, useState } from "react";
 import AdminShell from "../../../../components/admin/AdminShell";
 import UserTable from "../../../../components/admin/UserTable";
 import MentorDropdown from "../../../../components/admin/MentorDropdown";
-import Avatar from "../../../../components/Avatar";
+import AdminAvatarCell from "../../../../components/admin/AdminAvatarCell";
 import { getMentorWavesAvatarUrl } from "../../../../lib/mentorAvatar";
 import { useAdmin } from "../../../../components/admin/AdminProvider";
+import { Tabs, TabsList, TabsTrigger } from "../../../../components/ui/tabs";
 import { useAuth } from "../../../../components/auth/AuthProvider";
 import { api, apiPost, ApiError } from "../../../../lib/api";
 import { holdsRole } from "../../../../lib/session";
@@ -77,6 +78,15 @@ const ROLE_LABEL: Record<string, string> = {
   admin: "Nodal Admin",
 };
 
+/** Warm orange/terracotta brand palette per role — no neon/glow, just a subtle hover darken. */
+const ROLE_BADGE_CLASS: Record<string, string> = {
+  student: "bg-brand-lightOrange text-brand-primary border-brand-warmBorder hover:brightness-95",
+  institute_mentor: "bg-brand-amber/20 text-brand-deep border-brand-amber/50 hover:brightness-95",
+  industry_mentor: "bg-brand-primary/10 text-brand-primary border-brand-primary/25 hover:brightness-95",
+  student_expert: "bg-brand-sand/70 text-brand-charcoal border-brand-softline hover:brightness-95",
+  admin: "bg-stone-100 text-stone-700 border-stone-200/60 hover:brightness-95",
+};
+
 const INVITE_ROLES: { value: InviteRole; label: string }[] = [
   { value: "institute_mentor", label: "Institute Mentor" },
   { value: "industry_mentor", label: "Industrial Mentor" },
@@ -85,7 +95,7 @@ const INVITE_ROLES: { value: InviteRole; label: string }[] = [
 ];
 
 export default function AdminUsersPage() {
-  const { users, reload } = useAdmin();
+  const { users, reload, updateUserAvatar } = useAdmin();
   const { session } = useAuth();
   const [tab, setTab] = useState<Tab>("students");
   const [csv, setCsv] = useState(`${CSV_HEADER}\n`);
@@ -756,22 +766,19 @@ export default function AdminUsersPage() {
 
         <UserTable<PortalUser>
           toolbar={
-            <>
-              {tabs.map((t) => (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => setTab(t.key)}
-                  className={`whitespace-nowrap rounded-xl px-4 py-2 text-xs font-semibold transition-all ${
-                    tab === t.key
-                      ? "bg-white text-stone-900 shadow-sm"
-                      : "text-stone-500 hover:text-stone-800 hover:bg-white/50"
-                  }`}
-                >
-                  {t.label} <span className="font-normal text-stone-400">({t.count})</span>
-                </button>
-              ))}
-            </>
+            <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
+              <TabsList className="h-auto flex-nowrap justify-start gap-1 rounded-xl border border-stone-200/60 bg-stone-100/80 p-1">
+                {tabs.map((t) => (
+                  <TabsTrigger
+                    key={t.key}
+                    value={t.key}
+                    className="h-auto whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-stone-500 data-active:bg-white data-active:text-stone-900 data-active:shadow-sm hover:text-stone-800"
+                  >
+                    {t.label} <span className="font-normal text-stone-400">({t.count})</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
           }
           rows={rowsFor}
           rowKey={(u) => u.id}
@@ -781,8 +788,8 @@ export default function AdminUsersPage() {
           columns={[
             {
               label: "Name",
-              width: "22%",
-              minWidth: "200px",
+              width: "220px",
+              minWidth: "220px",
               render: (u) => {
                 const mentorType =
                   tab === "industry-mentors" ? "INDUSTRY" : tab === "institute-mentors" ? "INSTITUTE" : null;
@@ -790,7 +797,13 @@ export default function AdminUsersPage() {
                   u.avatarUrl || (mentorType ? getMentorWavesAvatarUrl(mentorType, u.email || u.fullName || "mentor") : null);
                 return (
                   <div className="flex items-center gap-3 min-w-0">
-                    <Avatar src={avatarSrc} seed={u.fullName || u.email || "user"} className="h-8 w-8" />
+                    <AdminAvatarCell
+                      userId={u.id}
+                      fullName={u.fullName || u.email || "user"}
+                      avatarSrc={avatarSrc}
+                      hasCustomAvatar={Boolean(u.avatarUrl)}
+                      onSaved={(avatarUrl) => updateUserAvatar(u.id, avatarUrl)}
+                    />
                     <span className="font-semibold text-stone-900 truncate" title={u.fullName}>{u.fullName}</span>
                   </div>
                 );
@@ -798,8 +811,8 @@ export default function AdminUsersPage() {
             },
             {
               label: "Email",
-              width: "24%",
-              minWidth: "220px",
+              width: "260px",
+              minWidth: "260px",
               render: (u) => (
                 <span className="block truncate text-stone-600 font-mono text-xs pr-4" title={u.email}>
                   {u.email}
@@ -808,14 +821,17 @@ export default function AdminUsersPage() {
             },
             {
               label: "Role",
-              width: "14%",
-              minWidth: "120px",
+              width: "160px",
+              minWidth: "160px",
               render: (u) => {
                 const extras = (u.additionalRoles ?? []).filter((r) => r !== u.platformRole);
                 const base = ROLE_LABEL[u.platformRole] ?? u.platformRole;
                 const label = extras.length > 0 ? `${base} + ${extras.map((r) => ROLE_LABEL[r] ?? r).join(", ")}` : base;
+                const badgeClass = ROLE_BADGE_CLASS[u.platformRole] ?? ROLE_BADGE_CLASS.admin;
                 return (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-stone-100 text-stone-700 border border-stone-200/60">
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium truncate border transition-[filter] duration-150 ${badgeClass}`}
+                  >
                     {label}
                   </span>
                 );
@@ -823,28 +839,28 @@ export default function AdminUsersPage() {
             },
             {
               label: "Institute",
-              width: "20%",
+              width: "180px",
               minWidth: "180px",
               render: (u) => (
-                <span className="truncate text-stone-600 text-xs" title={u.institute || "N/A"}>
+                <span className="block truncate text-stone-600 text-xs" title={u.institute || "N/A"}>
                   {u.institute || <span className="text-stone-300">—</span>}
                 </span>
               ),
             },
             {
               label: "Department",
-              width: "12%",
-              minWidth: "110px",
+              width: "130px",
+              minWidth: "130px",
               render: (u) => (
-                <span className="truncate text-stone-600 text-xs" title={u.department || "N/A"}>
+                <span className="block truncate text-stone-600 text-xs" title={u.department || "N/A"}>
                   {u.department || <span className="text-stone-300">—</span>}
                 </span>
               ),
             },
             {
               label: "Actions",
-              width: "8%",
-              minWidth: "90px",
+              width: "110px",
+              minWidth: "110px",
               render: (u) =>
                 u.id === session?.userId ? (
                   <span className="text-[11px] font-medium text-neutral-400">You</span>
