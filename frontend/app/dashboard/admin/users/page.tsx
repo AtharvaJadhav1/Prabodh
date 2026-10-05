@@ -21,7 +21,7 @@ import {
   AlertTriangleIcon,
 } from "../../../../components/dashboard/icons";
 
-type Tab = "students" | "institute-mentors" | "industry-mentors" | "student-experts";
+type Tab = "all" | "students" | "institute-mentors" | "industry-mentors" | "student-experts";
 type InviteRole = "institute_mentor" | "industry_mentor" | "admin" | "student_expert";
 
 type RemovePreview = {
@@ -217,8 +217,10 @@ export default function AdminUsersPage() {
   const industry = users.filter((u) => holdsRole(u, "industry_mentor"));
   const institute = users.filter((u) => holdsRole(u, "institute_mentor"));
   const experts = users.filter((u) => holdsRole(u, "student_expert"));
+  const totalUsersCount = users.length;
 
   const tabs: { key: Tab; label: string; count: number }[] = [
+    { key: "all", label: "All", count: totalUsersCount },
     { key: "students", label: "Students", count: students.length },
     { key: "institute-mentors", label: "Institute Mentors", count: institute.length },
     { key: "industry-mentors", label: "Industry Mentors", count: industry.length },
@@ -226,13 +228,15 @@ export default function AdminUsersPage() {
   ];
 
   const rowsFor =
-    tab === "students"
-      ? students
-      : tab === "institute-mentors"
-        ? institute
-        : tab === "industry-mentors"
-          ? industry
-          : experts;
+    tab === "all"
+      ? users
+      : tab === "students"
+        ? students
+        : tab === "institute-mentors"
+          ? institute
+          : tab === "industry-mentors"
+            ? industry
+            : experts;
 
   const readCsvFile = (file: File | undefined | null) => {
     if (!file) return;
@@ -750,18 +754,23 @@ export default function AdminUsersPage() {
         </section>
 
         <UserTable<PortalUser>
-          toolbar={tabs.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={`whitespace-nowrap rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-                tab === t.key ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-800"
-              }`}
-            >
-              {t.label} <span className="font-normal text-neutral-400">({t.count})</span>
-            </button>
-          ))}
+          toolbar={[
+            ...tabs.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setTab(t.key)}
+                className={`whitespace-nowrap rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                  tab === t.key ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-800"
+                }`}
+              >
+                {t.label} <span className="font-normal text-neutral-400">({t.count})</span>
+              </button>
+            )),
+            <span className="flex items-center px-3.5 py-1.5 text-xs font-medium text-neutral-500">
+              {rowsFor.length} of {totalUsersCount}
+            </span>,
+          ]}
           rows={rowsFor}
           rowKey={(u) => u.id}
           searchPlaceholder="Search users..."
