@@ -8,11 +8,11 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://incubation.prabodh.a
 
 export const metadata: Metadata = {
   title: {
-    default: "Prabodh — Project Based Learning Portal",
+    default: "Prabodh — Incubation & Innovation Platform",
     template: "Prabodh | %s",
   },
   description:
-    "Prabodh is the Project Based Learning portal for SIH — centralized team management, dual-mentor tracking, and milestone-based evaluation.",
+    "Centralized incubation platform for student project innovation, industry mentorship, and prototype funding.",
   applicationName: "Prabodh",
   manifest: "/manifest.webmanifest",
   icons: {
@@ -25,9 +25,9 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
   },
   openGraph: {
-    title: "Prabodh — Project Based Learning Portal",
+    title: "Prabodh — Incubation & Innovation Platform",
     description:
-      "Prabodh is the Project Based Learning portal for SIH — centralized team management, dual-mentor tracking, and milestone-based evaluation.",
+      "Centralized incubation platform for student project innovation, industry mentorship, and prototype funding.",
     url: APP_URL,
   },
 };
