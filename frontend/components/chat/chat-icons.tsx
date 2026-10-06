@@ -139,41 +139,6 @@ export const NewChatIcon = ({ className }: P) => (
     <path d="M12 8.5v6M9 11.5h6" />
   </Svg>
 );
-export const HomeIcon = ({ className }: P) => (
-  <Svg className={className}>
-    <path d="M3 10.5L12 3l9 7.5V20a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z" />
-  </Svg>
-);
-export const FileTextIcon = ({ className }: P) => (
-  <Svg className={className}>
-    <path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z" />
-    <path d="M14 3v5h5M9 13h6M9 17h6" />
-  </Svg>
-);
-export const MentorIcon = ({ className }: P) => (
-  <Svg className={className}>
-    <path d="M22 9L12 4 2 9l10 5z" />
-    <path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.500 6-3v-4.500M22 9v5" />
-  </Svg>
-);
-export const UserIcon = ({ className }: P) => (
-  <Svg className={className}>
-    <circle cx="12" cy="8" r="4" />
-    <path d="M4 21v-1a6 6 0 016-6h4a6 6 0 016 6v1" />
-  </Svg>
-);
-export const LogoutIcon = ({ className }: P) => (
-  <Svg className={className}>
-    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
-  </Svg>
-);
-export const KebabIcon = ({ className }: P) => (
-  <Svg className={className} fill>
-    <circle cx="12" cy="5" r="2" />
-    <circle cx="12" cy="12" r="2" />
-    <circle cx="12" cy="19" r="2" />
-  </Svg>
-);
 export const ExternalIcon = ({ className }: P) => (
   <Svg className={className}>
     <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />

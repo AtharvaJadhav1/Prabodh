@@ -12,6 +12,7 @@ import MessageBubble from "./MessageBubble";
 import MessageMenu, { type MenuState } from "./MessageMenu";
 import { AlertIcon, ArrowDownIcon, BackIcon, CloseIcon, RetryIcon } from "./chat-icons";
 import { useThread } from "./useThread";
+import { useChatHistoryContext } from "./use-chat-history";
 
 type Props = {
   conv: ChatConversation;
@@ -173,11 +174,30 @@ export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, on
     }
   }, [loading, visible, latestIncoming, conv, onViewed]);
 
-  const closeMenu = useCallback(() => setMenu(null), []);
-  const openMenu = useCallback((msg: ChatMessage, x: number, y: number) => setMenu({ msg, x, y }), []);
+  // The mobile action sheet is its own history layer: system Back closes just the sheet, never the thread.
+  const hist = useChatHistoryContext();
+  useEffect(() => {
+    if (!app || !hist) return;
+    return hist.register("sheet", () => setMenu(null));
+  }, [app, hist]);
+  const closeMenu = useCallback(() => {
+    setMenu(null);
+    if (app) hist?.close("sheet");
+  }, [app, hist]);
+  const openMenu = useCallback(
+    (msg: ChatMessage, x: number, y: number) => {
+      // Mirrors the sheet's own "nothing to offer" check so no history entry is pushed for an invisible sheet.
+      const canCopy = !msg.deleted && msg.body.length > 0;
+      const canDelete = msg.mine && !!msg.id && !msg.deleted;
+      if (!canCopy && !canDelete) return;
+      setMenu({ msg, x, y });
+      if (app) hist?.push("sheet");
+    },
+    [app, hist],
+  );
 
   const copy = (m: ChatMessage) => {
-    setMenu(null);
+    closeMenu();
     const text = m.body;
     if (navigator.clipboard?.writeText) {
       void navigator.clipboard.writeText(text).catch(() => undefined);
@@ -197,7 +217,7 @@ export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, on
     ta.remove();
   };
   const remove = (m: ChatMessage) => {
-    setMenu(null);
+    closeMenu();
     void t.remove(m.key);
   };
 
@@ -326,7 +346,7 @@ export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, on
                     app ? "bg-chat-pill text-chat-pillText" : "bg-white/90 text-brand-muted"
                   }`}
                 >
-                  {isGroup ? "No messages yet. Start the discussion." : `No messages yet. Say hello to ${conv.title}.`}
+                  {isGroup ? "No messages yet. Start the conversation." : `No messages yet. Say hello to ${conv.title}.`}
                 </div>
               ) : null}
               <div role="list" className="flex flex-col">

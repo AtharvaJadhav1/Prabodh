@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import AppMenu from "./app/AppMenu";
+import StudentBottomNav from "../dashboard/StudentBottomNav";
 import { CloseIcon, NewChatIcon, SearchIcon } from "./chat-icons";
 
 export type AppTabId = "chats" | "friends" | "people";
@@ -16,6 +16,8 @@ type Props = {
   query: string;
   onQuery: (q: string) => void;
   onNewChat: () => void;
+  /** Hide the bottom navigation (profile sheet open, or the on-screen keyboard is up). */
+  hideNav?: boolean;
   children: ReactNode;
 };
 
@@ -36,7 +38,7 @@ function badgeLabel(id: AppTabId, n: number): string {
 }
 
 /** WhatsApp-style home chrome: header, search, filter chips and a floating new-chat button around the active panel. */
-export default function ChatAppHome({ tabs, tab, onTab, onTabKey, registerTab, query, onQuery, onNewChat, children }: Props) {
+export default function ChatAppHome({ tabs, tab, onTab, onTabKey, registerTab, query, onQuery, onNewChat, hideNav = false, children }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -57,7 +59,6 @@ export default function ChatAppHome({ tabs, tab, onTab, onTabKey, registerTab, q
             </span>
             <h1 className="truncate text-[22px] font-extrabold leading-none tracking-tight text-chat-brandText">Prabodh</h1>
           </div>
-          <AppMenu />
         </header>
 
         <div className="px-4 pb-1 pt-1">
@@ -156,11 +157,13 @@ export default function ChatAppHome({ tabs, tab, onTab, onTabKey, registerTab, q
           onClick={onNewChat}
           aria-label="New chat: find people"
           className="absolute right-4 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand-amber to-chat-brand text-white shadow-[0_6px_18px_rgba(217,107,39,0.45)] transition-transform duration-150 active:scale-90 motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chat-brand"
-          style={{ bottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
+          style={{ bottom: hideNav ? "calc(1.25rem + env(safe-area-inset-bottom))" : "calc(4.5rem + env(safe-area-inset-bottom))" }}
         >
           <NewChatIcon className="h-6 w-6" />
         </button>
       ) : null}
+
+      {hideNav ? null : <StudentBottomNav variant="chat" />}
     </div>
   );
 }

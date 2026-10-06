@@ -45,7 +45,7 @@ const navItems = [
   { label: "Mentors", href: "/dashboard/student/mentors", match: "prefix", icon: GradCapIcon },
   // Chats, friends and people search live here, not on the dashboard.
   {
-    label: "Discussion",
+    label: "Messages",
     href: "/dashboard/student/discussion",
     match: "prefix",
     icon: MessageIcon,
@@ -203,7 +203,8 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <div className="flex-1 lg:hidden" aria-hidden="true" />
+        <nav aria-label="Main" className="hidden flex-1 space-y-1 overflow-y-auto px-3 py-4 lg:block">
           {navItems.map((item) => {
             const active =
               item.match === "exact"
@@ -219,7 +220,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                   ? pendingRequestCount
                   : 0;
             const chip =
-              item.label === "Discussion"
+              item.label === "Messages"
                 ? chatUnread.total > 0
                   ? chatUnread.total > 99
                     ? "99+"
@@ -250,7 +251,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 {chip && (
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      item.badge || item.label === "Discussion"
+                      item.badge || item.label === "Messages"
                         ? "bg-brand-primary text-white"
                         : active
                           ? "bg-white/20 text-white"
