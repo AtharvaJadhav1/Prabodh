@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { InviteStatus, MentorInvite } from "../../data/industryDashboard";
 import { type MentorGroup } from "../../data/mentorDashboard";
 import { api, apiPost } from "../../lib/api";
+import { isAlreadyAnswered } from "../../lib/invite-errors";
 import { initials } from "../../lib/initials";
 import { useAuth } from "../auth/AuthProvider";
 
@@ -293,7 +294,16 @@ export function IndustryMentorProvider({ children }: { children: ReactNode }) {
 
   const acceptInvite = useCallback(
     async (id: string) => {
-      const result = await apiPost<{ accepted?: boolean }>(`/mentors/invites/${id}/accept`, {});
+      let result: { accepted?: boolean } | null = null;
+      try {
+        result = await apiPost<{ accepted?: boolean }>(`/mentors/invites/${id}/accept`, {});
+      } catch (err) {
+        if (isAlreadyAnswered(err)) {
+          await reload(); // answered elsewhere: refresh so the stale card disappears, no red error
+          return;
+        }
+        throw err;
+      }
       await reload();
       if (result && result.accepted === false) {
         throw new Error("This team already has an industry mentor (or the invitation expired), so it could not be accepted.");
@@ -304,7 +314,11 @@ export function IndustryMentorProvider({ children }: { children: ReactNode }) {
 
   const declineInvite = useCallback(
     async (id: string) => {
-      await apiPost(`/mentors/invites/${id}/decline`, {});
+      try {
+        await apiPost(`/mentors/invites/${id}/decline`, {});
+      } catch (err) {
+        if (!isAlreadyAnswered(err)) throw err;
+      }
       await loadInvites(true);
     },
     [loadInvites],

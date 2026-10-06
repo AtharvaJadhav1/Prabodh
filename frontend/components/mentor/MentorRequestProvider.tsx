@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { GroupRequest, GroupRequestHistoryEntry } from "../../data/mentorDashboard";
 import { api, apiPatch, apiPost } from "../../lib/api";
 import { avatarUrlFrom } from "../../lib/avatar";
+import { isAlreadyAnswered } from "../../lib/invite-errors";
 import { useAuth } from "../auth/AuthProvider";
 import { useMentorTeams } from "./MentorTeamsProvider";
 
@@ -181,6 +182,12 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
           void reload();
         })
         .catch((err: unknown) => {
+          if (isAlreadyAnswered(err)) {
+            // Already answered elsewhere: no scary error, just refresh so the stale card disappears.
+            void reload();
+            void refreshMentorTeams(true);
+            return;
+          }
           setRequestError(err instanceof Error && err.message ? err.message : "Something went wrong. Please try again.");
           if (target) {
             setPendingRequests((prev) => (prev.some((r) => r.id === id) ? prev : [target, ...prev]));
@@ -206,6 +213,12 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
           void reload();
         })
         .catch((err: unknown) => {
+          if (isAlreadyAnswered(err)) {
+            // Already answered elsewhere: no scary error, just refresh so the stale card disappears.
+            void reload();
+            void refreshMentorTeams(true);
+            return;
+          }
           setRequestError(err instanceof Error && err.message ? err.message : "Something went wrong. Please try again.");
           if (target) {
             setPendingRequests((prev) => (prev.some((r) => r.id === id) ? prev : [target, ...prev]));

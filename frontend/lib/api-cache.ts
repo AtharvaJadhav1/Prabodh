@@ -12,6 +12,9 @@ const neverCachePaths = [
   // Mentor directory shows live profile details (e.g. a LinkedIn link a mentor just saved), so never
   // serve a stale copy persisted in localStorage.
   /^\/mentors\/faculty/,
+  // Pending requests and a mentor's teams decide what they can act on, so always fetch them live.
+  /^\/mentors\/invites/,
+  /^\/mentors\/me\//,
   /^\/admin\/(audit-log|logs)/,
   // Direct chat, people search and friend state are always live.
   /^\/chat\//,
@@ -20,8 +23,13 @@ const neverCachePaths = [
   /\/deliverables($|\?)/,
 ];
 
+/**
+ * The query string is part of the key: /mentors/invites?mentorType=institute (pending) and
+ * /mentors/invites?history=1&mentorType=institute (past answers) are different data. Dropping it made them
+ * share one saved entry, so an already-answered request kept coming back as "pending".
+ */
 export function cacheKey(userId: string | undefined, method: string, path: string): string {
-  const clean = path.split("?")[0];
+  const clean = path.split("#")[0];
   return `${userId ?? "anon"}|${method} ${clean}`;
 }
 
@@ -78,7 +86,9 @@ export function clearApiCache() {
 /** Drop only matching GET entries so page switches can still use other cached data. */
 export function invalidateApiCache(match: string | RegExp) {
   const test =
-    typeof match === "string" ? (key: string) => key.includes(match) : (key: string) => match.test(key);
+    typeof match === "string"
+      ? (key: string) => key.includes(match)
+      : (key: string) => match.test(key.split("?")[0]); // patterns end in (\/|$) — match the path, not the query
 
   for (const key of [...memory.keys()]) {
     if (test(key)) memory.delete(key);

@@ -167,9 +167,7 @@ export async function api<T>(path: string, init: RequestInit = {}, options: ApiO
     }
   }
 
-  // cacheKey drops the query string, so include it here or two searches/cursors would share one request.
-  const dedupeKey = path.includes("?") ? `${key}?${path.split("?").slice(1).join("?")}` : key;
-  return dedupe ? runDeduped(dedupeKey, fetchIt) : fetchIt();
+  return dedupe ? runDeduped(key, fetchIt) : fetchIt();
 }
 
 export function apiPost<T>(path: string, body: unknown, options?: ApiOptions) {
