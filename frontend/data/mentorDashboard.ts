@@ -137,7 +137,7 @@ export type GroupRequestHistoryEntry = {
   leaderAvatarUrl?: string | null;
   memberCount: number;
   allocatedRole: string;
-  status: "ACCEPTED" | "DECLINED" | "EXPIRED";
+  status: "ACCEPTED" | "DECLINED" | "EXPIRED" | "UNASSIGNED";
   receivedDate: string;
   respondedDate: string;
 };

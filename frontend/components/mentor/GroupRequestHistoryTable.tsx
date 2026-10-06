@@ -5,7 +5,7 @@ import type { GroupRequestHistoryEntry } from "../../data/mentorDashboard";
 import { SearchIcon, InboxIcon } from "../dashboard/icons";
 import Avatar from "../Avatar";
 
-type StatusFilter = "ALL" | "ACCEPTED" | "DECLINED" | "EXPIRED";
+type StatusFilter = "ALL" | "ACCEPTED" | "DECLINED" | "EXPIRED" | "UNASSIGNED";
 
 type Props = {
   history: GroupRequestHistoryEntry[];
@@ -63,6 +63,7 @@ export default function GroupRequestHistoryTable({ history }: Props) {
         >
           <option value="ALL">All</option>
           <option value="ACCEPTED">Accepted</option>
+          <option value="UNASSIGNED">Unassigned</option>
           <option value="DECLINED">Declined</option>
           <option value="EXPIRED">Expired</option>
         </select>
@@ -104,21 +105,21 @@ export default function GroupRequestHistoryTable({ history }: Props) {
                     className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${
                       h.status === "ACCEPTED"
                         ? "bg-brand-approved/10 text-brand-approved"
-                        : h.status === "EXPIRED"
+                        : h.status === "EXPIRED" || h.status === "UNASSIGNED"
                           ? "bg-brand-sand text-brand-muted"
                           : "bg-brand-overdue/10 text-brand-overdue"
                     }`}
                   >
                     <span
                       className={`h-1.5 w-1.5 rounded-full ${
-                        h.status === "ACCEPTED" ? "bg-brand-approved" : h.status === "EXPIRED" ? "bg-brand-muted" : "bg-brand-overdue"
+                        h.status === "ACCEPTED" ? "bg-brand-approved" : h.status === "EXPIRED" || h.status === "UNASSIGNED" ? "bg-brand-muted" : "bg-brand-overdue"
                       }`}
                     />
                     {h.status}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  {h.status === "ACCEPTED" ? (
+                  {h.status === "ACCEPTED" || h.status === "UNASSIGNED" ? (
                     <a
                       href={`/dashboard/mentor/teams/${h.teamId}`}
                       className="inline-flex items-center gap-1 text-xs font-bold text-brand-primary hover:underline"

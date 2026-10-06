@@ -762,8 +762,8 @@ export class MentorsService {
     return this.prisma.mentorInvite.findUniqueOrThrow({ where: { id: inviteId } });
   }
 
-  pendingInvitesForMentor(user: AuthUser, history = false, mentorType?: MentorType) {
-    return this.prisma.mentorInvite.findMany({
+  async pendingInvitesForMentor(user: AuthUser, history = false, mentorType?: MentorType) {
+    const rows = await this.prisma.mentorInvite.findMany({
       where: {
         inviteStatus: history ? { not: InviteStatus.pending } : InviteStatus.pending,
         ...(mentorType ? { mentorType } : {}),
@@ -786,6 +786,20 @@ export class MentorsService {
       },
       orderBy: history ? { updatedAt: 'desc' } : { createdAt: 'desc' },
     });
+    if (!history) return rows;
+    // An accepted invite whose seat is no longer active (replaced / unassigned) is flagged so the
+    // history can show "Unassigned" instead of a stale "Accepted".
+    const accepted = rows.filter((r) => r.inviteStatus === InviteStatus.accepted);
+    if (accepted.length === 0) return rows.map((r) => ({ ...r, unassigned: false }));
+    const active = await this.prisma.mentorAssignment.findMany({
+      where: { mentorUserId: user.id, active: true, teamId: { in: accepted.map((r) => r.teamId) } },
+      select: { teamId: true, mentorType: true },
+    });
+    const held = new Set(active.map((a) => `${a.teamId}|${a.mentorType}`));
+    return rows.map((r) => ({
+      ...r,
+      unassigned: r.inviteStatus === InviteStatus.accepted && !held.has(`${r.teamId}|${r.mentorType}`),
+    }));
   }
 
   async respondToInvite(user: AuthUser, inviteId: string, accept: boolean) {

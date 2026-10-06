@@ -43,9 +43,9 @@ export default function InviteHistoryList({ history }: Props) {
                   <span className="inline-flex items-center gap-1 rounded-full border border-brand-approved/20 bg-brand-approved/10 px-2.5 py-1 text-[11px] font-semibold text-brand-approved">
                     {inviteStatusLabel("accepted")}
                   </span>
-                ) : inv.status === "expired" ? (
+                ) : inv.status === "expired" || inv.status === "unassigned" ? (
                   <span className="inline-flex items-center gap-1 rounded-full border border-brand-sand bg-brand-cream px-2.5 py-1 text-[11px] font-semibold text-brand-muted">
-                    {inviteStatusLabel("expired")}
+                    {inviteStatusLabel(inv.status)}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 rounded-full border border-brand-overdue/20 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-brand-overdue">

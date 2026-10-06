@@ -12,6 +12,7 @@ type MentorInviteRow = {
   id: string;
   mentorType: string;
   inviteStatus?: string;
+  unassigned?: boolean;
   createdAt: string;
   updatedAt?: string;
   team: {
@@ -64,7 +65,13 @@ function mapHistory(row: MentorInviteRow): GroupRequestHistoryEntry {
   // accepted = you took the team; revoked = you declined it (or the team withdrew it); expired = it
   // was filled/locked before you answered.
   const status: GroupRequestHistoryEntry["status"] =
-    row.inviteStatus === "accepted" ? "ACCEPTED" : row.inviteStatus === "expired" ? "EXPIRED" : "DECLINED";
+    row.inviteStatus === "accepted"
+      ? row.unassigned
+        ? "UNASSIGNED"
+        : "ACCEPTED"
+      : row.inviteStatus === "expired"
+        ? "EXPIRED"
+        : "DECLINED";
   return {
     teamId: base.teamId,
     groupId: base.groupId,

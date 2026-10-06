@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { InviteStatus, MentorInvite } from "../../data/industryDashboard";
+import type { InviteDisplayStatus, InviteStatus, MentorInvite } from "../../data/industryDashboard";
 import { type MentorGroup } from "../../data/mentorDashboard";
 import { api, apiPost } from "../../lib/api";
 import { isAlreadyAnswered } from "../../lib/invite-errors";
@@ -62,6 +62,7 @@ type InviteApiRow = {
   mentorUserId: string | null;
   mentorType: string;
   inviteStatus: string;
+  unassigned?: boolean;
   invitedById: string;
   createdAt: string;
   updatedAt?: string;
@@ -77,10 +78,11 @@ type InviteApiRow = {
 
 function toInvite(row: InviteApiRow): MentorInvite {
   const team = row.team;
-  const status: InviteStatus =
+  const base: InviteStatus =
     row.inviteStatus === "accepted" || row.inviteStatus === "revoked" || row.inviteStatus === "expired"
       ? row.inviteStatus
       : "pending";
+  const status: InviteDisplayStatus = base === "accepted" && row.unassigned ? "unassigned" : base;
   return {
     id: row.id,
     teamName: team.name,
