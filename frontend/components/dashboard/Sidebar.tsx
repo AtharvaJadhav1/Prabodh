@@ -43,12 +43,11 @@ const navItems = [
     icon: UserPlusIcon,
   },
   { label: "Mentors", href: "/dashboard/student/mentors", match: "prefix", icon: GradCapIcon },
-  // Mobile only: on desktop the discussion lives on the dashboard itself.
+  // Chats, friends and people search live here, not on the dashboard.
   {
     label: "Discussion",
     href: "/dashboard/student/discussion",
     match: "prefix",
-    mobileOnly: true,
     icon: MessageIcon,
   },
 ];
@@ -236,9 +235,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
                 href={item.href}
                 prefetch
                 onClick={onCloseMobile}
-                className={`group items-center justify-between rounded-xl px-3 py-2.5 ${
-                  "mobileOnly" in item && item.mobileOnly ? "flex lg:hidden" : "flex"
-                } text-sm font-semibold transition-all duration-150 ${
+                className={`group flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-150 ${
                   active
                     ? "bg-brand-primary text-white shadow-md shadow-brand-primary/25"
                     : "text-brand-charcoal/80 hover:bg-white hover:text-brand-deep"

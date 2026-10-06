@@ -4,7 +4,6 @@ import DeliverablesCard from "../../../components/dashboard/DeliverablesCard";
 import ProblemStatementCard from "../../../components/dashboard/ProblemStatementCard";
 import MentorsCard from "../../../components/dashboard/MentorsCard";
 import QualifierCard from "../../../components/dashboard/QualifierCard";
-import TeamCommentsCard from "../../../components/dashboard/TeamCommentsCard";
 import StudentOnboardingTour from "../../../components/onboarding/StudentOnboardingTour";
 
 export const metadata: Metadata = {
@@ -25,10 +24,6 @@ export default function StudentDashboardPage() {
         <div className="space-y-6 lg:col-span-5">
           <ProblemStatementCard />
           <MentorsCard />
-          {/* On mobile the discussion is a separate page reached from the menu. */}
-          <div className="hidden lg:block">
-            <TeamCommentsCard />
-          </div>
           <QualifierCard />
         </div>
       </div>
