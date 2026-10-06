@@ -24,7 +24,7 @@ const LONG_PRESS_MS = 450;
 const SENDER_COLORS = 8;
 const LINK_CLASS = "break-all text-chat-link underline underline-offset-2";
 
-/** Stable per-sender colour (CSS variable from the chat theme, so it adapts to dark mode). */
+/** Stable per-sender colour (CSS variable from the chat theme). */
 function senderColor(senderId: string): string {
   let h = 0;
   for (let i = 0; i < senderId.length; i++) h = (h * 31 + senderId.charCodeAt(i)) >>> 0;

@@ -203,8 +203,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           </div>
         </div>
 
-        <div className="flex-1 lg:hidden" aria-hidden="true" />
-        <nav aria-label="Main" className="hidden flex-1 space-y-1 overflow-y-auto px-3 py-4 lg:block">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {navItems.map((item) => {
             const active =
               item.match === "exact"

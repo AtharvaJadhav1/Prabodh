@@ -3,7 +3,6 @@
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import DashboardShell from "./DashboardShell";
-import StudentBottomNav from "./StudentBottomNav";
 
 const TITLES: Record<string, string> = {
   "/dashboard/student": "Team Workspace",
@@ -19,7 +18,7 @@ export default function StudentShell({ children }: { children: ReactNode }) {
   const title = TITLES[pathname] ?? "Dashboard";
   const isMessages = pathname.startsWith("/dashboard/student/discussion");
   return (
-    <DashboardShell title={title} flush={isMessages} bottomNav={isMessages ? null : <StudentBottomNav variant="dashboard" />}>
+    <DashboardShell title={title} flush={isMessages}>
       {children}
     </DashboardShell>
   );

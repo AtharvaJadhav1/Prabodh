@@ -466,7 +466,6 @@ function ChatWorkspaceCore({
                 query={query}
                 onQuery={setQuery}
                 onNewChat={() => changeTab("people")}
-                hideNav={profileId !== null || fitHeight !== null}
               >
                 {tab === "chats" ? (
                   <AppConversationList

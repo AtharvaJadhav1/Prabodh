@@ -109,7 +109,7 @@ export default function PwaRegister() {
   if (!showOffline && !showReady && !showUpdate && !showRefreshing) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-[60] [body:has([data-bottom-nav])_&]:max-lg:bottom-[calc(4.5rem+env(safe-area-inset-bottom))] flex flex-col items-end gap-2">
+    <div className="fixed bottom-5 right-5 z-[60] flex flex-col items-end gap-2">
       {showUpdate && (
         <button
           type="button"
