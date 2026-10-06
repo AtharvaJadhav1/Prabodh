@@ -25,9 +25,11 @@ type Props = {
   /** Pixel size of the circle. */
   size?: number;
   className?: string;
+  /** Mobile chat app theme: themed ring instead of a white border, branded gradient for team chats. */
+  app?: boolean;
 };
 
-export default function ChatAvatar({ name, src, group, size = 44, className = "" }: Props) {
+export default function ChatAvatar({ name, src, group, size = 44, className = "", app = false }: Props) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const showImg = !!src && failedSrc !== src;
   const style = { width: size, height: size, minWidth: size, fontSize: Math.max(11, Math.round(size * 0.38)) };
@@ -35,7 +37,9 @@ export default function ChatAvatar({ name, src, group, size = 44, className = ""
     return (
       <span
         style={style}
-        className={`inline-flex shrink-0 items-center justify-center rounded-full bg-brand-deep text-white ${className}`}
+        className={`inline-flex shrink-0 items-center justify-center rounded-full text-white ${
+          app ? "bg-gradient-to-br from-brand-primary to-brand-deep" : "bg-brand-deep"
+        } ${className}`}
         aria-hidden="true"
       >
         <GroupIcon className="h-1/2 w-1/2" />
@@ -51,7 +55,7 @@ export default function ChatAvatar({ name, src, group, size = 44, className = ""
         style={style}
         loading="lazy"
         onError={() => setFailedSrc(src ?? null)}
-        className={`shrink-0 rounded-full border border-white bg-brand-cream object-cover ${className}`}
+        className={`shrink-0 rounded-full bg-brand-cream object-cover ${app ? "ring-1 ring-chat-line" : "border border-white"} ${className}`}
       />
     );
   }

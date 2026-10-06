@@ -14,10 +14,6 @@ type Props = {
   onSelect: (c: ChatConversation) => void;
   onRetry: () => void;
   onFindPeople: () => void;
-  /** Full-screen mobile style: edge-to-edge rows with inset hairline dividers, no own search box. */
-  app?: boolean;
-  /** App style: filter text owned by the parent header search bar. */
-  externalFilter?: string;
 };
 
 function previewText(c: ChatConversation): string {
@@ -32,12 +28,10 @@ const Row = memo(function Row({
   c,
   active,
   onSelect,
-  app = false,
 }: {
   c: ChatConversation;
   active: boolean;
   onSelect: (c: ChatConversation) => void;
-  app?: boolean;
 }) {
   const time = c.lastMessage ? formatListTime(c.lastMessage.createdAt) : "";
   const unread = c.unread > 0;
@@ -48,10 +42,8 @@ const Row = memo(function Row({
         onClick={() => onSelect(c)}
         aria-current={active ? "true" : undefined}
         aria-label={`${c.title}${unread ? `, ${c.unread} unread` : ""}`}
-        className={`flex w-full items-center gap-3 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-primary ${
-          app
-            ? "relative min-h-[72px] px-4 py-2 active:bg-black/5 after:absolute after:bottom-0 after:left-[76px] after:right-0 after:h-px after:bg-brand-softline/70"
-            : `min-h-[68px] border-b border-brand-softline/50 px-3 py-2.5 ${active ? "bg-brand-lightOrange" : "hover:bg-brand-lightOrange/50"}`
+        className={`flex min-h-[68px] w-full items-center gap-3 border-b border-brand-softline/50 px-3 py-2.5 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-primary ${
+          active ? "bg-brand-lightOrange" : "hover:bg-brand-lightOrange/50"
         }`}
       >
         <ChatAvatar name={c.title} src={c.avatarUrl ?? c.person?.avatarUrl} group={c.type === "group"} size={48} />
@@ -84,9 +76,8 @@ const Row = memo(function Row({
   );
 });
 
-export default function ConversationList({ items, loading, error, activeId, onSelect, onRetry, onFindPeople, app = false, externalFilter }: Props) {
-  const [ownFilter, setFilter] = useState("");
-  const filter = externalFilter ?? ownFilter;
+export default function ConversationList({ items, loading, error, activeId, onSelect, onRetry, onFindPeople }: Props) {
+  const [filter, setFilter] = useState("");
   const f = filter.trim().toLowerCase();
   const shown = useMemo(
     () =>
@@ -98,7 +89,7 @@ export default function ConversationList({ items, loading, error, activeId, onSe
 
   if (loading && items.length === 0) {
     return (
-      <div className={app ? "flex-1 space-y-1 px-4 py-2" : "flex-1 space-y-1 p-3"} aria-busy="true" aria-label="Loading chats">
+      <div className="flex-1 space-y-1 p-3" aria-busy="true" aria-label="Loading chats">
         {[0, 1, 2, 3, 4].map((i) => (
           <div key={i} className="flex items-center gap-3 py-2" aria-hidden="true">
             <div className="h-12 w-12 shrink-0 rounded-full bg-brand-sand motion-safe:animate-pulse" />
@@ -150,7 +141,6 @@ export default function ConversationList({ items, loading, error, activeId, onSe
           </button>
         </div>
       ) : null}
-      {app ? null : (
       <div className="shrink-0 px-3 pb-2 pt-1">
         <label htmlFor="chat-filter" className="sr-only">
           Search your chats
@@ -168,14 +158,13 @@ export default function ConversationList({ items, loading, error, activeId, onSe
           />
         </div>
       </div>
-      )}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {shown.length === 0 ? (
           <p className="px-6 py-8 text-center text-sm text-brand-muted">No chats match &ldquo;{filter.trim()}&rdquo;.</p>
         ) : (
           <ul role="list" aria-label="Chats">
             {shown.map((c) => (
-              <Row key={c.id} c={c} active={c.id === activeId} onSelect={onSelect} app={app} />
+              <Row key={c.id} c={c} active={c.id === activeId} onSelect={onSelect} />
             ))}
           </ul>
         )}

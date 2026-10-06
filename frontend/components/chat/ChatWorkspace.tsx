@@ -15,6 +15,11 @@ import type { ChatConversation, ChatPerson, Friendship } from "../../lib/chat-ty
 import { useAuth } from "../auth/AuthProvider";
 import { ChatPeopleProvider, type ChatPeopleActions } from "./chat-context";
 import { ChatIcon, CloseIcon, ExpandIcon } from "./chat-icons";
+import AppConversationList from "./app/AppConversationList";
+import AppFriendsPanel from "./app/AppFriendsPanel";
+import AppPanes from "./app/AppPanes";
+import AppPeoplePanel from "./app/AppPeoplePanel";
+import AppProfileSheet from "./app/AppProfileSheet";
 import ChatAppHome from "./ChatAppHome";
 import ConversationList from "./ConversationList";
 import ExpandDialog from "./ExpandDialog";
@@ -50,6 +55,17 @@ type Override = { value: Friendship; until: number };
 
 function errText(err: unknown, fallback: string): string {
   return err instanceof Error && err.message ? err.message : fallback;
+}
+
+type TabInfo = { id: Tab; label: string; badge: number };
+
+/** Tab chips. The app layout counts unread chats (WhatsApp style); the framed layouts count unread messages. */
+function tabsFor(app: boolean, unreadMessages: number, unreadChats: number, requests: number): TabInfo[] {
+  return [
+    { id: "chats", label: "Chats", badge: app ? unreadChats : unreadMessages },
+    { id: "friends", label: "Friends", badge: requests },
+    { id: "people", label: "Find people", badge: 0 },
+  ];
 }
 
 function draftConversation(person: ChatPerson): ChatConversation {
@@ -106,6 +122,9 @@ function ChatWorkspaceCore({
     },
     onPopProfile: () => setProfileId(null),
   });
+  const closeProfile = useCallback(() => {
+    if (!leaveProfile()) setProfileId(null);
+  }, [leaveProfile]);
   const openProfile = useCallback(
     (id: string) => {
       setProfileId(id);
@@ -350,6 +369,7 @@ function ChatWorkspaceCore({
 
   const requestCount = friendsData.requests.incoming.length;
   const unreadTotal = convs.items.reduce((n, c) => n + c.unread, 0);
+  const unreadChats = convs.items.reduce((n, c) => n + (c.unread > 0 ? 1 : 0), 0);
 
   const showList = twoPane || !activeConv;
   const showThread = twoPane || !!activeConv;
@@ -369,11 +389,7 @@ function ChatWorkspaceCore({
     return isApp && f ? friendsData.friends.filter((x) => x.fullName.toLowerCase().includes(f)) : friendsData.friends;
   }, [isApp, query, friendsData.friends]);
 
-  const tabs: Array<{ id: Tab; label: string; badge: number }> = [
-    { id: "chats", label: "Chats", badge: unreadTotal },
-    { id: "friends", label: "Friends", badge: requestCount },
-    { id: "people", label: "Find people", badge: 0 },
-  ];
+  const tabs = tabsFor(isApp, unreadTotal, unreadChats, requestCount);
 
   const onTabKey = (e: React.KeyboardEvent, idx: number) => {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
@@ -387,47 +403,68 @@ function ChatWorkspaceCore({
     <ChatPeopleProvider value={actions}>
       <div
         ref={rootRef}
-        className={`relative flex min-w-0 overflow-hidden bg-white ${sizing} ${frame} ${className ?? ""}`}
+        className={`relative flex min-w-0 overflow-hidden ${isApp ? "chat-app bg-chat-bg text-chat-text" : "bg-white"} ${sizing} ${frame} ${className ?? ""}`}
         style={fitHeight ? { height: fitHeight } : undefined}
       >
-        {showList && isApp ? (
-          <ChatAppHome
-            tabs={tabs}
-            tab={tab}
-            onTab={setTab}
-            onTabKey={onTabKey}
-            registerTab={(id, el) => {
-              tabRefs.current[id] = el;
-            }}
-            query={query}
-            onQuery={setQuery}
-            onNewChat={() => setTab("people")}
-          >
-            {tab === "chats" ? (
-              <ConversationList
+        {isApp ? (
+          <AppPanes
+            conv={activeConv}
+            threadRef={threadWrapRef}
+            list={
+              <ChatAppHome
+                tabs={tabs}
+                tab={tab}
+                onTab={setTab}
+                onTabKey={onTabKey}
+                registerTab={(id, el) => {
+                  tabRefs.current[id] = el;
+                }}
+                query={query}
+                onQuery={setQuery}
+                onNewChat={() => setTab("people")}
+              >
+                {tab === "chats" ? (
+                  <AppConversationList
+                    filter={query}
+                    items={convs.items}
+                    loading={convs.loading}
+                    error={convs.error}
+                    onSelect={selectConversation}
+                    onRetry={convs.refresh}
+                    onFindPeople={() => setTab("people")}
+                  />
+                ) : tab === "friends" ? (
+                  <AppFriendsPanel
+                    friends={visibleFriends}
+                    requests={friendsData.requests}
+                    loading={friendsData.loading}
+                    error={friendsData.error}
+                    filter={query}
+                    onRetry={friendsData.refresh}
+                    onFindPeople={() => setTab("people")}
+                  />
+                ) : (
+                  <AppPeoplePanel query={query} />
+                )}
+              </ChatAppHome>
+            }
+            renderThread={(c) => (
+              <ThreadView
+                key={c.id}
                 app
-                externalFilter={query}
-                items={convs.items}
-                loading={convs.loading}
-                error={convs.error}
-                activeId={activeId}
-                onSelect={selectConversation}
-                onRetry={convs.refresh}
-                onFindPeople={() => setTab("people")}
+                conv={c}
+                me={me}
+                meName={meName}
+                onBack={() => {
+                  if (!leaveThread()) setActiveId(null);
+                  requestAnimationFrame(() => tabRefs.current[tab]?.focus());
+                }}
+                onOpenProfile={openProfile}
+                onActivity={handleActivity}
+                onViewed={handleViewed}
               />
-            ) : tab === "friends" ? (
-              <FriendsPanel
-                friends={visibleFriends}
-                requests={friendsData.requests}
-                loading={friendsData.loading}
-                error={friendsData.error}
-                onRetry={friendsData.refresh}
-                onFindPeople={() => setTab("people")}
-              />
-            ) : (
-              <PeoplePanel externalQuery={query} />
             )}
-          </ChatAppHome>
+          />
         ) : showList ? (
           <div
             className={`flex min-h-0 flex-col bg-[#FAF7F2] ${twoPane ? "w-[320px] shrink-0 border-r border-brand-softline" : "w-full"}`}
@@ -509,7 +546,7 @@ function ChatWorkspaceCore({
           </div>
         ) : null}
 
-        {showThread ? (
+        {!isApp && showThread ? (
           <div
             ref={threadWrapRef}
             tabIndex={-1}
@@ -518,7 +555,6 @@ function ChatWorkspaceCore({
             {activeConv ? (
               <ThreadView
                 key={activeConv.id}
-                app={isApp}
                 conv={activeConv}
                 me={me}
                 meName={meName}
@@ -551,7 +587,13 @@ function ChatWorkspaceCore({
           </div>
         ) : null}
 
-        {profileId ? <PersonProfileSheet key={profileId} userId={profileId} wide={twoPane} onClose={() => { if (!leaveProfile()) setProfileId(null); }} /> : null}
+        {profileId ? (
+          isApp ? (
+            <AppProfileSheet key={profileId} userId={profileId} onClose={closeProfile} />
+          ) : (
+            <PersonProfileSheet key={profileId} userId={profileId} wide={twoPane} onClose={closeProfile} />
+          )
+        ) : null}
 
         {notice ? (
           <div

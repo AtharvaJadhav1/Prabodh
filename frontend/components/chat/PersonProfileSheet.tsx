@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { getPerson, isAbortError } from "../../lib/chat-api";
+import { useRef, useState } from "react";
 import { formatMemberSince, isSafeHttpUrl } from "../../lib/chat-format";
-import type { ChatPersonDetail } from "../../lib/chat-types";
 import ChatAvatar from "./ChatAvatar";
 import { AlertIcon, CheckIcon, CloseIcon, LinkedinIcon } from "./chat-icons";
 import { useChatPeople } from "./chat-context";
 import { RoleChip, personMeta } from "./PersonRow";
+import { useModalFocus, usePersonDetail } from "./useProfileSheet";
 
 type Props = {
   userId: string;
@@ -36,61 +35,11 @@ function Chips({ items, tone }: { items: string[]; tone: "skill" | "domain" }) {
 
 export default function PersonProfileSheet({ userId, wide, onClose }: Props) {
   const a = useChatPeople();
-  const [detail, setDetail] = useState<ChatPersonDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
+  const { detail, error, retry } = usePersonDetail(userId);
   const [confirmUnfriend, setConfirmUnfriend] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setDetail(null);
-    setError(null);
-    getPerson(userId, { signal: controller.signal })
-      .then((d) => {
-        if (!controller.signal.aborted) setDetail(d);
-      })
-      .catch((err) => {
-        if (isAbortError(err) || controller.signal.aborted) return;
-        setError(err instanceof Error && err.message ? err.message : "Could not load this profile.");
-      });
-    return () => controller.abort();
-  }, [userId, attempt]);
-
-  useEffect(() => {
-    const prevFocus = document.activeElement as HTMLElement | null;
-    closeRef.current?.focus();
-    return () => {
-      if (prevFocus && document.contains(prevFocus)) prevFocus.focus();
-    };
-  }, []);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        onClose();
-        return;
-      }
-      if (e.key !== "Tab" || !panelRef.current) return;
-      const f = panelRef.current.querySelectorAll<HTMLElement>(
-        'a[href],button:not([disabled]),[tabindex]:not([tabindex="-1"])',
-      );
-      if (f.length === 0) return;
-      const first = f[0];
-      const last = f[f.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey, true);
-    return () => document.removeEventListener("keydown", onKey, true);
-  }, [onClose]);
+  useModalFocus(panelRef, closeRef, onClose);
 
   const person = detail?.person;
   const profile = detail?.profile;
@@ -138,7 +87,7 @@ export default function PersonProfileSheet({ userId, wide, onClose }: Props) {
             <div className="flex flex-col items-center gap-3 py-10 text-center" role="alert">
               <AlertIcon className="h-8 w-8 text-red-600" />
               <p className="text-sm font-semibold text-brand-deep">{error}</p>
-              <button type="button" onClick={() => setAttempt((n) => n + 1)} className={`${btn} bg-brand-primary text-white hover:bg-brand-hover`}>
+              <button type="button" onClick={retry} className={`${btn} bg-brand-primary text-white hover:bg-brand-hover`}>
                 Retry
               </button>
             </div>

@@ -3,10 +3,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { buildTimeline } from "../../lib/chat-format";
 import type { ChatConversation, ChatMessage } from "../../lib/chat-types";
+import AppMessageBubble from "./app/AppMessageBubble";
+import AppThreadHeader from "./app/AppThreadHeader";
+import MessageActionSheet from "./app/MessageActionSheet";
 import ChatAvatar from "./ChatAvatar";
 import Composer from "./Composer";
 import MessageBubble from "./MessageBubble";
-import { AlertIcon, ArrowDownIcon, BackIcon, CloseIcon, CopyIcon, RetryIcon, TrashIcon } from "./chat-icons";
+import MessageMenu, { type MenuState } from "./MessageMenu";
+import { AlertIcon, ArrowDownIcon, BackIcon, CloseIcon, RetryIcon } from "./chat-icons";
 import { useThread } from "./useThread";
 
 type Props = {
@@ -20,7 +24,7 @@ type Props = {
   onActivity: (conv: ChatConversation, preview: string, createdAt: string) => void;
   /** Thread is on screen with unread messages: tell the server and clear the badge. */
   onViewed: (conv: ChatConversation) => void;
-  /** Full-screen mobile style: borderless header and composer. */
+  /** Full-screen mobile style: WhatsApp-like header, wallpaper, bubbles, action sheet and composer. */
   app?: boolean;
 };
 
@@ -36,91 +40,7 @@ function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-type MenuState = { msg: ChatMessage; x: number; y: number } | null;
-
-function MessageMenu({
-  menu,
-  onClose,
-  onCopy,
-  onDelete,
-}: {
-  menu: NonNullable<MenuState>;
-  onClose: () => void;
-  onCopy: (m: ChatMessage) => void;
-  onDelete: (m: ChatMessage) => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState({ left: menu.x, top: menu.y });
-  const canDelete = menu.msg.mine && !!menu.msg.id && !menu.msg.deleted;
-  const canCopy = !menu.msg.deleted && menu.msg.body.length > 0;
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const w = el.offsetWidth;
-    const h = el.offsetHeight;
-    setPos({
-      left: Math.max(8, Math.min(menu.x - w + 8, window.innerWidth - w - 8)),
-      top: Math.max(8, Math.min(menu.y, window.innerHeight - h - 8)),
-    });
-    el.querySelector<HTMLElement>("button")?.focus();
-  }, [menu]);
-
-  useEffect(() => {
-    const onDown = (e: Event) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        onClose();
-      }
-    };
-    document.addEventListener("pointerdown", onDown, true);
-    document.addEventListener("keydown", onKey, true);
-    window.addEventListener("resize", onClose);
-    return () => {
-      document.removeEventListener("pointerdown", onDown, true);
-      document.removeEventListener("keydown", onKey, true);
-      window.removeEventListener("resize", onClose);
-    };
-  }, [onClose]);
-
-  if (!canCopy && !canDelete) return null;
-
-  return (
-    <div
-      ref={ref}
-      role="menu"
-      aria-label="Message actions"
-      style={{ left: pos.left, top: pos.top }}
-      className="fixed z-[80] w-44 overflow-hidden rounded-xl border border-brand-softline bg-white py-1 shadow-xl"
-    >
-      {canCopy ? (
-        <button
-          type="button"
-          role="menuitem"
-          onClick={() => onCopy(menu.msg)}
-          className="flex min-h-[44px] w-full items-center gap-2.5 px-3 text-left text-sm font-semibold text-brand-charcoal hover:bg-brand-lightOrange focus-visible:bg-brand-lightOrange focus-visible:outline-none"
-        >
-          <CopyIcon className="h-4 w-4 text-brand-muted" /> Copy
-        </button>
-      ) : null}
-      {canDelete ? (
-        <button
-          type="button"
-          role="menuitem"
-          onClick={() => onDelete(menu.msg)}
-          className="flex min-h-[44px] w-full items-center gap-2.5 px-3 text-left text-sm font-semibold text-red-700 hover:bg-red-50 focus-visible:bg-red-50 focus-visible:outline-none"
-        >
-          <TrashIcon className="h-4 w-4" /> Delete
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
-function ThreadSkeleton() {
+function ThreadSkeleton({ app }: { app: boolean }) {
   const rows = [
     ["start", "w-48"],
     ["start", "w-64"],
@@ -131,12 +51,16 @@ function ThreadSkeleton() {
   ] as const;
   return (
     <div className="flex flex-1 flex-col gap-2 p-4" aria-hidden="true">
-      {rows.map(([side, w], i) => (
-        <div
-          key={i}
-          className={`h-9 rounded-2xl bg-white/80 motion-safe:animate-pulse ${w} ${side === "end" ? "self-end bg-[#FBE3CE]/80" : "self-start"}`}
-        />
-      ))}
+      {rows.map(([side, w], i) =>
+        app ? (
+          <div key={i} className={`chat-shimmer h-10 max-w-[80%] rounded-2xl ${w} ${side === "end" ? "self-end" : "self-start"}`} />
+        ) : (
+          <div
+            key={i}
+            className={`h-9 rounded-2xl bg-white/80 motion-safe:animate-pulse ${w} ${side === "end" ? "self-end bg-[#FBE3CE]/80" : "self-start"}`}
+          />
+        ),
+      )}
     </div>
   );
 }
@@ -272,6 +196,10 @@ export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, on
     }
     ta.remove();
   };
+  const remove = (m: ChatMessage) => {
+    setMenu(null);
+    void t.remove(m.key);
+  };
 
   const personId = conv.person?.id ?? null;
   const headerInner = (
@@ -285,51 +213,77 @@ export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, on
   );
 
   return (
-    <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col" aria-label={`Conversation with ${conv.title}`}>
-      <header className={`flex min-h-[60px] shrink-0 items-center gap-1.5 bg-[#FAF7F2] px-2 sm:px-3 ${app ? "pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]" : "border-b border-brand-softline py-2"}`}>
-        {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="Back to chats"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-brand-deep transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary"
-          >
-            <BackIcon className="h-5 w-5" />
-          </button>
-        ) : null}
-        {personId ? (
-          <button
-            type="button"
-            onClick={() => onOpenProfile(personId)}
-            aria-label={`View ${conv.title}'s profile`}
-            className="flex min-h-[44px] min-w-0 flex-1 items-center gap-3 rounded-xl px-1.5 transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary"
-          >
-            {headerInner}
-          </button>
-        ) : (
-          <div className="flex min-h-[44px] min-w-0 flex-1 items-center gap-3 px-1.5">{headerInner}</div>
-        )}
-      </header>
+    <section
+      className={`relative flex h-full min-h-0 min-w-0 flex-1 flex-col ${app ? "chat-wall text-chat-text" : ""}`}
+      aria-label={`Conversation with ${conv.title}`}
+    >
+      {app ? (
+        <AppThreadHeader conv={conv} onBack={onBack} onOpenProfile={onOpenProfile} />
+      ) : (
+        <header className="flex min-h-[60px] shrink-0 items-center gap-1.5 border-b border-brand-softline bg-[#FAF7F2] px-2 py-2 sm:px-3">
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Back to chats"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-brand-deep transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary"
+            >
+              <BackIcon className="h-5 w-5" />
+            </button>
+          ) : null}
+          {personId ? (
+            <button
+              type="button"
+              onClick={() => onOpenProfile(personId)}
+              aria-label={`View ${conv.title}'s profile`}
+              className="flex min-h-[44px] min-w-0 flex-1 items-center gap-3 rounded-xl px-1.5 transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary"
+            >
+              {headerInner}
+            </button>
+          ) : (
+            <div className="flex min-h-[44px] min-w-0 flex-1 items-center gap-3 px-1.5">{headerInner}</div>
+          )}
+        </header>
+      )}
 
       {t.error && messages.length > 0 ? (
-        <div role="status" className="flex shrink-0 items-center gap-2 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
+        <div
+          role="status"
+          className={`flex shrink-0 items-center gap-2 px-3 py-1.5 text-xs font-semibold ${
+            app ? "bg-chat-brandSoft text-chat-brandText" : "bg-amber-50 text-amber-800"
+          }`}
+        >
           <AlertIcon className="h-4 w-4 shrink-0" />
           <span className="min-w-0 flex-1 truncate">Having trouble connecting. Retrying...</span>
-          <button type="button" onClick={t.refresh} className="shrink-0 rounded-md px-2 py-1 text-brand-primary hover:bg-white">
+          <button
+            type="button"
+            onClick={t.refresh}
+            className={`shrink-0 rounded-md px-2 py-1 ${app ? "min-h-[36px] underline-offset-2 active:underline" : "text-brand-primary hover:bg-white"}`}
+          >
             Retry now
           </button>
         </div>
       ) : null}
       {t.actionError ? (
-        <div role="alert" className="flex shrink-0 items-center gap-2 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700">
+        <div
+          role="alert"
+          className={`flex shrink-0 items-center gap-2 px-3 py-1.5 text-xs font-semibold ${
+            app ? "bg-chat-dangerSoft text-chat-danger" : "bg-red-50 text-red-700"
+          }`}
+        >
           <span className="min-w-0 flex-1">{t.actionError}</span>
-          <button type="button" onClick={t.clearActionError} aria-label="Dismiss" className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-white">
+          <button
+            type="button"
+            onClick={t.clearActionError}
+            aria-label="Dismiss"
+            className={`flex items-center justify-center rounded-md ${app ? "h-11 w-11 active:bg-chat-press" : "h-7 w-7 hover:bg-white"}`}
+          >
             <CloseIcon className="h-4 w-4" />
           </button>
         </div>
       ) : null}
 
-      <div className="relative min-h-0 flex-1" style={pattern}>
+      <div className="relative min-h-0 flex-1" style={app ? undefined : pattern}>
         <div
           ref={scrollRef}
           onScroll={onScroll}
@@ -339,18 +293,22 @@ export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, on
           aria-label="Messages"
           aria-busy={loading}
           tabIndex={0}
-          className="absolute inset-0 overflow-y-auto overscroll-contain px-3 py-3 [overflow-anchor:none] focus-visible:outline-none sm:px-5"
+          className={`absolute inset-0 overflow-y-auto overscroll-contain py-3 [overflow-anchor:none] focus-visible:outline-none ${
+            app ? "px-2.5" : "px-3 sm:px-5"
+          }`}
         >
           {loading ? (
-            <ThreadSkeleton />
+            <ThreadSkeleton app={app} />
           ) : t.error && messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-              <AlertIcon className="h-8 w-8 text-red-600" />
-              <p className="max-w-xs text-sm font-semibold text-brand-deep">{t.error}</p>
+              <AlertIcon className={`h-8 w-8 ${app ? "text-chat-danger" : "text-red-600"}`} />
+              <p className={`max-w-xs text-sm font-semibold ${app ? "rounded-xl bg-chat-pill px-3 py-1.5 text-chat-text" : "text-brand-deep"}`}>{t.error}</p>
               <button
                 type="button"
                 onClick={t.refresh}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-brand-primary px-5 text-sm font-bold text-white hover:bg-brand-hover"
+                className={`inline-flex min-h-[44px] items-center gap-2 rounded-full px-5 text-sm font-bold text-white ${
+                  app ? "bg-chat-brandStrong transition-transform active:scale-95 motion-reduce:transition-none" : "bg-brand-primary hover:bg-brand-hover"
+                }`}
               >
                 <RetryIcon className="h-4 w-4" /> Retry
               </button>
@@ -358,12 +316,16 @@ export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, on
           ) : (
             <>
               {loadingOlder ? (
-                <p className="py-2 text-center text-xs font-semibold text-brand-muted" role="status">
+                <p className={`py-2 text-center text-xs font-semibold ${app ? "text-chat-pillText" : "text-brand-muted"}`} role="status">
                   Loading earlier messages...
                 </p>
               ) : null}
               {messages.length === 0 ? (
-                <div className="mx-auto mt-10 max-w-xs rounded-2xl bg-white/90 px-4 py-3 text-center text-sm font-medium text-brand-muted shadow-xs">
+                <div
+                  className={`mx-auto mt-10 max-w-xs rounded-2xl px-4 py-3 text-center text-sm font-medium shadow-xs ${
+                    app ? "bg-chat-pill text-chat-pillText" : "bg-white/90 text-brand-muted"
+                  }`}
+                >
                   {isGroup ? "No messages yet. Start the discussion." : `No messages yet. Say hello to ${conv.title}.`}
                 </div>
               ) : null}
@@ -371,10 +333,27 @@ export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, on
                 {timeline.map((item) =>
                   item.type === "day" ? (
                     <div key={item.key} role="presentation" className="sticky top-1 z-10 my-2 flex justify-center">
-                      <span className="rounded-full bg-white/95 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-brand-muted shadow-xs">
+                      <span
+                        className={
+                          app
+                            ? "rounded-full bg-chat-pill px-3 py-1 text-[12px] font-semibold text-chat-pillText shadow-[0_1px_1px_rgba(0,0,0,0.12)]"
+                            : "rounded-full bg-white/95 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-brand-muted shadow-xs"
+                        }
+                      >
                         {item.label}
                       </span>
                     </div>
+                  ) : app ? (
+                    <AppMessageBubble
+                      key={item.key}
+                      msg={item.msg}
+                      first={item.first}
+                      last={item.last}
+                      isGroup={isGroup}
+                      onMenu={openMenu}
+                      onRetry={t.retry}
+                      onDiscard={t.discard}
+                    />
                   ) : (
                     <MessageBubble
                       key={item.key}
@@ -399,11 +378,19 @@ export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, on
               setNewCount(0);
             }}
             aria-label={newCount > 0 ? `Scroll to latest, ${newCount} new messages` : "Scroll to latest message"}
-            className="absolute bottom-3 right-4 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-brand-softline bg-white text-brand-deep shadow-lg transition-colors hover:bg-brand-lightOrange focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary"
+            className={
+              app
+                ? "absolute bottom-3 right-3 z-20 flex h-11 w-11 animate-[chat-pop_180ms_ease-out] items-center justify-center rounded-full bg-chat-surface text-chat-text shadow-[0_2px_8px_rgba(0,0,0,0.3)] transition-transform active:scale-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-chat-brand motion-reduce:animate-none motion-reduce:transition-none motion-reduce:active:scale-100"
+                : "absolute bottom-3 right-4 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-brand-softline bg-white text-brand-deep shadow-lg transition-colors hover:bg-brand-lightOrange focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary"
+            }
           >
             <ArrowDownIcon className="h-5 w-5" />
             {newCount > 0 ? (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand-primary px-1 text-[11px] font-bold text-white">
+              <span
+                className={`absolute -right-1 -top-1 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-[11px] font-bold text-white ${
+                  app ? "bg-chat-brandStrong" : "bg-brand-primary"
+                }`}
+              >
                 {newCount > 99 ? "99+" : newCount}
               </span>
             ) : null}
@@ -421,7 +408,13 @@ export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, on
         }}
       />
 
-      {menu ? <MessageMenu menu={menu} onClose={closeMenu} onCopy={copy} onDelete={(m) => { setMenu(null); void t.remove(m.key); }} /> : null}
+      {menu ? (
+        app ? (
+          <MessageActionSheet msg={menu.msg} onClose={closeMenu} onCopy={copy} onDelete={remove} />
+        ) : (
+          <MessageMenu menu={menu} onClose={closeMenu} onCopy={copy} onDelete={remove} />
+        )
+      ) : null}
     </section>
   );
 }
