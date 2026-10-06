@@ -791,8 +791,11 @@ export default function AdminUsersPage() {
               width: "220px",
               minWidth: "220px",
               render: (u) => {
-                const mentorType =
-                  tab === "industry-mentors" ? "INDUSTRY" : tab === "institute-mentors" ? "INSTITUTE" : null;
+                const mentorType = holdsRole(u, "industry_mentor")
+                  ? "INDUSTRY"
+                  : holdsRole(u, "institute_mentor")
+                  ? "INSTITUTE"
+                  : null;
                 const avatarSrc =
                   u.avatarUrl || (mentorType ? getMentorWavesAvatarUrl(mentorType, u.email || u.fullName || "mentor") : null);
                 return (
