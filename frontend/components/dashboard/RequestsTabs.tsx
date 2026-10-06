@@ -9,14 +9,14 @@ import {
   MailIcon,
   ClockIcon,
   XIcon,
-  BadgeCheckIcon,
   AlertCircleIcon,
   GradCapIcon,
   UserPlusIcon,
   LockIcon,
 } from "./icons";
 import Avatar from "../Avatar";
-import { getUserAvatarUrl } from "../../lib/avatar";
+import { getUserAvatarUrl, avatarUrlFrom } from "../../lib/avatar";
+import { getMentorWavesAvatarUrl } from "../../lib/mentorAvatar";
 import TeamInviteDecisionModal from "./TeamInviteDecisionModal";
 
 export default function RequestsTabs() {
@@ -28,13 +28,11 @@ export default function RequestsTabs() {
       <div className="bg-brand-cream/70 px-6 pt-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-4 border-b border-[#EBE3D7]">
-            <TabButton
+<TabButton
               active={tab === 1}
               onClick={() => setTab(1)}
               icon={<UsersRoundIcon className="h-4 w-4" />}
-              label="Active Team &amp; Outgoing Invites"
-              chip={`${filledCount} verified • ${invites.length} pending`}
-              chipStyle="px-1.5 py-0.5 text-[10px] bg-brand-primary/10 text-brand-primary"
+              label="Active Team & Outgoing Invites"
             />
             <TabButton
               active={tab === 2}
@@ -67,8 +65,8 @@ function TabButton({
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
-  chip: string;
-  chipStyle: string;
+  chip?: string;
+  chipStyle?: string;
 }) {
   return (
     <button
@@ -82,7 +80,7 @@ function TabButton({
     >
       {icon}
       <span className="hidden truncate sm:inline">{label}</span>
-      <span className={`shrink-0 rounded-full font-bold ${chipStyle}`}>{chip}</span>
+      {chip && <span className={`shrink-0 rounded-full font-bold ${chipStyle}`}>{chip}</span>}
     </button>
   );
 }
@@ -108,14 +106,6 @@ function ActiveRosterTab() {
   return (
     <div className="space-y-8">
       <section>
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-brand-deep">
-              Confirmed Roster Members
-            </h3>
-            <p className="text-xs text-brand-muted">Verified members on this team.</p>
-          </div>
-        </div>
         <div className="space-y-2.5">
           {members.map((m, i) =>
             m.status === "Verified" ? (
@@ -129,18 +119,14 @@ function ActiveRosterTab() {
             ) : null,
           )}
         </div>
-      </section>
+</section>
 
       <section className="border-t border-brand-softline pt-4">
         <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="flex flex-wrap items-center gap-2 text-sm font-bold text-brand-deep">
-              Faculty Mentor &amp; Guide Track
-              <span className="text-xs font-normal text-brand-muted">(First-to-Accept Locks In)</span>
+            <h3 className="text-sm font-bold text-brand-deep">
+              Faculty Mentor & Guide Track
             </h3>
-            <p className="text-xs text-brand-muted">
-              Institute faculty mentors invited by the team leader.
-            </p>
           </div>
         </div>
 
@@ -159,19 +145,26 @@ function ActiveRosterTab() {
             </div>
           ) : (
             <div className="space-y-2">
-              {assignments.map((a) => (
-                <div key={a.id} className="flex items-center gap-3.5">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-approved text-xs font-bold text-white shadow-sm">
-                    {a.mentor.fullName.slice(0, 2).toUpperCase()}
+              {assignments.map((a) => {
+                const mentor = a.mentor;
+                const customAvatar = avatarUrlFrom((mentor as any).profileJson);
+                const avatarSrc = customAvatar || getMentorWavesAvatarUrl("INSTITUTE", mentor.email || mentor.fullName);
+                return (
+                  <div key={a.id} className="flex items-center gap-3.5">
+                    <img
+                      src={avatarSrc}
+                      alt={mentor.fullName}
+                      className="w-10 h-10 rounded-full object-cover border border-stone-200 shrink-0"
+                    />
+                    <div>
+                      <p className="text-sm font-bold text-brand-deep">{mentor.fullName}</p>
+                      <p className="text-[11px] text-brand-muted">
+                        Institute Mentor · {mentor.email}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-brand-deep">{a.mentor.fullName}</p>
-                    <p className="text-[11px] text-brand-muted">
-                      Institute Mentor · {a.mentor.email}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               {facultyInviteStatus === "sent" ? (
                 <p className="text-[11px] text-brand-muted">Pending invite: {facultyInviteEmail}</p>
               ) : null}
@@ -191,29 +184,21 @@ function ActiveRosterTab() {
                   <LockIcon className="h-3 w-3" /> Managed by Team Lead
                 </span>
               )
-            ) : facultyInviteStatus === "verified" ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-brand-approved/10 px-2 py-0.5 text-[11px] font-semibold text-brand-approved">
-                <CheckIcon className="h-3 w-3" /> Verified Faculty Guide
-              </span>
             ) : (
               <span className="inline-flex items-center gap-1 rounded-full bg-brand-primary/10 px-2 py-0.5 text-[11px] font-semibold text-brand-primary">
                 <ClockIcon className="h-3 w-3 text-brand-primary" /> Invite Sent — Awaiting Acceptance
               </span>
             )}
-            <BadgeCheckIcon className="h-4 w-4 shrink-0 text-brand-approved" />
+            
           </div>
         </div>
       </section>
 
       <section className="border-t border-brand-softline pt-4">
         <div className="mb-3.5">
-          <h3 className="flex flex-wrap items-center gap-2 text-sm font-bold text-brand-deep">
+          <h3 className="text-sm font-bold text-brand-deep">
             Outgoing Pending Invitations
-            <span className="text-xs font-normal text-brand-muted">({invites.length} Active Dispatch)</span>
           </h3>
-          <p className="text-xs text-brand-muted">
-            Invites sent by Team Leader awaiting recipient student verification.
-          </p>
         </div>
 
         {invites.length === 0 ? (
@@ -335,28 +320,25 @@ function MemberRow({
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
-        {isPending ? (
-          <span className="text-xs font-semibold text-brand-primary">Awaiting Accept</span>
-        ) : (
-          <>
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand-approved/10 px-2 py-0.5 text-[11px] font-semibold text-brand-approved">
-              <CheckIcon className="h-3 w-3" /> Active / Signed
-            </span>
-            {isLeader ? (
-              <span title="Team leader cannot be removed" className="text-brand-muted cursor-not-allowed">
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </span>
-            ) : isLead ? (
-              <button
-                type="button"
-                onClick={onRemove}
-                className="text-xs font-semibold text-danger transition-colors hover:text-red-700 hover:underline"
-              >
-                Remove
-              </button>
-            ) : null}
-          </>
-        )}
+{isPending ? (
+            <span className="text-xs font-semibold text-brand-primary">Awaiting Accept</span>
+          ) : (
+            <>
+              {isLeader ? (
+                <span title="Team leader cannot be removed" className="text-brand-muted cursor-not-allowed">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </span>
+              ) : isLead ? (
+                <button
+                  type="button"
+                  onClick={onRemove}
+                  className="text-xs font-semibold text-danger transition-colors hover:text-red-700 hover:underline"
+                >
+                  Remove
+                </button>
+              ) : null}
+            </>
+          )}
       </div>
     </div>
   );
