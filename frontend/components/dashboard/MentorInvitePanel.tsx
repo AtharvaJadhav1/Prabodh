@@ -94,7 +94,7 @@ export default function MentorInvitePanel() {
           <ul className="mt-4 space-y-3">
             {slottedAssignments.map((a) => (
               <li key={a.id} className="rounded-xl border border-brand-softline p-4">
-                <p className="flex items-center gap-1.5 text-sm font-bold text-brand-deep">
+                <p className="flex min-w-0 items-center gap-1.5 text-sm font-bold text-brand-deep [overflow-wrap:anywhere]">
                   {a.mentor.fullName}
                   <MentorLinkedinIcon url={a.mentor.linkedinUrl} name={a.mentor.fullName} />
                 </p>
@@ -106,7 +106,7 @@ export default function MentorInvitePanel() {
             ))}
             {pending.map((i) => (
               <li key={i.id} className="rounded-xl border border-brand-softline p-3.5">
-                <p className="flex items-center gap-1.5 text-sm font-bold text-brand-deep">
+                <p className="flex min-w-0 items-center gap-1.5 text-sm font-bold text-brand-deep [overflow-wrap:anywhere]">
                   <span className="truncate">{i.mentor?.fullName ?? i.invitedEmail}</span>
                   {i.mentor ? (
                     <MentorLinkedinIcon url={i.mentor.linkedinUrl} name={i.mentor.fullName} />
@@ -161,7 +161,7 @@ export default function MentorInvitePanel() {
               <p className="text-xs text-brand-muted">
                 The faculty mentor slot is locked for this team.
               </p>
-              {error ? <p className="mt-2 text-xs font-semibold text-red-700">{error}</p> : null}
+              {error ? <p className="mt-2 break-words text-xs font-semibold text-red-700">{error}</p> : null}
               <span className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-brand-approved/30 bg-brand-approved/10 px-2.5 py-1 text-xs font-bold text-brand-approved">
                 <CheckIcon className="h-3.5 w-3.5" /> Assigned / Locked
               </span>
@@ -198,10 +198,10 @@ export default function MentorInvitePanel() {
                   <SendIcon className="h-4 w-4" /> Send
                 </button>
               </form>
-              {error ? <p className="mt-2 text-xs font-semibold text-red-700">{error}</p> : null}
-              {success ? <p className="mt-2 text-xs font-bold text-brand-approved">{success}</p> : null}
+              {error ? <p className="mt-2 break-words text-xs font-semibold text-red-700">{error}</p> : null}
+              {success ? <p className="mt-2 break-words text-xs font-bold text-brand-approved">{success}</p> : null}
 
-              <h4 className="mt-6 flex items-center justify-between gap-2 text-xs font-bold uppercase tracking-wider text-brand-muted">
+              <h4 className="mt-6 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs font-bold uppercase tracking-wider text-brand-muted">
                 <span>Faculty directory</span>
                 <span className="font-semibold normal-case tracking-normal">
                   {query ? `${filteredDirectory.length} of ${facultyOnly.length} match` : `${facultyOnly.length} registered`}

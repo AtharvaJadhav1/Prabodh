@@ -16,13 +16,13 @@ export default function AdminTopBar({ onMenuClick, title = "Admin Console" }: Ad
         <button
           type="button"
           onClick={onMenuClick}
-          className="rounded-lg border border-brand-softline p-2 text-brand-charcoal transition-colors hover:bg-white lg:hidden"
+          className="shrink-0 rounded-lg border border-brand-softline p-2 text-brand-charcoal transition-colors hover:bg-white lg:hidden"
           aria-label="Open sidebar"
         >
           <MenuIcon className="h-5 w-5" />
         </button>
 
-        <h1 className="m-0 flex items-center truncate text-xl font-bold leading-none text-brand-deep sm:text-2xl">
+        <h1 className="m-0 min-w-0 text-xl font-bold leading-none text-brand-deep max-sm:line-clamp-2 max-sm:break-words max-sm:text-base max-sm:leading-tight sm:truncate sm:text-2xl">
           {title}
         </h1>
       </div>

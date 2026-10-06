@@ -143,8 +143,8 @@ export default function GroupDrawer() {
         aria-modal="true"
         aria-label="Group Requests"
       >
-        <div className="flex items-center justify-between border-b border-brand-softline px-5 py-4">
-          <div>
+        <div className="flex items-center justify-between gap-3 border-b border-brand-softline px-5 py-4">
+          <div className="min-w-0">
             <h2 className="flex items-center gap-2 text-base font-bold text-brand-deep">
               <MailIcon className="h-5 w-5 text-brand-primary" />
               Group Requests
@@ -195,7 +195,7 @@ export default function GroupDrawer() {
                       }
                     }}
                     placeholder="member.email@mituniversity.edu.in"
-                    className="w-full rounded-xl border border-brand-softline bg-white py-2.5 pl-3.5 pr-3 text-sm font-medium text-brand-charcoal shadow-sm transition-all placeholder:text-brand-charcoal/45 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
+                    className="min-w-0 w-full rounded-xl border border-brand-softline bg-white py-2.5 pl-3.5 pr-3 text-sm font-medium text-brand-charcoal shadow-sm transition-all placeholder:text-brand-charcoal/45 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
                   />
                   <button
                     type="button"
@@ -206,9 +206,9 @@ export default function GroupDrawer() {
                     <SendIcon className="h-4 w-4" /> {sending ? "Sending…" : "Send"}
                   </button>
                 </div>
-                {inviteError && <p className="mt-1.5 text-xs font-semibold text-brand-charcoal/80">{inviteError}</p>}
+                {inviteError && <p className="mt-1.5 break-words text-xs font-semibold text-brand-charcoal/80">{inviteError}</p>}
                 {inviteSuccess && (
-                  <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-bold text-brand-approved">
+                  <p className="mt-1.5 inline-flex items-start gap-1.5 break-all text-xs font-bold text-brand-approved">
                     <CheckIcon className="h-3.5 w-3.5" /> {inviteSuccess}
                   </p>
                 )}
@@ -261,7 +261,7 @@ export default function GroupDrawer() {
               ))}
             </div>
             {revokeError ? (
-              <p className="mt-2 text-xs font-medium text-danger">{revokeError}</p>
+              <p className="mt-2 break-words text-xs font-medium text-danger">{revokeError}</p>
             ) : null}
           </section>
 
@@ -290,12 +290,12 @@ export default function GroupDrawer() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-bold text-brand-deep">{req.student.fullName}</p>
-                          <span className="rounded-full bg-brand-softline px-2 py-0.5 text-[10px] font-bold text-brand-charcoal/70">
+                          <p className="min-w-0 break-words text-sm font-bold text-brand-deep">{req.student.fullName}</p>
+                          <span className="max-w-full break-all rounded-full bg-brand-softline px-2 py-0.5 text-[10px] font-bold text-brand-charcoal/70">
                             {req.student.email}
                           </span>
                         </div>
-                        <p className="text-xs font-medium text-brand-muted">
+                        <p className="break-words text-xs font-medium text-brand-muted">
                           {req.student.institute || "Institute not set"}
                           {req.student.department ? ` • ${req.student.department}` : ""}
                         </p>

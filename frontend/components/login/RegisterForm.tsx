@@ -175,7 +175,7 @@ export default function RegisterForm() {
             type="checkbox"
             checked={agreed}
             onChange={(e) => setAgreed(e.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-brand-primary"
+            className="mt-0.5 h-4 w-4 shrink-0 accent-brand-primary"
           />
           <span>
             I agree to the{" "}
@@ -190,11 +190,11 @@ export default function RegisterForm() {
             .
           </span>
         </label>
-        {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+        {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
         <button
           type="submit"
           disabled={loading}
-          className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
+          className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-center text-sm font-semibold leading-snug text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
         >
           {loading ? "Sending verification code…" : "Verify email"}
         </button>

@@ -8,13 +8,13 @@ export default function MentorExpertisePanel() {
   const { domainExpertise } = profile;
 
   return (
-    <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
-      <div className="flex items-center justify-between border-b border-brand-sand pb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-lightOrange text-brand-primary">
+    <section className="rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-sand pb-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-lightOrange text-brand-primary">
             <CpuIcon className="h-4 w-4" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-base font-bold text-brand-deep">Domain Expertise</h3>
             <p className="mt-0.5 text-xs text-brand-muted">
               Your specializations, research areas, and technical domains.
@@ -42,9 +42,9 @@ export default function MentorExpertisePanel() {
               className="rounded-xl border border-brand-sand bg-brand-cream/60 p-4"
             >
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h4 className="text-sm font-bold text-brand-deep">{item.area}</h4>
+                <h4 className="min-w-0 break-words text-sm font-bold text-brand-deep">{item.area}</h4>
                 <span
-                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                  className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                     item.focusLevel === "Primary"
                       ? "bg-brand-lightOrange text-brand-primary"
                       : "bg-brand-sand text-brand-muted"
@@ -53,7 +53,7 @@ export default function MentorExpertisePanel() {
                   {item.focusLevel} Focus
                 </span>
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-brand-muted">{item.details}</p>
+              <p className="mt-2 break-words text-xs leading-relaxed text-brand-muted">{item.details}</p>
             </div>
           ))}
         </div>

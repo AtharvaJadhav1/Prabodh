@@ -115,7 +115,7 @@ const sections: { title: string; body: React.ReactNode }[] = [
 
 export default function PrivacyPolicyPage() {
   return (
-    <main className="min-h-screen bg-brand-cream px-4 py-12 sm:px-6 lg:px-8">
+    <main className="min-h-screen break-words bg-brand-cream px-4 py-12 max-sm:py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-3xl">
         <a href="/login" className="text-sm font-semibold text-brand-primary hover:text-brand-hover">
           ← Back to sign in
@@ -126,7 +126,7 @@ export default function PrivacyPolicyPage() {
         </h1>
         <p className="mt-2 text-sm text-brand-muted">Last updated: October 2026</p>
 
-        <div className="mt-8 rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
+        <div className="mt-8 rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
           <p className="mb-3 text-xs font-bold uppercase tracking-wider text-brand-deep">In short</p>
           <ul className="list-disc space-y-2 pl-5 text-sm text-brand-muted">
             {summary.map((point) => (

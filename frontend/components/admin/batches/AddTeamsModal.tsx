@@ -116,10 +116,10 @@ export default function AddTeamsModal({ open, onClose, selectedIds, onConfirm }:
         role="dialog"
         aria-modal="true"
         aria-label="Add teams to batch"
-        className="my-8 flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-brand-sand bg-white shadow-2xl"
+        className="my-8 max-sm:my-2 flex max-h-[88vh] max-sm:max-h-[94dvh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-brand-sand bg-white shadow-2xl"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-brand-sand bg-brand-cream p-5">
-          <div>
+        <div className="flex items-start justify-between gap-4 border-b border-brand-sand bg-brand-cream p-5 max-sm:p-4">
+          <div className="min-w-0">
             <h3 className="text-lg font-bold text-brand-deep">Add teams</h3>
             <p className="mt-0.5 text-xs text-brand-muted">
               Only teams that are not in any batch are shown ({teams.length} available).
@@ -129,7 +129,7 @@ export default function AddTeamsModal({ open, onClose, selectedIds, onConfirm }:
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="rounded-lg p-1.5 text-brand-muted transition-colors hover:bg-white hover:text-brand-deep"
+            className="shrink-0 rounded-lg p-1.5 text-brand-muted transition-colors hover:bg-white hover:text-brand-deep"
           >
             <XIcon className="h-5 w-5" />
           </button>
@@ -167,7 +167,7 @@ export default function AddTeamsModal({ open, onClose, selectedIds, onConfirm }:
           ) : filtered.length === 0 ? (
             <p className="px-5 py-10 text-center text-sm text-neutral-500">No teams match your search or filters.</p>
           ) : (
-            <table className="w-full border-collapse text-left text-xs">
+            <table className="w-full min-w-[560px] border-collapse text-left text-xs">
               <thead className="sticky top-0 bg-white">
                 <tr className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
                   <th className="w-10 border-b border-neutral-100 px-5 py-2.5">
@@ -229,7 +229,7 @@ export default function AddTeamsModal({ open, onClose, selectedIds, onConfirm }:
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-brand-sand bg-brand-cream p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-brand-sand bg-brand-cream p-4">
           <span className="text-xs font-semibold text-brand-muted">{picked.size} selected</span>
           <div className="flex gap-2">
             <button

@@ -38,7 +38,7 @@ export default function MetricCards({
           <span className={`absolute inset-x-0 top-0 h-1 ${card.stripe}`} aria-hidden="true" />
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-brand-muted/90">{card.label}</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-brand-muted/90">{card.label}</p>
               <p className="mt-1 text-3xl font-extrabold tracking-tight text-brand-deep sm:text-4xl">{card.value}</p>
               <p className="mt-1 text-xs font-semibold text-brand-muted">{card.desc}</p>
             </div>

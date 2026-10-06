@@ -37,7 +37,7 @@ export default function GroupRequestMetricCards({ pendingCount, psApprovalsCount
           <div className="relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-brand-softline/80 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
             <span className={`absolute inset-x-0 top-0 h-1 ${m.stripe}`} aria-hidden="true" />
             <div className="flex items-start justify-between gap-3">
-              <p className="text-[11px] font-bold uppercase tracking-wider text-brand-muted/90">{m.label}</p>
+              <p className="min-w-0 break-words text-xs font-bold uppercase tracking-wider text-brand-muted/90">{m.label}</p>
               <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10 ${m.iconBg}`}>
                 {m.icon}
               </div>

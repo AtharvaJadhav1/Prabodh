@@ -178,7 +178,7 @@ function MessageBubbleImpl({ msg, first, last, isGroup, onMenu, onRetry, onDisca
           <span className="clear-both block" />
         </div>
         {msg.status === "failed" ? (
-          <div className="mt-1 flex items-center gap-1 text-[13px] font-semibold text-chat-danger" role="alert">
+          <div className="mt-1 flex flex-wrap items-center gap-1 text-[13px] font-semibold text-chat-danger" role="alert">
             <span className="mr-1 rounded-full bg-chat-pill px-2 py-0.5">Not sent</span>
             <button
               type="button"

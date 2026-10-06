@@ -109,12 +109,12 @@ export default function PwaRegister() {
   if (!showOffline && !showReady && !showUpdate && !showRefreshing) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-[60] flex flex-col items-end gap-2">
+    <div className="fixed bottom-5 right-5 z-[60] flex max-w-[calc(100vw-1.5rem)] flex-col items-end gap-2 max-sm:bottom-[calc(6.5rem+env(safe-area-inset-bottom))] max-sm:right-3">
       {showUpdate && (
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="flex items-center gap-2 rounded-2xl bg-brand-deep px-4 py-2.5 text-xs font-bold text-white shadow-xl shadow-brand-deep/20"
+          className="flex items-center gap-2 rounded-2xl bg-brand-deep px-4 py-2.5 text-left text-xs font-bold text-white shadow-xl shadow-brand-deep/20"
         >
           <RefreshIcon className="h-4 w-4 text-brand-amber" />
           New version ready — tap to reload
@@ -125,7 +125,7 @@ export default function PwaRegister() {
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="flex items-center gap-2 rounded-2xl bg-brand-deep px-4 py-2.5 text-xs font-bold text-white shadow-xl shadow-brand-deep/20"
+          className="flex items-center gap-2 rounded-2xl bg-brand-deep px-4 py-2.5 text-left text-xs font-bold text-white shadow-xl shadow-brand-deep/20"
         >
           <RefreshIcon className="h-4 w-4 animate-spin text-brand-amber" />
           Back online — refreshing…
@@ -136,7 +136,7 @@ export default function PwaRegister() {
         <button
           type="button"
           onClick={() => setSwReady(false)}
-          className="flex items-center gap-2 rounded-2xl bg-brand-deep px-4 py-2.5 text-xs font-bold text-white shadow-xl shadow-brand-deep/20"
+          className="flex items-center gap-2 rounded-2xl bg-brand-deep px-4 py-2.5 text-left text-xs font-bold text-white shadow-xl shadow-brand-deep/20"
         >
           <CheckIcon className="h-4 w-4 text-brand-amber" />
           Ready for offline use
@@ -147,14 +147,14 @@ export default function PwaRegister() {
         <button
           type="button"
           onClick={() => setOfflineToastSeen(true)}
-          className="flex items-center gap-2 rounded-2xl bg-brand-deep px-4 py-2.5 text-xs font-bold text-white shadow-xl shadow-brand-deep/20"
+          className="flex items-center gap-2 rounded-2xl bg-brand-deep px-4 py-2.5 text-left text-xs font-bold text-white shadow-xl shadow-brand-deep/20"
         >
           <WifiOffIcon className="h-4 w-4 text-brand-amber" />
           You&apos;re offline — showing cached views
         </button>
       )}
 
-      <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-brand-muted opacity-70">
+      <span className="flex items-center gap-1 text-[10px] max-sm:hidden font-semibold uppercase tracking-wider text-brand-muted opacity-70">
         <SparklesIcon className="h-3 w-3" /> PWA Enabled
       </span>
     </div>

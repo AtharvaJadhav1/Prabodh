@@ -13,7 +13,7 @@ export default function LoginShell({
 }) {
   return (
     <main className="flex min-h-screen w-full flex-col bg-brand-cream lg:h-screen lg:flex-row lg:overflow-hidden">
-      <section className="scrollbar-none z-10 flex min-h-screen w-full flex-col justify-between border-r border-brand-sand/70 bg-brand-cream p-8 sm:p-12 lg:h-screen lg:w-[46%] lg:overflow-y-auto lg:overscroll-contain xl:w-[42%]">
+      <section className="scrollbar-none z-10 flex min-h-screen w-full flex-col justify-between border-r border-brand-sand/70 bg-brand-cream p-8 max-sm:px-5 max-sm:py-6 sm:p-12 lg:h-screen lg:w-[46%] lg:overflow-y-auto lg:overscroll-contain xl:w-[42%]">
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
           <AuthHeader />
           <div className="py-6 pb-10 pt-4 sm:py-8">

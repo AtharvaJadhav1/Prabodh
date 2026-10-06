@@ -245,8 +245,8 @@ export default function AuditLogView({ endpoint, teamOptions, csvName = "audit_l
   return (
     <>
       <div className="mx-auto max-w-7xl">
-        <div className="mb-5 flex flex-col gap-4 rounded-2xl border border-neutral-200/80 bg-white p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-3">
+        <div className="mb-5 flex flex-col gap-4 rounded-2xl border border-neutral-200/80 bg-white p-5 max-sm:p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
             <div className="relative w-full sm:w-72">
               <input
                 type="text"
@@ -295,7 +295,7 @@ export default function AuditLogView({ endpoint, teamOptions, csvName = "audit_l
         </div>
 
         <section className="rounded-2xl border border-neutral-200/80 bg-white p-6 max-sm:p-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-100 pb-4">
             <span className="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-[11px] font-semibold text-neutral-500">
               {total} event{total === 1 ? "" : "s"}
             </span>
@@ -307,7 +307,7 @@ export default function AuditLogView({ endpoint, teamOptions, csvName = "audit_l
               Loading logs...
             </div>
           ) : error ? (
-            <div className="px-3 py-16 text-center text-sm text-red-600">{error}</div>
+            <div className="break-words px-3 py-16 text-center text-sm text-red-600">{error}</div>
           ) : rows.length === 0 ? (
             <div className="px-3 py-16 text-center text-sm text-neutral-500">
               No activity found. Adjust the filters or try a different search.
@@ -403,7 +403,7 @@ export default function AuditLogView({ endpoint, teamOptions, csvName = "audit_l
           )}
 
           {!loading && !error && pages > 1 && (
-            <div className="mt-5 flex items-center justify-between border-t border-neutral-100 pt-5">
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 pt-5 max-sm:justify-center">
               <button
                 type="button"
                 disabled={page <= 1}

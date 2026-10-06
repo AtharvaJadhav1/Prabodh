@@ -68,7 +68,7 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }: Props) {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-brand-softline bg-[#FAF7F2] transition-transform duration-300 ease-out lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-72 max-lg:max-w-[85vw] flex-col border-r border-brand-softline bg-[#FAF7F2] transition-transform duration-300 ease-out lg:translate-x-0 ${
           mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         }`}
       >
@@ -150,7 +150,7 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }: Props) {
           ))}
         </nav>
 
-        <div className="mt-auto pb-4">
+        <div className="mt-auto pb-4 max-lg:pb-[max(1rem,env(safe-area-inset-bottom))]">
           <Link
             href="/dashboard/admin/profile"
             onClick={onCloseMobile}

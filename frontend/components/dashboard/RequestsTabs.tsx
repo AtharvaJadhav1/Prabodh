@@ -173,7 +173,7 @@ function ActiveRosterTab() {
                 );
               })}
               {facultyInviteStatus === "sent" ? (
-                <p className="text-[11px] text-brand-muted">Pending invite: {facultyInviteEmail}</p>
+                <p className="break-all text-[11px] text-brand-muted">Pending invite: {facultyInviteEmail}</p>
               ) : null}
             </div>
           )}

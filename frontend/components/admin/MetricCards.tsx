@@ -54,7 +54,7 @@ export default function MetricCards({ metrics }: Props) {
         >
           <span className={`absolute inset-x-0 top-0 h-1 ${card.stripe}`} aria-hidden="true" />
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[11px] font-bold leading-none uppercase tracking-wider text-brand-muted/90">
+            <p className="min-w-0 break-words text-[11px] font-bold leading-none max-lg:leading-tight uppercase tracking-wider text-brand-muted/90">
               {card.label}
             </p>
             <div
@@ -65,7 +65,7 @@ export default function MetricCards({ metrics }: Props) {
           </div>
           <div className="mt-1 flex flex-col">
             {card.textValue ? (
-              <p className="text-lg font-bold leading-tight tracking-tight text-brand-deep sm:text-xl">
+              <p className="break-words text-lg font-bold leading-tight tracking-tight text-brand-deep sm:text-xl">
                 {card.value}
               </p>
             ) : (

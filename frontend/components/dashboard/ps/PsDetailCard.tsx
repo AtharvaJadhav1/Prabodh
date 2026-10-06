@@ -12,10 +12,10 @@ export default function PsDetailCard({ ps, statusLabel }: { ps: Ps; statusLabel:
     <div className="relative overflow-hidden rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)] sm:p-6">
       <div className="absolute left-0 right-0 top-0 h-1.5 bg-brand-primary" />
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-lg border border-brand-warmBorder bg-brand-lightOrange px-2.5 py-1 font-mono text-xs font-bold text-brand-deep">
+        <span className="rounded-lg border border-brand-warmBorder bg-brand-lightOrange px-2.5 py-1 font-mono text-xs font-bold text-brand-deep break-all">
           {ps.code}
         </span>
-        <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2.5 py-1 text-[11px] font-bold uppercase text-brand-deep">
+        <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2.5 py-1 text-[11px] font-bold uppercase text-brand-deep break-words">
           {ps.theme}
         </span>
         <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-brand-approved/20 bg-brand-approved/10 px-2.5 py-1 text-[11px] font-bold uppercase text-brand-approved">
@@ -23,8 +23,8 @@ export default function PsDetailCard({ ps, statusLabel }: { ps: Ps; statusLabel:
           {statusLabel}
         </span>
       </div>
-      <h3 className="mt-4 text-lg font-bold tracking-tight text-brand-deep sm:text-xl">{ps.title}</h3>
-      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-brand-muted hyphens-none">{ps.description}</p>
+      <h3 className="mt-4 break-words text-lg font-bold tracking-tight text-brand-deep sm:text-xl">{ps.title}</h3>
+      <p className="mt-2 max-w-3xl break-words text-sm leading-relaxed text-brand-muted hyphens-none">{ps.description}</p>
     </div>
   );
 }

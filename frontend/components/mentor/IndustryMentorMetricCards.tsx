@@ -71,10 +71,10 @@ export default function IndustryMentorMetricCards({ mentors, totalTeams }: Props
           >
             <card.icon className={`h-5 w-5 ${card.iconColor}`} />
           </div>
-          <div>
-            <p className="text-[11px] font-medium text-brand-muted">{card.label}</p>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-brand-muted">{card.label}</p>
             {card.custom ?? (
-              <p className="flex items-baseline gap-1">
+              <p className="flex flex-wrap items-baseline gap-1">
                 <span className={`text-lg font-extrabold ${card.valueColor}`}>
                   {card.value}
                 </span>

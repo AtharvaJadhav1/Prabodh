@@ -17,7 +17,7 @@ export default function AdminShell({ children, title }: Props) {
       <AdminSidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
       <div className="lg:pl-72">
         <AdminTopBar onMenuClick={() => setMobileOpen((v) => !v)} title={title} />
-        <main className="mx-auto max-w-[1400px] px-4 pb-16 pt-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="mx-auto max-w-[1400px] px-4 pb-24 pt-6 sm:px-6 sm:pb-16 lg:px-8">{children}</main>
       </div>
     </div>
   );

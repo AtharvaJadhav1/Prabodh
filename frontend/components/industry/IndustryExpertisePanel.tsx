@@ -12,13 +12,13 @@ export default function IndustryExpertisePanel() {
   return (
     <div className="space-y-6">
       {/* Primary Domain */}
-      <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between border-b border-brand-sand pb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-lightOrange text-brand-primary">
+      <section className="rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-sand pb-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-lightOrange text-brand-primary">
               <CpuIcon className="h-4 w-4" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h3 className="text-base font-bold text-brand-deep">Primary Domains</h3>
               <p className="mt-0.5 text-xs text-brand-muted">Specialized fields you mentor and advise on.</p>
             </div>
@@ -41,7 +41,7 @@ export default function IndustryExpertisePanel() {
             {domainExpertise.map((domain) => (
               <span
                 key={domain}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-brand-primary/20 bg-brand-lightOrange px-3 py-1.5 text-xs font-semibold text-brand-primary"
+                className="inline-flex max-w-full items-center gap-1.5 break-words rounded-lg border border-brand-primary/20 bg-brand-lightOrange px-3 py-1.5 text-xs font-semibold text-brand-primary"
               >
                 <CpuIcon className="h-3.5 w-3.5" />
                 {domain}
@@ -52,7 +52,7 @@ export default function IndustryExpertisePanel() {
       </section>
 
       {/* Core Skills / Tech Stack */}
-      <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
         <div className="border-b border-brand-sand pb-4">
           <h3 className="text-base font-bold text-brand-deep">Core Skills / Tech Stack</h3>
           <p className="mt-0.5 text-xs text-brand-muted">Technologies and capabilities you advise on.</p>
@@ -66,7 +66,7 @@ export default function IndustryExpertisePanel() {
             {coreSkills.map((skill) => (
               <span
                 key={skill}
-                className="rounded-full border border-brand-sand bg-brand-cream px-3 py-1 text-xs font-medium text-brand-deep"
+                className="break-words rounded-full border border-brand-sand bg-brand-cream px-3 py-1 text-xs font-medium text-brand-deep"
               >
                 {skill}
               </span>
@@ -76,12 +76,12 @@ export default function IndustryExpertisePanel() {
       </section>
 
       {/* Company / Professional Background */}
-      <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
         <div className="flex items-center gap-2.5 border-b border-brand-sand pb-4">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-brand-softline bg-brand-canvas text-brand-deep">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-brand-softline bg-brand-canvas text-brand-deep">
             <LandmarkIcon className="h-4 w-4" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-base font-bold text-brand-deep">Company &amp; Professional Background</h3>
             <p className="mt-0.5 text-xs text-brand-muted">Current role and organization.</p>
           </div>
@@ -89,35 +89,35 @@ export default function IndustryExpertisePanel() {
 
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-brand-sand bg-brand-cream/60 p-4">
-            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-muted">
+            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-muted">
               <BriefcaseIcon className="h-3.5 w-3.5" /> Designation
             </p>
-            <p className="mt-1.5 text-sm font-bold text-brand-deep">{designation || "—"}</p>
+            <p className="mt-1.5 break-words text-sm font-bold text-brand-deep">{designation || "—"}</p>
           </div>
           <div className="rounded-xl border border-brand-sand bg-brand-cream/60 p-4">
-            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-muted">
+            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-muted">
               <LandmarkIcon className="h-3.5 w-3.5" /> Organization
             </p>
-            <p className="mt-1.5 text-sm font-bold text-brand-deep">{company || "—"}</p>
+            <p className="mt-1.5 break-words text-sm font-bold text-brand-deep">{company || "—"}</p>
           </div>
           <div className="rounded-xl border border-brand-sand bg-brand-cream/60 p-4">
-            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand-muted">
+            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand-muted">
               <BriefcaseIcon className="h-3.5 w-3.5" /> Industry Experience
             </p>
-            <p className="mt-1.5 text-sm font-bold text-brand-deep">
+            <p className="mt-1.5 break-words text-sm font-bold text-brand-deep">
               {experienceYears ? `${experienceYears} years` : "—"}
             </p>
           </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-between rounded-xl border border-brand-sand bg-brand-cream/60 p-4">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-brand-muted">LinkedIn Profile</p>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-sand bg-brand-cream/60 p-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-brand-muted">LinkedIn Profile</p>
           {linkedinHref && isHttpUrl(linkedinHref) ? (
             <a
               href={linkedinHref}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-primary transition-colors hover:text-brand-hover"
+              className="inline-flex min-w-0 max-w-full items-center gap-1.5 break-all text-xs font-semibold text-brand-primary transition-colors hover:text-brand-hover"
             >
               <LinkedinIcon className="h-3.5 w-3.5" />
               {linkedinHref.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}

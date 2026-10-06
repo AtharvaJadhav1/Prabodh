@@ -88,7 +88,7 @@ export default function DangerZoneDeleteAccount() {
       <button
         type="button"
         onClick={() => setSettingsOpen((v) => !v)}
-        className="flex items-center gap-2 text-sm font-semibold text-brand-ink"
+        className="flex min-h-[40px] items-center gap-2 text-sm font-semibold text-brand-ink"
         aria-expanded={settingsOpen}
       >
         <SettingsIcon className="h-5 w-5 text-gray-500" />
@@ -113,7 +113,7 @@ export default function DangerZoneDeleteAccount() {
             </button>
           ) : null}
 
-          {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
+          {error ? <p className="mt-3 break-words text-sm text-red-700">{error}</p> : null}
 
           {open && preview ? (
             <div
@@ -121,7 +121,7 @@ export default function DangerZoneDeleteAccount() {
               aria-label="Delete account"
               className="mt-4 rounded-xl border border-red-300 bg-red-50 p-4"
             >
-              <p className="flex items-center gap-2 text-sm font-bold text-red-700">
+              <p className="flex items-center gap-2 break-words text-sm font-bold text-red-700">
                 Delete {preview.fullName ? `“${preview.fullName}”` : "your account"}?
               </p>
 
@@ -214,7 +214,7 @@ export default function DangerZoneDeleteAccount() {
                     disabled={pending}
                     className="mt-1 w-full rounded-lg border border-red-300 px-3 py-2 font-mono text-sm text-red-900 outline-none focus:border-red-500 disabled:opacity-60"
                   />
-                  {error ? <p className="mt-2 text-xs font-medium text-red-700">{error}</p> : null}
+                  {error ? <p className="mt-2 break-words text-xs font-medium text-red-700">{error}</p> : null}
                 </>
               )}
 
@@ -227,7 +227,7 @@ export default function DangerZoneDeleteAccount() {
                     setError("");
                   }}
                   disabled={pending}
-                  className="flex-1 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                  className="flex-1 rounded-lg border border-red-300 bg-white px-3 py-1.5 max-sm:py-2.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -236,7 +236,7 @@ export default function DangerZoneDeleteAccount() {
                     type="button"
                     onClick={handleDelete}
                     disabled={pending || !matches || needsSuccessor}
-                    className="flex-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex-1 rounded-lg bg-red-600 px-3 py-1.5 max-sm:py-2.5 text-xs font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {pending ? "Deleting…" : "Delete my account"}
                   </button>

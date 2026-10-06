@@ -29,7 +29,7 @@ export default function QualifierCard() {
         <SparklesIcon className="h-4 w-4" /> TRL Framework Overview
       </h2>
       {resultsText !== null && (
-        <p className="mt-4 rounded-xl bg-white/10 p-3 text-xs">{resultsText}</p>
+        <p className="mt-4 break-words rounded-xl bg-white/10 p-3 text-xs">{resultsText}</p>
       )}
       <div className="mt-4 border-t border-white/10 pt-4">
         <div className="rounded-xl border border-white/10 bg-white/5 p-3.5">

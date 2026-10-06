@@ -81,7 +81,7 @@ export default function ForgotPasswordForm() {
         </div>
         <Link
           href="/login"
-          className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover"
+          className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-center text-sm font-semibold leading-snug text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover"
         >
           Back to sign in
         </Link>
@@ -95,7 +95,7 @@ export default function ForgotPasswordForm() {
         <div>
           <h1 className="font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">Verify your code</h1>
           <p className="mt-2 text-sm leading-relaxed text-brand-muted">
-            Enter the 6-digit code sent to <span className="font-semibold text-brand-deep">{email}</span>. You will
+            Enter the 6-digit code sent to <span className="break-all font-semibold text-brand-deep">{email}</span>. You will
             choose a new password after the code is verified.
           </p>
         </div>
@@ -129,12 +129,12 @@ export default function ForgotPasswordForm() {
               </button>
             }
           />
-          {devHint ? <p className="text-xs font-mono text-amber-800">{devHint}</p> : null}
-          {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+          {devHint ? <p className="break-words text-xs font-mono text-amber-800">{devHint}</p> : null}
+          {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
           <button
             type="submit"
             disabled={loading || code.length !== 6}
-            className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
+            className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-center text-sm font-semibold leading-snug text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
           >
             {loading ? "Verifying…" : "Verify code"}
           </button>
@@ -161,7 +161,7 @@ export default function ForgotPasswordForm() {
         <div>
           <h1 className="font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">Choose a new password</h1>
           <p className="mt-2 text-sm leading-relaxed text-brand-muted">
-            Code verified for <span className="font-semibold text-brand-deep">{email}</span>. Enter your new
+            Code verified for <span className="break-all font-semibold text-brand-deep">{email}</span>. Enter your new
             password below.
           </p>
         </div>
@@ -217,11 +217,11 @@ export default function ForgotPasswordForm() {
               className="w-full rounded-xl border border-brand-sand bg-white px-4 py-3 text-sm font-medium text-brand-charcoal shadow-sm transition-all focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
             />
           </div>
-          {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+          {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
           <button
             type="submit"
             disabled={loading || password.length < 8 || !confirm}
-            className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
+            className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-center text-sm font-semibold leading-snug text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
           >
             {loading ? "Updating…" : "Update password"}
           </button>
@@ -260,11 +260,11 @@ export default function ForgotPasswordForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+        {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
         <button
           type="submit"
           disabled={loading || !email}
-          className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
+          className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-center text-sm font-semibold leading-snug text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
         >
           {loading ? "Sending code…" : "Send reset code"}
         </button>

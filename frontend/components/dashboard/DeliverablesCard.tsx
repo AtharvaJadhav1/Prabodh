@@ -228,7 +228,7 @@ export default function DeliverablesCard() {
           <FileCheckIcon className="h-5 w-5 text-brand-primary" />
           Submission Required
         </h2>
-        <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-3 py-1 text-xs font-bold text-brand-primary">
+        <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-3 py-1 text-xs font-bold text-brand-primary break-words">
           {stage?.name ?? "No active stage"}
         </span>
       </div>
@@ -428,7 +428,7 @@ export default function DeliverablesCard() {
       ) : null}
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <div className="relative flex min-w-[220px] flex-1 items-center">
+        <div className="relative flex min-w-[min(220px,100%)] flex-1 items-center">
           <GithubIcon className="absolute left-3 h-4 w-4 text-brand-muted" />
           <input
             value={githubUrl}
@@ -447,7 +447,7 @@ export default function DeliverablesCard() {
           Save Repo
         </button>
       </div>
-      {message ? <p className="mt-2 text-xs font-medium text-brand-deep">{message}</p> : null}
+      {message ? <p className="mt-2 break-words text-xs font-medium text-brand-deep">{message}</p> : null}
     </section>
   );
 }

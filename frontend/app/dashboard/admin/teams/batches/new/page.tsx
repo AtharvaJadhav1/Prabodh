@@ -86,8 +86,8 @@ export default function CreateBatchPage() {
           </div>
 
           <div>
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-brand-deep">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="min-w-0 text-xs font-bold uppercase tracking-wider text-brand-deep">
                 Teams in this batch ({teams.length})
               </h2>
               <div className="flex flex-wrap gap-2">

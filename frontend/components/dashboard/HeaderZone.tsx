@@ -13,12 +13,12 @@ export default function HeaderZone() {
     <div className="space-y-4">
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-brand-softline/80 bg-white p-5 shadow-sm">
-        <div className="flex items-center gap-4">
+        <div className="flex min-w-0 items-center gap-4">
           <InteractiveTeamAvatar teamName={teamName} teamId={teamId ?? undefined} />
-          <div>
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-lg font-extrabold text-brand-deep sm:text-xl">{teamName}</span>
-              <span className="rounded-md border border-brand-softline bg-[#FAF7F2] px-2 py-0.5 font-mono text-xs font-medium text-brand-muted">
+              <span className="min-w-0 break-words text-lg font-extrabold text-brand-deep sm:text-xl">{teamName}</span>
+              <span className="rounded-md border border-brand-softline bg-[#FAF7F2] px-2 py-0.5 font-mono text-xs font-medium text-brand-muted break-all">
                 ID: {teamCode}
               </span>
             </div>
@@ -32,7 +32,7 @@ export default function HeaderZone() {
           </span>
 
           {rosterSize > 0 && (
-            <div className="mt-2 flex w-44 items-center gap-1.5 sm:w-56">
+            <div className="mt-2 flex w-44 max-w-full items-center gap-1.5 sm:w-56">
               {Array.from({ length: rosterSize }).map((_, idx) => {
                 const isFilled = idx < confirmedCount;
 

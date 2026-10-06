@@ -63,14 +63,14 @@ function TagEditor({
           {preview.map((tag) => (
             <span
               key={tag}
-              className="rounded-full border border-brand-primary/20 bg-brand-lightOrange px-2.5 py-0.5 text-[11px] font-semibold text-brand-primary"
+              className="rounded-full border border-brand-primary/20 bg-brand-lightOrange px-2.5 py-0.5 text-xs font-semibold text-brand-primary break-all"
             >
               {tag}
             </span>
           ))}
         </div>
       ) : null}
-      <p className="text-[11px] text-brand-muted">Separate entries with commas.</p>
+      <p className="text-xs text-brand-muted">Separate entries with commas.</p>
     </div>
   );
 }

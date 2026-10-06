@@ -29,7 +29,7 @@ export default function GroupRequestsPage() {
         {/* Pending Requests */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-brand-deep">
+            <h2 className="min-w-0 break-words text-lg font-bold text-brand-deep">
               Pending Allocation Requests
               {pendingCount > 0 && (
                 <span className="ml-2 inline-flex items-center justify-center rounded-full bg-brand-amber/10 px-2 py-0.5 text-xs font-bold text-brand-primary">

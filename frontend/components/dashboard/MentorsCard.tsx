@@ -65,11 +65,11 @@ export default function MentorsCard() {
           </p>
           {faculty ? (
             <>
-              <p className="mt-1 flex items-center gap-1.5 text-sm font-bold text-brand-deep">
+              <p className="mt-1 flex items-center gap-1.5 break-words text-sm font-bold text-brand-deep [overflow-wrap:anywhere]">
                 {faculty.mentor.fullName}
                 <MentorLinkedinIcon />
               </p>
-              <p className="text-xs text-brand-muted">
+              <p className="break-words text-xs text-brand-muted">
                 {[faculty.mentor.department, faculty.mentor.institute].filter(Boolean).join(" · ")}
               </p>
               <p className="truncate text-xs text-brand-muted">{faculty.mentor.email}</p>
@@ -89,11 +89,11 @@ export default function MentorsCard() {
           </p>
           {industrial ? (
             <>
-              <p className="mt-1 flex items-center gap-1.5 text-sm font-bold text-brand-deep">
+              <p className="mt-1 flex items-center gap-1.5 break-words text-sm font-bold text-brand-deep [overflow-wrap:anywhere]">
                 {industrial.mentor.fullName}
                 <MentorLinkedinIcon />
               </p>
-              <p className="text-xs text-brand-muted">
+              <p className="break-words text-xs text-brand-muted">
                 {[industrial.mentor.institute, industrial.mentor.department].filter(Boolean).join(" · ") ||
                   industrial.mentor.institute ||
                   industrial.mentor.department}
@@ -104,12 +104,12 @@ export default function MentorsCard() {
           ) : pendingIndustry ? (
             <>
               {pendingIndustry.mentor?.fullName ? (
-                <p className="mt-1 flex items-center gap-1.5 text-sm font-bold text-brand-deep">
+                <p className="mt-1 flex items-center gap-1.5 break-words text-sm font-bold text-brand-deep [overflow-wrap:anywhere]">
                 {pendingIndustry.mentor.fullName}
                 <MentorLinkedinIcon />
               </p>
               ) : null}
-              <p className="text-xs text-brand-muted">Awaiting acceptance from {pendingIndustry.invitedEmail}</p>
+              <p className="break-words text-xs text-brand-muted">Awaiting acceptance from {pendingIndustry.invitedEmail}</p>
               <StatusPill label="Invitation sent" pending />
             </>
           ) : (

@@ -78,7 +78,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-brand-softline bg-[#FAF7F2] transition-transform duration-300 ease-out lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 max-lg:max-w-[85vw] flex-col border-r border-brand-softline bg-[#FAF7F2] transition-transform duration-300 ease-out lg:translate-x-0 ${
           mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         }`}
       >
@@ -265,7 +265,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: SidebarProps) {
           })}
         </nav>
 
-        <div className="border-t border-brand-softline px-4 py-4">
+        <div className="border-t border-brand-softline px-4 py-4 max-lg:pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="flex flex-col gap-3">
             <Link
               href="/dashboard/student/profile"

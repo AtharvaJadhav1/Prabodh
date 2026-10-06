@@ -151,8 +151,8 @@ export default function BatchDetailPage() {
               ) : (
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <h1 className="text-2xl font-bold text-brand-deep">{batch.name}</h1>
-                    {batch.description ? <p className="mt-1 text-sm text-neutral-600">{batch.description}</p> : null}
+                    <h1 className="break-words text-2xl font-bold text-brand-deep max-sm:text-xl">{batch.name}</h1>
+                    {batch.description ? <p className="mt-1 break-words text-sm text-neutral-600">{batch.description}</p> : null}
                     <p className="mt-2 text-[11px] font-medium text-neutral-400">
                       Created {new Date(batch.createdAt).toLocaleDateString()}
                       {batch.createdBy ? ` by ${batch.createdBy.fullName}` : ""} · {batch.teams.length} team
@@ -187,7 +187,7 @@ export default function BatchDetailPage() {
 
               {confirmDelete ? (
                 <div className="mt-4 flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-xs font-semibold text-red-700">
+                  <p className="min-w-0 break-words text-xs font-semibold text-red-700">
                     Delete this batch? Its teams are not deleted — they just leave the batch and become available again.
                   </p>
                   <div className="flex shrink-0 gap-2">
@@ -212,11 +212,11 @@ export default function BatchDetailPage() {
             </section>
 
             {actionError ? (
-              <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-600">{actionError}</p>
+              <p className="break-words rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-600">{actionError}</p>
             ) : null}
 
             <section className="rounded-2xl border border-neutral-200/80 bg-white p-6 max-sm:p-4 shadow-sm">
-              <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-sm font-bold uppercase tracking-wide text-neutral-500">Teams</h2>
                 <div className="flex flex-wrap gap-2">
                   <button

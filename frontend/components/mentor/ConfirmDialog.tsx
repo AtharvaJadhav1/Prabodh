@@ -36,12 +36,12 @@ export default function ConfirmDialog({
           role="dialog"
           aria-modal="true"
           aria-label={title}
-          className={`w-full max-w-md rounded-2xl border border-brand-sand bg-white p-6 shadow-2xl transition-all duration-300 ${
+          className={`w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-2xl transition-all duration-300 ${
             open ? "scale-100 opacity-100" : "scale-95 opacity-0"
           }`}
         >
-          <div className="mb-1 flex items-center justify-between">
-            <h3 className="text-lg font-bold text-brand-deep">{title}</h3>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <h3 className="min-w-0 break-words text-lg font-bold text-brand-deep">{title}</h3>
             <button
               type="button"
               onClick={onCancel}
@@ -51,8 +51,8 @@ export default function ConfirmDialog({
               <XIcon className="h-5 w-5" />
             </button>
           </div>
-          <p className="mt-2 text-sm leading-relaxed text-brand-muted">{message}</p>
-          <div className="mt-6 flex items-center justify-end gap-3">
+          <p className="mt-2 break-words text-sm leading-relaxed text-brand-muted">{message}</p>
+          <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
             <button
               type="button"
               onClick={onCancel}

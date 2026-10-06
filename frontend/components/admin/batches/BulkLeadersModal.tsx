@@ -135,10 +135,10 @@ export default function BulkLeadersModal({ open, batchId, batchName, onClose, on
         role="dialog"
         aria-modal="true"
         aria-label="Bulk add teams by leader email"
-        className="my-8 flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-brand-sand bg-white shadow-2xl"
+        className="my-8 max-sm:my-2 flex max-h-[90vh] max-sm:max-h-[94dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-brand-sand bg-white shadow-2xl"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-brand-sand bg-brand-cream p-5">
-          <div>
+        <div className="flex items-start justify-between gap-4 border-b border-brand-sand bg-brand-cream p-5 max-sm:p-4">
+          <div className="min-w-0 break-words">
             <h3 className="text-lg font-bold text-brand-deep">Bulk add by leader email</h3>
             <p className="mt-0.5 text-xs text-brand-muted">
               {draft ? (
@@ -154,7 +154,7 @@ export default function BulkLeadersModal({ open, batchId, batchName, onClose, on
             type="button"
             onClick={close}
             aria-label="Close"
-            className="rounded-lg p-1.5 text-brand-muted transition-colors hover:bg-white hover:text-brand-deep"
+            className="shrink-0 rounded-lg p-1.5 text-brand-muted transition-colors hover:bg-white hover:text-brand-deep"
           >
             <XIcon className="h-5 w-5" />
           </button>
@@ -164,7 +164,7 @@ export default function BulkLeadersModal({ open, batchId, batchName, onClose, on
           {!response ? (
             <>
               <div>
-                <div className="mb-1.5 flex items-center justify-between gap-3">
+                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                   <label htmlFor="bulk-emails" className="text-xs font-bold uppercase tracking-wider text-brand-deep">
                     Team leader emails
                   </label>
@@ -268,7 +268,7 @@ export default function BulkLeadersModal({ open, batchId, batchName, onClose, on
           {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-brand-sand bg-brand-cream p-4">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-brand-sand bg-brand-cream p-4">
           {!response ? (
             <>
               <button

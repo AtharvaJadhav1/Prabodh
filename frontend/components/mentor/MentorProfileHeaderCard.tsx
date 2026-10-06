@@ -44,10 +44,10 @@ export default function MentorProfileHeaderCard() {
       <div className="custom-pattern relative flex h-24 w-full items-end justify-end rounded-t-2xl bg-gradient-to-r from-brand-deep via-[#7E3B14] to-brand-deep-deep px-6" />
 
       {/* Bio & Identity */}
-      <div className="relative px-8 pb-6 pt-4">
+      <div className="relative px-8 max-sm:px-4 pb-6 pt-4">
         <div className="-mt-10 mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {/* Avatar + Name */}
-          <div className="flex items-center gap-4">
+          <div className="flex min-w-0 items-center gap-4">
             <div className="relative shrink-0">
               <Avatar
                 src={resolveMentorAvatarUrl("INSTITUTE", { profileJson: session?.profileJson, email, fullName })}
@@ -63,11 +63,11 @@ export default function MentorProfileHeaderCard() {
                 <CameraIcon className="h-3.5 w-3.5" />
               </button>
             </div>
-            <div className="pt-5">
+            <div className="min-w-0 pt-5">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-2xl font-bold tracking-tight text-brand-deep">{fullName}</h2>
+                <h2 className="min-w-0 break-words text-xl font-bold tracking-tight text-brand-deep sm:text-2xl">{fullName}</h2>
               </div>
-              <p className="mt-0.5 text-xs font-medium text-brand-muted">
+              <p className="mt-0.5 break-words text-xs font-medium text-brand-muted">
                 {designation} &bull; {department}
               </p>
             </div>
@@ -119,7 +119,7 @@ export default function MentorProfileHeaderCard() {
               onAction={hasLinkedin ? undefined : () => openDrawer("socials")}
             />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {otherSocials.map((link, i) => {
               const target = socialHref(link);
               const content = (

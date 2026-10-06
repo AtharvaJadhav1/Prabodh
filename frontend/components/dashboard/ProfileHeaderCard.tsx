@@ -44,7 +44,7 @@ export default function ProfileHeaderCard() {
       </div>
 
       {/* Identity */}
-      <div className="relative px-6 pb-6 pt-0">
+      <div className="relative px-6 pb-6 pt-0 max-sm:px-4 max-sm:pb-5">
         {/* Top row: overlapping avatar on the left, actions on the right */}
         <div className="-mt-14 flex flex-col gap-4 sm:-mt-16 sm:flex-row sm:items-end sm:justify-between">
           <div className="relative z-10 shrink-0 self-start sm:self-end">
@@ -79,9 +79,9 @@ export default function ProfileHeaderCard() {
         {/* Details */}
         <div className="mt-4 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xl font-extrabold tracking-tight text-brand-deep sm:text-2xl">{fullName}</h2>
+            <h2 className="min-w-0 break-words text-xl font-extrabold tracking-tight text-brand-deep sm:text-2xl">{fullName}</h2>
           </div>
-          <p className="max-w-2xl text-sm font-medium leading-relaxed text-brand-muted">{bio}</p>
+          <p className="max-w-2xl break-words text-sm font-medium leading-relaxed text-brand-muted">{bio}</p>
         </div>
 
         {/* Metadata Badges */}
@@ -99,7 +99,7 @@ export default function ProfileHeaderCard() {
             </svg>
             {school}
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand-warmBorder bg-brand-lightOrange px-3 py-1 text-xs font-semibold text-brand-primary">
+          <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand-warmBorder bg-brand-lightOrange px-3 py-1 text-xs font-semibold text-brand-primary break-words">
             <svg
               className="h-3.5 w-3.5"
               fill="currentColor"
@@ -113,7 +113,7 @@ export default function ProfileHeaderCard() {
         </div>
 
         {/* Contact & Social Links */}
-        <div className="mt-3 flex items-center gap-2 pt-1">
+        <div className="mt-3 flex flex-wrap items-center gap-2 pt-1">
           <ExpandableContactItem
             icon={<MailIcon className="h-4 w-4" />}
             label="Email Address"

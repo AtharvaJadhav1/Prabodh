@@ -33,10 +33,10 @@ export default function TextField({
 }: TextFieldProps) {
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <label
           htmlFor={id}
-          className="block text-xs font-bold uppercase tracking-wider text-brand-deep"
+          className="block min-w-0 text-xs font-bold uppercase tracking-wider text-brand-deep"
         >
           {label}
         </label>

@@ -109,7 +109,7 @@ export default function MentorDashboardPage() {
       {pendingInviteCount > 0 ? (
         <Link
           href="/dashboard/mentor/group-requests"
-          className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-brand-warmBorder bg-brand-lightOrange px-4 py-3 text-xs font-semibold text-brand-deep transition-colors hover:bg-brand-lightOrange/70"
+          className="mb-4 flex items-center justify-between gap-3 max-sm:flex-wrap rounded-xl border border-brand-warmBorder bg-brand-lightOrange px-4 py-3 text-xs font-semibold text-brand-deep transition-colors hover:bg-brand-lightOrange/70"
         >
           <span>
             You have {pendingInviteCount} pending team invitation{pendingInviteCount === 1 ? "" : "s"} waiting for your

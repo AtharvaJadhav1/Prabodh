@@ -76,7 +76,7 @@ export default function AdminBatchesPage() {
               <p className="mt-1 text-xs text-neutral-500">Create a batch and add teams that aren&apos;t in any batch.</p>
             </div>
           ) : filtered.length === 0 ? (
-            <p className="rounded-2xl border border-neutral-200 bg-white p-8 max-sm:p-5 text-center text-sm text-neutral-500">
+            <p className="rounded-2xl border border-neutral-200 bg-white p-8 max-sm:p-5 break-words text-center text-sm text-neutral-500">
               No batches match &ldquo;{search}&rdquo;.
             </p>
           ) : (

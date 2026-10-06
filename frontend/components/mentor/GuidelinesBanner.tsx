@@ -7,7 +7,7 @@ export default function GuidelinesBanner() {
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-brand-sand bg-white text-brand-deep">
           <InfoIcon className="h-4 w-4 text-brand-primary" />
         </div>
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-bold text-brand-deep">Prabodh Evaluation Rubric (AICTE &amp; MoE Innovation Cell)</p>
           <p className="text-brand-muted">
             Grading criteria: Innovation (25%), Technical Feasibility (30%), Market Viability (20%), and Presentation (25%).

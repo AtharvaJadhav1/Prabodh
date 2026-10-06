@@ -33,14 +33,14 @@ export default function ItemListEditor<T>({
           key={index}
           className="space-y-3 rounded-xl border border-brand-sand bg-brand-cream/60 p-3.5"
         >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-brand-muted">
+          <div className="flex items-center justify-between gap-2">
+            <span className="min-w-0 break-words text-xs font-bold uppercase tracking-wider text-brand-muted">
               {itemLabel} {index + 1}
             </span>
             <button
               type="button"
               onClick={() => onChange(items.filter((_, i) => i !== index))}
-              className="inline-flex items-center gap-1 rounded-lg border border-brand-sand px-2 py-1 text-[11px] font-bold text-brand-charcoal/70 transition-colors hover:border-brand-primary/40 hover:text-brand-primary"
+              className="inline-flex items-center gap-1 shrink-0 rounded-lg border border-brand-sand px-2 py-1 max-sm:py-1.5 text-xs font-bold text-brand-charcoal/70 transition-colors hover:border-brand-primary/40 hover:text-brand-primary"
               aria-label={`Remove ${itemLabel} ${index + 1}`}
             >
               <TrashIcon className="h-3 w-3" />

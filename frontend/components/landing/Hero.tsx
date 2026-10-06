@@ -27,7 +27,7 @@ export default function Hero() {
   return (
     <section
       id="home"
-      className="hero-pattern relative overflow-hidden px-4 pb-16 pt-12 text-white sm:px-6 sm:pb-24 sm:pt-16 lg:px-8 lg:pb-32 lg:pt-20"
+      className="scroll-mt-20 hero-pattern relative overflow-hidden px-4 pb-16 pt-12 text-white sm:px-6 sm:pb-24 sm:pt-16 lg:px-8 lg:pb-32 lg:pt-20"
     >
       <div className="absolute inset-0 z-0">
         <ParticleField
@@ -52,7 +52,7 @@ export default function Hero() {
             <span className="h-2 w-2 animate-pulse rounded-full bg-brand-amber"></span>
             Prabodh Incubation Portal 2026
           </div>
-          <h1 className="mb-5 text-3xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-5xl lg:text-6xl">
+          <h1 className="mb-5 break-words text-3xl font-extrabold leading-[1.15] tracking-tight text-white sm:text-5xl lg:text-6xl">
             Prabodh Incubation <br className="hidden sm:inline" />
             &amp; Mentorship Portal
           </h1>

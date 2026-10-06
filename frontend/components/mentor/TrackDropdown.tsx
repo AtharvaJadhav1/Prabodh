@@ -26,16 +26,16 @@ export default function TrackDropdown({ value, onChange, options }: Props) {
   const activeOption = options.includes(value) ? value : options[0];
 
   return (
-    <div className="relative inline-block text-left" ref={dropdownRef}>
+    <div className="relative inline-block text-left max-sm:block" ref={dropdownRef}>
       {/* Trigger Button */}
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`flex items-center justify-between gap-3 rounded-2xl border bg-white px-4 py-2.5 text-xs font-medium text-neutral-800 transition-all ${
+        className={`flex items-center justify-between gap-3 max-sm:w-full rounded-2xl border bg-white px-4 py-2.5 text-xs font-medium text-neutral-800 transition-all ${
           isOpen ? "border-[#d95c26] ring-2 ring-[#d95c26]/10" : "border-neutral-200 hover:border-neutral-300"
         }`}
       >
-        <span>{activeOption}</span>
+        <span className="min-w-0 truncate">{activeOption}</span>
         {isOpen ? (
           <ChevronUpIcon className="h-4 w-4 shrink-0 text-neutral-400" />
         ) : (
@@ -45,7 +45,7 @@ export default function TrackDropdown({ value, onChange, options }: Props) {
 
       {/* Custom Popover Menu */}
       {isOpen && (
-        <div className="absolute right-0 z-50 mt-1.5 max-h-60 w-48 overflow-y-auto rounded-2xl border border-neutral-200/90 bg-white p-1.5 shadow-lg focus:outline-none">
+        <div className="absolute right-0 z-50 mt-1.5 max-h-60 w-48 max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-neutral-200/90 bg-white p-1.5 shadow-lg focus:outline-none">
           {options.map((track) => {
             const isSelected = track === activeOption;
             return (

@@ -189,11 +189,11 @@ export default function FacultyRegisterForm() {
           autoComplete="organization-title"
         />
         <TextField id="phone" label="Phone" type="text" placeholder="Optional" autoComplete="tel" />
-        {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+        {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
         <button
           type="submit"
           disabled={loading}
-          className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
+          className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-center text-sm font-semibold leading-snug text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
         >
           {loading
             ? "Sending verification code…"

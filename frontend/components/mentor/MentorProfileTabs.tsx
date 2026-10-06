@@ -25,7 +25,7 @@ export default function MentorProfileTabs() {
     <div className="space-y-0">
       {/* Tab Strip */}
       <div className="flex items-center justify-between border-b border-brand-sand">
-        <nav aria-label="Tabs" className="-mb-px flex space-x-6">
+        <nav aria-label="Tabs" className="-mb-px flex min-w-0 space-x-6 overflow-x-auto max-sm:space-x-4">
           {tabs.map((tab) => {
             const isActive = tab.key === active;
             return (
@@ -37,7 +37,7 @@ export default function MentorProfileTabs() {
                 aria-controls={`panel-${tab.key}`}
                 id={`tab-${tab.key}`}
                 onClick={() => setActive(tab.key)}
-                className={`inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-1 py-3 text-xs transition-all sm:text-sm ${
+                className={`inline-flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-1 py-3 text-xs transition-all sm:text-sm ${
                   isActive
                     ? "border-brand-primary font-bold text-brand-deep"
                     : "border-transparent font-semibold text-brand-muted hover:border-brand-sand hover:text-brand-deep"

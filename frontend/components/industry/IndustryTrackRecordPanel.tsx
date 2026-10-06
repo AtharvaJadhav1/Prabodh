@@ -18,12 +18,12 @@ export default function IndustryTrackRecordPanel() {
   const entries = [...derived, ...trackRecord.filter((r) => !derived.some((d) => d.teamName === r.teamName))];
 
   return (
-    <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
       <div className="flex items-center gap-2.5 border-b border-brand-sand pb-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-lightOrange text-brand-primary">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-lightOrange text-brand-primary">
           <TrophyIcon className="h-4 w-4" />
         </div>
-        <div>
+        <div className="min-w-0">
           <h3 className="text-base font-bold text-brand-deep">Engagement Track Record</h3>
           <p className="mt-0.5 text-xs text-brand-muted">
             Teams you are actively engaged with, and historical mentoring outcomes.
@@ -42,15 +42,15 @@ export default function IndustryTrackRecordPanel() {
               key={`${entry.problemCode}-${i}`}
               className="flex flex-col gap-3 rounded-xl border border-brand-sand bg-brand-cream/60 p-4 sm:flex-row sm:items-center sm:justify-between"
             >
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-brand-muted">
+              <div className="min-w-0">
+                <p className="break-words text-xs font-bold uppercase tracking-wide text-brand-muted">
                   {entry.problemCode || `Engagement ${i + 1}`}
                   {entry.teamName ? ` • Team ${entry.teamName}` : ""}
                   {entry.track ? ` • ${entry.track}` : ""}
                 </p>
-                <h4 className="mt-1 text-sm font-bold text-brand-deep">{entry.outcome}</h4>
+                <h4 className="mt-1 break-words text-sm font-bold text-brand-deep">{entry.outcome}</h4>
               </div>
-              <span className="inline-flex shrink-0 items-center self-start rounded-full border border-brand-approved/20 bg-brand-approved/10 px-2.5 py-0.5 text-[11px] font-bold text-brand-approved sm:self-center">
+              <span className="inline-flex shrink-0 items-center self-start rounded-full border border-brand-approved/20 bg-brand-approved/10 px-2.5 py-0.5 text-xs font-bold text-brand-approved sm:self-center">
                 {entry.status}
               </span>
             </div>

@@ -204,8 +204,8 @@ export default function AdminReportsPage() {
                   <p className="mb-3 text-xs font-semibold text-brand-charcoal">Average by Stage</p>
                   {snapshot.scoring.byStage.map((s) => (
                     <div key={s.stageId} className="mb-2 flex items-center justify-between gap-3">
-                      <span className="text-xs font-semibold text-brand-charcoal">{s.stageName}</span>
-                      <span className="text-xs font-bold text-brand-deep">{s.avgScore} <span className="font-medium text-brand-muted">({s.evaluated} teams)</span></span>
+                      <span className="min-w-0 break-words text-xs font-semibold text-brand-charcoal">{s.stageName}</span>
+                      <span className="shrink-0 text-right text-xs font-bold text-brand-deep">{s.avgScore} <span className="font-medium text-brand-muted">({s.evaluated} teams)</span></span>
                     </div>
                   ))}
                   {snapshot.scoring.byStage.length === 0 ? <p className="text-xs text-brand-muted">No published scores yet.</p> : null}

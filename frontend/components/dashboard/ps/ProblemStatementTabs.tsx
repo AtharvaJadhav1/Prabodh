@@ -18,7 +18,7 @@ export default function ProblemStatementTabs({ targetRank, usedPsIds, onPick }: 
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-1 rounded-xl border border-brand-softline bg-brand-cream p-1 w-fit">
+      <div className="flex items-center gap-1 rounded-xl border border-brand-softline bg-brand-cream p-1 w-fit max-w-full overflow-x-auto">
         <button
           type="button"
           onClick={() => setActiveTab("repo")}

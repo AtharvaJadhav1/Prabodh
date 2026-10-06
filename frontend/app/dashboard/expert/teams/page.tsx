@@ -14,7 +14,7 @@ export default function ExpertTeamsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">Teams</h1>
+        <h1 className="break-words font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">Teams</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-brand-muted">
           Teams appear here when an administrator assigns them to your Student Expert account.
         </p>

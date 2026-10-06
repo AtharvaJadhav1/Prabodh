@@ -16,13 +16,13 @@ export default function MentorTrackRecordPanel() {
   const { trackRecord } = profile;
 
   return (
-    <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
-      <div className="flex items-center justify-between border-b border-brand-sand pb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-lightOrange text-brand-primary">
+    <section className="rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-sand pb-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-lightOrange text-brand-primary">
             <TrophyIcon className="h-4 w-4" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-base font-bold text-brand-deep">Track Record</h3>
             <p className="mt-0.5 text-xs text-brand-muted">
               Historical mentoring outcomes and hackathon results.
@@ -51,15 +51,15 @@ export default function MentorTrackRecordPanel() {
                 key={`${entry.season}-${i}`}
                 className="flex flex-col gap-3 rounded-xl border border-brand-sand bg-brand-cream/60 p-4 sm:flex-row sm:items-center sm:justify-between"
               >
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wide text-brand-muted">
+                <div className="min-w-0">
+                  <p className="break-words text-xs font-bold uppercase tracking-wide text-brand-muted">
                     {entry.season}
                     {entry.teamName ? ` • Team ${entry.teamName}` : ""}
                   </p>
-                  <h4 className="mt-1 text-sm font-bold text-brand-deep">{entry.outcome}</h4>
+                  <h4 className="mt-1 break-words text-sm font-bold text-brand-deep">{entry.outcome}</h4>
                 </div>
                 <span
-                  className={`inline-flex shrink-0 items-center self-start rounded-full px-2.5 py-0.5 text-[11px] font-bold sm:self-center ${style.badge}`}
+                  className={`inline-flex shrink-0 items-center self-start rounded-full px-2.5 py-0.5 text-xs font-bold sm:self-center ${style.badge}`}
                 >
                   {entry.result}
                 </span>

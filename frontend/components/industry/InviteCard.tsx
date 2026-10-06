@@ -31,28 +31,28 @@ export default function InviteCard({ invite, onAccept, onDecline }: Props) {
 
   return (
     <div className="rounded-2xl border border-brand-sand bg-white p-5 shadow-xs transition duration-200 hover:shadow-md hover:border-brand-primary/40">
-      <div className="flex items-start justify-between pb-4 border-b border-brand-sand">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-2 pb-4 border-b border-brand-sand">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold tracking-wider text-white shadow-xs">
             {initials(invite.invitedByName ?? invite.teamName)}
           </div>
-          <div>
-            <h3 className="text-base font-bold text-brand-deep">{invite.invitedByName ?? "Institute mentor"}</h3>
+          <div className="min-w-0">
+            <h3 className="break-words text-base font-bold text-brand-deep">{invite.invitedByName ?? "Institute mentor"}</h3>
             <p className="text-xs text-brand-muted">Invited you to mentor a team</p>
           </div>
         </div>
-        <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2.5 py-0.5 text-[11px] font-semibold text-brand-primary">
+        <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2.5 py-0.5 text-xs font-semibold text-brand-primary">
           {invite.invitedAt}
         </span>
       </div>
 
       <div className="py-4">
-        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-brand-muted">
+        <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-brand-muted">
           Team
         </span>
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-sm font-bold text-brand-deep">{invite.teamName}</span>
-          <span className="rounded-md border border-brand-sand bg-brand-cream px-2.5 py-1 font-mono text-[11px] font-semibold text-brand-charcoal">
+          <span className="break-words text-sm font-bold text-brand-deep">{invite.teamName}</span>
+          <span className="rounded-md border border-brand-sand bg-brand-cream break-all px-2.5 py-1 font-mono text-xs font-semibold text-brand-charcoal">
             {invite.teamCode}
           </span>
         </div>
@@ -63,14 +63,14 @@ export default function InviteCard({ invite, onAccept, onDecline }: Props) {
       ) : null}
 
       {confirmDecline ? (
-        <div className="flex items-center justify-between rounded-xl border border-brand-overdue/40 bg-red-50 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-overdue/40 bg-red-50 p-3">
           <p className="text-xs font-semibold text-brand-overdue">Decline this invite?</p>
           <div className="flex gap-2">
             <button
               type="button"
               disabled={busy}
               onClick={() => setConfirmDecline(false)}
-              className="rounded-lg border border-brand-sand px-3 py-1 text-[11px] font-bold text-brand-muted hover:bg-white disabled:opacity-60"
+              className="rounded-lg border border-brand-sand px-3 py-1 max-sm:py-2 text-xs font-bold text-brand-muted hover:bg-white disabled:opacity-60"
             >
               Cancel
             </button>
@@ -78,7 +78,7 @@ export default function InviteCard({ invite, onAccept, onDecline }: Props) {
               type="button"
               disabled={busy}
               onClick={() => void run(() => onDecline(invite.id))}
-              className="rounded-lg bg-brand-overdue px-3 py-1 text-[11px] font-bold text-white hover:bg-red-700 disabled:opacity-60"
+              className="rounded-lg bg-brand-overdue px-3 py-1 max-sm:py-2 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-60"
             >
               {busy ? "Working…" : "Confirm Decline"}
             </button>

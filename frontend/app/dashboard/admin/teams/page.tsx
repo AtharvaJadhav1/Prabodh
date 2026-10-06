@@ -175,7 +175,7 @@ export default function AdminTeamsPage() {
           role="status"
           className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-700"
         >
-          <span>
+          <span className="min-w-0 break-words">
             Team &ldquo;{removedName}&rdquo; was disqualified and removed with all its data. Its members and mentors
             were notified.
           </span>

@@ -24,20 +24,20 @@ export default function IndustryMentorCard({
   return (
     <div className="rounded-2xl border border-brand-sand bg-white p-5 shadow-xs transition duration-200 hover:shadow-md hover:border-brand-primary/40">
       {/* Header */}
-      <div className="flex items-start justify-between pb-4 border-b border-brand-sand">
-        <div className="flex items-center gap-3">
+      <div className="flex items-start justify-between gap-2 pb-4 border-b border-brand-sand">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold tracking-wider text-white shadow-xs">
             {mentor.initials}
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-brand-deep">{mentor.name}</h3>
-              <span className="rounded bg-brand-cream px-2 py-0.5 text-[10px] font-mono text-brand-muted border border-brand-sand">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="min-w-0 break-words text-base font-bold text-brand-deep">{mentor.name}</h3>
+              <span className="break-all rounded bg-brand-cream px-2 py-0.5 text-xs font-mono text-brand-muted border border-brand-sand">
                 ID: {mentor.id}
               </span>
             </div>
-            <div className="mt-0.5 flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-brand-approved" />
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-brand-approved" />
               <p className="text-xs font-semibold text-brand-approved">Active Industry Guide</p>
               <span className="text-xs text-brand-muted">
                 &middot; Mapped to {mappedTeamCount} Team{mappedTeamCount !== 1 ? "s" : ""}
@@ -47,13 +47,13 @@ export default function IndustryMentorCard({
         </div>
 
         {onEdit || onRemove ? (
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           {onEdit ? (
           <button
             type="button"
             title="Edit Mentor Details"
             onClick={() => onEdit(mentor)}
-            className="rounded-lg p-1.5 text-brand-muted transition-colors hover:bg-brand-cream hover:text-brand-deep"
+            className="rounded-lg p-1.5 max-sm:p-2.5 text-brand-muted transition-colors hover:bg-brand-cream hover:text-brand-deep"
           >
             <PencilIcon className="h-4 w-4" />
           </button>
@@ -63,7 +63,7 @@ export default function IndustryMentorCard({
             type="button"
             title="Remove Mentor"
             onClick={() => setConfirmAction("remove")}
-            className="rounded-lg p-1.5 text-brand-muted transition-colors hover:bg-red-50 hover:text-brand-overdue"
+            className="rounded-lg p-1.5 max-sm:p-2.5 text-brand-muted transition-colors hover:bg-red-50 hover:text-brand-overdue"
           >
             <TrashIcon className="h-4 w-4" />
           </button>
@@ -75,41 +75,41 @@ export default function IndustryMentorCard({
       {/* Metadata Grid */}
       <div className="grid grid-cols-2 gap-3 py-4 text-xs max-sm:grid-cols-1">
         <div className="rounded-xl border border-brand-sand/70 bg-brand-cream p-2.5">
-          <span className="mb-0.5 block text-[10px] font-bold uppercase text-brand-muted">
+          <span className="mb-0.5 block text-xs font-bold uppercase text-brand-muted">
             Company / Org
           </span>
-          <span className="block truncate font-bold text-brand-charcoal">{mentor.company}</span>
+          <span className="block break-words font-bold text-brand-charcoal">{mentor.company}</span>
         </div>
         <div className="rounded-xl border border-brand-sand/70 bg-brand-cream p-2.5">
-          <span className="mb-0.5 block text-[10px] font-bold uppercase text-brand-muted">
+          <span className="mb-0.5 block text-xs font-bold uppercase text-brand-muted">
             Designation
           </span>
-          <span className="block truncate font-bold text-brand-charcoal">{mentor.designation}</span>
+          <span className="block break-words font-bold text-brand-charcoal">{mentor.designation}</span>
         </div>
         <div className="rounded-xl border border-brand-sand/70 bg-brand-cream p-2.5">
-          <span className="mb-0.5 block text-[10px] font-bold uppercase text-brand-muted">
+          <span className="mb-0.5 block text-xs font-bold uppercase text-brand-muted">
             Official Email
           </span>
-          <span className="block truncate font-medium text-brand-deep">{mentor.email}</span>
+          <span className="block break-all font-medium text-brand-deep">{mentor.email}</span>
         </div>
         <div className="rounded-xl border border-brand-sand/70 bg-brand-cream p-2.5">
-          <span className="mb-0.5 block text-[10px] font-bold uppercase text-brand-muted">
+          <span className="mb-0.5 block text-xs font-bold uppercase text-brand-muted">
             Contact Phone
           </span>
-          <span className="block font-medium text-brand-charcoal">{mentor.phone}</span>
+          <span className="block break-words font-medium text-brand-charcoal">{mentor.phone}</span>
         </div>
       </div>
 
       {/* Domain Expertise Tags */}
       <div className="pt-2">
-        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-brand-muted">
+        <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-brand-muted">
           Domain Expertise
         </span>
         <div className="flex flex-wrap gap-1.5">
           {mentor.expertise.map((tag) => (
             <span
               key={tag}
-              className="rounded-md border border-brand-sand bg-brand-cream px-2.5 py-1 text-[11px] font-semibold text-brand-charcoal"
+              className="rounded-md border border-brand-sand bg-brand-cream px-2.5 py-1 text-xs font-semibold text-brand-charcoal break-words"
             >
               {tag}
             </span>
@@ -122,14 +122,14 @@ export default function IndustryMentorCard({
         <div className="mt-3 pt-3 border-t border-brand-sand">
           {confirmAction === "unmap" ? (
             <div className="flex items-center justify-between rounded-xl border border-brand-primary/40 bg-brand-lightOrange p-3 max-sm:flex-col max-sm:items-stretch max-sm:gap-2">
-              <p className="text-xs font-semibold text-brand-deep">
+              <p className="min-w-0 break-words text-xs font-semibold text-brand-deep">
                 Unmap {mentor.name} from all {mappedTeamCount} team{mappedTeamCount !== 1 ? "s" : ""}?
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => setConfirmAction(null)}
-                  className="rounded-lg border border-brand-sand px-3 py-1 text-[11px] font-bold text-brand-muted hover:bg-white"
+                  className="rounded-lg border border-brand-sand px-3 py-1 max-sm:py-2 text-xs font-bold text-brand-muted hover:bg-white"
                 >
                   Cancel
                 </button>
@@ -139,7 +139,7 @@ export default function IndustryMentorCard({
                     onUnmapAll(mentor.id);
                     setConfirmAction(null);
                   }}
-                  className="rounded-lg bg-brand-primary px-3 py-1 text-[11px] font-bold text-white hover:bg-brand-hover"
+                  className="rounded-lg bg-brand-primary px-3 py-1 max-sm:py-2 text-xs font-bold text-white hover:bg-brand-hover"
                 >
                   Confirm Unmap
                 </button>
@@ -149,7 +149,7 @@ export default function IndustryMentorCard({
             <button
               type="button"
               onClick={() => setConfirmAction("unmap")}
-              className="w-full rounded-xl border border-dashed border-brand-primary/40 bg-brand-lightOrange px-3 py-2 text-[11px] font-bold text-brand-primary transition-colors hover:bg-brand-lightOrange/60"
+              className="w-full rounded-xl border border-dashed border-brand-primary/40 bg-brand-lightOrange px-3 py-2 text-xs font-bold text-brand-primary transition-colors hover:bg-brand-lightOrange/60"
             >
               Unmap from All Teams
             </button>
@@ -160,14 +160,14 @@ export default function IndustryMentorCard({
       {/* Remove Mentor Confirmation */}
       {confirmAction === "remove" && (
         <div className="mt-3 rounded-xl border border-brand-overdue/40 bg-red-50 p-3">
-          <p className="text-xs font-semibold text-brand-overdue">
+          <p className="break-words text-xs font-semibold text-brand-overdue">
             Remove {mentor.name} entirely? This unmaps them from all teams and deletes their record.
           </p>
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => setConfirmAction(null)}
-              className="rounded-lg border border-brand-sand px-3 py-1 text-[11px] font-bold text-brand-muted hover:bg-white"
+              className="rounded-lg border border-brand-sand px-3 py-1 max-sm:py-2 text-xs font-bold text-brand-muted hover:bg-white"
             >
               Cancel
             </button>
@@ -177,7 +177,7 @@ export default function IndustryMentorCard({
                 onRemove?.(mentor.id);
                 setConfirmAction(null);
               }}
-              className="rounded-lg bg-brand-overdue px-3 py-1 text-[11px] font-bold text-white hover:bg-red-700"
+              className="rounded-lg bg-brand-overdue px-3 py-1 max-sm:py-2 text-xs font-bold text-white hover:bg-red-700"
             >
               Remove Permanently
             </button>

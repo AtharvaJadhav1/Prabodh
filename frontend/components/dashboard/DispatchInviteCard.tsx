@@ -62,7 +62,7 @@ export default function DispatchInviteCard() {
     <div className="rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
       <div className="flex items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-muted">
-          <MailIcon className="h-4 w-4 text-brand-primary" /> Invite Team Member
+          <MailIcon className="h-4 w-4 shrink-0 text-brand-primary" /> Invite Team Member
         </h3>
       </div>
 
@@ -84,7 +84,7 @@ export default function DispatchInviteCard() {
               }}
               placeholder="student@example.com"
               aria-label="Teammate's email address"
-              className="h-10 w-full px-3 py-2 text-xs rounded-xl border border-brand-softline bg-brand-cream font-medium text-brand-charcoal transition-all placeholder:text-brand-charcoal/45 focus:border-transparent focus:ring-2 focus:ring-brand-primary/30 focus:bg-white outline-none sm:h-11"
+              className="h-10 min-w-0 w-full px-3 py-2 text-xs rounded-xl border border-brand-softline bg-brand-cream font-medium text-brand-charcoal transition-all placeholder:text-brand-charcoal/45 focus:border-transparent focus:ring-2 focus:ring-brand-primary/30 focus:bg-white outline-none sm:h-11"
             />
             <button
               type="button"
@@ -95,9 +95,9 @@ export default function DispatchInviteCard() {
               <SendIcon className="h-4 w-4" /> {sending ? "Sending…" : "Send"}
             </button>
           </div>
-          {error && <p className="mt-1.5 text-xs font-semibold text-brand-charcoal/80">{error}</p>}
+          {error && <p className="mt-1.5 break-words text-xs font-semibold text-brand-charcoal/80">{error}</p>}
           {success && (
-            <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-bold text-brand-approved">
+            <p className="mt-1.5 inline-flex items-start gap-1.5 break-all text-xs font-bold text-brand-approved">
               <CheckIcon className="h-3.5 w-3.5" /> {success}
             </p>
           )}

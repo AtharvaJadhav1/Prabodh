@@ -116,7 +116,7 @@ export default function ChangePasswordForm() {
           />
         </div>
         {error ? (
-          <p role="alert" className="text-sm font-medium text-red-700">
+          <p role="alert" className="break-words text-sm font-medium text-red-700">
             {error}
           </p>
         ) : null}

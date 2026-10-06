@@ -116,7 +116,7 @@ export default function AdminOverviewPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <section className="rounded-2xl border border-brand-softline/80 bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <h2 className="text-base font-bold text-brand-deep">Unassigned Teams</h2>
               <Link
                 href="/dashboard/admin/mentor-allocation"
@@ -132,13 +132,13 @@ export default function AdminOverviewPage() {
                 {unassigned.slice(0, 4).map((a) => (
                   <div
                     key={a.teamId}
-                    className="flex items-center justify-between rounded-xl border border-brand-softline/60 bg-[#FAF7F2]/50 p-3 transition-colors hover:bg-[#FAF7F2]"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-brand-softline/60 bg-[#FAF7F2]/50 p-3 transition-colors hover:bg-[#FAF7F2]"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-bold text-brand-deep">{a.teamName}</p>
                       <p className="truncate text-xs text-brand-muted">{a.track}</p>
                     </div>
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
+                    <span className="shrink-0 whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-700">
                       Unassigned
                     </span>
                   </div>
@@ -149,7 +149,7 @@ export default function AdminOverviewPage() {
 
           <div className="grid gap-6 sm:grid-cols-2">
             <section className="rounded-2xl border border-brand-softline/80 bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center justify-between">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#D97706]/10 text-[#D97706]">
                     <BarChartIcon className="h-4 w-4 text-current" />
@@ -181,7 +181,7 @@ export default function AdminOverviewPage() {
             </section>
 
             <section className="space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                     <BarChartIcon className="h-4 w-4 text-current" />
@@ -222,7 +222,7 @@ export default function AdminOverviewPage() {
               )}
 
               <div className="rounded-xl border border-[#f0ece5] bg-[#faf8f5] p-3.5">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
                     Idea Submissions
                   </p>
@@ -254,8 +254,8 @@ export default function AdminOverviewPage() {
                 )}
               </div>
 
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-[#f0ece5] bg-white p-3">
-                <div>
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-xl border border-[#f0ece5] bg-white p-3">
+                <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
                     Mentor Assignment
                   </p>
@@ -275,9 +275,9 @@ export default function AdminOverviewPage() {
           </div>
 
           <section className="rounded-2xl border border-brand-softline/80 bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#4A2810]/10 text-[#4A2810]">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#4A2810]/10 text-[#4A2810]">
                   <RocketIcon className="h-4 w-4 text-current" />
                 </div>
                 <h2 className="text-base font-bold text-brand-deep">Recently Registered Teams</h2>
@@ -378,14 +378,14 @@ export default function AdminOverviewPage() {
               <h2 className="text-base font-bold text-brand-deep">Stage Status</h2>
             </div>
 
-            <div className="mb-4 flex items-center justify-between rounded-xl border border-brand-softline/60 bg-[#FAF7F2]/60 p-3">
-              <div>
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-brand-softline/60 bg-[#FAF7F2]/60 p-3">
+              <div className="min-w-0">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-brand-muted">
                   Active Stage
                 </p>
-                <p className="mt-0.5 text-sm font-bold text-brand-deep">{metrics.activeStage}</p>
+                <p className="mt-0.5 break-words text-sm font-bold text-brand-deep">{metrics.activeStage}</p>
               </div>
-              <span className="rounded-full border border-[#C25E26]/30 bg-[#C25E26]/10 px-3 py-1 text-xs font-bold text-[#C25E26]">
+              <span className="shrink-0 rounded-full border border-[#C25E26]/30 bg-[#C25E26]/10 px-3 py-1 text-xs font-bold text-[#C25E26]">
                 Live
               </span>
             </div>
@@ -401,7 +401,7 @@ export default function AdminOverviewPage() {
             </div>
 
             <div className="mb-5">
-              <div className="mb-1.5 flex items-center justify-between text-xs">
+              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-2 text-xs">
                 <span className="font-bold text-brand-deep">Mentor Allocation</span>
                 <span className="font-medium text-brand-muted">
                   {assignedCount}/{allocations.length} teams

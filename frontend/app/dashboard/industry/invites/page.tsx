@@ -18,7 +18,7 @@ export default function IndustryInvitesPage() {
         {error ? <ErrorBanner message={error} onRetry={() => void reload()} /> : null}
 
         <div className="space-y-4">
-          <h2 className="text-lg font-bold text-brand-deep">
+          <h2 className="break-words text-lg font-bold text-brand-deep">
             Pending Invites
             {!isLoading && pendingInvites.length > 0 && (
               <span className="ml-2 inline-flex items-center justify-center rounded-full bg-brand-amber/10 px-2 py-0.5 text-xs font-bold text-brand-primary">

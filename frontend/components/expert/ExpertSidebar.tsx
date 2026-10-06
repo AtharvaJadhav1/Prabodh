@@ -43,7 +43,7 @@ export default function ExpertSidebar({ mobileOpen, onCloseMobile }: Props) {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-brand-softline bg-[#FAF7F2] transition-transform duration-300 ease-out lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 max-lg:max-w-[85vw] flex-col border-r border-brand-softline bg-[#FAF7F2] transition-transform duration-300 ease-out lg:translate-x-0 ${
           mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
         }`}
       >
@@ -72,7 +72,7 @@ export default function ExpertSidebar({ mobileOpen, onCloseMobile }: Props) {
 
         <div className="border-b border-brand-softline px-4 py-4">
           <div className="rounded-2xl border border-brand-softline bg-white p-4">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-brand-muted">Workspace Role</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-brand-muted">Workspace Role</p>
             <p className="mt-1.5 truncate text-sm font-extrabold text-brand-deep">{role}</p>
           </div>
         </div>
@@ -98,14 +98,14 @@ export default function ExpertSidebar({ mobileOpen, onCloseMobile }: Props) {
                     : "text-brand-charcoal/80 hover:bg-white hover:text-brand-deep"
                 }`}
               >
-                <span className="flex items-center gap-3">
+                <span className="flex min-w-0 items-center gap-3">
                   <Icon
                     className={`h-5 w-5 ${active ? "text-white" : "text-brand-muted group-hover:text-brand-primary"}`}
                   />
-                  <span>{item.label}</span>
+                  <span className="min-w-0 truncate">{item.label}</span>
                 </span>
                 {item.badge && (
-                  <span className="rounded-full bg-brand-primary px-2 py-0.5 text-[10px] font-bold text-white">
+                  <span className="rounded-full bg-brand-primary px-2 py-0.5 text-xs font-bold text-white">
                     {item.badge}
                   </span>
                 )}
@@ -114,7 +114,7 @@ export default function ExpertSidebar({ mobileOpen, onCloseMobile }: Props) {
           })}
         </nav>
 
-        <div className="border-t border-brand-softline px-4 py-4">
+        <div className="border-t border-brand-softline px-4 py-4 max-lg:pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3 rounded-xl border border-brand-softline bg-white p-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold text-white">

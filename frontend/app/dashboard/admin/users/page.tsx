@@ -522,12 +522,12 @@ export default function AdminUsersPage() {
                 className={INPUT_CLS}
               />
             </div>
-            <label className="flex items-center gap-2 text-xs font-medium text-neutral-600 md:col-span-2">
+            <label className="flex items-start gap-2 text-xs font-medium text-neutral-600 md:col-span-2">
               <input
                 type="checkbox"
                 checked={inviteReset}
                 onChange={(e) => setInviteReset(e.target.checked)}
-                className="h-4 w-4 rounded border-neutral-300"
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-neutral-300"
               />
               Reset password (also for existing accounts — otherwise they keep their current password)
             </label>
@@ -596,7 +596,7 @@ export default function AdminUsersPage() {
                 </>
               )}
             </button>
-            {inviteMsg ? <p className="text-xs font-medium text-neutral-500">{inviteMsg}</p> : null}
+            {inviteMsg ? <p className="min-w-0 break-words text-xs font-medium text-neutral-500">{inviteMsg}</p> : null}
           </div>
         </section>
 
@@ -745,7 +745,7 @@ export default function AdminUsersPage() {
             </div>
             {importMsg ? (
               <p
-                className={`text-sm font-medium ${
+                className={`break-words text-sm font-medium ${
                   importMsg.toLowerCase().includes("fail") || importMsg.toLowerCase().includes("reject")
                     ? "text-red-700"
                     : "text-green-700"
@@ -755,7 +755,7 @@ export default function AdminUsersPage() {
               </p>
             ) : null}
             {importStatus ? (
-              <p className="text-xs text-neutral-500">
+              <p className="break-words text-xs text-neutral-500">
                 Batch {importBatchId?.slice(0, 8)}… · activated {importStatus.counts.activated} · failed{" "}
                 {importStatus.counts.failed} · emails sent {importStatus.emailCounts.sent} · email failures{" "}
                 {importStatus.emailCounts.failed}
@@ -891,18 +891,18 @@ export default function AdminUsersPage() {
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
             <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl max-sm:max-h-[90dvh] max-sm:overflow-y-auto">
               <div className="flex items-start justify-between gap-3 border-b border-neutral-100 bg-red-50/60 px-6 py-4 max-sm:px-4">
-                <div className="flex items-start gap-3">
+                <div className="flex min-w-0 items-start gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
                     <AlertTriangleIcon className="h-5 w-5 text-red-600" />
                   </span>
-                  <div>
+                  <div className="min-w-0">
                     <h3 className="text-sm font-bold text-neutral-900">Remove user from platform</h3>
-                    <p className="mt-0.5 text-xs text-neutral-500">
+                    <p className="mt-0.5 break-all text-xs text-neutral-500">
                       {removeTarget.fullName} · {removeTarget.email}
                     </p>
                   </div>
                 </div>
-                <button type="button" onClick={closeRemove} disabled={removing} className="rounded-lg p-1 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-40">
+                <button type="button" onClick={closeRemove} disabled={removing} aria-label="Close" className="shrink-0 rounded-lg p-1 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700 disabled:opacity-40">
                   <XIcon className="h-4 w-4" />
                 </button>
               </div>
@@ -964,11 +964,11 @@ export default function AdminUsersPage() {
                             <li key={t.teamId} className="rounded-xl border border-neutral-200 bg-neutral-50/60 px-3 py-2.5">
                               <div className="flex items-center justify-between gap-3">
                                 <div className="min-w-0">
-                                  <p className="truncate text-xs font-bold text-neutral-800">{t.name}</p>
+                                  <p className="break-words text-xs font-bold text-neutral-800">{t.name}</p>
                                   <p className="text-[11px] text-neutral-500">{t.memberCount} member(s)</p>
                                 </div>
                                 {t.outcome === "promote" ? (
-                                  <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-700">
+                                  <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 max-sm:text-[11px]">
                                     Leadership transferred
                                   </span>
                                 ) : (
@@ -1004,7 +1004,7 @@ export default function AdminUsersPage() {
               </div>
 
               {!removePreviewing && !removedDone && removePreview ? (
-                <div className="border-t border-neutral-100 bg-neutral-50/60 px-6 py-4">
+                <div className="border-t border-neutral-100 bg-neutral-50/60 px-6 py-4 max-sm:px-4">
                   <label className={LABEL_CLS} htmlFor="confirm-remove">
                     Type <span className="rounded bg-neutral-200 px-1.5 py-0.5 font-mono text-[10px] font-bold">CONFIRM</span> to permanently remove this user
                   </label>
@@ -1017,7 +1017,7 @@ export default function AdminUsersPage() {
                     autoComplete="off"
                     className={INPUT_CLS}
                   />
-                  <div className="mt-3 flex items-center justify-end gap-3">
+                  <div className="mt-3 flex flex-wrap items-center justify-end gap-3 max-sm:gap-2">
                     <button
                       type="button"
                       onClick={closeRemove}

@@ -119,10 +119,10 @@ export default function NotificationBell() {
                       }
                     }}
                   >
-                    <p className={`text-xs font-bold ${n.readAt ? "text-brand-muted" : "text-brand-deep"}`}>
+                    <p className={`break-words text-xs font-bold ${n.readAt ? "text-brand-muted" : "text-brand-deep"}`}>
                       {n.title}
                     </p>
-                    <p className="mt-0.5 text-[11px] text-brand-muted">{n.body}</p>
+                    <p className="mt-0.5 break-words text-xs text-brand-muted sm:text-[11px]">{n.body}</p>
                   </button>
                 </li>
               ))

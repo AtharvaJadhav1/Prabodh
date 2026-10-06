@@ -52,7 +52,7 @@ function InviteStatusBadge({ status }: { status: string }) {
         ? "border-red-200 bg-red-50 text-red-600"
         : "border-amber-200 bg-amber-50 text-amber-700";
   return (
-    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${className}`}>
+    <span className={`inline-flex shrink-0 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${className}`}>
       {status}
     </span>
   );
@@ -62,7 +62,7 @@ function DeliverableLink({ label, url, icon }: { label: string; url?: string | n
   const isData = Boolean(url?.startsWith("data:"));
   return (
     <div className="flex items-center justify-between gap-2 py-1.5 text-xs">
-      <span className="flex items-center gap-1.5 font-medium text-neutral-600">
+      <span className="flex shrink-0 items-center gap-1.5 font-medium text-neutral-600">
         {icon}
         {label}
       </span>
@@ -413,7 +413,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
           ← Back to Teams
         </Link>
         <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-red-200 bg-red-50 p-6 max-sm:p-4 text-sm font-medium text-red-600">
-          <span>{error ?? "Team not found."}</span>
+          <span className="min-w-0 break-words">{error ?? "Team not found."}</span>
           <button
             type="button"
             onClick={() => load()}
@@ -471,15 +471,15 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
       )}
 
       <div className="flex flex-col gap-2 rounded-2xl border border-neutral-200/80 bg-white p-6 max-sm:p-4 shadow-sm md:flex-row md:items-center md:justify-between">
-        <div>
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold text-neutral-900 sm:text-3xl">{team.name}</h1>
-            <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 font-mono text-xs font-semibold text-neutral-600">
+            <h1 className="min-w-0 break-words text-2xl font-bold text-neutral-900 sm:text-3xl">{team.name}</h1>
+            <span className="break-all rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-1 font-mono text-xs font-semibold text-neutral-600">
               #{team.teamCode}
             </span>
             <StatusPill status={status} />
           </div>
-          <div className="mt-1 text-xs font-medium text-neutral-500">
+          <div className="mt-1 break-words text-xs font-medium text-neutral-500">
             {team.institute}
             {team.theme ? ` · ${team.theme}` : ""}
             {team.problemStatement ? ` · ${team.problemStatement.code} — ${team.problemStatement.title}` : ""}
@@ -530,12 +530,12 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
                   <span className="rounded bg-neutral-100 px-2 py-0.5 font-mono text-xs font-bold text-brand-primary">
                     {team.problemStatement.code}
                   </span>
-                  <span className="text-sm font-bold text-neutral-900">{team.problemStatement.title}</span>
+                  <span className="min-w-0 break-words text-sm font-bold text-neutral-900">{team.problemStatement.title}</span>
                 </div>
-                <div className="text-xs font-medium text-neutral-500">
+                <div className="break-words text-xs font-medium text-neutral-500">
                   {team.problemStatement.organisation} · {team.problemStatement.theme} · {team.problemStatement.category}
                 </div>
-                <p className="text-sm text-neutral-700 text-justify [text-justify:inter-word] hyphens-none leading-relaxed">{team.problemStatement.description}</p>
+                <p className="break-words text-sm text-neutral-700 text-justify max-sm:text-left [text-justify:inter-word] hyphens-none leading-relaxed">{team.problemStatement.description}</p>
               </div>
             ) : (
               <p className="text-sm text-neutral-500">No Problem Statement selected yet</p>
@@ -551,9 +551,9 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
               <div className="flex flex-col gap-4">
                 {deliverables.map((d) => (
                   <div key={d.id} className="rounded-xl border border-neutral-100 p-3">
-                    <div className="mb-1 flex items-center justify-between text-xs font-semibold text-neutral-500">
+                    <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-semibold text-neutral-500">
                       <span>Version {d.version}</span>
-                      <span className="flex items-center gap-2">
+                      <span className="flex flex-wrap items-center gap-2">
                         {d.locked && (
                           <span className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-semibold text-neutral-600">
                             Locked
@@ -619,7 +619,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
                     </div>
                   </div>
                 ) : pendingInvite ? (
-                  <p className="text-sm text-amber-700">Invite pending → {pendingInvite.invitedEmail}</p>
+                  <p className="break-all text-sm text-amber-700">Invite pending → {pendingInvite.invitedEmail}</p>
                 ) : (
                   <p className="text-sm text-neutral-500">No Industrial Mentor assigned</p>
                 )}

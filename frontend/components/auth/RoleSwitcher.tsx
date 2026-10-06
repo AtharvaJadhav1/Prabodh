@@ -66,8 +66,8 @@ export default function RoleSwitcher() {
         aria-label={`Switch to ${otherConfig?.label ?? roleLabel(other)}`}
         className="group w-full flex items-center justify-between p-2 rounded-lg border border-transparent hover:border-brand-softline hover:bg-brand-cream/80 hover:shadow-sm transition-all duration-200 ease-in-out text-left disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-8 h-8 rounded-md bg-brand-deep/10 text-brand-deep">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex shrink-0 items-center justify-center w-8 h-8 rounded-md bg-brand-deep/10 text-brand-deep">
             <CurrentIcon className="w-4 h-4" aria-hidden="true" />
           </div>
           <div className="flex flex-col min-w-0">

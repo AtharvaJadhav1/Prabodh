@@ -33,7 +33,7 @@ export default function StringListEditor({
           {items.map((item, index) => (
             <span
               key={`${item}-${index}`}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-brand-sand bg-white px-3 py-1.5 text-xs font-semibold text-brand-charcoal"
+              className="inline-flex max-w-full items-center gap-1.5 break-words rounded-lg border border-brand-sand bg-white px-3 py-1.5 text-xs font-semibold text-brand-charcoal"
             >
               {item}
               <button
@@ -60,7 +60,7 @@ export default function StringListEditor({
             }
           }}
           placeholder={placeholder}
-          className="w-full rounded-xl border border-brand-sand bg-white px-3.5 py-2.5 text-sm font-medium text-brand-charcoal shadow-sm transition-all placeholder:text-brand-charcoal/45 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
+          className="min-w-0 w-full rounded-xl border border-brand-sand bg-white px-3.5 py-2.5 text-sm font-medium text-brand-charcoal shadow-sm transition-all placeholder:text-brand-charcoal/45 focus:border-brand-primary focus:ring-2 focus:ring-brand-primary/20 outline-none"
         />
         <button
           type="button"

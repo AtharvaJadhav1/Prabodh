@@ -86,14 +86,14 @@ export default function ExpandableContactItem({
       }}
       title={copied ? "Copied to clipboard" : label}
       className={`inline-flex h-9 cursor-pointer select-none items-center overflow-hidden rounded-xl border border-brand-softline/80 bg-white/80 text-brand-deep shadow-sm transition-all duration-300 ease-out hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary ${
-        isOpen ? "max-w-[360px] justify-start gap-2 bg-white pl-2.5 pr-3.5 shadow" : "max-w-[38px] justify-center gap-0 px-2.5"
+        isOpen ? "max-w-[360px] max-sm:max-w-[calc(100vw-4rem)] justify-start gap-2 bg-white pl-2.5 pr-3.5 shadow" : "max-w-[38px] justify-center gap-0 px-2.5"
       }`}
     >
       <div className="shrink-0 text-brand-deep">
         {copied ? <CheckIcon className="h-4 w-4 text-emerald-600" /> : icon}
       </div>
       <span
-        className={`whitespace-nowrap text-xs font-semibold text-brand-deep transition-opacity duration-200 ${
+        className={`min-w-0 truncate whitespace-nowrap text-xs font-semibold text-brand-deep transition-opacity duration-200 ${
           isOpen ? "opacity-100" : "pointer-events-none w-0 overflow-hidden opacity-0"
         }`}
       >

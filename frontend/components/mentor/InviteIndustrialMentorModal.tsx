@@ -168,8 +168,8 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-lightOrange text-brand-primary max-sm:shrink-0">
                 <BriefcaseIcon className="h-5 w-5" />
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-brand-deep">Invite an Industry Mentor</h3>
+              <div className="min-w-0">
+                <h3 className="break-words text-lg font-bold text-brand-deep">Invite an Industry Mentor</h3>
                 <p className="mt-0.5 text-xs text-brand-muted">
                   Pick an industry expert from the registered directory. They will accept or decline the invitation.
                 </p>
@@ -180,7 +180,7 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
               onClick={onClose}
               aria-label="Close"
               title="Close"
-              className="rounded-lg p-1.5 text-brand-muted transition-colors hover:bg-white hover:text-brand-deep max-sm:shrink-0"
+              className="rounded-lg p-1.5 text-brand-muted transition-colors hover:bg-white hover:text-brand-deep max-sm:shrink-0 max-sm:p-2.5"
             >
               <XIcon className="h-5 w-5" />
             </button>
@@ -222,7 +222,7 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
                 key={d}
                 type="button"
                 onClick={() => setDomain((prev) => (prev === d ? "" : d))}
-                className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                className={`rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors ${
                   domain === d
                     ? "border-brand-primary bg-brand-lightOrange text-brand-primary"
                     : "border-brand-sand bg-brand-cream text-brand-charcoal hover:border-brand-primary"
@@ -240,7 +240,7 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
                 <button
                   type="button"
                   onClick={() => void load()}
-                  className="rounded-lg border border-brand-overdue/30 bg-white px-3 py-1 text-[11px] font-bold text-brand-overdue hover:bg-red-50"
+                  className="rounded-lg border border-brand-overdue/30 bg-white px-3 py-1 text-xs font-bold text-brand-overdue hover:bg-red-50"
                 >
                   Retry
                 </button>
@@ -249,7 +249,7 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
           ) : null}
 
           {!loading && !error && results.length > 0 ? (
-            <div className="flex items-center justify-between gap-3 text-[11px] font-semibold text-brand-muted">
+            <div className="flex items-center justify-between gap-3 text-xs font-semibold text-brand-muted">
               <span>
                 {hasFilters ? `${filtered.length} of ${results.length} match` : `${results.length} available`}
               </span>
@@ -267,7 +267,7 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
 
         </div>
 
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-6 py-4">
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-6 max-sm:px-4 py-4">
             {loading ? (
               <div className="py-4">
                 <LoadingState compact fontSize={13} label="Loading directory" steps={["Searching industry mentors"]} />
@@ -304,11 +304,11 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
                         {initials(m.fullName)}
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-brand-deep">{m.fullName}</p>
-                        <p className="truncate text-xs text-brand-muted">
+                        <p className="break-words text-sm font-bold text-brand-deep">{m.fullName}</p>
+                        <p className="break-words text-xs text-brand-muted">
                           {[m.companyName, m.designation].filter(Boolean).join(" · ") || m.email}
                         </p>
-                        <p className="truncate text-[11px] text-brand-muted">
+                        <p className="break-all text-xs text-brand-muted">
                           <span className="inline-flex items-center gap-1">
                             <MailIcon className="h-3 w-3" /> {m.email}
                           </span>
@@ -318,7 +318,7 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
                             {m.domainExpertise!.map((d) => (
                               <span
                                 key={d}
-                                className="rounded bg-brand-lightOrange px-1.5 py-0.5 text-[10px] font-semibold text-brand-primary"
+                                className="rounded bg-brand-lightOrange px-1.5 py-0.5 text-xs font-semibold text-brand-primary"
                               >
                                 {d}
                               </span>
@@ -352,7 +352,7 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
             )}
           </div>
 
-          <p className="shrink-0 border-t border-neutral-100 px-6 py-3 text-[11px] text-brand-muted">
+          <p className="shrink-0 border-t border-neutral-100 px-6 max-sm:px-4 py-3 text-xs text-brand-muted">
             Inviting a mentor for <span className="font-bold text-brand-deep">{teamName}</span>. Only the team&apos;s
             assigned faculty mentor can send these invitations.
           </p>

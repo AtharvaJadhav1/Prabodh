@@ -29,24 +29,24 @@ export default function PreferenceReviewCard({ preference, teamName, busy, onApp
 
   return (
     <>
-      <div className="rounded-xl border border-brand-sand bg-white p-5 shadow-sm">
+      <div className="rounded-xl border border-brand-sand bg-white p-5 max-sm:p-4 shadow-sm">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center rounded-full border border-brand-sand bg-brand-cream px-2.5 py-0.5 text-[11px] font-bold text-brand-deep">
+          <span className="inline-flex items-center rounded-full border border-brand-sand bg-brand-cream max-w-full break-words px-2.5 py-0.5 text-xs font-bold text-brand-deep">
             Preference #{preference.rank}
           </span>
-          <span className="inline-flex items-center rounded-full border border-brand-sand bg-brand-cream px-2.5 py-0.5 text-[11px] font-bold text-brand-deep">
+          <span className="inline-flex items-center rounded-full border border-brand-sand bg-brand-cream max-w-full break-words px-2.5 py-0.5 text-xs font-bold text-brand-deep">
             {preference.sourceLabel}
           </span>
-          <span className="inline-flex items-center rounded-full border border-brand-sand bg-brand-cream px-2.5 py-0.5 text-[11px] font-bold uppercase text-brand-deep">
+          <span className="inline-flex items-center rounded-full border border-brand-sand bg-brand-cream max-w-full break-words px-2.5 py-0.5 text-xs font-bold uppercase text-brand-deep">
             {preference.category}
           </span>
         </div>
-        <h3 className="text-base font-bold text-brand-deep">{preference.title}</h3>
-        <p className="mt-1 text-xs font-medium text-brand-muted">
+        <h3 className="break-words text-base font-bold text-brand-deep">{preference.title}</h3>
+        <p className="mt-1 break-words text-xs font-medium text-brand-muted">
           {preference.theme} · {preference.organisation}
         </p>
         <p
-          className={`mt-3 whitespace-pre-line text-sm leading-relaxed text-brand-charcoal text-justify [text-justify:inter-word] hyphens-none ${
+          className={`mt-3 whitespace-pre-line text-sm leading-relaxed text-brand-charcoal break-words max-sm:text-left sm:text-justify [text-justify:inter-word] hyphens-none ${
             expanded || !isLong ? "" : "line-clamp-4"
           }`}
         >
@@ -68,7 +68,7 @@ export default function PreferenceReviewCard({ preference, teamName, busy, onApp
             type="button"
             disabled={busy}
             onClick={() => setConfirmOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-deep px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-brand-primary disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-1.5 max-sm:w-full max-sm:py-2.5 max-sm:text-center rounded-xl bg-brand-deep px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-brand-primary disabled:cursor-not-allowed disabled:opacity-60"
           >
             <CheckIcon className="h-3.5 w-3.5" />
             Approve &amp; Lock This Problem Statement

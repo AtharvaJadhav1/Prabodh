@@ -29,7 +29,7 @@ export default function AchievementsPanel() {
   }
 
   return (
-    <div className="rounded-2xl border border-brand-softline bg-white p-6 shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
+    <div className="rounded-2xl border border-brand-softline bg-white p-6 max-sm:p-4 shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {achievements.map((item, i) => {
           const Icon = achievementIcons[i % achievementIcons.length];
@@ -39,20 +39,20 @@ export default function AchievementsPanel() {
               className="space-y-1.5 rounded-xl border border-brand-softline bg-brand-cream p-4"
             >
               <div className="flex items-center justify-between gap-2 text-brand-primary">
-                <div className="flex items-center gap-2">
-                  <Icon className="h-5 w-5" />
-                  <span className="text-sm font-bold">{item.title}</span>
+                <div className="flex min-w-0 items-center gap-2">
+                  <Icon className="h-5 w-5 shrink-0" />
+                  <span className="min-w-0 break-words text-sm font-bold">{item.title}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => openDrawer("achievements")}
-                  className="inline-flex items-center gap-1 rounded-lg border border-brand-softline px-2 py-1 text-[11px] font-bold text-brand-charcoal/70 transition-colors hover:border-brand-primary/40 hover:text-brand-primary"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-brand-softline px-2 py-1 text-[11px] font-bold text-brand-charcoal/70 transition-colors hover:border-brand-primary/40 hover:text-brand-primary"
                   aria-label={`Edit ${item.title}`}
                 >
                   <PencilIcon className="h-3 w-3" /> Edit
                 </button>
               </div>
-              <p className="text-xs leading-relaxed text-brand-muted">{item.description}</p>
+              <p className="break-words text-xs leading-relaxed text-brand-muted">{item.description}</p>
             </div>
           );
         })}

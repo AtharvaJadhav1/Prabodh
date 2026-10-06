@@ -22,7 +22,7 @@ export default function IndustryOverviewPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base font-bold text-brand-deep">Pending Invites</h2>
             <Link href="/dashboard/industry/invites" className="text-xs font-semibold text-brand-primary hover:text-brand-hover">
               View all &rarr;
@@ -43,14 +43,14 @@ export default function IndustryOverviewPage() {
                       {initials(inv.invitedByName ?? inv.teamName)}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-xs font-bold text-brand-deep">{inv.teamName}</p>
-                      <p className="truncate text-[11px] text-brand-muted">
+                      <p className="break-words text-xs font-bold text-brand-deep">{inv.teamName}</p>
+                      <p className="break-words text-xs text-brand-muted">
                         {inv.invitedByName ? `Invited by ${inv.invitedByName} · ` : ""}
                         {inv.teamCode}
                       </p>
                     </div>
                   </div>
-                  <span className="shrink-0 text-[11px] text-brand-muted">{inv.invitedAt}</span>
+                  <span className="shrink-0 text-xs text-brand-muted max-sm:max-w-[35%] max-sm:text-right">{inv.invitedAt}</span>
                 </div>
               ))}
             </div>
@@ -58,7 +58,7 @@ export default function IndustryOverviewPage() {
         </section>
 
         <section className="rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base font-bold text-brand-deep">My Institute Mentors</h2>
             <Link href="/dashboard/industry/mentors" className="text-xs font-semibold text-brand-primary hover:text-brand-hover">
               View all &rarr;
@@ -79,11 +79,11 @@ export default function IndustryOverviewPage() {
                       {m.instituteMentorInitials}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-xs font-bold text-brand-deep">{m.instituteMentorName}</p>
-                      <p className="truncate text-[11px] text-brand-muted">{m.instituteMentorTitle}</p>
+                      <p className="break-words text-xs font-bold text-brand-deep">{m.instituteMentorName}</p>
+                      <p className="break-words text-xs text-brand-muted">{m.instituteMentorTitle}</p>
                     </div>
                   </div>
-                  <span className="shrink-0 text-[11px] font-semibold text-brand-approved">
+                  <span className="shrink-0 whitespace-nowrap text-xs font-semibold text-brand-approved">
                     {m.groupIds.length} team{m.groupIds.length !== 1 ? "s" : ""}
                   </span>
                 </div>

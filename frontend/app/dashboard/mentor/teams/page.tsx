@@ -108,14 +108,14 @@ export default function MentorTeamsPage() {
         />
       ) : (
         <section className="overflow-hidden rounded-2xl border border-brand-sand bg-white shadow-sm">
-          <div className="flex flex-col items-center justify-between gap-4 border-b border-brand-sand/60 p-5 md:flex-row">
+          <div className="flex flex-col items-stretch justify-between gap-4 border-b border-brand-sand/60 p-5 max-sm:p-3 md:flex-row md:items-center">
             <div className="flex flex-wrap items-center gap-1.5">
               {filters.map((f) => (
                 <button
                   key={f.key}
                   type="button"
                   onClick={() => setPsFilter(f.key)}
-                  className={`rounded-lg px-3.5 py-2 text-xs font-bold transition-all ${
+                  className={`rounded-lg px-3.5 py-2 max-sm:px-3 text-xs font-bold transition-all ${
                     psFilter === f.key
                       ? "bg-brand-lightOrange text-brand-primary shadow-sm"
                       : "text-brand-muted hover:bg-brand-cream hover:text-brand-deep"
@@ -169,11 +169,11 @@ export default function MentorTeamsPage() {
                       <td className={`${COL_SIZES.team} px-4 py-4 align-middle`}>
                         <div className="truncate text-sm font-bold text-brand-deep">{team.name}</div>
                         <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-                          <span className="truncate font-mono text-[11px] text-brand-muted">
+                          <span className="truncate font-mono text-xs text-brand-muted">
                             {team.teamCode} · {team.theme ?? "No theme"}
                           </span>
                           {psStatus === "pending" && (
-                            <span className="rounded-full bg-brand-amber/10 px-2 py-0.5 text-[10px] font-bold text-brand-primary">
+                            <span className="rounded-full bg-brand-amber/10 px-2 py-0.5 text-xs font-bold text-brand-primary">
                               Invite pending
                             </span>
                           )}
@@ -185,7 +185,7 @@ export default function MentorTeamsPage() {
                             <Avatar src={null} seed={team.leader.fullName || team.leader.email} className="h-8 w-8" />
                             <div className="min-w-0">
                               <div className="truncate text-sm font-semibold text-brand-charcoal">{team.leader.fullName}</div>
-                              <div className="truncate font-mono text-[11px] text-brand-muted">{team.leader.email}</div>
+                              <div className="truncate font-mono text-xs text-brand-muted">{team.leader.email}</div>
                             </div>
                           </div>
                         ) : (
@@ -195,11 +195,11 @@ export default function MentorTeamsPage() {
                       <td className={`${COL_SIZES.ps} px-4 py-4 align-middle`}>
                         {ps ? (
                           <>
-                            <div className="truncate font-mono text-[11px] font-bold text-brand-primary">{ps.code}</div>
+                            <div className="truncate font-mono text-xs font-bold text-brand-primary">{ps.code}</div>
                             <div className="line-clamp-2 text-brand-charcoal">{ps.title}</div>
                           </>
                         ) : psStatus === "awaiting" ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-md border border-brand-amber/30 bg-brand-amber/10 px-2.5 py-1 text-[11px] font-semibold text-brand-primary">
+                          <span className="inline-flex items-center gap-1.5 rounded-md border border-brand-amber/30 bg-brand-amber/10 px-2.5 py-1 text-xs font-semibold text-brand-primary">
                             Awaiting approval
                           </span>
                         ) : (
@@ -226,7 +226,7 @@ export default function MentorTeamsPage() {
             </table>
           </div>
 
-          <div className="border-t border-brand-sand/60 px-5 py-4 text-right text-xs font-medium text-brand-muted">
+          <div className="border-t border-brand-sand/60 px-5 py-4 max-sm:px-3 text-right text-xs font-medium text-brand-muted">
             Showing {filtered.length} of {rows.length} teams
           </div>
         </section>

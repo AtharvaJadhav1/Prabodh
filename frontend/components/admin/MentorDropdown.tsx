@@ -122,8 +122,8 @@ export default function MentorDropdown({
               role="listbox"
               style={{
                 position: "fixed",
-                left: pos.left,
-                width: pos.width,
+                left: Math.max(8, Math.min(pos.left, window.innerWidth - Math.min(pos.width, window.innerWidth - 16) - 8)),
+                width: Math.min(pos.width, window.innerWidth - 16),
                 top: pos.top,
                 bottom: pos.bottom,
                 maxHeight: pos.maxHeight,
@@ -138,7 +138,7 @@ export default function MentorDropdown({
                     onClick={() => choose("")}
                     className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600"
                   >
-                    <div className="flex flex-col truncate pr-2">
+                    <div className="flex min-w-0 flex-col truncate pr-2">
                       <span className="truncate">None — unassign</span>
                     </div>
                   </button>
@@ -169,7 +169,7 @@ export default function MentorDropdown({
                             : "text-neutral-700 hover:bg-neutral-100"
                       }`}
                     >
-                      <div className="flex flex-col truncate pr-2">
+                      <div className="flex min-w-0 flex-col truncate pr-2">
                         <span className="truncate">{option.name}</span>
                         {isDisabled ? (
                           <span className="truncate text-xs font-normal text-neutral-300">

@@ -31,24 +31,24 @@ export default function ProjectsPanel() {
       {projects.map((project, i) => (
         <div
           key={`${project.title}-${i}`}
-          className="rounded-2xl border border-brand-softline bg-white p-6 shadow-[0_2px_8px_rgba(91,46,16,0.04)]"
+          className="rounded-2xl border border-brand-softline bg-white p-6 max-sm:p-4 shadow-[0_2px_8px_rgba(91,46,16,0.04)]"
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="space-y-1">
+            <div className="min-w-0 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-base font-bold text-brand-deep">{project.title}</h3>
+                <h3 className="break-words text-base font-bold text-brand-deep">{project.title}</h3>
                 {project.badge && (
                   <span className="rounded bg-brand-approved/10 px-2 py-0.5 text-[11px] font-semibold text-brand-approved">
                     {project.badge}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-brand-muted">
+              <p className="break-words text-xs text-brand-muted">
                 {project.team}
                 {project.role && <span> • Role: {project.role}</span>}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <a
                 href={project.repo}
                 className="inline-flex items-center gap-1 text-xs font-bold text-brand-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-primary"
@@ -66,7 +66,7 @@ export default function ProjectsPanel() {
             </div>
           </div>
 
-          <p className="mt-3 text-xs leading-relaxed text-brand-charcoal">
+          <p className="mt-3 break-words text-xs leading-relaxed text-brand-charcoal">
             {project.description}
           </p>
 

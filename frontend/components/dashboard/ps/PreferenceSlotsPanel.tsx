@@ -195,7 +195,7 @@ export default function PreferenceSlotsPanel() {
     <div className="flex flex-col gap-6 rounded-2xl border border-brand-softline bg-white p-5 shadow-[0_2px_8px_rgba(91,46,16,0.04)] sm:p-6">
       {hasTeam ? (
         <div>
-          <h3 className="text-lg font-bold text-brand-deep">Rank Your Problem Statement Preferences</h3>
+          <h3 className="text-base font-bold text-brand-deep sm:text-lg">Rank Your Problem Statement Preferences</h3>
           <p className="mt-1 max-w-2xl text-sm text-brand-muted">
             Pick up to 3 problem statements, in order of preference. Your faculty mentor will review all of them and
             lock exactly one as your team&apos;s official problem statement.
@@ -204,7 +204,7 @@ export default function PreferenceSlotsPanel() {
       ) : (
         <div className="flex items-start gap-3 rounded-xl border border-brand-softline bg-brand-cream px-4 py-3">
           <UserPlusIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" />
-          <div>
+          <div className="min-w-0">
             <h3 className="text-base font-bold text-brand-deep">Browse available challenges below</h3>
             <p className="mt-0.5 text-sm text-brand-muted">
               To lock or rank preferences for your project, create or join a team.
@@ -214,15 +214,15 @@ export default function PreferenceSlotsPanel() {
       )}
 
       {hasApproved || hasSubmitted ? (
-        <div className="flex items-center gap-2 rounded-xl border border-brand-amber/30 bg-brand-amber/20 px-4 py-2.5 text-sm font-semibold text-brand-deep">
-          <ClockIcon className="h-4 w-4 text-brand-primary" />
+        <div className="flex items-start gap-2 rounded-xl border border-brand-amber/30 bg-brand-amber/20 px-4 py-2.5 text-sm font-semibold text-brand-deep">
+          <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" />
           {hasApproved
             ? "Your problem statement is locked. This page is now read-only."
             : "Preferences submitted — awaiting mentor review. You can update them below until your mentor decides."}
         </div>
       ) : hasDraft ? (
-        <div className="flex items-center gap-2 rounded-xl border border-brand-softline bg-brand-cream px-4 py-2.5 text-sm font-semibold text-brand-deep">
-          <CheckIcon className="h-4 w-4 text-brand-approved" />
+        <div className="flex items-start gap-2 rounded-xl border border-brand-softline bg-brand-cream px-4 py-2.5 text-sm font-semibold text-brand-deep">
+          <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-approved" />
           Preferences saved as a draft. Send them to your mentor once your team has an active mentor.
         </div>
       ) : null}
@@ -245,8 +245,8 @@ export default function PreferenceSlotsPanel() {
                   <span className="text-[11px] font-bold uppercase tracking-wide text-brand-muted">
                     {slot.kind === "catalog" ? `Catalog · ${slot.code}` : "Custom Proposal"}
                   </span>
-                  <h4 className="text-sm font-bold text-brand-deep">{slot.title}</h4>
-                  <p className="line-clamp-2 text-xs text-brand-muted hyphens-none">{slot.description}</p>
+                  <h4 className="break-words text-sm font-bold text-brand-deep">{slot.title}</h4>
+                  <p className="line-clamp-2 break-words text-xs text-brand-muted hyphens-none">{slot.description}</p>
                   {isLead ? (
                     <button
                       type="button"
@@ -277,8 +277,8 @@ export default function PreferenceSlotsPanel() {
 
           {openRank !== null ? (
             <div className="flex flex-col gap-4 rounded-2xl border border-brand-primary/30 bg-brand-cream/40 p-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-brand-deep">Choose Preference #{openRank}</h4>
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="min-w-0 break-words text-sm font-bold text-brand-deep">Choose Preference #{openRank}</h4>
                 <button
                   type="button"
                   onClick={() => setOpenRank(null)}
@@ -303,8 +303,8 @@ export default function PreferenceSlotsPanel() {
       ) : (
         <>
           {gatePs ? (
-            <div className="flex items-center gap-2 rounded-xl border border-brand-softline bg-brand-cream px-4 py-2.5 text-sm font-semibold text-brand-deep">
-              <ClockIcon className="h-4 w-4 text-brand-primary" />
+            <div className="flex items-start gap-2 rounded-xl border border-brand-softline bg-brand-cream px-4 py-2.5 text-sm font-semibold text-brand-deep">
+              <ClockIcon className="mt-0.5 h-4 w-4 shrink-0 text-brand-primary" />
               Finish creating your team to rank <span className="font-bold">{gatePs.code}</span> as a
               preference.
             </div>
@@ -315,16 +315,16 @@ export default function PreferenceSlotsPanel() {
         </>
       )}
 
-      {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
-      {message ? <p className="text-sm font-medium text-green-700">{message}</p> : null}
+      {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
+      {message ? <p className="break-words text-sm font-medium text-green-700">{message}</p> : null}
 
       {hasTeam && isLead ? (
-        <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+        <div className="flex flex-wrap items-center justify-end gap-3 pt-2 max-sm:flex-col-reverse max-sm:items-stretch">
           <button
             type="button"
             disabled={filledCount === 0 || busy}
             onClick={() => void handleSave()}
-            className="inline-flex items-center gap-2 rounded-xl border border-brand-softline bg-white px-4 py-2.5 text-sm font-bold text-brand-deep transition-colors hover:bg-brand-cream disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-brand-softline bg-white px-4 py-2.5 text-sm font-bold text-brand-deep transition-colors hover:bg-brand-cream disabled:cursor-not-allowed disabled:opacity-60"
           >
             {busy ? "Saving…" : "Save Preferences"}
           </button>
@@ -332,7 +332,7 @@ export default function PreferenceSlotsPanel() {
             type="button"
             disabled={filledCount === 0 || busy}
             onClick={() => void handleSubmit()}
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-hover disabled:cursor-not-allowed disabled:opacity-60"
           >
             {busy ? "Submitting…" : hasSubmitted ? "Update & Submit Preferences" : "Submit for Mentor Review"}
           </button>

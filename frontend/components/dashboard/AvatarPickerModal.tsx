@@ -136,14 +136,14 @@ export default function AvatarPickerModal({ open, onClose, onSaved, allowPresets
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-[#2A1408]/60" onClick={onClose} aria-hidden="true" />
       <div
-        className={`relative flex max-h-[85vh] w-full flex-col rounded-2xl border border-brand-softline bg-white shadow-2xl transition-[max-width] ${
+        className={`relative flex max-h-[85vh] max-sm:max-h-[90dvh] w-full flex-col rounded-2xl border border-brand-softline bg-white shadow-2xl transition-[max-width] ${
           showingGallery ? "max-w-xl" : "max-w-md"
         }`}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-brand-softline px-5 py-4">
-          <div className="flex items-center gap-2">
-            <CameraIcon className="h-5 w-5 text-brand-primary" />
-            <h3 className="text-sm font-bold text-brand-deep">Set your profile photo</h3>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-brand-softline px-5 py-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <CameraIcon className="h-5 w-5 shrink-0 text-brand-primary" />
+            <h3 className="min-w-0 break-words text-sm font-bold text-brand-deep">Set your profile photo</h3>
           </div>
           <button
             type="button"
@@ -156,7 +156,7 @@ export default function AvatarPickerModal({ open, onClose, onSaved, allowPresets
         </div>
 
         {allowPresets ? (
-          <div className="flex shrink-0 items-center gap-1.5 border-b border-brand-softline px-5 py-3">
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5 border-b border-brand-softline px-5 py-3">
             {(
               [
                 { key: "pick", label: "Pick an avatar" },
@@ -217,7 +217,7 @@ export default function AvatarPickerModal({ open, onClose, onSaved, allowPresets
                     key={preset.key}
                     type="button"
                     onClick={() => setSelectedPresetKey(preset.key)}
-                    className="flex h-[148px] flex-col items-center gap-1.5 rounded-xl border border-brand-softline bg-brand-canvas/40 p-3 text-center transition-all hover:border-brand-primary/50 hover:bg-brand-cream"
+                    className="flex min-h-[148px] flex-col items-center gap-1.5 rounded-xl border border-brand-softline bg-brand-canvas/40 p-3 text-center transition-all hover:border-brand-primary/50 hover:bg-brand-cream"
                   >
                     <img
                       src={preset.buildUrl(presetStyle.previewSeed)}
@@ -237,7 +237,7 @@ export default function AvatarPickerModal({ open, onClose, onSaved, allowPresets
             </div>
           ) : (
             <div>
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex items-center justify-between gap-2">
                 {presetStyle && selectedPreset ? (
                   <button
                     type="button"
@@ -294,7 +294,7 @@ export default function AvatarPickerModal({ open, onClose, onSaved, allowPresets
             </div>
           )}
 
-          {error ? <p className="mt-3 text-xs font-medium text-brand-overdue">{error}</p> : null}
+          {error ? <p className="mt-3 break-words text-xs font-medium text-brand-overdue">{error}</p> : null}
         </div>
       </div>
     </div>

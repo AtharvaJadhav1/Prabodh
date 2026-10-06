@@ -77,9 +77,9 @@ export type ReportSnapshot = {
 export function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
     <div className="rounded-2xl border border-brand-sand bg-white p-5 shadow-xs">
-      <p className="text-[11px] font-medium text-brand-muted">{label}</p>
-      <p className="mt-1 text-2xl font-extrabold text-brand-deep">{value}</p>
-      {sub ? <p className="mt-1 text-[11px] font-medium text-brand-muted">{sub}</p> : null}
+      <p className="break-words text-[11px] font-medium text-brand-muted">{label}</p>
+      <p className="mt-1 break-words text-2xl font-extrabold text-brand-deep">{value}</p>
+      {sub ? <p className="mt-1 break-words text-[11px] font-medium text-brand-muted">{sub}</p> : null}
     </div>
   );
 }
@@ -91,14 +91,14 @@ export function BarList({ rows, total }: { rows: Bucket[]; total?: number }) {
     <div className="space-y-2">
       {rows.map((row) => (
         <div key={row.key} className="flex items-center gap-3">
-          <span className="w-44 shrink-0 truncate text-xs font-semibold text-brand-charcoal">{row.key}</span>
+          <span title={row.key} className="w-28 shrink-0 truncate text-xs font-semibold text-brand-charcoal sm:w-44">{row.key}</span>
           <div className="h-2 flex-1 overflow-hidden rounded-full bg-brand-cream">
             <div
               className="h-full rounded-full bg-brand-primary"
               style={{ width: `${(row.count / max) * 100}%` }}
             />
           </div>
-          <span className="w-10 shrink-0 text-right text-xs font-bold text-brand-deep">
+          <span className="min-w-10 shrink-0 whitespace-nowrap text-right text-xs font-bold text-brand-deep">
             {row.count}
             {denominator > 0 ? <span className="font-medium text-brand-muted"> ({Math.round((row.count / denominator) * 100)}%)</span> : null}
           </span>
@@ -111,9 +111,9 @@ export function BarList({ rows, total }: { rows: Bucket[]; total?: number }) {
 
 export function Card({ title, children, right }: { title: string; children: React.ReactNode; right?: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <h2 className="text-base font-bold text-brand-deep">{title}</h2>
+    <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm max-sm:p-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="min-w-0 break-words text-base font-bold text-brand-deep">{title}</h2>
         {right}
       </div>
       {children}

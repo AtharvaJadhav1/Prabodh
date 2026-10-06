@@ -113,11 +113,11 @@ export default function OtpAuthFlow({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+          {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
           <button
             type="submit"
             disabled={loading || !email}
-            className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
+            className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-center text-sm font-semibold leading-snug text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
           >
             {loading ? "Sending code…" : "Send verification code"}
           </button>
@@ -131,7 +131,7 @@ export default function OtpAuthFlow({
           }}
         >
           <p className="text-sm text-brand-muted">
-            Enter the 6-digit code sent to <span className="font-semibold text-brand-deep">{email}</span>.
+            Enter the 6-digit code sent to <span className="break-all font-semibold text-brand-deep">{email}</span>.
           </p>
           <TextField
             id="otp-code"
@@ -146,12 +146,12 @@ export default function OtpAuthFlow({
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
           />
-          {devHint ? <p className="text-xs font-mono text-amber-800">{devHint}</p> : null}
-          {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+          {devHint ? <p className="break-words text-xs font-mono text-amber-800">{devHint}</p> : null}
+          {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
           <button
             type="submit"
             disabled={loading || code.length !== 6}
-            className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
+            className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-center text-sm font-semibold leading-snug text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
           >
             {loading ? "Verifying…" : submitLabel}
           </button>

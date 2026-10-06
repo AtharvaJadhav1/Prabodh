@@ -28,7 +28,7 @@ export default function IndustryTopBar({ onMenuClick, title, menuOpen = false, m
       </button>
 
       <div className="flex h-full min-w-0 flex-1 items-center">
-        <h1 className="m-0 min-w-0 truncate text-lg font-bold leading-none text-brand-deep sm:text-2xl">
+        <h1 className="m-0 min-w-0 text-lg font-bold leading-none text-brand-deep max-sm:line-clamp-2 max-sm:break-words max-sm:text-base max-sm:leading-tight sm:truncate sm:text-2xl">
           {title ?? "Industry Mentor Workspace"}
         </h1>
       </div>

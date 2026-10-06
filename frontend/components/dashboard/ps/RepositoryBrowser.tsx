@@ -145,7 +145,7 @@ export default function RepositoryBrowser({ targetRank, usedPsIds, onPick, inten
     <div className="flex flex-col gap-6">
       {/* Category Folders */}
       <div>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <span className="text-[10px] font-bold uppercase tracking-widest text-brand-muted">
             Featured Cohort Collections
           </span>
@@ -186,7 +186,7 @@ sm:p-5 ${
                     />
                   </svg>
                 </div>
-                <h4 className="text-sm font-bold text-brand-deep group-hover:text-brand-primary">
+                <h4 className="break-words text-sm font-bold text-brand-deep group-hover:text-brand-primary">
                   {folder.title}
                 </h4>
                 <div className="mt-2 flex items-center justify-between text-brand-muted">
@@ -219,19 +219,19 @@ sm:p-5 ${
       {/* Search + Filters */}
       <div className="flex flex-col gap-3 rounded-2xl border border-brand-softline bg-white p-4 
 shadow-[0_2px_8px_rgba(91,46,16,0.04)] sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1">
+        <div className="relative min-w-0 flex-1">
           <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-muted" />
           <input
             type="text"
             placeholder="Search by title, domain, ministry, or technology stack..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-brand-softline bg-brand-cream py-2.5 pl-10 pr-4 text-sm 
+            className="w-full text-ellipsis rounded-xl border border-brand-softline bg-brand-cream py-2.5 pl-10 pr-4 text-sm 
 text-brand-deep transition-all placeholder:text-brand-muted/60 focus:border-brand-primary focus:bg-white 
 focus:outline-none focus:ring-1 focus:ring-brand-primary/30"
           />
         </div>
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+        <div className="flex max-w-full items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
           {filterPills.map((pill) => (
             <button
               key={pill}
@@ -269,24 +269,24 @@ shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
                 <div className="w-full">
                   {/* Badge Row: ID | Organisation | Category | Theme */}
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded border border-brand-softline bg-brand-cream px-2 py-0.5 font-mono text-xs font-bold text-brand-deep">
+                    <span className="rounded border border-brand-softline bg-brand-cream px-2 py-0.5 font-mono text-xs font-bold text-brand-deep break-all">
                       {stmt.code}
                     </span>
-                    <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2 py-0.5 text-[11px] font-bold uppercase text-brand-deep">
+                    <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2 py-0.5 text-[11px] font-bold uppercase text-brand-deep break-words">
                       {stmt.ministry}
                     </span>
-                    <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2 py-0.5 text-[11px] font-bold uppercase text-brand-deep">
+                    <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2 py-0.5 text-[11px] font-bold uppercase text-brand-deep break-words">
                       {stmt.category}
                     </span>
-                    <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2 py-0.5 text-[11px] font-bold uppercase text-brand-deep">
+                    <span className="rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2 py-0.5 text-[11px] font-bold uppercase text-brand-deep break-words">
                       {stmt.domain}
                     </span>
                   </div>
                   {/* Title */}
-                  <h3 className="mt-3 text-base font-bold text-brand-deep sm:text-lg">{stmt.title}</h3>
+                  <h3 className="mt-3 break-words text-base font-bold text-brand-deep sm:text-lg">{stmt.title}</h3>
                   {/* Description with Read more clamp */}
                   <div className="mt-2">
-                    <p className={`text-sm leading-relaxed text-brand-muted hyphens-none ${isExpanded ? "" : "line-clamp-3"}`}>
+                    <p className={`break-words text-sm leading-relaxed text-brand-muted hyphens-none ${isExpanded ? "" : "line-clamp-3"}`}>
                       {stmt.description}
                     </p>
                     {stmt.description.length > 180 && (
@@ -309,7 +309,7 @@ shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
                   </div>
                   {/* Footer: Posted by */}
                   <div className="mt-3 flex items-center justify-between text-xs text-brand-muted">
-                    <span>Posted by {stmt.postedBy}</span>
+                    <span className="break-words">Posted by {stmt.postedBy}</span>
                   </div>
                 </div>
                 {/* Action button (right column on desktop) */}

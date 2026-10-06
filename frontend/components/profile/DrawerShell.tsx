@@ -38,12 +38,12 @@ export default function DrawerShell({
         aria-modal="true"
         aria-label={title}
       >
-        <div className="flex items-center justify-between border-b border-brand-sand px-5 py-4">
+        <div className="flex items-center justify-between gap-3 border-b border-brand-sand px-5 py-4">
           <div className="flex min-w-0 items-center gap-2.5">
             {icon}
             <div className="min-w-0">
-              <h2 className="text-base font-bold text-brand-deep">{title}</h2>
-              {subtitle && <p className="mt-0.5 text-xs font-medium text-brand-muted">{subtitle}</p>}
+              <h2 className="break-words text-base font-bold text-brand-deep">{title}</h2>
+              {subtitle && <p className="mt-0.5 break-words text-xs font-medium text-brand-muted">{subtitle}</p>}
             </div>
           </div>
           <button
@@ -56,9 +56,9 @@ export default function DrawerShell({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">{children}</div>
 
-        {footer && <div className="border-t border-brand-sand px-5 py-4">{footer}</div>}
+        {footer && <div className="border-t border-brand-sand px-5 py-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom))]">{footer}</div>}
       </aside>
     </div>
   );

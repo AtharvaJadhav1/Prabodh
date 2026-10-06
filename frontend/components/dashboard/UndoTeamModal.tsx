@@ -55,9 +55,9 @@ export default function UndoTeamModal({ open, onClose, onDisbanded }: Props) {
         aria-label="Undo team creation"
         className="relative w-full max-w-md rounded-2xl max-sm:max-h-[90dvh] max-sm:overflow-y-auto border border-brand-softline bg-white shadow-2xl"
       >
-        <div className="flex items-center justify-between border-b border-brand-softline px-5 py-4">
-          <div className="flex items-center gap-2">
-            <TrashIcon className="h-5 w-5 text-red-600" />
+        <div className="flex items-center justify-between gap-3 border-b border-brand-softline px-5 py-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <TrashIcon className="h-5 w-5 shrink-0 text-red-600" />
             <h3 className="text-sm font-bold text-brand-deep">Undo Team Creation?</h3>
           </div>
           <button
@@ -72,7 +72,7 @@ export default function UndoTeamModal({ open, onClose, onDisbanded }: Props) {
         </div>
 
         <div className="flex flex-col gap-3 px-5 py-5">
-          <p className="text-sm text-brand-muted">
+          <p className="break-words text-sm text-brand-muted">
             Are you sure you want to undo and dissolve <span className="font-semibold text-brand-deep">{teamName}</span>?
             All pending invitations will be cancelled, and you will return to an unassigned status.
           </p>
@@ -83,7 +83,7 @@ export default function UndoTeamModal({ open, onClose, onDisbanded }: Props) {
             </p>
           ) : null}
 
-          {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+          {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
 
           <div className="mt-2 flex gap-2">
             <button

@@ -48,7 +48,7 @@ export default function AllocationTable({ allocations, onAssignInstitute, onAssi
           role="alert"
           className="mt-4 flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700"
         >
-          <span>{allocationError}</span>
+          <span className="min-w-0 break-words">{allocationError}</span>
           <button type="button" onClick={clearAllocationError} className="shrink-0 font-bold hover:underline">
             Dismiss
           </button>
@@ -56,7 +56,7 @@ export default function AllocationTable({ allocations, onAssignInstitute, onAssi
       ) : null}
 
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-xs max-lg:min-w-[780px]">
           <thead>
             <tr className="border-b border-brand-sand bg-brand-cream/60 text-[10px] uppercase tracking-wider text-brand-muted">
               <th className="px-4 py-3 font-bold">Team</th>
@@ -72,22 +72,22 @@ export default function AllocationTable({ allocations, onAssignInstitute, onAssi
               return (
                 <tr key={a.teamId} className="transition-colors hover:bg-brand-cream/80">
                   <td className="px-4 py-4">
-                    <div className="text-sm font-bold text-brand-deep">{a.teamName}</div>
-                    <div className="mt-0.5 font-mono text-[11px] text-brand-muted">{a.teamId}</div>
+                    <div className="min-w-[120px] break-words text-sm font-bold text-brand-deep">{a.teamName}</div>
+                    <div className="mt-0.5 break-all font-mono text-[11px] text-brand-muted">{a.teamId}</div>
                   </td>
                   <td className="px-4 py-4 text-brand-charcoal">{a.track}</td>
                   <td className="px-4 py-4 text-center">
                     {bothAssigned ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-brand-approved/20 bg-brand-approved/10 px-2.5 py-1 text-[11px] font-semibold text-brand-approved">
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-brand-approved/20 bg-brand-approved/10 px-2.5 py-1 text-[11px] font-semibold text-brand-approved">
                         <CheckIcon className="h-3 w-3" />
                         Assigned
                       </span>
                     ) : a.assignedMentorId || a.assignedIndustryMentorId ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2.5 py-1 text-[11px] font-semibold text-brand-primary">
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-brand-warmBorder bg-brand-lightOrange px-2.5 py-1 text-[11px] font-semibold text-brand-primary">
                         Partial
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-brand-overdue/20 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-brand-overdue">
+                      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-brand-overdue/20 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-brand-overdue">
                         <AlertCircleIcon className="h-3 w-3" />
                         Unassigned
                       </span>

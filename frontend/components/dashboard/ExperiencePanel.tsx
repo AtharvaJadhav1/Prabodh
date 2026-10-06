@@ -31,18 +31,18 @@ export default function ExperiencePanel() {
       {experience.map((exp, i) => (
         <div
           key={`${exp.title}-${i}`}
-          className="rounded-2xl border border-brand-softline bg-white p-6 shadow-[0_2px_8px_rgba(91,46,16,0.04)]"
+          className="rounded-2xl border border-brand-softline bg-white p-6 max-sm:p-4 shadow-[0_2px_8px_rgba(91,46,16,0.04)]"
         >
-          <div className="flex items-start justify-between">
-            <div>
-              <h4 className="text-sm font-bold text-brand-deep">{exp.title}</h4>
-              <p className="text-xs font-semibold text-brand-primary">{exp.org}</p>
-              <p className="mt-0.5 text-xs text-brand-muted">
+          <div className="flex items-start justify-between gap-3 max-sm:flex-col">
+            <div className="min-w-0">
+              <h4 className="break-words text-sm font-bold text-brand-deep">{exp.title}</h4>
+              <p className="break-words text-xs font-semibold text-brand-primary">{exp.org}</p>
+              <p className="mt-0.5 break-words text-xs text-brand-muted">
                 {exp.period}
                 {exp.location && <span> • {exp.location}</span>}
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               {exp.current && (
                 <span className="rounded-md bg-brand-lightOrange px-2.5 py-1 text-xs font-semibold text-brand-primary">
                   Current
@@ -58,7 +58,7 @@ export default function ExperiencePanel() {
               </button>
             </div>
           </div>
-          <p className="mt-3 text-xs leading-relaxed text-brand-charcoal">{exp.description}</p>
+          <p className="mt-3 break-words text-xs leading-relaxed text-brand-charcoal">{exp.description}</p>
         </div>
       ))}
     </div>

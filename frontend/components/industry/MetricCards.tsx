@@ -47,7 +47,7 @@ export default function MetricCards({ pendingCount, acceptedMentorCount, visible
         >
           <span className={`absolute inset-x-0 top-0 h-1 ${card.stripe}`} aria-hidden="true" />
           <div className="mb-3 flex items-start justify-between gap-2">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-brand-muted/90">{card.label}</p>
+            <p className="min-w-0 break-words text-xs font-bold uppercase tracking-wider text-brand-muted/90">{card.label}</p>
             <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${card.iconBg}`}>
               <card.icon className="h-5 w-5" />
             </div>

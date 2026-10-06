@@ -62,9 +62,9 @@ export default function AdminProfilePage() {
               <CameraIcon className="h-3 w-3" />
             </button>
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-brand-deep">{name || session?.fullName}</h2>
-            <p className="text-xs text-brand-muted">Administrator &middot; {session?.email}</p>
+          <div className="min-w-0">
+            <h2 className="break-words text-lg font-bold text-brand-deep">{name || session?.fullName}</h2>
+            <p className="break-all text-xs text-brand-muted">Administrator &middot; {session?.email}</p>
             {hasCustomAvatar ? (
               <button
                 type="button"

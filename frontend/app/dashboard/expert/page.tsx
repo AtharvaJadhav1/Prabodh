@@ -15,7 +15,7 @@ export default function ExpertOverviewPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">
+        <h1 className="break-words font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">
           Welcome, {name}
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-brand-muted">

@@ -27,30 +27,30 @@ export default function CertificationsPanel() {
   }
 
   return (
-    <div className="rounded-2xl border border-brand-softline bg-white p-6 shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
+    <div className="rounded-2xl border border-brand-softline bg-white p-6 max-sm:p-4 shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
       <div className="divide-y divide-brand-softline/70">
         {certifications.map((cert, i) => (
-          <div key={`${cert.name}-${i}`} className="flex items-center justify-between py-3 first:pt-0">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-brand-softline bg-brand-cream text-brand-deep">
+          <div key={`${cert.name}-${i}`} className="flex items-center justify-between gap-3 py-3 first:pt-0 max-sm:flex-col max-sm:items-start">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-brand-softline bg-brand-cream text-brand-deep">
                 <AwardIcon className="h-5 w-5" />
               </div>
-              <div>
-                <h4 className="text-sm font-bold text-brand-deep">{cert.name}</h4>
-                <p className="text-xs text-brand-muted">
+              <div className="min-w-0">
+                <h4 className="break-words text-sm font-bold text-brand-deep">{cert.name}</h4>
+                <p className="break-words text-xs text-brand-muted">
                   {cert.issuer}
                   {cert.credential && (
                     <span>
                       {" "}
                       • Credential ID:{" "}
-                      <span className="font-mono">{cert.credential}</span>
+                      <span className="break-all font-mono">{cert.credential}</span>
                     </span>
                   )}
                   {cert.date && <span> • Issued {cert.date}</span>}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               {cert.verified && (
                 <span className="rounded-full bg-brand-approved/10 px-2.5 py-1 text-xs font-semibold text-brand-approved">
                   Verified

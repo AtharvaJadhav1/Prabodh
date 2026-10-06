@@ -79,10 +79,10 @@ export default function TeamInviteDecisionModal({ open, onClose, inviteId, newTe
         aria-label="Respond to team invitation"
         className="relative w-full max-w-lg rounded-2xl max-sm:max-h-[90dvh] max-sm:overflow-y-auto border border-brand-softline bg-white shadow-2xl"
       >
-        <div className="flex items-center justify-between border-b border-brand-softline px-5 py-4">
-          <div className="flex items-center gap-2">
-            <UsersRoundIcon className="h-5 w-5 text-brand-primary" />
-            <h3 className="text-sm font-bold text-brand-deep">Incoming Team Invitation from {newTeamName}</h3>
+        <div className="flex items-center justify-between gap-3 border-b border-brand-softline px-5 py-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <UsersRoundIcon className="h-5 w-5 shrink-0 text-brand-primary" />
+            <h3 className="min-w-0 break-words text-sm font-bold text-brand-deep">Incoming Team Invitation from {newTeamName}</h3>
           </div>
           <button
             type="button"
@@ -95,7 +95,7 @@ export default function TeamInviteDecisionModal({ open, onClose, inviteId, newTe
         </div>
 
         <div className="flex flex-col gap-3 px-5 py-5">
-          <p className="text-sm text-brand-muted">
+          <p className="break-words text-sm text-brand-muted">
             You are currently part of <span className="font-semibold text-brand-deep">{currentTeamName}</span>. How
             would you like to proceed?
           </p>
@@ -150,7 +150,7 @@ export default function TeamInviteDecisionModal({ open, onClose, inviteId, newTe
             </p>
           ) : null}
 
-          {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+          {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
 
           <div className="mt-2 flex gap-2">
             <button

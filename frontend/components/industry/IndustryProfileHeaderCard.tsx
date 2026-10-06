@@ -31,10 +31,10 @@ export default function IndustryProfileHeaderCard() {
   };
 
   return (
-    <section className="flex flex-col gap-6 rounded-3xl border border-neutral-100 bg-white p-6 shadow-sm sm:p-8">
+    <section className="flex flex-col gap-6 rounded-3xl border border-neutral-100 bg-white p-5 shadow-sm sm:p-8">
       {/* Top row */}
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center">
           <div className="relative shrink-0">
             <Avatar
               src={resolveMentorAvatarUrl("INDUSTRY", { profileJson: session?.profileJson, email, fullName })}
@@ -50,9 +50,9 @@ export default function IndustryProfileHeaderCard() {
               <CameraIcon className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-neutral-900 sm:text-3xl">{fullName}</h2>
-            <p className="mt-1 text-sm font-medium text-neutral-500">
+          <div className="min-w-0">
+            <h2 className="break-words text-2xl font-bold text-neutral-900 sm:text-3xl">{fullName}</h2>
+            <p className="mt-1 break-words text-sm font-medium text-neutral-500">
               {designation ? `${designation} • ` : ""}
               {company || "Independent Industry Expert"}
             </p>

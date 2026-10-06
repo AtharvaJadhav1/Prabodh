@@ -51,7 +51,7 @@ export default function ManualEntryForm({ targetRank, onPick }: Props) {
         <span className="text-[10px] font-bold uppercase tracking-widest text-brand-primary">
           Student Innovation Track
         </span>
-        <h3 className="mt-1 text-lg font-bold text-brand-deep">Manual Problem Statement Proposal</h3>
+        <h3 className="mt-1 text-base font-bold text-brand-deep sm:text-lg">Manual Problem Statement Proposal</h3>
         <p className="mt-1 max-w-2xl text-sm text-brand-muted">
           Propose your own innovation idea as Preference #{targetRank}. Your faculty mentor will review it alongside your other picks.
         </p>
@@ -114,7 +114,7 @@ export default function ManualEntryForm({ targetRank, onPick }: Props) {
         </div>
       </div>
 
-      {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+      {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
 
       <div className="flex items-center justify-end pt-2">
         <button

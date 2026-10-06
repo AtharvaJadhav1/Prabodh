@@ -90,7 +90,7 @@ export function PwaInstallPrompt() {
     <>
       <aside
         aria-label="Install App"
-        className="fixed bottom-5 right-5 z-50 max-w-sm w-[calc(100%-2.5rem)] animate-in fade-in slide-in-from-bottom-3 duration-300"
+        className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-5 z-50 max-w-sm w-[calc(100%-2.5rem)] max-sm:right-3 max-sm:w-[calc(100%-1.5rem)] animate-in fade-in slide-in-from-bottom-3 duration-300"
       >
         <div className="flex items-center justify-between gap-3 p-3.5 bg-white/95 backdrop-blur-md rounded-2xl border border-stone-200/90 shadow-lg text-stone-800">
           <div className="flex items-center gap-3 min-w-0">
@@ -101,7 +101,7 @@ export function PwaInstallPrompt() {
               <p className="text-xs font-semibold text-stone-900 leading-tight">
                 Install Prabodh App
               </p>
-              <p className="text-[11px] text-stone-500 truncate">
+              <p className="text-xs text-stone-500 max-sm:line-clamp-2 sm:text-[11px] sm:truncate">
                 Get fast access and quick alerts on your home screen.
               </p>
             </div>
@@ -130,7 +130,7 @@ export function PwaInstallPrompt() {
 
       {showIOSInstructions && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-end sm:items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white rounded-2xl p-5 border border-stone-200 shadow-xl space-y-3">
+          <div className="w-full max-w-sm max-h-[90dvh] overflow-y-auto bg-white rounded-2xl p-5 border border-stone-200 shadow-xl space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-sm text-stone-900">Install on iPhone / iPad</h3>
               <button

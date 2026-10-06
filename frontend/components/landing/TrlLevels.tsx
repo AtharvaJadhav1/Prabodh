@@ -108,7 +108,7 @@ const numPad = (n: number) => String(n).padStart(2, "0");
 
 export default function TrlLevels() {
   return (
-    <section id="trl-levels" className="border-y border-stone-200/70 bg-[#FAFAF9] py-12 sm:py-16 md:py-20">
+    <section id="trl-levels" className="scroll-mt-20 border-y border-stone-200/70 bg-[#FAFAF9] py-12 sm:py-16 md:py-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeading
           eyebrow="Innovation Maturity"
@@ -116,16 +116,16 @@ export default function TrlLevels() {
           subtitle="The industry-standard ladder every Prabodh-guided project climbs, from first concept to deployed system."
         />
 
-        <div className="mt-10 grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3 lg:gap-8">
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-8">
           {phases.map((phase) => (
             <div
               key={phase.key}
               className="rounded-2xl border border-stone-200 bg-white/70 p-5 shadow-sm transition-all duration-200 hover:shadow-md"
             >
               {/* Phase header pill */}
-              <div className="mb-6 flex items-center justify-between">
+              <div className="mb-6 flex flex-wrap items-center justify-between">
                 <span
-                  className={`inline-block rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider ${phase.pillClass}`}
+                  className={`inline-block max-w-full rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider ${phase.pillClass}`}
                 >
                   {phase.label} · {phase.range}
                 </span>

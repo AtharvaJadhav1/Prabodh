@@ -438,7 +438,7 @@ export default function SpotlightTour({ open, finish, steps, presentationKey }: 
               ))}
             </div>
 
-            <div className="mt-4 flex items-center justify-between gap-2">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
               <button
                 type="button"
                 onClick={handleFinish}
@@ -446,7 +446,7 @@ export default function SpotlightTour({ open, finish, steps, presentationKey }: 
               >
                 Skip
               </button>
-              <div className="flex items-center gap-2">
+              <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
                 {step > 0 ? (
                   <button
                     type="button"
@@ -459,7 +459,7 @@ export default function SpotlightTour({ open, finish, steps, presentationKey }: 
                 <button
                   type="button"
                   onClick={goNext}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-xs font-bold text-white shadow-md shadow-brand-primary/25 transition-all duration-150 hover:bg-brand-hover active:scale-[0.99]"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-xs font-bold text-white shadow-md shadow-brand-primary/25 transition-all duration-150 hover:bg-brand-hover active:scale-[0.99] max-sm:min-h-[40px]"
                 >
                   {isLast ? <CheckIcon className="h-3.5 w-3.5" /> : null}
                   {active.cta}

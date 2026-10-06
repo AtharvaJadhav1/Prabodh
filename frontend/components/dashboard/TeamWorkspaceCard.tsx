@@ -147,7 +147,7 @@ export default function TeamWorkspaceCard() {
           <InteractiveTeamAvatar teamName={teamName} teamId={teamId} />
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-base font-bold text-brand-deep">Team Workspace</h2>
-            <p className="flex items-center gap-1.5 text-xs font-medium text-brand-muted">
+            <p className="flex items-center gap-1.5 break-all text-xs font-medium text-brand-muted">
               <span>Team ID: {teamCode}</span>
             </p>
           </div>
@@ -213,7 +213,7 @@ export default function TeamWorkspaceCard() {
                 </div>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="truncate text-sm font-bold text-[#5B2E10]">{member.name}</p>
+                    <p className="truncate text-sm font-bold text-[#5B2E10] max-sm:max-w-[10rem]">{member.name}</p>
                     {member.role === "Leader" ? (
                       <span className="rounded-full bg-brand-primary/10 px-2 py-0.5 text-[11px] font-bold text-brand-primary">
                         Team Lead
@@ -245,12 +245,12 @@ export default function TeamWorkspaceCard() {
                 </div>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="truncate font-mono text-sm font-bold text-[#5B2E10]">{invite.email}</p>
+                    <p className="truncate font-mono text-sm font-bold text-[#5B2E10] max-sm:whitespace-normal max-sm:break-all">{invite.email}</p>
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
                       <ClockIcon className="h-3 w-3" /> Awaiting Accept
                     </span>
                   </div>
-                  <p className="mt-0.5 truncate text-xs text-[#786C65]">Invitation sent — joins the team on accept</p>
+                  <p className="mt-0.5 truncate text-xs text-[#786C65] max-sm:whitespace-normal">Invitation sent — joins the team on accept</p>
                 </div>
               </div>
               {isLead && (
@@ -307,7 +307,7 @@ export default function TeamWorkspaceCard() {
                         setInviteEmail(e.target.value);
                         setInviteError("");
                       }}
-                      className="h-10 flex-1 rounded-xl border border-brand-softline bg-white px-3.5 py-2 text-xs font-medium text-brand-charcoal outline-none transition-all placeholder:text-brand-charcoal/45 focus:border-transparent focus:ring-2 focus:ring-brand-primary/30"
+                      className="h-10 min-w-0 flex-1 rounded-xl border border-brand-softline bg-white px-3.5 py-2 text-xs font-medium text-brand-charcoal outline-none transition-all placeholder:text-brand-charcoal/45 focus:border-transparent focus:ring-2 focus:ring-brand-primary/30"
                     />
                     <button
                       type="submit"

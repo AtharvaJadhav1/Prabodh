@@ -19,14 +19,14 @@ export default function MentorCard({ mentor, selected, onToggle }: Props) {
         selected ? "border-brand-primary bg-brand-lightOrange/50" : "border-brand-sand bg-white hover:border-brand-primary/40"
       }`}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-deep text-sm font-bold tracking-wider text-white shadow-xs">
             {mentor.instituteMentorInitials}
           </div>
-          <div>
-            <h3 className="text-base font-bold text-brand-deep">{mentor.instituteMentorName}</h3>
-            <p className="text-xs text-brand-muted">{mentor.instituteMentorTitle}</p>
+          <div className="min-w-0">
+            <h3 className="break-words text-base font-bold text-brand-deep">{mentor.instituteMentorName}</h3>
+            <p className="break-words text-xs text-brand-muted">{mentor.instituteMentorTitle}</p>
           </div>
         </div>
         <div

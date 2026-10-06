@@ -37,7 +37,7 @@ export default function FilterDropdown({ options, value, onChange, className = "
           open ? "border-[#d95c26] ring-2 ring-[#d95c26]/10" : "border-neutral-200 hover:border-neutral-300"
         } ${selected?.value ? "text-neutral-800" : "text-neutral-400"}`}
       >
-        <span className="truncate">{selected?.label ?? "Select"}</span>
+        <span className="truncate max-sm:overflow-visible max-sm:whitespace-normal max-sm:break-words max-sm:text-left">{selected?.label ?? "Select"}</span>
         {open ? (
           <ChevronUpIcon className="h-4 w-4 shrink-0 text-neutral-400" />
         ) : (
@@ -46,7 +46,7 @@ export default function FilterDropdown({ options, value, onChange, className = "
       </button>
 
       {open && (
-        <div className="absolute left-0 z-50 mt-1.5 max-h-64 min-w-full overflow-y-auto rounded-2xl border border-neutral-200/90 bg-white p-1.5 shadow-lg">
+        <div className="absolute left-0 z-50 mt-1.5 max-h-64 min-w-full max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-neutral-200/90 bg-white p-1.5 shadow-lg">
           {options.map((option) => {
             const isSelected = option.value === selected?.value;
             return (
@@ -57,7 +57,7 @@ export default function FilterDropdown({ options, value, onChange, className = "
                   onChange(option.value);
                   setOpen(false);
                 }}
-                className={`flex w-full items-center justify-between whitespace-nowrap rounded-xl px-3.5 py-2 text-left text-sm transition-colors ${
+                className={`flex w-full items-center justify-between whitespace-nowrap max-sm:whitespace-normal max-sm:break-words rounded-xl px-3.5 py-2 text-left text-sm transition-colors ${
                   isSelected
                     ? "bg-[#fff5ee] font-semibold text-[#d95c26]"
                     : "text-neutral-700 hover:bg-neutral-100"

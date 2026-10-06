@@ -11,19 +11,19 @@ export default function IndustryOverviewPanel() {
   return (
     <div className="space-y-6">
       {/* Quick Action Banner */}
-      <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-brand-sand bg-white p-4 shadow-sm sm:flex-row sm:items-center">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-brand-sand bg-white p-4 shadow-sm sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-lightOrange text-brand-primary">
             <ZapIcon className="h-4 w-4" />
           </div>
-          <p className="text-xs font-medium text-brand-charcoal">
+          <p className="min-w-0 break-words text-xs font-medium text-brand-charcoal">
             <strong className="font-bold text-brand-deep">Invites:</strong>{" "}
             {pendingCount > 0
               ? `You have ${pendingCount} invitation${pendingCount === 1 ? "" : "s"} waiting for a response.`
               : "No invitations are waiting for a response."}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {pendingCount > 0 ? (
             <span className="rounded-full bg-brand-lightOrange px-2.5 py-1 text-xs font-semibold text-brand-primary">
               {pendingCount} pending invite{pendingCount === 1 ? "" : "s"}
@@ -40,9 +40,9 @@ export default function IndustryOverviewPanel() {
       </div>
 
       {/* Assigned Cohorts & Industry Track */}
-      <div className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between border-b border-brand-sand pb-4">
-          <div>
+      <div className="rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-sand pb-4">
+          <div className="min-w-0">
             <h3 className="text-base font-bold text-brand-deep">Assigned Cohorts &amp; Domain Highlights</h3>
             <p className="mt-0.5 text-xs text-brand-muted">Student teams currently linked to you as an industry mentor</p>
           </div>
@@ -52,7 +52,7 @@ export default function IndustryOverviewPanel() {
         </div>
 
         {cohorts.length === 0 ? (
-          <div className="mt-6 rounded-xl border border-dashed border-brand-sand bg-brand-cream p-8 text-center">
+          <div className="mt-6 rounded-xl border border-dashed border-brand-sand bg-brand-cream p-8 max-sm:p-5 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white text-brand-muted shadow-sm">
               <UsersRoundIcon className="h-6 w-6" />
             </div>
@@ -66,21 +66,21 @@ export default function IndustryOverviewPanel() {
             {cohorts.map((cohort) => (
               <div key={cohort.teamId} className="flex flex-col gap-2 py-3.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <p className="text-xs font-bold text-brand-deep">
+                  <p className="break-words text-xs font-bold text-brand-deep">
                     Team {cohort.teamName} &bull; Problem {cohort.problemCode}
                   </p>
-                  <p className="mt-0.5 truncate text-xs text-brand-muted">
+                  <p className="mt-0.5 break-words text-xs text-brand-muted">
                     {cohort.problemTitle} &middot; {cohort.track}
                   </p>
-                  <p className="mt-1 flex flex-wrap items-center gap-3 text-[11px] text-brand-muted">
+                  <p className="mt-1 flex flex-wrap items-center gap-3 text-xs text-brand-muted">
                     <span>{cohort.memberCount} {cohort.memberCount === 1 ? "member" : "members"}</span>
-                    <span className="flex items-center gap-1">
-                      <MailIcon className="h-3 w-3 text-brand-primary" />
+                    <span className="flex min-w-0 items-center gap-1 break-all">
+                      <MailIcon className="h-3 w-3 shrink-0 text-brand-primary" />
                       {cohort.leader}
                     </span>
                   </p>
                 </div>
-                <div className="flex shrink-0 items-center gap-3">
+                <div className="flex shrink-0 items-center gap-3 max-sm:shrink">
                   <span className="rounded-full border border-brand-approved/20 bg-brand-approved/10 px-2.5 py-0.5 text-xs font-semibold text-brand-approved">
                     {cohort.milestone}
                   </span>

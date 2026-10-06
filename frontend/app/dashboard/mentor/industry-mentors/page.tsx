@@ -118,7 +118,7 @@ export default function IndustryMentorsPage() {
 
       <section className="mb-10">
         <div className="mb-4">
-          <h2 className="text-base font-bold text-brand-deep">Allocated Industry Mentors</h2>
+          <h2 className="break-words text-base font-bold text-brand-deep">Allocated Industry Mentors</h2>
           <p className="text-xs text-brand-muted">Live assignments from the platform, not a local directory.</p>
         </div>
 
@@ -155,11 +155,11 @@ export default function IndustryMentorsPage() {
           <ul className="divide-y divide-brand-sand">
             {mapping.map(({ group, mentor }) => (
               <li key={group.teamId} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
-                <span className="font-semibold text-brand-deep">
+                <span className="min-w-0 break-words font-semibold text-brand-deep">
                   {group.teamName}{" "}
                   <span className="font-mono text-xs text-brand-muted">({group.teamId})</span>
                 </span>
-                <span className="text-brand-muted">{mentor?.name ?? "Unassigned"}</span>
+                <span className="min-w-0 break-words text-brand-muted">{mentor?.name ?? "Unassigned"}</span>
               </li>
             ))}
           </ul>

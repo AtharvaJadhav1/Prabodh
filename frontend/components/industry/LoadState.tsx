@@ -12,12 +12,12 @@ export function ErrorBanner({ message, onRetry, className = "" }: BannerProps) {
       role="alert"
       className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-semibold text-red-700 ${className}`}
     >
-      <span>{message}</span>
+      <span className="min-w-0 break-words">{message}</span>
       {onRetry ? (
         <button
           type="button"
           onClick={onRetry}
-          className="rounded-lg border border-red-300 bg-white px-3 py-1 text-[11px] font-bold text-red-700 hover:bg-red-100"
+          className="rounded-lg border border-red-300 bg-white px-3 py-1 max-sm:py-2 text-xs font-bold text-red-700 hover:bg-red-100"
         >
           Retry
         </button>

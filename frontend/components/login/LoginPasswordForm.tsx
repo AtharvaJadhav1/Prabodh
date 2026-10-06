@@ -41,7 +41,7 @@ export default function LoginPasswordForm({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">{title}</h1>
+        <h1 className="break-words font-serif text-2xl font-bold tracking-tight text-brand-deep sm:text-3xl">{title}</h1>
         {description ? (
           <p className="mt-2 text-sm leading-relaxed text-brand-muted">{description}</p>
         ) : null}
@@ -109,11 +109,11 @@ export default function LoginPasswordForm({
             </Link>
           </p>
         </div>
-        {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+        {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
         <button
           type="submit"
           disabled={loading}
-          className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-sm font-semibold text-white shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
+          className="flex w-full items-center justify-center rounded-xl bg-brand-primary px-6 py-3.5 text-center text-sm font-semibold leading-snug text-white max-sm:px-4 shadow-lg shadow-brand-primary/25 hover:bg-brand-hover disabled:opacity-60"
         >
           {loading ? "Signing in… (first request may take up to a minute)" : submitLabel}
         </button>

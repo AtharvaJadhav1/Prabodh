@@ -112,10 +112,10 @@ export default function CreateTeamModal({ open, onClose, contextLine, onCreated 
         aria-label="Create your team"
         className="relative w-full max-w-md rounded-2xl max-sm:max-h-[90dvh] max-sm:overflow-y-auto border border-brand-softline bg-white shadow-2xl"
       >
-        <div className="flex items-center justify-between border-b border-brand-softline px-5 py-4">
-          <div className="flex items-center gap-2">
-            <PlusIcon className="h-5 w-5 text-brand-primary" />
-            <h3 className="text-sm font-bold text-brand-deep">Create your team</h3>
+        <div className="flex items-center justify-between gap-3 border-b border-brand-softline px-5 py-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <PlusIcon className="h-5 w-5 shrink-0 text-brand-primary" />
+            <h3 className="min-w-0 break-words text-sm font-bold text-brand-deep">Create your team</h3>
           </div>
           <button
             type="button"
@@ -133,7 +133,7 @@ export default function CreateTeamModal({ open, onClose, contextLine, onCreated 
             your selection over.
           </p>
           {contextLine ? (
-            <p className="rounded-xl border border-brand-softline bg-brand-cream px-3 py-2 text-xs font-semibold text-brand-deep">
+            <p className="break-words rounded-xl border border-brand-softline bg-brand-cream px-3 py-2 text-xs font-semibold text-brand-deep">
               {contextLine}
             </p>
           ) : null}
@@ -147,7 +147,7 @@ export default function CreateTeamModal({ open, onClose, contextLine, onCreated 
             onError={setError}
           />
 
-          {error ? <p className="text-sm font-medium text-red-700">{error}</p> : null}
+          {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
 
           <p className="text-xs text-brand-muted">
             Already have an invite from a friend?{" "}

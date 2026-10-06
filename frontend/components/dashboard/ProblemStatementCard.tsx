@@ -24,7 +24,7 @@ export default function ProblemStatementCard() {
   const goToPreferences = () => router.push(PS_HREF);
 
   const cardShell =
-    "relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-brand-softline/80 bg-white p-6 shadow-sm transition hover:border-brand-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/50";
+    "relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-brand-softline/80 bg-white p-5 sm:p-6 shadow-sm transition hover:border-brand-primary/50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/50";
 
   if (!ps) {
     return (
@@ -42,7 +42,7 @@ export default function ProblemStatementCard() {
         className={cardShell}
       >
         <p className="text-xs font-bold uppercase tracking-wider text-brand-muted">Selected Problem Statement</p>
-        <h3 className="mt-2 text-lg font-bold text-brand-deep">None locked yet</h3>
+        <h3 className="mt-2 break-words text-lg font-bold text-brand-deep">None locked yet</h3>
         <p className="mt-2 text-sm text-brand-muted">
           Rank your preferences on the Problem Statements page.
         </p>
@@ -83,13 +83,13 @@ export default function ProblemStatementCard() {
           <span className="rounded-md border border-brand-softline bg-[#FAF7F2] px-2 py-0.5 font-mono text-xs font-bold text-brand-deep">
             {ps.code}
           </span>
-          <span className="rounded-md border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs font-semibold text-[#C25E26]">
+          <span className="rounded-md border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs font-semibold text-[#C25E26] break-words">
             {ps.theme}
           </span>
         </div>
 
-        <h3 className="mb-2 mt-3 text-lg font-extrabold leading-snug text-brand-deep sm:text-xl">{ps.title}</h3>
-        <p className="line-clamp-3 text-sm leading-relaxed text-brand-charcoal/80 hyphens-none">{ps.description}</p>
+        <h3 className="mb-2 mt-3 break-words text-lg font-extrabold leading-snug text-brand-deep sm:text-xl">{ps.title}</h3>
+        <p className="line-clamp-3 break-words text-sm leading-relaxed text-brand-charcoal/80 hyphens-none">{ps.description}</p>
 
         <div className="mt-4 flex items-center gap-2 border-t border-brand-softline/60 pt-3 text-xs text-brand-muted">
           <span className="h-2 w-2 rounded-full bg-brand-deep" /> Final Project Submission Track
@@ -126,7 +126,7 @@ function SpecRow({ label, value, capitalize = false }: { label: string; value: s
   return (
     <div>
       <p className="text-[10px] font-bold uppercase tracking-wider text-brand-muted">{label}</p>
-      <p className={`mt-0.5 text-sm font-medium leading-relaxed text-brand-deep ${capitalize ? "capitalize" : ""}`}>
+      <p className={`mt-0.5 break-words text-sm font-medium leading-relaxed text-brand-deep ${capitalize ? "capitalize" : ""}`}>
         {value}
       </p>
     </div>

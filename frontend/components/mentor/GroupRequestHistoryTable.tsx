@@ -30,7 +30,7 @@ export default function GroupRequestHistoryTable({ history }: Props) {
 
   if (history.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-brand-sand bg-white py-16 px-6 text-center shadow-sm">
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-brand-sand bg-white py-16 px-6 max-sm:py-10 max-sm:px-4 text-center shadow-sm">
         <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-cream">
           <InboxIcon className="h-8 w-8 text-brand-muted" />
         </div>
@@ -45,8 +45,8 @@ export default function GroupRequestHistoryTable({ history }: Props) {
   return (
     <div className="rounded-xl border border-brand-sand bg-white shadow-sm">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3 border-b border-brand-sand px-4 py-3">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap items-center gap-3 border-b border-brand-sand px-4 py-3 max-sm:px-3">
+        <div className="relative min-w-0 flex-1 max-sm:basis-full">
           <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-muted" />
           <input
             type="text"
@@ -59,7 +59,7 @@ export default function GroupRequestHistoryTable({ history }: Props) {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-          className="rounded-lg border border-brand-sand bg-brand-cream px-3 py-2 text-xs font-medium text-brand-deep focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary/30"
+          className="rounded-lg border border-brand-sand bg-brand-cream px-3 py-2 max-sm:w-full text-xs font-medium text-brand-deep focus:border-brand-primary focus:outline-none focus:ring-1 focus:ring-brand-primary/30"
         >
           <option value="ALL">All</option>
           <option value="ACCEPTED">Accepted</option>
@@ -71,7 +71,7 @@ export default function GroupRequestHistoryTable({ history }: Props) {
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table className="w-full min-w-[860px] whitespace-nowrap text-left text-xs">
           <thead>
             <tr className="border-b border-brand-sand bg-brand-cream/60">
               <th className="px-4 py-3 font-bold text-brand-muted">Team</th>

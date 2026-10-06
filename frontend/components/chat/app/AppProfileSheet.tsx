@@ -89,7 +89,7 @@ function ProfileActions({ person }: { person: ChatPerson }) {
   if (confirm) {
     return (
       <div role="alertdialog" aria-label="Confirm unfriend" className="rounded-2xl bg-chat-dangerSoft p-3 text-center">
-        <p className="text-[14px] font-semibold text-chat-danger">Remove {person.fullName} from your friends?</p>
+        <p className="text-[14px] font-semibold text-chat-danger [overflow-wrap:anywhere]">Remove {person.fullName} from your friends?</p>
         <div className="mt-3 flex gap-2">
           <button type="button" onClick={() => setConfirm(false)} className={BTN_NEUTRAL}>
             Keep
@@ -306,7 +306,7 @@ export default function AppProfileSheet({ userId, onClose }: Props) {
           {error ? (
             <div className="flex flex-col items-center gap-3 py-10 text-center" role="alert">
               <AlertIcon className="h-9 w-9 text-chat-danger" />
-              <p className="text-[15px] font-semibold text-chat-text">{error}</p>
+              <p className="text-[15px] font-semibold text-chat-text [overflow-wrap:anywhere]">{error}</p>
               <button type="button" onClick={retry} className={`${BTN_PRIMARY} max-w-[12rem] flex-none`}>
                 Retry
               </button>
