@@ -119,6 +119,22 @@ export function holdsRole(
   return Array.isArray(record.additionalRoles) && record.additionalRoles.includes(role);
 }
 
+/** Phones and tablets (below the Tailwind `lg` breakpoint). False on the server. */
+export function isCompactViewport(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+  try {
+    return window.matchMedia("(max-width: 1023px)").matches;
+  } catch {
+    return false;
+  }
+}
+
+/** Post-login landing for a workspace: students on phones/tablets open chat first. */
+function landingForRole(role: PlatformRole): string {
+  if (role === "student" && isCompactViewport()) return "/dashboard/student/discussion";
+  return dashboardForRole(role);
+}
+
 function lastRoleKey(userId: string) {
   return `prabodh:activeRole:${userId}`;
 }
@@ -137,11 +153,11 @@ export function landingForLogin(result: {
     : [];
   const held: PlatformRole[] = [result.platformRole, ...extras];
   if (result.activeRole && held.includes(result.activeRole)) {
-    return dashboardForRole(result.activeRole);
+    return landingForRole(result.activeRole);
   }
   const stored = result.userId ? readLastActiveRole(result.userId) : null;
-  if (stored && held.includes(stored)) return dashboardForRole(stored);
-  return dashboardForRole(result.platformRole);
+  if (stored && held.includes(stored)) return landingForRole(stored);
+  return landingForRole(result.platformRole);
 }
 
 /** Last-used workspace for this account (this browser). Null when unset/unknown. */

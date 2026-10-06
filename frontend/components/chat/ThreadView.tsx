@@ -20,6 +20,8 @@ type Props = {
   onActivity: (conv: ChatConversation, preview: string, createdAt: string) => void;
   /** Thread is on screen with unread messages: tell the server and clear the badge. */
   onViewed: (conv: ChatConversation) => void;
+  /** Full-screen mobile style: borderless header and composer. */
+  app?: boolean;
 };
 
 const pattern = {
@@ -139,7 +141,7 @@ function ThreadSkeleton() {
   );
 }
 
-export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, onActivity, onViewed }: Props) {
+export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, onActivity, onViewed, app = false }: Props) {
   const isGroup = conv.type === "group";
   const handleActivity = useCallback(
     (preview: string, createdAt: string) => onActivity(conv, preview, createdAt),
@@ -284,7 +286,7 @@ export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, on
 
   return (
     <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col" aria-label={`Conversation with ${conv.title}`}>
-      <header className="flex min-h-[60px] shrink-0 items-center gap-1.5 border-b border-brand-softline bg-[#FAF7F2] px-2 py-2 sm:px-3">
+      <header className={`flex min-h-[60px] shrink-0 items-center gap-1.5 bg-[#FAF7F2] px-2 sm:px-3 ${app ? "pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]" : "border-b border-brand-softline py-2"}`}>
         {onBack ? (
           <button
             type="button"
@@ -413,6 +415,7 @@ export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, on
         convId={conv.id}
         placeholder={isGroup ? `Message ${conv.title}` : "Type a message"}
         onSend={t.send}
+        app={app}
         onFocusInput={() => {
           if (atBottom.current) scrollToBottom(false);
         }}

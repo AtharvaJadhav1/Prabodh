@@ -20,6 +20,7 @@ import {
   allRoles,
   clearSession,
   dashboardForRole,
+  landingForLogin,
   readLastActiveRole,
   readSession,
   writeLastActiveRole,
@@ -227,7 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.replace("/change-password");
       return;
     }
-    router.replace(dashboardForRole(session.activeRole ?? session.platformRole));
+    router.replace(landingForLogin(session));
   }, [ready, session, isAuthEntry, pathname, router]);
 
   // Admin-issued password: nothing else is usable until the user picks their own.

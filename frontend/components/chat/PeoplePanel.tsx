@@ -20,8 +20,9 @@ function RowSkeleton() {
   );
 }
 
-export default function PeoplePanel() {
-  const [query, setQuery] = useState("");
+export default function PeoplePanel({ externalQuery }: { externalQuery?: string } = {}) {
+  const [ownQuery, setQuery] = useState("");
+  const query = externalQuery ?? ownQuery;
   const [results, setResults] = useState<ChatPerson[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -93,6 +94,7 @@ export default function PeoplePanel() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {externalQuery !== undefined ? null : (
       <div className="shrink-0 px-3 pb-2 pt-1">
         <label htmlFor="chat-people-search" className="sr-only">
           Search people by name, or type @ and an email address
@@ -112,6 +114,7 @@ export default function PeoplePanel() {
           />
         </div>
       </div>
+      )}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" aria-busy={loading}>
         {tooShort ? (
           <div className="px-6 py-10 text-center">

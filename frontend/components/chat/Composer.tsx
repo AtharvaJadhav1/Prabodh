@@ -36,9 +36,11 @@ type Props = {
   onSend: (text: string) => void;
   /** Called when the user focuses/types so the thread can stay pinned to the latest message. */
   onFocusInput?: () => void;
+  /** Full-screen mobile style: borderless bar, borderless pill input. */
+  app?: boolean;
 };
 
-export default function Composer({ convId, placeholder, onSend, onFocusInput }: Props) {
+export default function Composer({ convId, placeholder, onSend, onFocusInput, app = false }: Props) {
   const [text, setText] = useState("");
   const [finePointer, setFinePointer] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -80,7 +82,7 @@ export default function Composer({ convId, placeholder, onSend, onFocusInput }: 
 
   return (
     <form
-      className="flex shrink-0 items-end gap-2 border-t border-brand-softline bg-[#FAF7F2] px-2.5 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-3"
+      className={`flex shrink-0 items-end gap-2 px-2.5 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-3 ${app ? "bg-[#F4EEE6]" : "border-t border-brand-softline bg-[#FAF7F2]"}`}
       onSubmit={(e) => {
         e.preventDefault();
         submit();
@@ -111,7 +113,7 @@ export default function Composer({ convId, placeholder, onSend, onFocusInput }: 
               submit();
             }
           }}
-          className="block w-full resize-none rounded-3xl border border-brand-softline bg-white px-4 py-2.5 text-[16px] leading-[22px] text-brand-charcoal outline-none transition-colors placeholder:text-brand-muted/70 focus:border-brand-primary md:text-sm md:leading-[22px]"
+          className={`block w-full resize-none rounded-3xl bg-white px-4 py-2.5 text-[16px] leading-[22px] text-brand-charcoal outline-none transition-colors placeholder:text-brand-muted/70 md:text-sm md:leading-[22px] ${app ? "border-0" : "border border-brand-softline focus:border-brand-primary"}`}
         />
         {text.length >= COUNTER_FROM ? (
           <span

@@ -15,6 +15,7 @@ import type { ChatConversation, ChatPerson, Friendship } from "../../lib/chat-ty
 import { useAuth } from "../auth/AuthProvider";
 import { ChatPeopleProvider, type ChatPeopleActions } from "./chat-context";
 import { ChatIcon, CloseIcon, ExpandIcon } from "./chat-icons";
+import ChatAppHome from "./ChatAppHome";
 import ConversationList from "./ConversationList";
 import ExpandDialog from "./ExpandDialog";
 import FriendsPanel from "./FriendsPanel";
@@ -26,7 +27,8 @@ import { useFriendsData } from "./useFriendsData";
 import { useViewportFit } from "./useViewportFit";
 
 export type ChatWorkspaceProps = {
-  variant: "card" | "page";
+  /** `app` = full-screen WhatsApp-style mobile layout (single pane, no frame). */
+  variant: "card" | "page" | "app";
   initialConversationId?: string;
   className?: string;
   /** Called whenever a conversation is on screen with unread messages (e.g. to clear legacy notifications). */
@@ -83,7 +85,12 @@ function ChatWorkspaceCore({
   const mounted = useRef(true);
 
   const [width, setWidth] = useState(0);
-  const [tab, setTab] = useState<Tab>("chats");
+  const [tab, setTabState] = useState<Tab>("chats");
+  const [query, setQuery] = useState("");
+  const setTab = useCallback((t: Tab) => {
+    setTabState(t);
+    setQuery("");
+  }, []);
   const [activeId, setActiveIdState] = useState<string | null>(initialConversationId ?? null);
   const [draft, setDraft] = useState<ChatConversation | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
@@ -107,8 +114,9 @@ function ChatWorkspaceCore({
     [enterProfile],
   );
 
-  const twoPane = width >= TWO_PANE_MIN;
-  const fitHeight = useViewportFit(rootRef, variant === "page" && !inDialog && !twoPane);
+  const isApp = variant === "app";
+  const twoPane = !isApp && width >= TWO_PANE_MIN;
+  const fitHeight = useViewportFit(rootRef, (variant === "page" || isApp) && !inDialog && !twoPane);
 
   useEffect(() => {
     mounted.current = true;
@@ -351,8 +359,15 @@ function ChatWorkspaceCore({
       ? "h-full"
       : variant === "card"
         ? "h-[560px] max-h-[calc(100dvh-6rem)] min-h-[420px]"
-        : "h-[calc(100dvh-11.5rem)] min-h-[420px] sm:h-[calc(100dvh-8.5rem)]";
-  const frame = inDialog || variant === "card" ? "" : "rounded-2xl border border-brand-softline shadow-xs";
+        : variant === "app"
+          ? "h-[100dvh]"
+          : "h-[calc(100dvh-11.5rem)] min-h-[420px] sm:h-[calc(100dvh-8.5rem)]";
+  const frame = inDialog || variant === "card" || isApp ? "" : "rounded-2xl border border-brand-softline shadow-xs";
+
+  const visibleFriends = useMemo(() => {
+    const f = query.trim().toLowerCase();
+    return isApp && f ? friendsData.friends.filter((x) => x.fullName.toLowerCase().includes(f)) : friendsData.friends;
+  }, [isApp, query, friendsData.friends]);
 
   const tabs: Array<{ id: Tab; label: string; badge: number }> = [
     { id: "chats", label: "Chats", badge: unreadTotal },
@@ -363,7 +378,7 @@ function ChatWorkspaceCore({
   const onTabKey = (e: React.KeyboardEvent, idx: number) => {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
     e.preventDefault();
-    const next = tabs[(idx + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length].id;
+    const next: Tab = tabs[(idx + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length].id;
     setTab(next);
     tabRefs.current[next]?.focus();
   };
@@ -375,7 +390,45 @@ function ChatWorkspaceCore({
         className={`relative flex min-w-0 overflow-hidden bg-white ${sizing} ${frame} ${className ?? ""}`}
         style={fitHeight ? { height: fitHeight } : undefined}
       >
-        {showList ? (
+        {showList && isApp ? (
+          <ChatAppHome
+            tabs={tabs}
+            tab={tab}
+            onTab={setTab}
+            onTabKey={onTabKey}
+            registerTab={(id, el) => {
+              tabRefs.current[id] = el;
+            }}
+            query={query}
+            onQuery={setQuery}
+            onNewChat={() => setTab("people")}
+          >
+            {tab === "chats" ? (
+              <ConversationList
+                app
+                externalFilter={query}
+                items={convs.items}
+                loading={convs.loading}
+                error={convs.error}
+                activeId={activeId}
+                onSelect={selectConversation}
+                onRetry={convs.refresh}
+                onFindPeople={() => setTab("people")}
+              />
+            ) : tab === "friends" ? (
+              <FriendsPanel
+                friends={visibleFriends}
+                requests={friendsData.requests}
+                loading={friendsData.loading}
+                error={friendsData.error}
+                onRetry={friendsData.refresh}
+                onFindPeople={() => setTab("people")}
+              />
+            ) : (
+              <PeoplePanel externalQuery={query} />
+            )}
+          </ChatAppHome>
+        ) : showList ? (
           <div
             className={`flex min-h-0 flex-col bg-[#FAF7F2] ${twoPane ? "w-[320px] shrink-0 border-r border-brand-softline" : "w-full"}`}
           >
@@ -465,6 +518,7 @@ function ChatWorkspaceCore({
             {activeConv ? (
               <ThreadView
                 key={activeConv.id}
+                app={isApp}
                 conv={activeConv}
                 me={me}
                 meName={meName}
