@@ -24,6 +24,8 @@ type Props = {
 
 export default function PreferenceReviewCard({ preference, teamName, busy, onApprove }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const isLong = preference.description.length > 280;
 
   return (
     <>
@@ -43,7 +45,23 @@ export default function PreferenceReviewCard({ preference, teamName, busy, onApp
         <p className="mt-1 text-xs font-medium text-brand-muted">
           {preference.theme} · {preference.organisation}
         </p>
-        <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-brand-charcoal text-justify [text-justify:inter-word] hyphens-none">{preference.description}</p>
+        <p
+          className={`mt-3 whitespace-pre-line text-sm leading-relaxed text-brand-charcoal text-justify [text-justify:inter-word] hyphens-none ${
+            expanded || !isLong ? "" : "line-clamp-4"
+          }`}
+        >
+          {preference.description}
+        </p>
+        {isLong ? (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            aria-expanded={expanded}
+            className="mt-1 text-xs font-bold text-brand-primary hover:underline"
+          >
+            {expanded ? "View less" : "View more"}
+          </button>
+        ) : null}
 
         <div className="mt-4 flex justify-end border-t border-brand-sand pt-3">
           <button
