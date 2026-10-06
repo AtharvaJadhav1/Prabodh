@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useChatHistory } from "./use-chat-history";
 import {
   acceptFriendRequest,
   cancelFriendRequest,
@@ -90,6 +91,22 @@ function ChatWorkspaceCore({
   const [overrides, setOverrides] = useState<Record<string, Override>>({});
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
 
+  // Browser Back should close an open conversation / profile first, not jump to the dashboard.
+  const { enterThread, leaveThread, enterProfile, leaveProfile, forgetProfile } = useChatHistory({
+    onPopThread: () => {
+      setActiveIdState(null);
+      onActiveChange?.(null);
+    },
+    onPopProfile: () => setProfileId(null),
+  });
+  const openProfile = useCallback(
+    (id: string) => {
+      setProfileId(id);
+      enterProfile();
+    },
+    [enterProfile],
+  );
+
   const twoPane = width >= TWO_PANE_MIN;
   const fitHeight = useViewportFit(rootRef, variant === "page" && !inDialog && !twoPane);
 
@@ -120,8 +137,9 @@ function ChatWorkspaceCore({
     (id: string | null) => {
       setActiveIdState(id);
       onActiveChange?.(id);
+      if (id) enterThread();
     },
-    [onActiveChange],
+    [onActiveChange, enterThread],
   );
 
   const activeConv = useMemo<ChatConversation | null>(() => {
@@ -202,17 +220,18 @@ function ChatWorkspaceCore({
       const existing = convs.items.find((c) => c.id === id);
       if (!existing) setDraft(draftConversation(person));
       setProfileId(null);
+      forgetProfile();
       setTab("chats");
       setActiveId(id);
     },
-    [convs.items, setActiveId],
+    [convs.items, setActiveId, forgetProfile],
   );
 
   const actions = useMemo<ChatPeopleActions>(
     () => ({
       friendshipOf,
       isBusy: (id) => busy.has(id),
-      openProfile: (id) => setProfileId(id),
+      openProfile,
       openDm,
       add: (p) =>
         void run(
@@ -273,15 +292,16 @@ function ChatWorkspaceCore({
           "Could not remove this friend.",
         ),
     }),
-    [friendshipOf, busy, openDm, run, friendsData, convs],
+    [friendshipOf, busy, openDm, openProfile, run, friendsData, convs],
   );
 
   const selectConversation = useCallback(
     (c: ChatConversation) => {
       setProfileId(null);
+      forgetProfile();
       setActiveId(c.id);
     },
-    [setActiveId],
+    [setActiveId, forgetProfile],
   );
 
   const handleActivity = useCallback(
@@ -449,10 +469,10 @@ function ChatWorkspaceCore({
                 me={me}
                 meName={meName}
                 onBack={twoPane ? undefined : () => {
-                  setActiveId(null);
+                  if (!leaveThread()) setActiveId(null);
                   requestAnimationFrame(() => tabRefs.current[tab]?.focus());
                 }}
-                onOpenProfile={(id) => setProfileId(id)}
+                onOpenProfile={openProfile}
                 onActivity={handleActivity}
                 onViewed={handleViewed}
               />
@@ -477,7 +497,7 @@ function ChatWorkspaceCore({
           </div>
         ) : null}
 
-        {profileId ? <PersonProfileSheet key={profileId} userId={profileId} wide={twoPane} onClose={() => setProfileId(null)} /> : null}
+        {profileId ? <PersonProfileSheet key={profileId} userId={profileId} wide={twoPane} onClose={() => { if (!leaveProfile()) setProfileId(null); }} /> : null}
 
         {notice ? (
           <div

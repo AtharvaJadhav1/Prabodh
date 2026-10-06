@@ -30,6 +30,24 @@ async function bootstrap() {
   // kill_timeout set in scripts/ecosystem.config.cjs.
   app.enableShutdownHooks();
 
+  // Response hardening. Chat and comment responses are private, so browsers and proxies must not keep
+  // copies of them (they could otherwise be read from a shared computer's cache after logout).
+  app.use(
+    (
+      req: { path: string },
+      res: { setHeader: (name: string, value: string) => void },
+      next: () => void,
+    ) => {
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Referrer-Policy', 'no-referrer');
+      if (req.path.startsWith('/api/chat') || /\/comments(\/|$)/.test(req.path)) {
+        res.setHeader('Cache-Control', 'no-store');
+        res.setHeader('Pragma', 'no-cache');
+      }
+      next();
+    },
+  );
+
   // Prisma errors -> 404/409/503 with a readable message instead of a bare 500.
   app.useGlobalFilters(new PrismaExceptionFilter());
 

@@ -30,6 +30,7 @@ import {
 import { createNotifications } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { consumeToken } from '../../lib/rate-limit';
+import { decryptText, dmAad, encryptText } from '../../lib/message-crypto';
 import { TeamsService } from '../teams/service';
 
 /** Group threads with no read marker count comments from the last 30 days as unread. */
@@ -70,6 +71,7 @@ const eligibleUserWhere: Prisma.UserWhereInput = {
 
 type DmRow = {
   id: string;
+  pairKey: string;
   senderId: string;
   recipientId: string;
   body: string;
@@ -85,7 +87,8 @@ function toDm(m: DmRow) {
     id: m.id,
     senderId: m.senderId,
     recipientId: m.recipientId,
-    body: deleted ? '' : m.body,
+    // Stored encrypted at rest; decrypted here, bound to this conversation and sender.
+    body: deleted ? '' : decryptText(m.body, dmAad(m.pairKey, m.senderId)),
     createdAt: m.createdAt.toISOString(),
     readAt: m.readAt ? m.readAt.toISOString() : null,
     deleted,
@@ -531,12 +534,13 @@ export class ChatService {
       if (dup) return toDm(dup);
     }
     try {
+      const key = pairKey(user.id, otherId);
       const row = await this.prisma.directMessage.create({
         data: {
-          pairKey: pairKey(user.id, otherId),
+          pairKey: key,
           senderId: user.id,
           recipientId: otherId,
-          body: parsed.body,
+          body: encryptText(parsed.body, dmAad(key, user.id)),
           clientId,
         },
       });
@@ -778,7 +782,7 @@ export class ChatService {
         person,
         lastMessage: d
           ? {
-              preview: previewText(d.body, d.deleted_at !== null),
+              preview: previewText(decryptText(d.body, dmAad(d.pair_key, d.sender_id)), d.deleted_at !== null),
               createdAt: d.created_at.toISOString(),
               senderName: mine ? user.fullName : person.fullName,
               mine,
