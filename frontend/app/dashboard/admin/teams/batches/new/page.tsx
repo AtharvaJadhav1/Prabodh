@@ -51,7 +51,7 @@ export default function CreateBatchPage() {
         </Link>
 
         <form
-          className="mt-4 space-y-6 rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-sm"
+          className="mt-4 space-y-6 rounded-2xl border border-neutral-200/80 bg-white p-6 max-sm:p-4 shadow-sm"
           onSubmit={(e) => {
             e.preventDefault();
             void submit();
@@ -110,7 +110,7 @@ export default function CreateBatchPage() {
             </div>
 
             {teams.length === 0 ? (
-              <p className="mt-3 rounded-xl border border-dashed border-neutral-300 p-6 text-center text-xs text-neutral-500">
+              <p className="mt-3 rounded-xl border border-dashed border-neutral-300 p-6 max-sm:p-4 text-center text-xs text-neutral-500">
                 No teams added yet. Use <strong>Add teams</strong> to pick from teams that aren&apos;t in any batch.
               </p>
             ) : (

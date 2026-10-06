@@ -444,7 +444,7 @@ export default function AdminUsersPage() {
   return (
     <AdminShell title="Manage Users">
       <div className="mx-auto max-w-7xl bg-[#f5f1eb] px-0 pb-4">
-        <section className="mb-6 rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-sm">
+        <section className="mb-6 rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-sm max-sm:p-4">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#d95c26]/10">
               <UserPlusIcon className="h-5 w-5 text-[#d95c26]" />
@@ -582,7 +582,7 @@ export default function AdminUsersPage() {
                   setInviteBusy(false);
                 }
               }}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#3c2415] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#2a190e] active:scale-[0.98] disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#3c2415] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-[#2a190e] active:scale-[0.98] disabled:opacity-60 max-sm:w-full max-sm:justify-center max-sm:px-4"
             >
               {inviteBusy ? (
                 <>
@@ -600,7 +600,7 @@ export default function AdminUsersPage() {
           </div>
         </section>
 
-        <section className="mb-8 rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-sm">
+        <section className="mb-8 rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-sm max-sm:p-4">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#d95c26]/10">
               <FileSpreadsheetIcon className="h-5 w-5 text-[#d95c26]" />
@@ -889,8 +889,8 @@ export default function AdminUsersPage() {
 
         {removeTarget ? (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
-            <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl">
-              <div className="flex items-start justify-between gap-3 border-b border-neutral-100 bg-red-50/60 px-6 py-4">
+            <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-2xl max-sm:max-h-[90dvh] max-sm:overflow-y-auto">
+              <div className="flex items-start justify-between gap-3 border-b border-neutral-100 bg-red-50/60 px-6 py-4 max-sm:px-4">
                 <div className="flex items-start gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
                     <AlertTriangleIcon className="h-5 w-5 text-red-600" />
@@ -907,7 +907,7 @@ export default function AdminUsersPage() {
                 </button>
               </div>
 
-              <div className="max-h-[45vh] overflow-y-auto px-6 py-5">
+              <div className="max-h-[45vh] overflow-y-auto px-6 py-5 max-sm:px-4">
                 {removedDone ? (
                   <div>
                     <p className="text-sm font-semibold text-neutral-800">

@@ -21,7 +21,7 @@ export default function IndustryOverviewPage() {
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-base font-bold text-brand-deep">Pending Invites</h2>
             <Link href="/dashboard/industry/invites" className="text-xs font-semibold text-brand-primary hover:text-brand-hover">
@@ -57,7 +57,7 @@ export default function IndustryOverviewPage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-base font-bold text-brand-deep">My Institute Mentors</h2>
             <Link href="/dashboard/industry/mentors" className="text-xs font-semibold text-brand-primary hover:text-brand-hover">

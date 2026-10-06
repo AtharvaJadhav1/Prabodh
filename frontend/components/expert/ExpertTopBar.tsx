@@ -9,7 +9,7 @@ export type ExpertTopBarProps = {
 
 export default function ExpertTopBar({ onMenuClick, title }: ExpertTopBarProps) {
   return (
-    <header className="sticky top-0 z-20 flex h-16 min-h-[64px] max-h-16 shrink-0 box-border items-center justify-between gap-3 border-b border-brand-softline bg-white/90 px-6 backdrop-blur-sm">
+    <header className="sticky top-0 z-20 flex h-16 min-h-[64px] max-h-16 shrink-0 box-border items-center justify-between gap-3 border-b border-brand-softline bg-white/90 px-6 max-sm:gap-2 max-sm:px-3 backdrop-blur-sm">
       <button
         type="button"
         onClick={onMenuClick}

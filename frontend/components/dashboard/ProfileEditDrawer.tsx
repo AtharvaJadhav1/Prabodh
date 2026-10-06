@@ -168,7 +168,7 @@ export default function ProfileEditDrawer() {
             onChange={(school) => patch({ school })}
             required
           />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
             <TextInput
               label="Team"
               value={draft.team}
@@ -249,7 +249,7 @@ export default function ProfileEditDrawer() {
                     onChange={(name) => update({ name })}
                     required
                   />
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
                     <TextInput
                       label="Level (optional)"
                       value={item.level ?? ""}
@@ -385,7 +385,7 @@ export default function ProfileEditDrawer() {
                   onChange={(issuer) => update({ issuer })}
                   required
                 />
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
                   <TextInput
                     label="Credential ID (optional)"
                     value={item.credential ?? ""}

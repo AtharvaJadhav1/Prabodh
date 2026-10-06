@@ -23,7 +23,7 @@ export default function AllocationTable({ allocations, onAssignInstitute, onAssi
   }, [allocations, search]);
 
   return (
-    <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
       <div className="flex flex-col gap-4 pb-6 border-b border-brand-sand lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-base font-bold text-brand-deep">Mentor Allocation</h2>
@@ -31,7 +31,7 @@ export default function AllocationTable({ allocations, onAssignInstitute, onAssi
             Assign or reassign Institute and Industrial mentors to hackathon teams.
           </p>
         </div>
-        <div className="relative min-w-[240px]">
+        <div className="relative min-w-[240px] max-sm:w-full max-sm:min-w-0">
           <input
             type="text"
             placeholder="Search team..."

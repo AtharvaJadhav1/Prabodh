@@ -28,7 +28,7 @@ export default function AssignedTeamsTable({ groups, totalTeams, teamMentors }: 
   }, [groups, search]);
 
   return (
-    <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
       <div className="flex flex-col gap-4 pb-6 border-b border-brand-sand lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-deep font-bold text-white">
@@ -44,7 +44,7 @@ export default function AssignedTeamsTable({ groups, totalTeams, teamMentors }: 
           </div>
         </div>
 
-        <div className="relative min-w-[240px]">
+        <div className="relative min-w-[240px] max-sm:w-full max-sm:min-w-0">
           <input
             type="text"
             placeholder="Search team, PS..."

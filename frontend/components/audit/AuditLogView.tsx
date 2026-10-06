@@ -269,7 +269,7 @@ export default function AuditLogView({ endpoint, teamOptions, csvName = "audit_l
             <FilterDropdown options={DATE_RANGES} value={hours} onChange={setHours} className="w-full sm:w-44" />
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 max-sm:flex-wrap">
             <button
               type="button"
               onClick={() => setRefreshKey((k) => k + 1)}
@@ -294,7 +294,7 @@ export default function AuditLogView({ endpoint, teamOptions, csvName = "audit_l
           </div>
         </div>
 
-        <section className="rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-neutral-200/80 bg-white p-6 max-sm:p-4 shadow-sm">
           <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
             <span className="rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-[11px] font-semibold text-neutral-500">
               {total} event{total === 1 ? "" : "s"}

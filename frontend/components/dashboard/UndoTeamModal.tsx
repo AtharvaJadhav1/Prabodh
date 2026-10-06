@@ -53,7 +53,7 @@ export default function UndoTeamModal({ open, onClose, onDisbanded }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label="Undo team creation"
-        className="relative w-full max-w-md rounded-2xl border border-brand-softline bg-white shadow-2xl"
+        className="relative w-full max-w-md rounded-2xl max-sm:max-h-[90dvh] max-sm:overflow-y-auto border border-brand-softline bg-white shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-brand-softline px-5 py-4">
           <div className="flex items-center gap-2">

@@ -352,7 +352,7 @@ export default function MentorProfileEditDrawer() {
             itemLabel="Entry"
             renderItem={(item, update) => (
               <>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 max-sm:grid-cols-1">
                   <TextInput
                     label="Season"
                     value={item.season}

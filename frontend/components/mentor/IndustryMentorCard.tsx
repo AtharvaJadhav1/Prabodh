@@ -73,7 +73,7 @@ export default function IndustryMentorCard({
       </div>
 
       {/* Metadata Grid */}
-      <div className="grid grid-cols-2 gap-3 py-4 text-xs">
+      <div className="grid grid-cols-2 gap-3 py-4 text-xs max-sm:grid-cols-1">
         <div className="rounded-xl border border-brand-sand/70 bg-brand-cream p-2.5">
           <span className="mb-0.5 block text-[10px] font-bold uppercase text-brand-muted">
             Company / Org
@@ -121,7 +121,7 @@ export default function IndustryMentorCard({
       {onUnmapAll && mappedTeamCount > 0 && (
         <div className="mt-3 pt-3 border-t border-brand-sand">
           {confirmAction === "unmap" ? (
-            <div className="flex items-center justify-between rounded-xl border border-brand-primary/40 bg-brand-lightOrange p-3">
+            <div className="flex items-center justify-between rounded-xl border border-brand-primary/40 bg-brand-lightOrange p-3 max-sm:flex-col max-sm:items-stretch max-sm:gap-2">
               <p className="text-xs font-semibold text-brand-deep">
                 Unmap {mentor.name} from all {mappedTeamCount} team{mappedTeamCount !== 1 ? "s" : ""}?
               </p>

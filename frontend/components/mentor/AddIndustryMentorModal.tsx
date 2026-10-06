@@ -107,10 +107,10 @@ export default function AddIndustryMentorModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-brand-deep/50 p-4 backdrop-blur-sm overflow-y-auto">
       <div className="my-8 w-full max-w-xl overflow-hidden rounded-2xl border border-brand-sand bg-white shadow-2xl">
         {/* Header */}
-        <div className="border-b border-brand-sand bg-brand-cream p-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-lightOrange text-brand-primary">
+        <div className="border-b border-brand-sand bg-brand-cream p-6 max-sm:p-4">
+          <div className="flex items-start justify-between max-sm:gap-3">
+            <div className="flex items-center gap-3 max-sm:min-w-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-lightOrange text-brand-primary max-sm:shrink-0">
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                 </svg>
@@ -129,7 +129,7 @@ export default function AddIndustryMentorModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-1.5 text-brand-muted transition-colors hover:bg-white hover:text-brand-deep"
+              className="rounded-lg p-1.5 text-brand-muted transition-colors hover:bg-white hover:text-brand-deep max-sm:shrink-0"
             >
               <XIcon className="h-5 w-5" />
             </button>
@@ -137,7 +137,7 @@ export default function AddIndustryMentorModal({
         </div>
 
         {/* Form */}
-        <div className="space-y-4 p-6">
+        <div className="space-y-4 p-6 max-sm:p-4">
           {/* Name & Email */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>

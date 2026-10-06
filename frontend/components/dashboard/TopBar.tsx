@@ -11,7 +11,7 @@ type TopBarProps = {
 
 export default function TopBar({ onMenuClick, title = "Team Workspace" }: TopBarProps) {
   return (
-    <header className="sticky top-0 z-20 flex h-16 min-h-[64px] max-h-16 shrink-0 box-border items-center justify-between gap-3 border-b border-brand-softline bg-white/90 px-6 backdrop-blur-sm">
+    <header className="sticky top-0 z-20 flex h-16 min-h-[64px] max-h-16 shrink-0 box-border items-center justify-between gap-3 border-b border-brand-softline bg-white/90 px-6 max-sm:gap-2 max-sm:px-3 backdrop-blur-sm">
       <button
           type="button"
           onClick={onMenuClick}
@@ -27,7 +27,7 @@ export default function TopBar({ onMenuClick, title = "Team Workspace" }: TopBar
           </h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-sm:shrink-0 max-sm:flex-nowrap max-sm:gap-1.5">
           <RefreshButton />
           <NotificationBell />
         </div>

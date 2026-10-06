@@ -442,7 +442,7 @@ export default function DeliverablesCard() {
           type="button"
           disabled={!isLead || busy || !githubUrl.trim()}
           onClick={() => void saveGithub()}
-          className="rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+          className="rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50 max-sm:w-full"
         >
           Save Repo
         </button>

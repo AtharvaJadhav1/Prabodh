@@ -44,7 +44,7 @@ export default function AdminProfilePage() {
   return (
     <AdminShell title="Admin Profile">
       <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex items-center gap-4 rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
+        <div className="flex items-center gap-4 rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
           <div className="relative shrink-0">
             <Avatar
               src={avatarSrc}
@@ -93,7 +93,7 @@ export default function AdminProfilePage() {
           }}
         />
 
-        <div className="grid grid-cols-1 gap-4 rounded-2xl border border-brand-sand bg-white p-6 shadow-sm sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm sm:grid-cols-2">
           <TextInput label="Full Name" value={name} onChange={setName} required />
           <TextInput label="Department" value={department} onChange={setDepartment} />
         </div>

@@ -140,7 +140,7 @@ export default function GroupRequestHistoryTable({ history }: Props) {
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between border-t border-brand-sand px-4 py-3">
+      <div className="flex items-center justify-between border-t border-brand-sand px-4 py-3 max-sm:flex-wrap max-sm:gap-2">
         <span className="text-[11px] text-brand-muted">
           Showing {filtered.length} of {history.length} entries
         </span>

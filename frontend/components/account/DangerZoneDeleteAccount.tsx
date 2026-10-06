@@ -84,7 +84,7 @@ export default function DangerZoneDeleteAccount() {
   }
 
   return (
-    <section className="rounded-2xl border border-red-200 bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-red-200 bg-white p-6 max-sm:p-4 shadow-sm">
       <button
         type="button"
         onClick={() => setSettingsOpen((v) => !v)}

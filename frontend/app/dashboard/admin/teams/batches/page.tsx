@@ -69,14 +69,14 @@ export default function AdminBatchesPage() {
               <LoadingState compact label="Loading batches" steps={["Fetching batches"]} />
             </div>
           ) : error ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm font-medium text-red-600">{error}</div>
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-6 max-sm:p-4 text-sm font-medium text-red-600">{error}</div>
           ) : batches.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-10 text-center">
+            <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-10 max-sm:p-6 text-center">
               <p className="text-sm font-semibold text-neutral-800">No batches created yet</p>
               <p className="mt-1 text-xs text-neutral-500">Create a batch and add teams that aren&apos;t in any batch.</p>
             </div>
           ) : filtered.length === 0 ? (
-            <p className="rounded-2xl border border-neutral-200 bg-white p-8 text-center text-sm text-neutral-500">
+            <p className="rounded-2xl border border-neutral-200 bg-white p-8 max-sm:p-5 text-center text-sm text-neutral-500">
               No batches match &ldquo;{search}&rdquo;.
             </p>
           ) : (

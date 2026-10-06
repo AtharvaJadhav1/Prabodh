@@ -153,7 +153,7 @@ export default function GroupDrawer() {
           <button
             type="button"
             onClick={closeDrawer}
-            className="rounded-lg p-2 text-brand-muted transition-colors hover:bg-brand-cream hover:text-brand-deep"
+            className="rounded-lg p-2 text-brand-muted transition-colors hover:bg-brand-cream hover:text-brand-deep max-sm:shrink-0"
             aria-label="Close group requests"
           >
             <XIcon className="h-5 w-5" />

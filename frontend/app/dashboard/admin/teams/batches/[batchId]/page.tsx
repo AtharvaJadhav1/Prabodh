@@ -106,12 +106,12 @@ export default function BatchDetailPage() {
             <LoadingState compact label="Loading batch" steps={["Fetching batch"]} />
           </div>
         ) : error || !batch ? (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-6 text-sm font-medium text-red-600">
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-6 max-sm:p-4 text-sm font-medium text-red-600">
             {error || "Batch not found."}
           </div>
         ) : (
           <div className="mt-4 space-y-5">
-            <section className="rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-sm">
+            <section className="rounded-2xl border border-neutral-200/80 bg-white p-6 max-sm:p-4 shadow-sm">
               {editing ? (
                 <div className="space-y-3">
                   <input
@@ -215,7 +215,7 @@ export default function BatchDetailPage() {
               <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-medium text-red-600">{actionError}</p>
             ) : null}
 
-            <section className="rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-sm">
+            <section className="rounded-2xl border border-neutral-200/80 bg-white p-6 max-sm:p-4 shadow-sm">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h2 className="text-sm font-bold uppercase tracking-wide text-neutral-500">Teams</h2>
                 <div className="flex flex-wrap gap-2">
@@ -238,7 +238,7 @@ export default function BatchDetailPage() {
               </div>
 
               {batch.teams.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-neutral-300 p-6 text-center text-xs text-neutral-500">
+                <p className="rounded-xl border border-dashed border-neutral-300 p-6 max-sm:p-4 text-center text-xs text-neutral-500">
                   This batch has no teams yet.
                 </p>
               ) : (

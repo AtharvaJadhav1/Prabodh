@@ -273,7 +273,7 @@ export default function AvatarPickerModal({ open, onClose, onSaved, allowPresets
                   Shuffle
                 </button>
               </div>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-4 gap-3 max-sm:grid-cols-3">
                 {seeds.map((seed) => (
                   <button
                     key={seed}

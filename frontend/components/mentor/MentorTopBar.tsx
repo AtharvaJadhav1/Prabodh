@@ -11,8 +11,8 @@ export type MentorTopBarProps = {
 
 export default function MentorTopBar({ onMenuClick, title }: MentorTopBarProps) {
   return (
-    <header className="sticky top-0 z-20 flex h-16 min-h-[64px] max-h-16 shrink-0 box-border items-center justify-between gap-3 border-b border-brand-softline bg-[#FAF7F2]/80 px-6 backdrop-blur-md">
-      <div className="flex min-w-0 items-center gap-3">
+    <header className="sticky top-0 z-20 flex h-16 min-h-[64px] max-h-16 shrink-0 box-border items-center justify-between gap-3 border-b border-brand-softline bg-[#FAF7F2]/80 px-6 max-sm:gap-2 max-sm:px-3 backdrop-blur-md">
+      <div className="flex min-w-0 items-center gap-3 max-sm:flex-1">
         <button
           id="tour-mentor-menu"
           type="button"
@@ -28,7 +28,7 @@ export default function MentorTopBar({ onMenuClick, title }: MentorTopBarProps) 
         </h1>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 max-sm:shrink-0 max-sm:flex-nowrap max-sm:gap-1.5">
         <RefreshButton />
         <NotificationBell />
       </div>

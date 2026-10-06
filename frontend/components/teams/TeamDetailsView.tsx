@@ -37,7 +37,7 @@ type Props = {
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-neutral-200/80 bg-white p-6 max-sm:p-4 shadow-sm">
       <h2 className="mb-4 text-sm font-bold uppercase tracking-wide text-neutral-500">{title}</h2>
       {children}
     </section>
@@ -412,7 +412,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
         <Link href={backHref} className="text-sm font-medium text-brand-muted hover:text-brand-primary">
           ← Back to Teams
         </Link>
-        <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-red-200 bg-red-50 p-6 text-sm font-medium text-red-600">
+        <div className="mt-4 flex items-center justify-between gap-4 rounded-2xl border border-red-200 bg-red-50 p-6 max-sm:p-4 text-sm font-medium text-red-600">
           <span>{error ?? "Team not found."}</span>
           <button
             type="button"
@@ -470,7 +470,7 @@ export default function TeamDetailsView({ teamId, audience, backHref }: Props) {
         </div>
       )}
 
-      <div className="flex flex-col gap-2 rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-2 rounded-2xl border border-neutral-200/80 bg-white p-6 max-sm:p-4 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold text-neutral-900 sm:text-3xl">{team.name}</h1>

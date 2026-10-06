@@ -59,7 +59,7 @@ export default function GroupMappingTable({
   };
 
   return (
-    <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
+    <section className="rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
       {/* Header */}
       <div className="flex flex-col gap-4 pb-6 border-b border-brand-sand lg:flex-row lg:items-center lg:justify-between">
         <div className="flex items-center gap-3">
@@ -82,7 +82,7 @@ export default function GroupMappingTable({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="relative min-w-[240px]">
+          <div className="relative min-w-[240px] max-sm:w-full max-sm:min-w-0">
             <input
               type="text"
               placeholder="Search group, team name, PS..."
@@ -235,7 +235,7 @@ export default function GroupMappingTable({
       </div>
 
       {/* Footer */}
-      <div className="mt-4 flex items-center justify-between border-t border-brand-sand pt-4 text-xs text-brand-muted">
+      <div className="mt-4 flex items-center justify-between max-sm:flex-wrap max-sm:gap-2 border-t border-brand-sand pt-4 text-xs text-brand-muted">
         <p>
           Showing {filtered.length} of {groups.length} Assigned Hackathon Cohorts
         </p>

@@ -89,7 +89,7 @@ function MentorCell({ assignments }: { assignments: AdminTeam["mentorAssignments
 
 function TableShell({ count, total, children }: { count: number; total: number; children: ReactNode }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white p-6 shadow-sm">
+    <section className="overflow-hidden rounded-2xl border border-neutral-200/80 bg-white p-6 max-sm:p-4 shadow-sm">
       {children}
       <div className="mt-4 border-t border-neutral-100 pt-4 text-right text-xs font-medium text-neutral-500">
         Showing {count} of {total} teams
@@ -187,7 +187,7 @@ export default function AdminTeamsPage() {
 
       <BatchesCard />
       {error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm font-medium text-red-600">{error}</div>
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 max-sm:p-4 text-sm font-medium text-red-600">{error}</div>
       ) : loading ? (
         <div className="flex h-48 items-center justify-center rounded-2xl border border-brand-sand bg-white">
           <LoadingState compact label="Loading teams" steps={["Fetching team records", "Preparing the list"]} />

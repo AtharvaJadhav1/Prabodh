@@ -31,7 +31,7 @@ export default function FilterBar({ search, onSearchChange, track, onTrackChange
       </div>
 
       {/* Right: Custom dropdown pinned to the corner */}
-      <div className="min-w-[160px] shrink-0 self-end sm:self-auto">
+      <div className="min-w-[160px] shrink-0 self-end sm:self-auto max-sm:w-full max-sm:min-w-0 max-sm:self-stretch">
         <TrackDropdown value={track} onChange={onTrackChange} options={trackOptions} />
       </div>
     </div>

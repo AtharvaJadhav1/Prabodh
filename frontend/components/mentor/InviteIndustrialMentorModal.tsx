@@ -160,12 +160,12 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
         role="dialog"
         aria-modal="true"
         aria-label="Invite an industry mentor"
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-brand-sand bg-white shadow-2xl"
+        className="flex max-h-[90vh] max-sm:max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-brand-sand bg-white shadow-2xl"
       >
-        <div className="shrink-0 border-b border-brand-sand bg-brand-cream p-6">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-lightOrange text-brand-primary">
+        <div className="shrink-0 border-b border-brand-sand bg-brand-cream p-6 max-sm:p-4">
+          <div className="flex items-start justify-between max-sm:gap-3">
+            <div className="flex items-center gap-3 max-sm:min-w-0">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-lightOrange text-brand-primary max-sm:shrink-0">
                 <BriefcaseIcon className="h-5 w-5" />
               </div>
               <div>
@@ -180,7 +180,7 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
               onClick={onClose}
               aria-label="Close"
               title="Close"
-              className="rounded-lg p-1.5 text-brand-muted transition-colors hover:bg-white hover:text-brand-deep"
+              className="rounded-lg p-1.5 text-brand-muted transition-colors hover:bg-white hover:text-brand-deep max-sm:shrink-0"
             >
               <XIcon className="h-5 w-5" />
             </button>
@@ -189,7 +189,7 @@ export default function InviteIndustrialMentorModal({ open, teamId, teamName, on
 
         <div className="flex min-h-0 flex-1 flex-col">
         {/* Search, filters and count stay put; only the list below scrolls. */}
-        <div className="shrink-0 space-y-4 border-b border-neutral-100 px-6 pb-4 pt-6">
+        <div className="shrink-0 space-y-4 border-b border-neutral-100 px-6 pb-4 pt-6 max-sm:px-4 max-sm:pt-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <div className="relative flex-1">
               <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-muted" />

@@ -125,7 +125,7 @@ export default function IndustryMentorsPage() {
         {loading ? (
           <SkeletonRows rows={2} label="Loading industry mentors…" />
         ) : mentors.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-brand-sand bg-brand-cream p-8 text-center">
+          <div className="rounded-2xl border border-dashed border-brand-sand bg-brand-cream p-8 max-sm:p-5 text-center">
             <p className="text-xs font-medium text-brand-muted">
               {error
                 ? "Industry mentors could not be loaded."
@@ -145,7 +145,7 @@ export default function IndustryMentorsPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-brand-sand bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-brand-sand bg-white p-6 max-sm:p-4 shadow-sm">
         <h2 className="mb-4 text-base font-bold text-brand-deep">Team mapping</h2>
         {loading ? (
           <SkeletonRows rows={2} label="Loading team mapping…" />

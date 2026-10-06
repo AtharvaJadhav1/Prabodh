@@ -30,7 +30,7 @@ export default function IndustryInvitesPage() {
           {isLoading ? (
             <SkeletonRows rows={2} label="Loading invites…" />
           ) : pendingInvites.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-brand-sand bg-brand-cream p-8 text-center">
+            <div className="rounded-2xl border border-dashed border-brand-sand bg-brand-cream p-8 max-sm:p-5 text-center">
               <p className="text-xs font-medium text-brand-muted">
                 {error ? "Pending invites could not be loaded." : "No pending invites — you’re all caught up."}
               </p>

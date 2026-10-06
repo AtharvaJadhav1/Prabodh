@@ -36,7 +36,7 @@ export default function IndustryProfileTabs() {
     <div className="space-y-0">
       {/* Tab Strip */}
       <div className="border-b border-neutral-200">
-        <div role="tablist" aria-label="Profile sections" onKeyDown={onKeyDown} className="-mb-px flex gap-6 overflow-x-auto">
+        <div role="tablist" aria-label="Profile sections" onKeyDown={onKeyDown} className="-mb-px flex gap-6 overflow-x-auto max-sm:[&>*]:shrink-0 max-sm:[&>*]:whitespace-nowrap">
           {tabs.map((tab) => {
             const isActive = tab.key === active;
             return (
