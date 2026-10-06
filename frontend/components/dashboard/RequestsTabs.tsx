@@ -25,20 +25,22 @@ export default function RequestsTabs() {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-brand-softline bg-white shadow-[0_2px_8px_rgba(91,46,16,0.04)]">
-      <div className="bg-brand-cream/70 px-6 pt-4">
+      <div className="bg-brand-cream/70 px-4 pt-4 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-4 border-b border-[#EBE3D7]">
+          <div className="flex items-center gap-1 border-b border-[#EBE3D7] sm:gap-4">
 <TabButton
               active={tab === 1}
               onClick={() => setTab(1)}
               icon={<UsersRoundIcon className="h-4 w-4" />}
               label="Active Team & Outgoing Invites"
+              shortLabel="Team"
             />
             <TabButton
               active={tab === 2}
               onClick={() => setTab(2)}
               icon={<InboxIcon className="h-4 w-4" />}
               label="Incoming Join Requests"
+              shortLabel="Requests"
               chip={`${incomingInvites.length} open`}
               chipStyle="ml-1.5 px-2 py-0.5 text-xs bg-[#C25E26] text-white"
             />
@@ -46,7 +48,7 @@ export default function RequestsTabs() {
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {tab === 1 ? <ActiveRosterTab /> : <IncomingInvitesTab />}
       </div>
     </div>
@@ -58,6 +60,7 @@ function TabButton({
   onClick,
   icon,
   label,
+  shortLabel,
   chip,
   chipStyle,
 }: {
@@ -65,6 +68,8 @@ function TabButton({
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
+  /** Compact text shown on phones, where the full label would not fit. */
+  shortLabel?: string;
   chip?: string;
   chipStyle?: string;
 }) {
@@ -72,7 +77,8 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 border-b-2 px-4 pb-3 text-xs font-bold transition-all ${
+      aria-label={label}
+      className={`flex items-center gap-2 border-b-2 px-3 pb-3 sm:px-4 text-xs font-bold transition-all ${
         active
           ? "border-brand-primary text-brand-primary"
           : "border-transparent font-semibold text-brand-muted hover:text-brand-deep"
@@ -80,6 +86,7 @@ function TabButton({
     >
       {icon}
       <span className="hidden truncate sm:inline">{label}</span>
+      {shortLabel ? <span className="sm:hidden">{shortLabel}</span> : null}
       {chip && <span className={`shrink-0 rounded-full font-bold ${chipStyle}`}>{chip}</span>}
     </button>
   );
@@ -130,9 +137,9 @@ function ActiveRosterTab() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-[#EBE3D7] bg-[#FAF8F5]">
+        <div className="flex flex-col gap-3 rounded-xl border border-[#EBE3D7] bg-[#FAF8F5] p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           {assignments.length === 0 && facultyInviteStatus === "none" ? (
-            <div className="flex items-center gap-3.5">
+            <div className="flex min-w-0 items-center gap-3.5">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-dashed border-brand-charcoal/30 text-xs font-bold text-brand-muted">
                 <GradCapIcon className="h-4 w-4" />
               </div>
@@ -144,7 +151,7 @@ function ActiveRosterTab() {
               </div>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               {assignments.map((a) => {
                 const mentor = a.mentor;
                 const customAvatar = avatarUrlFrom((mentor as any).profileJson);
@@ -156,9 +163,9 @@ function ActiveRosterTab() {
                       alt={mentor.fullName}
                       className="w-10 h-10 rounded-full object-cover border border-stone-200 shrink-0"
                     />
-                    <div>
-                      <p className="text-sm font-bold text-brand-deep">{mentor.fullName}</p>
-                      <p className="text-[11px] text-brand-muted">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-brand-deep">{mentor.fullName}</p>
+                      <p className="break-all text-[11px] text-brand-muted">
                         Institute Mentor · {mentor.email}
                       </p>
                     </div>
@@ -170,7 +177,7 @@ function ActiveRosterTab() {
               ) : null}
             </div>
           )}
-<div className="flex shrink-0 items-center gap-2">
+<div className="flex flex-wrap items-center gap-2 sm:shrink-0">
             {facultyInviteStatus === "none" ? (
               isLead ? (
                 <a
@@ -280,7 +287,7 @@ function MemberRow({
 
   return (
     <div
-      className={`flex items-center justify-between gap-4 p-3.5 rounded-xl border border-[#EBE3D7] bg-white transition-colors mb-2.5 hover:border-brand-primary/40`}
+      className={`flex items-center justify-between gap-3 p-3 sm:gap-4 sm:p-3.5 rounded-xl border border-[#EBE3D7] bg-white transition-colors mb-2.5 hover:border-brand-primary/40`}
     >
       <div className="flex items-center gap-3.5 min-w-0 flex-1">
         {member.status === "Verified" ? (
@@ -300,7 +307,7 @@ function MemberRow({
         )}
         <div className="min-w-0 leading-tight">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-bold text-brand-deep">{member.name}</span>
+            <span className="break-words text-sm font-bold text-brand-deep">{member.name}</span>
             <span
               className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
                 isLeader
@@ -313,7 +320,7 @@ function MemberRow({
               {isLeader ? "Team Leader" : isPending ? "Invite Outgoing" : "Member"}
             </span>
           </div>
-          <p className="mt-0.5 text-[11px] text-brand-muted">
+          <p className="mt-0.5 break-all text-[11px] text-brand-muted">
             {isPending ? `Dispatched to ${member.prn}` : `${member.prn} • ${member.branch}`}
           </p>
         </div>
@@ -409,27 +416,27 @@ function IncomingInvitesTab() {
           {invites.map((invite) => (
             <div
               key={invite.id}
-              className="flex items-center justify-between rounded-2xl border border-brand-softline bg-white p-5 shadow-xs transition-all hover:border-[#C25E26]/40"
+              className="flex flex-col gap-4 rounded-2xl border border-brand-softline bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between sm:p-5 transition-all hover:border-[#C25E26]/40"
             >
-              <div className="flex items-center gap-3.5">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-brand-softline bg-[#FAF7F2] text-sm font-black text-[#C25E26]">
+              <div className="flex min-w-0 items-center gap-3.5">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-brand-softline bg-[#FAF7F2] text-sm font-black text-[#C25E26]">
                   {invite.teamName.slice(0, 2).toUpperCase()}
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-brand-deep">{invite.teamName}</h3>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="break-words text-sm font-bold text-brand-deep">{invite.teamName}</h3>
                     <span className="rounded-md border border-brand-softline bg-[#FAF7F2] px-2 py-0.5 font-mono text-[11px] font-medium text-brand-deep">
                       {invite.teamCode}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-brand-muted">
+                  <p className="mt-1 break-words text-xs text-brand-muted">
                     Invited by <span className="font-semibold text-brand-deep">{invite.leaderName}</span> (
                     {invite.leaderEmail}) • {timeAgo(new Date(invite.createdAt))} ago
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 [&>button]:flex-1 sm:[&>button]:flex-none [&>button]:justify-center">
                 <button
                   type="button"
                   disabled={busyId !== null}
