@@ -7,7 +7,7 @@ import { CurrentUser } from '../../common/current-user.decorator';
 import { Roles } from '../../common/roles.decorator';
 import { RolesGuard } from '../../common/roles.guard';
 import { ZodPipe } from '../../common/zod.pipe';
-import { broadcastSchema, commentSchema } from './schema';
+import { broadcastSchema, commentSchema, notificationActionSchema } from './schema';
 import { NotificationsService } from './service';
 
 @Controller()
@@ -16,8 +16,24 @@ export class NotificationsController {
 
   @Get('notifications')
   @UseGuards(JwtAuthGuard)
-  list(@CurrentUser() user: AuthUser, @Query('unread') unread?: string) {
-    return this.notifications.list(user, unread === 'true');
+  list(@CurrentUser() user: AuthUser, @Query('unread') unread?: string, @Query('since') since?: string) {
+    return this.notifications.list(user, unread === 'true', since);
+  }
+
+  @Get('notifications/unread-count')
+  @UseGuards(JwtAuthGuard)
+  unreadCount(@CurrentUser() user: AuthUser) {
+    return this.notifications.unreadCount(user);
+  }
+
+  @Post('notifications/:id/action')
+  @UseGuards(JwtAuthGuard)
+  act(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(new ZodPipe(notificationActionSchema)) body: unknown,
+  ) {
+    return this.notifications.act(user, id, body as never);
   }
 
   @Patch('notifications/:id/read')

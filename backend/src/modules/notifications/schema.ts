@@ -13,6 +13,11 @@ export const broadcastSchema = z.object({
     .default({}),
 });
 
+export const notificationActionSchema = z.object({
+  decision: z.enum(['accept', 'decline']),
+  confirmSwitch: z.boolean().optional(),
+});
+
 export const commentSchema = z.object({
   message: z.string().min(1).max(4000),
   parentCommentId: z.string().uuid().optional(),

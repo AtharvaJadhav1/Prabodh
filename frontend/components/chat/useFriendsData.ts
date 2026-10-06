@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAppRefresh } from "../../lib/app-refresh";
 import { listFriendRequests, listFriends } from "../../lib/chat-api";
 import type { ChatFriend, ChatFriendRequests } from "../../lib/chat-types";
 import { useChatPolling } from "./useChatPolling";
@@ -42,7 +43,12 @@ export function useFriendsData(enabled: boolean, fast: boolean) {
     },
   );
 
-  const removeRequest = useCallback((id: string) => {
+  // Friend request answered from the notification panel.
+  useAppRefresh(["friends"], () => {
+    if (enabled) refresh();
+  });
+
+  const removeRequest =useCallback((id: string) => {
     setRequests((p) => ({
       incoming: p.incoming.filter((r) => r.id !== id),
       outgoing: p.outgoing.filter((r) => r.id !== id),

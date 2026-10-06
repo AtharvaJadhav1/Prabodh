@@ -15,7 +15,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "tsx prisma/seed.ts",
-    "test": "tsx --test src/domain/rules.spec.ts src/lib/staff-password.spec.ts src/lib/roles.spec.ts src/lib/mentor-rules.spec.ts src/lib/mentor-emails.spec.ts src/lib/message-crypto.spec.ts src/lib/self-delete-rules.spec.ts src/lib/ps-text.spec.ts src/modules/identity/service.spec.ts src/lib/chat-rules.spec.ts"
+    "test": "tsx --test src/domain/rules.spec.ts src/lib/staff-password.spec.ts src/lib/roles.spec.ts src/lib/mentor-rules.spec.ts src/lib/mentor-emails.spec.ts src/lib/message-crypto.spec.ts src/lib/self-delete-rules.spec.ts src/lib/ps-text.spec.ts src/modules/identity/service.spec.ts src/lib/chat-rules.spec.ts src/lib/notification-actions.spec.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

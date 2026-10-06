@@ -17,6 +17,11 @@ async function main() {
     // Mentor LinkedIn link (20261004120000). The backfill from profileJson lives in
     // that migration; this only keeps the column itself present on drifted DBs.
     `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "linkedin_url" TEXT`,
+    // Actionable notifications (mirrors migrations/20261006120000_notification_actions). The Prisma client
+    // selects these columns on every notification query, so they MUST exist or the bell fails with P2022.
+    `ALTER TABLE "notifications" ADD COLUMN IF NOT EXISTS "action_kind" TEXT`,
+    `ALTER TABLE "notifications" ADD COLUMN IF NOT EXISTS "action_ref" TEXT`,
+    `CREATE INDEX IF NOT EXISTS "notifications_user_id_action_kind_idx" ON "notifications"("user_id", "action_kind")`,
     // Partial unique index — one pending join request per student per team.
     // Prisma's db push cannot create partial indexes, so it lives here (and in
     // prisma/migrations/20260919000000_add_join_requests/migration.sql).

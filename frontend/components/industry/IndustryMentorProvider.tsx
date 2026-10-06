@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { InviteDisplayStatus, InviteStatus, MentorInvite } from "../../data/industryDashboard";
 import { type MentorGroup } from "../../data/mentorDashboard";
+import { useAppRefresh } from "../../lib/app-refresh";
 import { api, apiPost } from "../../lib/api";
 import { isAlreadyAnswered } from "../../lib/invite-errors";
 import { initials } from "../../lib/initials";
@@ -244,6 +245,13 @@ export function IndustryMentorProvider({ children }: { children: ReactNode }) {
       void loadInvites();
     }
   }, [userId, loadTeams, loadInvites]);
+
+  // The notification panel answered a mentor invite: reload invites and teams.
+  useAppRefresh(["mentor"], () => {
+    lastFetchAt.current = Date.now();
+    void loadTeams(true);
+    void loadInvites(true);
+  });
 
   // An admin override in another session won't push to this tab — reconcile
   // whenever the mentor comes back to this tab/window (focus + visibilitychange

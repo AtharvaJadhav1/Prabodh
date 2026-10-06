@@ -502,6 +502,7 @@ export class TeamsService {
         title: "You've been invited to join a team",
         body: `${team.name} (${team.teamCode}) invited you to join their squad. Open Group Requests to accept or decline.`,
         relatedEntity: team.id,
+        action: { kind: 'team_invite', ref: member.id },
       });
     })().catch((err) => console.error('[teams.invite] notify invitee failed', err));
 
@@ -890,6 +891,7 @@ export class TeamsService {
         body: `${user.fullName} has requested to join ${team.name}. Review it in your Group Requests tab.`,
         relatedEntity: team.id,
         template: 'join_request',
+        action: { kind: 'join_request', ref: request.id },
       },
     ).catch((err) => console.error('[teams.createJoinRequest] notify leader failed', err));
 

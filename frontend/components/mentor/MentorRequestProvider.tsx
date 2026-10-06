@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { GroupRequest, GroupRequestHistoryEntry } from "../../data/mentorDashboard";
 import { api, apiPatch, apiPost } from "../../lib/api";
+import { useAppRefresh } from "../../lib/app-refresh";
 import { avatarUrlFrom } from "../../lib/avatar";
 import { isAlreadyAnswered } from "../../lib/invite-errors";
 import { useAuth } from "../auth/AuthProvider";
@@ -115,6 +116,12 @@ export function MentorRequestProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  // The notification panel answered a mentor invite: reload requests and the mentor's teams.
+  useAppRefresh(["mentor"], () => {
+    void reload();
+    void refreshMentorTeams(true);
+  });
 
   const refreshUnreadComments = useCallback(async () => {
     if (!session) return;

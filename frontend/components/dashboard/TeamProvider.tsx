@@ -14,6 +14,7 @@ import {
 import { type Member, type JoinRequest, type OutgoingInvite, type StudentRole } from "../../data/studentDashboard";
 import { cacheKey, getCached, invalidateApiCache } from "../../lib/api-cache";
 import { api, apiDelete, apiPatch, apiPost } from "../../lib/api";
+import { useAppRefresh } from "../../lib/app-refresh";
 import { avatarUrlFrom } from "../../lib/avatar";
 import type { PortalComment, PortalDeliverable, PortalStage, PortalTeam } from "../../lib/types";
 import { useAuth } from "../auth/AuthProvider";
@@ -332,6 +333,11 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     if (!ready || !userId) return;
     void reload();
   }, [ready, userId, reload]);
+
+  // The notification panel answered a team invite / join request: reload team + invites.
+  useAppRefresh(["team"], () => {
+    if (ready && userId) void reload();
+  });
 
   // An admin mentor override in another session won't push to this tab —
   // reconcile whenever the student comes back to this tab/window.

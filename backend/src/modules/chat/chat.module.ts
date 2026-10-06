@@ -7,5 +7,6 @@ import { ChatService } from './chat.service';
   imports: [TeamsModule],
   controllers: [ChatController],
   providers: [ChatService],
+  exports: [ChatService],
 })
 export class ChatModule {}

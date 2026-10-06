@@ -1,12 +1,15 @@
 import { NotificationType } from '@prisma/client';
 import { notificationQueue, NotificationJob } from './queue';
 import { PrismaService } from './prisma.service';
+import { NotificationAction, normalizeAction } from './notification-actions';
 
 export type NotificationInput = {
   type: NotificationType;
   title: string;
   body: string;
   relatedEntity?: string;
+  /** Optional structured action (accept/decline from the bell). Invalid actions are silently dropped. */
+  action?: NotificationAction;
 };
 
 async function resolveUsers(prisma: PrismaService, userIds: string[]) {
@@ -23,6 +26,7 @@ export async function createNotifications(
 ) {
   const users = await resolveUsers(prisma, userIds);
   if (!users.length) return;
+  const action = normalizeAction(payload.action);
   await prisma.notification.createMany({
     data: users.map((u) => ({
       userId: u.id,
@@ -30,6 +34,7 @@ export async function createNotifications(
       title: payload.title,
       body: payload.body,
       relatedEntity: payload.relatedEntity,
+      ...(action ? { actionKind: action.kind, actionRef: action.ref } : {}),
     })),
   });
 }

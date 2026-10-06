@@ -706,6 +706,7 @@ export class MentorsService {
       title: 'Mentor invitation received',
       body: `${user.fullName} invited you to mentor ${team.name}.`,
       relatedEntity: `team:${team.id}`,
+      action: { kind: 'mentor_invite', ref: invite.id },
     });
 
     let emailSent = false;

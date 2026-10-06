@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAppRefresh } from "../../lib/app-refresh";
 import { listConversations } from "../../lib/chat-api";
 import type { ChatConversation } from "../../lib/chat-types";
 import { setChatUnreadTotal } from "./chatUnreadStore";
@@ -67,6 +68,11 @@ export function useConversations(enabled: boolean) {
       },
     },
   );
+
+  // Friend request answered from the notification panel: a new DM may now exist.
+  useAppRefresh(["friends"], () => {
+    if (enabled) refresh();
+  });
 
   /** Apply a local change (e.g. optimistic preview or unread reset) until the server catches up. */
   const patch = useCallback((id: string, fn: (c: ChatConversation) => ChatConversation) => {

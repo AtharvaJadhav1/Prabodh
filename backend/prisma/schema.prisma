@@ -530,6 +530,10 @@ model Notification {
   body          String
   readAt        DateTime?        @map("read_at")
   relatedEntity String?          @map("related_entity")
+  // Actionable notifications: kind in (team_invite|mentor_invite|friend_request|join_request),
+  // ref = id of the underlying invite / request row (see src/lib/notification-actions.ts).
+  actionKind    String?          @map("action_kind")
+  actionRef     String?          @map("action_ref")
   createdAt     DateTime         @default(now()) @map("created_at")
   updatedAt     DateTime         @updatedAt @map("updated_at")
 
@@ -537,6 +541,7 @@ model Notification {
 
   @@index([userId, readAt])
   @@index([userId, createdAt])
+  @@index([userId, actionKind])
   @@map("notifications")
 }
 

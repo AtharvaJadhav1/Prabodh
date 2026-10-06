@@ -175,6 +175,16 @@ function ChatWorkspaceCore({
     [isApp, hist, setTab],
   );
 
+  // Deep link from a friend-request notification: ?tab=friends on arrival, or an event when already here.
+  const changeTabRef = useRef(changeTab);
+  changeTabRef.current = changeTab;
+  useEffect(() => {
+    const openFriends = () => changeTabRef.current("friends");
+    if (new URLSearchParams(window.location.search).get("tab") === "friends") openFriends();
+    window.addEventListener("prabodh:open-friends", openFriends);
+    return () => window.removeEventListener("prabodh:open-friends", openFriends);
+  }, []);
+
   const twoPane = !isApp && width >= TWO_PANE_MIN;
   const fitHeight = useViewportFit(rootRef, (variant === "page" || isApp) && !inDialog && !twoPane);
 

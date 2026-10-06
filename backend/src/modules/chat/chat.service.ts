@@ -292,6 +292,7 @@ export class ChatService {
           'New friend request',
           `${user.fullName} sent you a friend request.`,
           row.id,
+          true,
         );
         return this.requestResult(user.id, row, target);
       } catch (err) {
@@ -317,13 +318,20 @@ export class ChatService {
   }
 
   /** In-app only (no email). Never fails the caller. */
-  private async notifySafe(userId: string, title: string, body: string, friendshipId: string) {
+  private async notifySafe(
+    userId: string,
+    title: string,
+    body: string,
+    friendshipId: string,
+    actionable = false,
+  ) {
     try {
       await createNotifications(this.prisma, [userId], {
         type: 'status_change',
         title,
         body,
         relatedEntity: `friend:${friendshipId}`,
+        ...(actionable ? { action: { kind: 'friend_request' as const, ref: friendshipId } } : {}),
       });
     } catch (err) {
       console.error('[chat] friend notification failed', err);

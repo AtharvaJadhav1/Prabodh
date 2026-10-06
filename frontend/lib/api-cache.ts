@@ -18,6 +18,8 @@ const neverCachePaths = [
   /^\/admin\/(audit-log|logs)/,
   // Direct chat, people search and friend state are always live.
   /^\/chat\//,
+  // Notifications are polled for live arrival detection; a 60s cached copy would hide new items.
+  /^\/notifications/,
   // Chat must stay live — never serve stale comment threads from the 60s API cache.
   /\/comments($|\?)/,
   /\/deliverables($|\?)/,

@@ -158,6 +158,21 @@ export type PortalNotification = {
   readAt: string | null;
   createdAt: string;
   type: string;
+  updatedAt?: string;
+  relatedEntity?: string | null;
+  actionKind?: NotificationActionKind | null;
+  actionRef?: string | null;
+  actionState?: NotificationActionState | null;
+  actionMeta?: NotificationActionMeta | null;
+};
+
+export type NotificationActionKind = "team_invite" | "mentor_invite" | "friend_request" | "join_request";
+export type NotificationActionState = "pending" | "accepted" | "declined" | "expired";
+export type NotificationActionMeta = {
+  teamId?: string;
+  teamName?: string;
+  fromName?: string;
+  needsTeamSwitch?: boolean;
 };
 
 export type MentorDetail = {
