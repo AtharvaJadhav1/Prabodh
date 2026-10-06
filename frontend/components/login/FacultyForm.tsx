@@ -16,7 +16,7 @@ export default function FacultyForm() {
         submitLabel="Sign in"
         onSuccess={(result) => {
           establishSession(result);
-          window.location.assign(landingForLogin(result));
+          window.location.replace(landingForLogin(result));
         }}
       />
       <p className="text-center text-sm text-brand-muted">

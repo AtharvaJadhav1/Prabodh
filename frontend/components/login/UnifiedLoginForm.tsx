@@ -44,7 +44,7 @@ export default function UnifiedLoginForm() {
       }
       onSuccess={(result) => {
         establishSession(result);
-        window.location.assign(landingForLogin(result));
+        window.location.replace(landingForLogin(result));
       }}
     />
   );

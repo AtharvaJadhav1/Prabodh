@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useChatHistory } from "./use-chat-history";
+import { ChatHistoryContext, useChatHistory, type ChatHistoryStack } from "./use-chat-history";
 import {
   acceptFriendRequest,
   cancelFriendRequest,
@@ -34,6 +34,8 @@ import { useViewportFit } from "./useViewportFit";
 export type ChatWorkspaceProps = {
   /** `app` = full-screen WhatsApp-style mobile layout (single pane, no frame). */
   variant: "card" | "page" | "app";
+  /** `page` only: fill the whole parent (no frame, no max height); the parent must have a definite height. */
+  fill?: boolean;
   initialConversationId?: string;
   className?: string;
   /** Called whenever a conversation is on screen with unread messages (e.g. to clear legacy notifications). */
@@ -44,6 +46,8 @@ type CoreProps = ChatWorkspaceProps & {
   inDialog?: boolean;
   onExpand?: () => void;
   onActiveChange?: (id: string | null) => void;
+  /** Layered history manager owned by the outer component so it survives the card <-> Expand dialog swap. */
+  hist: ChatHistoryStack;
 };
 
 type Tab = "chats" | "friends" | "people";
@@ -84,12 +88,14 @@ function draftConversation(person: ChatPerson): ChatConversation {
 
 function ChatWorkspaceCore({
   variant,
+  fill = false,
   initialConversationId,
   className,
   onConversationViewed,
   inDialog = false,
   onExpand,
   onActiveChange,
+  hist,
 }: CoreProps) {
   const { session } = useAuth();
   const me = session?.userId ?? "";
@@ -114,26 +120,61 @@ function ChatWorkspaceCore({
   const [overrides, setOverrides] = useState<Record<string, Override>>({});
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
 
-  // Browser Back should close an open conversation / profile first, not jump to the dashboard.
-  const { enterThread, leaveThread, enterProfile, leaveProfile, forgetProfile } = useChatHistory({
-    onPopThread: () => {
-      setActiveIdState(null);
-      onActiveChange?.(null);
-    },
-    onPopProfile: () => setProfileId(null),
-  });
+  const isApp = variant === "app";
+  const latestTab = useRef(tab);
+  latestTab.current = tab;
+  const latestActiveChange = useRef(onActiveChange);
+  latestActiveChange.current = onActiveChange;
+
+  const focusTabChip = useCallback(() => {
+    requestAnimationFrame(() => tabRefs.current[latestTab.current]?.focus());
+  }, []);
+
+  // Browser Back closes exactly one layer (sheet -> profile -> conversation -> Friends/Find tab -> leave page).
+  // The manager runs these when a layer is popped, whether by system Back or by our own close() call.
+  useEffect(() => {
+    const offs = [
+      hist.register("thread", () => {
+        setActiveIdState(null);
+        latestActiveChange.current?.(null);
+        focusTabChip();
+      }),
+      hist.register("profile", () => setProfileId(null)),
+      hist.register("tab", () => setTab("chats")),
+    ];
+    return () => offs.forEach((off) => off());
+  }, [hist, setTab, focusTabChip]);
+
   const closeProfile = useCallback(() => {
-    if (!leaveProfile()) setProfileId(null);
-  }, [leaveProfile]);
+    if (!hist.close("profile")) setProfileId(null);
+  }, [hist]);
   const openProfile = useCallback(
     (id: string) => {
       setProfileId(id);
-      enterProfile();
+      hist.push("profile");
     },
-    [enterProfile],
+    [hist],
+  );
+  /** Leave the open conversation exactly like system Back does. */
+  const closeThread = useCallback(() => {
+    if (!hist.close("thread")) {
+      setActiveIdState(null);
+      latestActiveChange.current?.(null);
+      focusTabChip();
+    }
+  }, [hist, focusTabChip]);
+  /** App layout: Friends / Find people are one history layer above Chats; Chats closes it. */
+  const changeTab = useCallback(
+    (t: Tab) => {
+      if (isApp) {
+        if (t === "chats") hist.close("tab");
+        else hist.push("tab");
+      }
+      setTab(t);
+    },
+    [isApp, hist, setTab],
   );
 
-  const isApp = variant === "app";
   const twoPane = !isApp && width >= TWO_PANE_MIN;
   const fitHeight = useViewportFit(rootRef, (variant === "page" || isApp) && !inDialog && !twoPane);
 
@@ -164,9 +205,10 @@ function ChatWorkspaceCore({
     (id: string | null) => {
       setActiveIdState(id);
       onActiveChange?.(id);
-      if (id) enterThread();
+      if (id) hist.openThread();
+      else hist.close("thread");
     },
-    [onActiveChange, enterThread],
+    [onActiveChange, hist],
   );
 
   const activeConv = useMemo<ChatConversation | null>(() => {
@@ -247,11 +289,11 @@ function ChatWorkspaceCore({
       const existing = convs.items.find((c) => c.id === id);
       if (!existing) setDraft(draftConversation(person));
       setProfileId(null);
-      forgetProfile();
-      setTab("chats");
+      // The app layout keeps the Friends / Find-people tab underneath so Back from the thread returns to it.
+      if (!isApp) setTab("chats");
       setActiveId(id);
     },
-    [convs.items, setActiveId, forgetProfile],
+    [convs.items, setActiveId, isApp, setTab],
   );
 
   const actions = useMemo<ChatPeopleActions>(
@@ -325,10 +367,9 @@ function ChatWorkspaceCore({
   const selectConversation = useCallback(
     (c: ChatConversation) => {
       setProfileId(null);
-      forgetProfile();
       setActiveId(c.id);
     },
-    [setActiveId, forgetProfile],
+    [setActiveId],
   );
 
   const handleActivity = useCallback(
@@ -381,8 +422,10 @@ function ChatWorkspaceCore({
         ? "h-[560px] max-h-[calc(100dvh-6rem)] min-h-[420px]"
         : variant === "app"
           ? "h-[100dvh]"
-          : "h-[calc(100dvh-11.5rem)] min-h-[420px] sm:h-[calc(100dvh-8.5rem)]";
-  const frame = inDialog || variant === "card" || isApp ? "" : "rounded-2xl border border-brand-softline shadow-xs";
+          : fill
+            ? "h-full min-h-0"
+            : "h-[calc(100dvh-11.5rem)] min-h-[420px] sm:h-[calc(100dvh-8.5rem)]";
+  const frame = inDialog || variant === "card" || isApp || fill ? "" : "rounded-2xl border border-brand-softline shadow-xs";
 
   const visibleFriends = useMemo(() => {
     const f = query.trim().toLowerCase();
@@ -395,11 +438,12 @@ function ChatWorkspaceCore({
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
     e.preventDefault();
     const next: Tab = tabs[(idx + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length].id;
-    setTab(next);
+    changeTab(next);
     tabRefs.current[next]?.focus();
   };
 
   return (
+    <ChatHistoryContext.Provider value={hist}>
     <ChatPeopleProvider value={actions}>
       <div
         ref={rootRef}
@@ -414,14 +458,15 @@ function ChatWorkspaceCore({
               <ChatAppHome
                 tabs={tabs}
                 tab={tab}
-                onTab={setTab}
+                onTab={changeTab}
                 onTabKey={onTabKey}
                 registerTab={(id, el) => {
                   tabRefs.current[id] = el;
                 }}
                 query={query}
                 onQuery={setQuery}
-                onNewChat={() => setTab("people")}
+                onNewChat={() => changeTab("people")}
+                hideNav={profileId !== null || fitHeight !== null}
               >
                 {tab === "chats" ? (
                   <AppConversationList
@@ -431,7 +476,7 @@ function ChatWorkspaceCore({
                     error={convs.error}
                     onSelect={selectConversation}
                     onRetry={convs.refresh}
-                    onFindPeople={() => setTab("people")}
+                    onFindPeople={() => changeTab("people")}
                   />
                 ) : tab === "friends" ? (
                   <AppFriendsPanel
@@ -441,7 +486,7 @@ function ChatWorkspaceCore({
                     error={friendsData.error}
                     filter={query}
                     onRetry={friendsData.refresh}
-                    onFindPeople={() => setTab("people")}
+                    onFindPeople={() => changeTab("people")}
                   />
                 ) : (
                   <AppPeoplePanel query={query} />
@@ -455,10 +500,7 @@ function ChatWorkspaceCore({
                 conv={c}
                 me={me}
                 meName={meName}
-                onBack={() => {
-                  if (!leaveThread()) setActiveId(null);
-                  requestAnimationFrame(() => tabRefs.current[tab]?.focus());
-                }}
+                onBack={closeThread}
                 onOpenProfile={openProfile}
                 onActivity={handleActivity}
                 onViewed={handleViewed}
@@ -467,7 +509,7 @@ function ChatWorkspaceCore({
           />
         ) : showList ? (
           <div
-            className={`flex min-h-0 flex-col bg-[#FAF7F2] ${twoPane ? "w-[320px] shrink-0 border-r border-brand-softline" : "w-full"}`}
+            className={`flex min-h-0 flex-col bg-[#FAF7F2] ${twoPane ? `${fill ? "w-[360px]" : "w-[320px]"} shrink-0 border-r border-brand-softline` : "w-full"}`}
           >
             <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-2 pt-3">
               <h2 className="flex items-center gap-2 text-base font-extrabold text-brand-deep">
@@ -499,7 +541,7 @@ function ChatWorkspaceCore({
                   aria-selected={tab === t.id}
                   aria-controls="chat-tabpanel"
                   tabIndex={tab === t.id ? 0 : -1}
-                  onClick={() => setTab(t.id)}
+                  onClick={() => changeTab(t.id)}
                   onKeyDown={(e) => onTabKey(e, i)}
                   className={`relative flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-full px-2 text-xs font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-primary ${
                     tab === t.id ? "bg-brand-primary text-white shadow-sm" : "text-brand-muted hover:bg-white hover:text-brand-deep"
@@ -528,7 +570,7 @@ function ChatWorkspaceCore({
                   activeId={activeId}
                   onSelect={selectConversation}
                   onRetry={convs.refresh}
-                  onFindPeople={() => setTab("people")}
+                  onFindPeople={() => changeTab("people")}
                 />
               ) : tab === "friends" ? (
                 <FriendsPanel
@@ -537,7 +579,7 @@ function ChatWorkspaceCore({
                   loading={friendsData.loading}
                   error={friendsData.error}
                   onRetry={friendsData.refresh}
-                  onFindPeople={() => setTab("people")}
+                  onFindPeople={() => changeTab("people")}
                 />
               ) : (
                 <PeoplePanel />
@@ -558,10 +600,7 @@ function ChatWorkspaceCore({
                 conv={activeConv}
                 me={me}
                 meName={meName}
-                onBack={twoPane ? undefined : () => {
-                  if (!leaveThread()) setActiveId(null);
-                  requestAnimationFrame(() => tabRefs.current[tab]?.focus());
-                }}
+                onBack={twoPane ? undefined : closeThread}
                 onOpenProfile={openProfile}
                 onActivity={handleActivity}
                 onViewed={handleViewed}
@@ -580,7 +619,7 @@ function ChatWorkspaceCore({
                 </span>
                 <p className="text-base font-extrabold text-brand-deep">Prabodh Messages</p>
                 <p className="max-w-xs text-sm text-brand-muted">
-                  Select a chat to read it, or find people to add as friends and start a conversation.
+                  {fill ? "Select a chat to start messaging, or find people to add as friends." : "Select a chat to read it, or find people to add as friends and start a conversation."}
                 </p>
               </div>
             )}
@@ -613,6 +652,7 @@ function ChatWorkspaceCore({
         ) : null}
       </div>
     </ChatPeopleProvider>
+    </ChatHistoryContext.Provider>
   );
 }
 
@@ -621,6 +661,7 @@ function ChatWorkspaceCore({
  * one component. `card` is a fixed-height dashboard card with an Expand button; `page` fills the page.
  */
 export default function ChatWorkspace(props: ChatWorkspaceProps) {
+  const hist = useChatHistory();
   const [expanded, setExpanded] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(props.initialConversationId ?? null);
 
@@ -640,7 +681,7 @@ export default function ChatWorkspace(props: ChatWorkspaceProps) {
           </button>
         </div>
         <ExpandDialog title="Messages" onClose={() => setExpanded(false)}>
-          <ChatWorkspaceCore variant="page" inDialog initialConversationId={activeId ?? undefined} onActiveChange={setActiveId} />
+          <ChatWorkspaceCore variant="page" inDialog initialConversationId={activeId ?? undefined} onActiveChange={setActiveId} hist={hist} />
         </ExpandDialog>
       </>
     );
@@ -649,6 +690,7 @@ export default function ChatWorkspace(props: ChatWorkspaceProps) {
   return (
     <ChatWorkspaceCore
       {...props}
+      hist={hist}
       initialConversationId={props.variant === "card" ? (activeId ?? props.initialConversationId) : props.initialConversationId}
       onExpand={props.variant === "card" ? () => setExpanded(true) : undefined}
       onActiveChange={props.variant === "card" ? setActiveId : undefined}

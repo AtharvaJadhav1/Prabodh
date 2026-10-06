@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import DiscussionResponsive from "../../../../components/chat/DiscussionResponsive";
 
 export const metadata: Metadata = {
-  title: "Discussion",
+  title: "Messages",
   description: "Team chat, friends and direct messages.",
 };
 
