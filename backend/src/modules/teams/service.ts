@@ -136,8 +136,22 @@ export class TeamsService {
         ? await this.repo.findById(teamId, { psPreferenceStatuses: visiblePsStatuses(user) })
         : await this.repo.findByIdDashboard(teamId);
     if (!team) throw new NotFoundException('Team not found');
-    await this.assertCanView(user, team);
+    await this.assertCanRead(user, team);
     return await this.withResolvedDeliverables(team);
+  }
+
+  /**
+   * Read-only access: everyone `assertCanView` allows, plus mentors who once held a seat on the team
+   * (replaced or unassigned) so they can still look at the team they worked with. Writes never use this.
+   */
+  async assertCanRead(user: AuthUser, team: Parameters<TeamsService['assertCanView']>[1] & { id: string }) {
+    try {
+      await this.assertCanView(user, team);
+    } catch (err) {
+      if (!(err instanceof ForbiddenException) || team.status === 'disqualified') throw err;
+      const past = await this.repo.hasMentorHistory(team.id, user.id);
+      if (!past) throw err;
+    }
   }
 
   async listDeliverables(user: AuthUser, teamId: string) {

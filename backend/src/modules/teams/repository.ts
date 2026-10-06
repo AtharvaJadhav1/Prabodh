@@ -15,6 +15,15 @@ export class TeamsRepository {
   }
 
   /** Lightweight lookup for auth checks and mutations — avoids loading the full workspace graph. */
+  /** True when the user ever held a mentor seat (active or not) on the team. */
+  async hasMentorHistory(teamId: string, userId: string) {
+    const row = await this.prisma.mentorAssignment.findFirst({
+      where: { teamId, mentorUserId: userId },
+      select: { id: true },
+    });
+    return !!row;
+  }
+
   findForAccessCheck(id: string) {
     return this.prisma.team.findUnique({
       where: { id },
