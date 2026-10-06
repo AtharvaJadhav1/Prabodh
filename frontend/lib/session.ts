@@ -129,9 +129,7 @@ export function isCompactViewport(): boolean {
   }
 }
 
-/** Post-login landing for a workspace: students on phones/tablets open chat first. */
 function landingForRole(role: PlatformRole): string {
-  if (role === "student" && isCompactViewport()) return "/dashboard/student/discussion";
   return dashboardForRole(role);
 }
 
