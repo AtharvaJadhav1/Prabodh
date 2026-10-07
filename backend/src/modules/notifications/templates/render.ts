@@ -118,6 +118,9 @@ export type LayoutOptions = {
   greeting?: string | false;
 };
 
+const SUPPORT_EMAIL = 'support@prabodh.app';
+const AUTOMATED_NOTE = 'This is an automated message.';
+
 export function layout(opts: LayoutOptions) {
   const footer =
     opts.footerNote ??
@@ -169,6 +172,7 @@ export function layout(opts: LayoutOptions) {
           <tr><td style="padding:28px 32px 32px">
             <div style="height:1px;background:${BRAND.softline};line-height:1px;font-size:1px;margin-bottom:18px">&nbsp;</div>
             <p style="margin:0;font-size:12px;line-height:1.5;color:${BRAND.muted}">${escapeHtml(footer)}</p>
+            <p style="margin:10px 0 0;font-size:12px;line-height:1.5;color:${BRAND.muted}">${AUTOMATED_NOTE} Need help? Contact <a href="mailto:${SUPPORT_EMAIL}" style="color:${BRAND.muted};text-decoration:underline">${SUPPORT_EMAIL}</a>.</p>
           </td></tr>
         </table>
         <p style="margin:16px 0 0;font-size:11px;color:${BRAND.muted}">© Prabodh</p>
