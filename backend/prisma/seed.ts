@@ -205,6 +205,14 @@ async function main() {
     department: 'Expert Cell',
   });
 
+  await upsertUser({
+    email: 'support@gmail.com',
+    fullName: 'Prabodh Support',
+    platformRole: PlatformRole.support,
+    institute: INSTITUTE,
+    department: 'Support',
+  });
+
   const studentRows = [];
   for (const s of students) {
     studentRows.push(

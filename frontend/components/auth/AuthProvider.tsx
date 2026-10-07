@@ -337,6 +337,7 @@ export function roleLabel(role: PlatformRole) {
   if (role === "institute_mentor") return "Institute Mentor";
   if (role === "industry_mentor") return "Industry Mentor";
   if (role === "student_expert") return "Student Expert";
+  if (role === "support") return "Support";
   return "Student";
 }
 

@@ -12,6 +12,8 @@ const SUPPRESS_MS = 8_000;
 
 function sortConversations(items: ChatConversation[]): ChatConversation[] {
   return [...items].sort((a, b) => {
+    if (a.pinned && !b.pinned) return -1;
+    if (b.pinned && !a.pinned) return 1;
     const at = new Date(a.lastMessage?.createdAt ?? a.updatedAt).getTime() || 0;
     const bt = new Date(b.lastMessage?.createdAt ?? b.updatedAt).getTime() || 0;
     return bt - at;

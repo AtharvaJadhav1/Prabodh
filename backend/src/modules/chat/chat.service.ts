@@ -31,6 +31,7 @@ import { createNotifications } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { consumeToken } from '../../lib/rate-limit';
 import { decryptText, dmAad, encryptText } from '../../lib/message-crypto';
+import { getSupportUser } from '../../lib/support-identity';
 import { TeamsService } from '../teams/service';
 
 /** Group threads with no read marker count comments from the last 30 days as unread. */
@@ -478,11 +479,44 @@ export class ChatService {
   private async assertFriends(meId: string, otherId: string) {
     const msg = 'You can only message people you are friends with.';
     if (!otherId || otherId === meId) throw new ForbiddenException(msg);
+    const supportUser = await getSupportUser(this.prisma);
+    if (supportUser && otherId === supportUser.id) {
+      await this.ensureSupportFriendship(meId, supportUser.id);
+      return;
+    }
     const [fr, other] = await Promise.all([
       this.prisma.friendship.findUnique({ where: { pairKey: pairKey(meId, otherId) }, select: { status: true } }),
       this.prisma.user.findFirst({ where: { AND: [eligibleUserWhere, { id: otherId }] }, select: { id: true } }),
     ]);
     if (!fr || fr.status !== FriendshipStatus.accepted || !other) throw new ForbiddenException(msg);
+  }
+
+  /** Every user is implicitly friends with Support — no request/accept flow needed. */
+  private async ensureSupportFriendship(meId: string, supportId: string) {
+    const key = pairKey(meId, supportId);
+    const existing = await this.prisma.friendship.findUnique({ where: { pairKey: key } });
+    if (existing?.status === FriendshipStatus.accepted) return;
+    if (existing) {
+      await this.prisma.friendship.updateMany({
+        where: { id: existing.id },
+        data: { status: FriendshipStatus.accepted, respondedAt: new Date() },
+      });
+      return;
+    }
+    try {
+      await this.prisma.friendship.create({
+        data: {
+          requesterId: meId,
+          addresseeId: supportId,
+          pairKey: key,
+          status: FriendshipStatus.accepted,
+          respondedAt: new Date(),
+        },
+      });
+    } catch (err) {
+      if ((err as { code?: string })?.code === 'P2002') return; // lost a create race: already there
+      throw err;
+    }
   }
 
   async listMessages(
@@ -552,6 +586,7 @@ export class ChatService {
           clientId,
         },
       });
+      void this.notifySupportMessage(user, otherId, parsed.body);
       return toDm(row);
     } catch (err) {
       if ((err as { code?: string })?.code === 'P2002' && clientId) {
@@ -561,6 +596,26 @@ export class ChatService {
         if (dup) return toDm(dup);
       }
       throw err;
+    }
+  }
+
+  /** In-app only (no email). Never fails the caller. */
+  private async notifySupportMessage(sender: AuthUser, recipientId: string, body: string) {
+    try {
+      const supportUser = await getSupportUser(this.prisma);
+      if (!supportUser) return;
+      const senderIsSupport = sender.id === supportUser.id;
+      if (!senderIsSupport && recipientId !== supportUser.id) return;
+      const notifyUserId = senderIsSupport ? recipientId : supportUser.id;
+      const otherPartyId = senderIsSupport ? recipientId : sender.id;
+      await createNotifications(this.prisma, [notifyUserId], {
+        type: 'support_message',
+        title: senderIsSupport ? 'Support replied' : 'New support message',
+        body: previewText(body),
+        relatedEntity: `support:${otherPartyId}`,
+      });
+    } catch (err) {
+      console.error('[chat] support notification failed', err);
     }
   }
 
@@ -744,6 +799,8 @@ export class ChatService {
     type Conv = {
       id: string;
       type: 'group' | 'dm';
+      kind?: 'support';
+      pinned?: boolean;
       title: string;
       subtitle: string | null;
       avatarUrl: string | null;
@@ -801,7 +858,37 @@ export class ChatService {
       });
     }
 
+    // Every chat-eligible user gets a pinned thread with Support, even before the first message.
+    const supportUser = await getSupportUser(this.prisma);
+    if (supportUser && supportUser.id !== user.id) {
+      const existing = items.find((it) => it.type === 'dm' && it.person?.id === supportUser.id);
+      if (existing) {
+        existing.kind = 'support';
+        existing.pinned = true;
+      } else {
+        const supportRow = await this.findEligible(supportUser.id);
+        if (supportRow) {
+          const person = this.toPerson(supportRow, { status: 'friends' });
+          items.push({
+            id: `dm:${supportRow.id}`,
+            type: 'dm',
+            kind: 'support',
+            pinned: true,
+            title: person.fullName,
+            subtitle: person.roleLabel,
+            avatarUrl: person.avatarUrl,
+            person,
+            lastMessage: null,
+            unread: 0,
+            updatedAt: new Date(0).toISOString(),
+          });
+        }
+      }
+    }
+
     items.sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (b.pinned && !a.pinned) return 1;
       if (a.lastMessage && b.lastMessage) {
         return b.lastMessage.createdAt.localeCompare(a.lastMessage.createdAt) || a.id.localeCompare(b.id);
       }

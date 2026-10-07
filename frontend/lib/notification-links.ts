@@ -66,6 +66,7 @@ export function destinationFor(
   if (iconKindFor(n) === "comment") {
     if (role === "student") return { href: "/dashboard/student/discussion" };
     if (role === "institute_mentor") return { href: "/dashboard/mentor/queries" };
+    if (role === "support") return { href: "/dashboard/support" };
   }
   return null;
 }

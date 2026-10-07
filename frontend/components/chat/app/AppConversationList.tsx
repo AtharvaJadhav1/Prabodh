@@ -4,7 +4,7 @@ import { memo, useMemo } from "react";
 import { formatListTime } from "../../../lib/chat-format";
 import type { ChatConversation } from "../../../lib/chat-types";
 import ChatAvatar from "../ChatAvatar";
-import { AlertIcon, TickIcon, UserPlusIcon } from "../chat-icons";
+import { AlertIcon, SupportIcon, TickIcon, UserPlusIcon } from "../chat-icons";
 import { EmptyChatsArt, NoResultsArt } from "./AppIllustrations";
 
 type Props = {
@@ -41,7 +41,10 @@ const Row = memo(function Row({ c, onSelect }: { c: ChatConversation; onSelect: 
         <ChatAvatar app name={c.title} src={c.avatarUrl ?? c.person?.avatarUrl} group={c.type === "group"} size={56} />
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline justify-between gap-2">
-            <span className={`truncate text-[16px] leading-6 text-chat-text ${unread ? "font-bold" : "font-semibold"}`}>{c.title}</span>
+            <span className="flex min-w-0 items-center gap-1">
+              {c.kind === "support" ? <SupportIcon className="h-3.5 w-3.5 shrink-0 text-chat-brandStrong" /> : null}
+              <span className={`truncate text-[16px] leading-6 text-chat-text ${unread ? "font-bold" : "font-semibold"}`}>{c.title}</span>
+            </span>
             {time ? (
               <time
                 dateTime={c.lastMessage?.createdAt}

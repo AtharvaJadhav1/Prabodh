@@ -306,6 +306,13 @@ function ChatWorkspaceCore({
     [convs.items, setActiveId, isApp, setTab],
   );
 
+  const supportConv = useMemo(() => convs.items.find((c) => c.kind === "support") ?? null, [convs.items]);
+  const openSupport = useCallback(() => {
+    if (!supportConv) return;
+    if (!isApp) setTab("chats");
+    setActiveId(supportConv.id);
+  }, [supportConv, isApp, setTab, setActiveId]);
+
   const actions = useMemo<ChatPeopleActions>(
     () => ({
       friendshipOf,
@@ -630,6 +637,15 @@ function ChatWorkspaceCore({
                 <p className="max-w-xs text-sm text-brand-muted">
                   {fill ? "Select a chat to start messaging, or find people to add as friends." : "Select a chat to read it, or find people to add as friends and start a conversation."}
                 </p>
+                {supportConv ? (
+                  <button
+                    type="button"
+                    onClick={openSupport}
+                    className="mt-1 text-sm font-bold text-brand-primary hover:text-brand-hover"
+                  >
+                    Need help? Chat with Support
+                  </button>
+                ) : null}
               </div>
             )}
           </div>

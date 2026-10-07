@@ -40,6 +40,8 @@ export type ChatConversationType = "group" | "dm";
 export type ChatConversation = {
   id: string;
   type: ChatConversationType;
+  kind?: "support";
+  pinned?: boolean;
   title: string;
   subtitle: string | null;
   avatarUrl: string | null;

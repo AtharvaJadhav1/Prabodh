@@ -13,6 +13,7 @@ enum PlatformRole {
   industry_mentor
   admin
   student_expert
+  support
 }
 
 enum TeamStatus {
@@ -94,6 +95,7 @@ enum NotificationType {
   broadcast
   comment
   team_join_request
+  support_message
 }
 
 enum NotificationLogStatus {

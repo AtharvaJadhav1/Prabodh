@@ -7,6 +7,7 @@ export const CHAT_ROLES: PlatformRole[] = [
   PlatformRole.institute_mentor,
   PlatformRole.industry_mentor,
   PlatformRole.student_expert,
+  PlatformRole.support,
 ];
 
 export const ROLE_LABELS: Partial<Record<PlatformRole, string>> = {
@@ -14,6 +15,7 @@ export const ROLE_LABELS: Partial<Record<PlatformRole, string>> = {
   institute_mentor: 'Institute Mentor',
   industry_mentor: 'Industry Mentor',
   student_expert: 'Student Expert',
+  support: 'Support',
 };
 
 export const MESSAGE_MAX_LENGTH = 2000;

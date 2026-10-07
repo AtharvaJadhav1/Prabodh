@@ -4,7 +4,7 @@ import { memo, useMemo, useState } from "react";
 import { formatListTime } from "../../lib/chat-format";
 import type { ChatConversation } from "../../lib/chat-types";
 import ChatAvatar from "./ChatAvatar";
-import { AlertIcon, GroupIcon, SearchIcon } from "./chat-icons";
+import { AlertIcon, GroupIcon, SearchIcon, SupportIcon } from "./chat-icons";
 
 type Props = {
   items: ChatConversation[];
@@ -51,6 +51,7 @@ const Row = memo(function Row({
           <span className="flex items-baseline justify-between gap-2">
             <span className="flex min-w-0 items-center gap-1.5">
               {c.type === "group" ? <GroupIcon className="h-3.5 w-3.5 shrink-0 text-brand-muted" /> : null}
+              {c.kind === "support" ? <SupportIcon className="h-3.5 w-3.5 shrink-0 text-brand-primary" /> : null}
               <span className={`truncate text-[15px] text-brand-deep ${unread ? "font-extrabold" : "font-bold"}`}>{c.title}</span>
             </span>
             {time ? (

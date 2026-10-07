@@ -1,6 +1,12 @@
 import { SESSION_KEY } from "./config";
 
-export type PlatformRole = "student" | "institute_mentor" | "industry_mentor" | "admin" | "student_expert";
+export type PlatformRole =
+  | "student"
+  | "institute_mentor"
+  | "industry_mentor"
+  | "admin"
+  | "student_expert"
+  | "support";
 
 export type Session = {
   userId: string;
@@ -28,6 +34,7 @@ const PLATFORM_ROLES: readonly PlatformRole[] = [
   "industry_mentor",
   "admin",
   "student_expert",
+  "support",
 ];
 
 function isPlatformRole(v: unknown): v is PlatformRole {
@@ -91,6 +98,7 @@ export function dashboardForRole(role: PlatformRole) {
   if (role === "institute_mentor") return "/dashboard/mentor";
   if (role === "industry_mentor") return "/dashboard/industry";
   if (role === "student_expert") return "/dashboard/expert";
+  if (role === "support") return "/dashboard/support";
   return "/dashboard/student";
 }
 
