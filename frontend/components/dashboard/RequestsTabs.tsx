@@ -13,11 +13,26 @@ import {
   GradCapIcon,
   UserPlusIcon,
   LockIcon,
+  TrashIcon,
 } from "./icons";
 import Avatar from "../Avatar";
 import { getUserAvatarUrl, avatarUrlFrom } from "../../lib/avatar";
 import { getMentorWavesAvatarUrl } from "../../lib/mentorAvatar";
 import TeamInviteDecisionModal from "./TeamInviteDecisionModal";
+
+function formatSentTimestamp(dateString?: string | null) {
+  if (!dateString) return "—";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
 
 export default function RequestsTabs() {
   const [tab, setTab] = useState<1 | 2>(1);
@@ -220,7 +235,7 @@ function ActiveRosterTab() {
                   <th className="w-2/5 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-brand-muted">Recipient Email</th>
                   <th className="w-1/5 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-brand-muted">Sent Timestamp</th>
                   <th className="w-1/4 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-brand-muted">Delivery &amp; Status</th>
-                  <th className="w-auto px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-brand-muted">Action</th>
+                  <th className="w-[110px] min-w-[110px] max-w-[110px] px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-brand-muted">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -235,24 +250,29 @@ function ActiveRosterTab() {
                       </div>
                     </td>
                     <td className="w-1/5 px-4 py-3.5">
-                      <span className="text-xs font-medium text-brand-muted">{inv.sentAt || "Just now"}</span>
+                      <span className="text-xs font-medium text-brand-muted">{formatSentTimestamp(inv.sentAt)}</span>
                     </td>
                     <td className="w-1/4 px-4 py-3.5">
                       <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-brand-amber/30 bg-brand-amber/20 px-3 py-1 text-xs font-medium text-brand-deep">
                         <ClockIcon className="h-3.5 w-3.5 animate-pulse text-brand-primary" /> Pending Acceptance
                       </span>
                     </td>
-                    <td className="w-auto px-4 py-3.5 text-right">
+                    <td className="w-[110px] min-w-[110px] max-w-[110px] px-4 py-3.5 text-right">
                       {isLead ? (
-                        <button
-                          type="button"
-                          disabled={revokingId === inv.id}
-                          onClick={() => handleRevoke(inv.id)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:border-red-500/50 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <XIcon className="h-3.5 w-3.5" />
-                          <span>{revokingId === inv.id ? "Revoking…" : "Revoke"}</span>
-                        </button>
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            disabled={revokingId === inv.id}
+                            onClick={() => handleRevoke(inv.id)}
+                            title="Revoke invitation"
+                            className="group flex items-center justify-center gap-0 hover:gap-1.5 h-8 w-8 hover:w-auto px-2 py-1.5 rounded-full border border-stone-200 bg-white hover:bg-red-50 hover:border-red-200 text-stone-400 hover:text-red-600 transition-all duration-200 cursor-pointer overflow-hidden shadow-2xs disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <TrashIcon className="w-3.5 h-3.5 shrink-0 transition-colors" />
+                            <span className="max-w-0 opacity-0 group-hover:max-w-[70px] group-hover:opacity-100 whitespace-nowrap text-xs font-medium text-red-600 transition-all duration-200 ease-in-out overflow-hidden">
+                              Revoke
+                            </span>
+                          </button>
+                        </div>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-brand-muted">
                           <LockIcon className="h-3 w-3" /> Lead Only

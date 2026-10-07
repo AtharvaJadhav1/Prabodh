@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTeam } from "./TeamProvider";
 import { GradCapIcon, CheckIcon, SendIcon, ClockIcon } from "./icons";
 import MentorLinkedinIcon from "./MentorLinkedinIcon";
+import IndustryMentorsDirectory from "./IndustryMentorsDirectory";
 
 function mentorKindLabel(kind: string) {
   return kind === "industry" ? "Industry Mentor" : "Institute Mentor";
@@ -47,6 +48,9 @@ export default function MentorInvitePanel() {
     );
   }, [facultyOnly, query]);
   const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(query);
+  // Send stays locked until the typed email matches a registered faculty account exactly.
+  const matchedFaculty = facultyOnly.find((f) => f.email.trim().toLowerCase() === query) ?? null;
+  const canSend = looksLikeEmail && matchedFaculty !== null && !busy && !revokingId;
 
   useEffect(() => {
     if (isLead) void loadFacultyDirectory();
@@ -56,6 +60,10 @@ export default function MentorInvitePanel() {
     const trimmed = targetEmail.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setError("Enter a faculty email, e.g. neha.kulkarni@mituniversity.edu.in");
+      return;
+    }
+    if (!facultyOnly.some((f) => f.email.trim().toLowerCase() === trimmed)) {
+      setError("Faculty account not found. Please contact your admin to create their account.");
       return;
     }
     if (inviteBlocked) {
@@ -84,7 +92,7 @@ export default function MentorInvitePanel() {
           Mentor Invites
         </h2>
         <p className="mt-2 text-sm text-brand-muted">
-          Invite an Institute Faculty Mentor to guide your team. The slot locks when the mentor accepts.
+          Invite an Institute Mentor to guide your team. The slot locks when the mentor accepts.
         </p>
         {slottedAssignments.length === 0 && pending.length === 0 ? (
           <div className="mt-4 rounded-xl border border-dashed border-brand-softline bg-brand-cream p-5 text-center text-sm text-brand-muted">
@@ -141,108 +149,96 @@ export default function MentorInvitePanel() {
         )}
       </div>
 
-      {isLead ? (
+      {isLead && inviteBlocked ? <IndustryMentorsDirectory /> : null}
+
+      {isLead && !inviteBlocked ? (
         <div className="rounded-2xl border border-brand-softline bg-white p-5 sm:p-6">
-          <h3 className="text-sm font-bold text-brand-deep">Invite a mentor by email</h3>
-          <p className="mt-1 text-xs text-brand-muted">
-            Faculty mentors must already have a registered Prabodh account. Invite them using the same email they
-            use to sign in, or contact your administrator if they are not listed.
-          </p>
+          <h3 className="text-sm font-bold text-brand-deep">Invite a faculty mentor by email</h3>
 
-          <div className="mt-3 space-y-1.5">
-            <p className="block text-xs font-bold uppercase tracking-wider text-brand-muted">Mentor type</p>
-            <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800">
-              <GradCapIcon className="h-3.5 w-3.5" /> Institute Faculty Mentor
-            </div>
-          </div>
+          <form
+            className="mt-3 flex flex-col gap-2 sm:flex-row"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSend();
+            }}
+          >
+            <input
+              type="text"
+              inputMode="email"
+              autoComplete="off"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setError("");
+                setSuccess("");
+              }}
+              aria-label="Search faculty by name or email, or enter a full email to invite"
+              placeholder="Search by name or email, e.g. neha.kulkarni@mituniversity.edu.in"
+              className="h-10 w-full rounded-xl border border-brand-softline bg-brand-cream px-3 py-2 text-sm text-brand-deep outline-none focus:border-brand-primary focus:bg-white sm:h-11"
+            />
+            <button
+              type="submit"
+              disabled={!canSend}
+              title={
+                canSend
+                  ? "Send invite"
+                  : query && looksLikeEmail
+                    ? "No registered faculty account with that email."
+                    : "Enter a registered faculty email to enable the invite."
+              }
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60 sm:h-11"
+            >
+              <SendIcon className="h-4 w-4" /> Send
+            </button>
+          </form>
+          {query && looksLikeEmail && !matchedFaculty ? (
+            <p className="mt-2 text-xs font-semibold text-red-700">
+              Faculty account not found. Please contact your admin to create their account.
+            </p>
+          ) : null}
+          {error ? <p className="mt-2 text-xs font-semibold text-red-700">{error}</p> : null}
+          {success ? <p className="mt-2 text-xs font-bold text-brand-approved">{success}</p> : null}
 
-          {inviteBlocked ? (
-            <div className="mt-4">
-              <p className="text-xs text-brand-muted">
-                The faculty mentor slot is locked for this team.
-              </p>
-              {error ? <p className="mt-2 break-words text-xs font-semibold text-red-700">{error}</p> : null}
-              <span className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-brand-approved/30 bg-brand-approved/10 px-2.5 py-1 text-xs font-bold text-brand-approved">
-                <CheckIcon className="h-3.5 w-3.5" /> Assigned / Locked
-              </span>
-            </div>
-          ) : (
-            <>
-              <form
-                className="mt-3 flex flex-col gap-2 sm:flex-row"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void handleSend();
-                }}
-              >
-                <input
-                  type="text"
-                  inputMode="email"
-                  autoComplete="off"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    setError("");
-                    setSuccess("");
-                  }}
-                  aria-label="Search faculty by name or email, or enter a full email to invite"
-                  placeholder="Search by name or email, e.g. neha.kulkarni@mituniversity.edu.in"
-                  className="h-10 w-full rounded-xl border border-brand-softline bg-brand-cream px-3 py-2 text-sm text-brand-deep outline-none focus:border-brand-primary focus:bg-white sm:h-11"
-                />
-                <button
-                  type="submit"
-                  disabled={busy || revokingId !== null || !looksLikeEmail}
-                  title={looksLikeEmail ? "Send invite" : "Enter a full email address, or pick someone from the list below"}
-                  className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60 sm:h-11"
-                >
-                  <SendIcon className="h-4 w-4" /> Send
-                </button>
-              </form>
-              {error ? <p className="mt-2 break-words text-xs font-semibold text-red-700">{error}</p> : null}
-              {success ? <p className="mt-2 break-words text-xs font-bold text-brand-approved">{success}</p> : null}
-
-              <h4 className="mt-6 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs font-bold uppercase tracking-wider text-brand-muted">
-                <span>Faculty directory</span>
-                <span className="font-semibold normal-case tracking-normal">
-                  {query ? `${filteredDirectory.length} of ${facultyOnly.length} match` : `${facultyOnly.length} registered`}
-                </span>
-              </h4>
-              <ul className="mt-3 divide-y divide-brand-softline rounded-xl border border-brand-softline">
-                {filteredDirectory.length === 0 ? (
-                  <li className="px-4 py-3 text-xs text-brand-muted">
-                    {facultyOnly.length === 0
-                      ? "No registered faculty yet."
-                      : looksLikeEmail
-                        ? "No registered faculty with that email in the list — you can still send the invite to it."
-                        : "No faculty match your search."}
-                  </li>
-                ) : (
-                  filteredDirectory.map((f) => (
-                    <li key={f.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="flex items-center gap-1.5 truncate text-sm font-bold text-brand-deep">
-                          <span className="truncate">{f.fullName}</span>
-                          <MentorLinkedinIcon url={f.linkedinUrl} name={f.fullName} />
-                        </p>
-                        <p className="truncate text-[11px] text-brand-muted">
-                          {f.email}
-                          {f.department ? ` · ${f.department}` : ""}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={busy || revokingId !== null}
-                        onClick={() => void handleSend(f.email)}
-                        className="shrink-0 rounded-lg border border-brand-primary/40 bg-brand-primary/10 px-2.5 py-1 text-[11px] font-bold text-brand-primary transition-colors hover:bg-brand-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        Invite
-                      </button>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </>
-          )}
+          <h4 className="mt-6 flex items-center justify-between gap-2 text-xs font-bold uppercase tracking-wider text-brand-muted">
+            <span>Faculty directory</span>
+            <span className="font-semibold normal-case tracking-normal">
+              {query ? `${filteredDirectory.length} of ${facultyOnly.length} match` : `${facultyOnly.length} registered`}
+            </span>
+          </h4>
+          <ul className="mt-3 divide-y divide-brand-softline rounded-xl border border-brand-softline">
+            {filteredDirectory.length === 0 ? (
+              <li className="px-4 py-3 text-xs text-brand-muted">
+                {facultyOnly.length === 0
+                  ? "No registered faculty yet."
+                  : looksLikeEmail
+                    ? "No registered faculty with that email."
+                    : "No faculty match your search."}
+              </li>
+            ) : (
+              filteredDirectory.map((f) => (
+                <li key={f.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-1.5 truncate text-sm font-bold text-brand-deep">
+                      <span className="truncate">{f.fullName}</span>
+                      <MentorLinkedinIcon url={f.linkedinUrl} name={f.fullName} />
+                    </p>
+                    <p className="truncate text-[11px] text-brand-muted">
+                      {f.email}
+                      {f.department ? ` · ${f.department}` : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={busy || revokingId !== null}
+                    onClick={() => void handleSend(f.email)}
+                    className="shrink-0 rounded-lg border border-brand-primary/40 bg-brand-primary/10 px-2.5 py-1 text-[11px] font-bold text-brand-primary transition-colors hover:bg-brand-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Invite
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
         </div>
       ) : null}
     </div>

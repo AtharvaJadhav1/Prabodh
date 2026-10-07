@@ -520,12 +520,8 @@ function ChatWorkspaceCore({
           <div
             className={`flex min-h-0 flex-col bg-[#FAF7F2] ${twoPane ? `${fill ? "w-[360px]" : "w-[320px]"} shrink-0 border-r border-brand-softline` : "w-full"}`}
           >
-            <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-2 pt-3">
-              <h2 className="flex items-center gap-2 text-base font-extrabold text-brand-deep">
-                <ChatIcon className="h-5 w-5 text-brand-primary" />
-                Messages
-              </h2>
-              {variant === "card" && !inDialog && onExpand ? (
+            {variant === "card" && !inDialog && onExpand ? (
+              <div className="flex shrink-0 items-center justify-end gap-2 px-4 pb-2 pt-3">
                 <button
                   type="button"
                   onClick={onExpand}
@@ -535,9 +531,13 @@ function ChatWorkspaceCore({
                 >
                   <ExpandIcon className="h-5 w-5" />
                 </button>
-              ) : null}
-            </div>
-            <div role="tablist" aria-label="Chat sections" className="flex shrink-0 gap-1 px-3 pb-2">
+              </div>
+            ) : null}
+            <div
+              role="tablist"
+              aria-label="Chat sections"
+              className={`flex shrink-0 gap-1 px-3 pb-2 ${variant === "card" && !inDialog && onExpand ? "" : "pt-3"}`}
+            >
               {tabs.map((t, i) => (
                 <button
                   key={t.id}

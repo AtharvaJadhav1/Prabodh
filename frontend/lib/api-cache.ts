@@ -12,6 +12,7 @@ const neverCachePaths = [
   // Mentor directory shows live profile details (e.g. a LinkedIn link a mentor just saved), so never
   // serve a stale copy persisted in localStorage.
   /^\/mentors\/faculty/,
+  /^\/mentors\/industry/,
   // Pending requests and a mentor's teams decide what they can act on, so always fetch them live.
   /^\/mentors\/invites/,
   /^\/mentors\/me\//,

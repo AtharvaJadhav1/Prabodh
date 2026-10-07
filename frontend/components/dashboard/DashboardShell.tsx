@@ -9,18 +9,20 @@ import ProfileEditDrawer from "./ProfileEditDrawer";
 type DashboardShellProps = {
   children: ReactNode;
   title?: string;
+  /** Optional leading icon rendered before the page title in the top bar. */
+  titleIcon?: ReactNode;
   /** Full-bleed content area on lg+: no padding or max-width, exactly the viewport minus the top bar. */
   flush?: boolean;
 };
 
-export default function DashboardShell({ children, title, flush = false }: DashboardShellProps) {
+export default function DashboardShell({ children, title, titleIcon, flush = false }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-brand-canvas">
       <Sidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
       <div className="lg:pl-64">
-        <TopBar onMenuClick={() => setMobileOpen((v) => !v)} title={title} />
+        <TopBar onMenuClick={() => setMobileOpen((v) => !v)} title={title} titleIcon={titleIcon} />
         <main
           className={
             flush

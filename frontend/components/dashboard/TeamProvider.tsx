@@ -199,7 +199,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       pending.map((m) => ({
         id: m.id,
         email: m.invitedEmail,
-        sentAt: "Pending",
+        sentAt: (m as any).createdAt ?? null,
         status: "Invitation Sent — Awaiting Student Accept",
       })),
     );

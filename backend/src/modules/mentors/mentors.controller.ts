@@ -28,6 +28,11 @@ export class MentorsController {
     return this.mentors.listFaculty();
   }
 
+  @Get('industry')
+  listIndustryDirectory(@Query('domain') domain?: string, @Query('q') q?: string) {
+    return this.mentors.listIndustryDirectory({ domain, q });
+  }
+
   @Get('invites')
   @Roles(PlatformRole.institute_mentor, PlatformRole.industry_mentor, PlatformRole.admin)
   myInvites(

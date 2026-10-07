@@ -28,6 +28,13 @@ import { allocateSchema, auditLogQuerySchema, mentorInviteSchema } from './schem
 
 type Notice = Parameters<typeof notifyUsers>[2];
 
+/** Public avatar helper: mirrors the frontend's `avatarUrlFrom` (profileJson.avatarUrl). */
+function readProfileAvatarUrl(profileJson: unknown): string | null {
+  if (!profileJson || typeof profileJson !== 'object') return null;
+  const value = (profileJson as Record<string, unknown>).avatarUrl;
+  return typeof value === 'string' && value.trim() ? value : null;
+}
+
 @Injectable()
 export class MentorsService {
   private readonly logger = new Logger(MentorsService.name);
@@ -1055,5 +1062,47 @@ export class MentorsService {
       },
       orderBy: { fullName: 'asc' },
     });
+  }
+
+  /**
+   * Read-only industry mentor pool for students. Unlike `listIndustrialMentors`
+   * (invite/seat scoped to faculty + admin) this returns a sanitized public profile
+   * for every active industry mentor so students can browse and search the pool
+   * without any invite/contact affordance on the frontend.
+   */
+  async listIndustryDirectory(query: { q?: string; domain?: string }) {
+    const rows = await this.prisma.industrialMentor.findMany({
+      where: {
+        isActive: true,
+        ...(query.domain ? { domainExpertise: { has: query.domain } } : {}),
+        ...(query.q
+          ? {
+              OR: [
+                { fullName: { contains: query.q, mode: 'insensitive' } },
+                { companyName: { contains: query.q, mode: 'insensitive' } },
+                { designation: { contains: query.q, mode: 'insensitive' } },
+                { email: { contains: query.q, mode: 'insensitive' } },
+                { domainExpertise: { has: query.q } },
+              ],
+            }
+          : {}),
+      },
+      include: {
+        user: { select: { linkedinUrl: true, profileJson: true } },
+      },
+      orderBy: { fullName: 'asc' },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      fullName: row.fullName,
+      email: row.email,
+      companyName: row.companyName,
+      designation: row.designation,
+      domainExpertise: row.domainExpertise,
+      linkedinUrl: row.user?.linkedinUrl ?? null,
+      // The student UI falls back to a DiceBear Waves avatar when this is null.
+      avatarUrl: readProfileAvatarUrl(row.user?.profileJson),
+    }));
   }
 }
