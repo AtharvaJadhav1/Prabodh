@@ -41,6 +41,9 @@ export function resolveFromForTemplate(template: string) {
   return resolveFromAddress();
 }
 
+/** Where replies go: every email is automated, so "Reply" opens a message to support. */
+export const REPLY_TO_ADDRESS = 'support@prabodh.app';
+
 export async function sendTransactionalEmail(opts: {
   to: string;
   subject: string;
@@ -56,6 +59,7 @@ export async function sendTransactionalEmail(opts: {
   const logo = opts.html.includes(`cid:${LOGO_CID}`) ? logoAttachmentContent() : null;
   const { data, error } = await resend.emails.send({
     from,
+    replyTo: REPLY_TO_ADDRESS,
     to: opts.to,
     subject: opts.subject,
     html: opts.html,
