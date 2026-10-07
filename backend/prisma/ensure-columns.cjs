@@ -215,6 +215,20 @@ WHERE u."id" = s.id AND u."linkedin_url" IS NULL`);
     console.warn('[ensure-columns] PlatformRole.student_expert skipped:', err && err.message ? err.message : err);
   }
 
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TYPE "PlatformRole" ADD VALUE IF NOT EXISTS 'support'`);
+    console.log('[ensure-columns] ok: PlatformRole.support');
+  } catch (err) {
+    console.warn('[ensure-columns] PlatformRole.support skipped:', err && err.message ? err.message : err);
+  }
+
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TYPE "NotificationType" ADD VALUE IF NOT EXISTS 'support_message'`);
+    console.log('[ensure-columns] ok: NotificationType.support_message');
+  } catch (err) {
+    console.warn('[ensure-columns] NotificationType.support_message skipped:', err && err.message ? err.message : err);
+  }
+
   // Hot-path indexes for list endpoints under concurrent load.
   const indexStatements = [
     `CREATE INDEX IF NOT EXISTS "users_is_active_idx" ON "users"("is_active")`,
