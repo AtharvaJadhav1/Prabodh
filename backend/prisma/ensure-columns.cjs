@@ -14,6 +14,7 @@ try {
 }
 
 const { PrismaClient } = require('@prisma/client');
+const crypto = require('crypto');
 
 const prisma = new PrismaClient();
 
@@ -227,6 +228,35 @@ WHERE u."id" = s.id AND u."linkedin_url" IS NULL`);
     console.log('[ensure-columns] ok: NotificationType.support_message');
   } catch (err) {
     console.warn('[ensure-columns] NotificationType.support_message skipped:', err && err.message ? err.message : err);
+  }
+
+  // Seed the single Support account. Nothing in this deploy pipeline runs prisma/seed.ts
+  // (that's a local/dev-only script), so this is the only place that account ever gets
+  // created. Create-only (never upsert) so a later real password change here is never
+  // clobbered by the next deploy.
+  try {
+    const email = 'support@gmail.com';
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      console.log('[ensure-columns] ok: support user already exists');
+    } else {
+      const salt = crypto.randomBytes(16).toString('hex');
+      const hash = crypto.scryptSync('Prabodh@123', salt, 64).toString('hex');
+      await prisma.user.create({
+        data: {
+          email,
+          fullName: 'Prabodh Support',
+          platformRole: 'support',
+          institute: 'MIT Art, Design and Technology University',
+          department: 'Support',
+          passwordHash: `${salt}:${hash}`,
+          isActive: true,
+        },
+      });
+      console.log('[ensure-columns] ok: created support user');
+    }
+  } catch (err) {
+    console.warn('[ensure-columns] support user seed skipped:', err && err.message ? err.message : err);
   }
 
   // Hot-path indexes for list endpoints under concurrent load.
