@@ -9,7 +9,7 @@ import type { PortalNotification } from "../../lib/types";
 import { useAuth } from "../auth/AuthProvider";
 import { useMediaQuery } from "../chat/useMediaQuery";
 import { BellIcon, XIcon } from "../dashboard/icons";
-import { requestDesktopPermission, useDesktopPermission } from "./desktop-alerts";
+import { useNotificationPermission } from "./useNotificationPermission";
 import NotificationActions from "./NotificationActions";
 import NotificationIcon from "./NotificationIcon";
 import {
@@ -121,7 +121,7 @@ export default function NotificationBell() {
   const { items, unreadCount, loaded, panelOpen: open } = useNotifications();
   const phone = useMediaQuery("(max-width: 639px)");
   const soundOn = useSoundEnabled();
-  const permission = useDesktopPermission();
+  const { permission, request: requestPermission } = useNotificationPermission();
   const navigate = useNotificationNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -229,16 +229,20 @@ export default function NotificationBell() {
       {permission === "default" ? (
         <div className="flex items-center gap-3 border-b border-brand-softline/60 bg-white px-4 py-2.5">
           <p className="min-w-0 flex-1 break-words text-[11px] text-brand-muted">
-            Get a desktop alert when something new arrives while this tab is in the background.
+            Allow notifications to get an alert when something new arrives while this tab is in the background.
           </p>
           <button
             type="button"
-            onClick={() => void requestDesktopPermission()}
+            onClick={() => void requestPermission()}
             className="shrink-0 rounded-lg border border-brand-softline bg-white px-3 text-[11px] font-semibold text-brand-deep hover:bg-[#FAF7F2] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#C25E26]/50 min-h-8 max-sm:min-h-11"
           >
-            Enable desktop alerts
+            Allow notifications
           </button>
         </div>
+      ) : permission === "denied" ? (
+        <p className="border-b border-brand-softline/60 bg-white px-4 py-2.5 text-[11px] text-brand-muted">
+          Notifications are blocked in your browser settings.
+        </p>
       ) : null}
 
       <ul className="max-h-[70vh] min-h-0 flex-1 divide-y divide-brand-softline/40 overflow-x-hidden overflow-y-auto overscroll-contain max-sm:max-h-none">

@@ -52,7 +52,12 @@ export type ChatConversation = {
   updatedAt: string;
 };
 
-export type ChatConversationList = { items: ChatConversation[]; unreadTotal: number };
+export type ChatConversationList = {
+  items: ChatConversation[];
+  unreadTotal: number;
+  /** Server stores new direct messages encrypted at rest. Absent on older servers: treat as false. */
+  encryptionAtRest?: boolean;
+};
 
 export type DirectMessage = {
   id: string;

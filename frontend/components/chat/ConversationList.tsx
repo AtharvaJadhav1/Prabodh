@@ -3,6 +3,7 @@
 import { memo, useMemo, useState } from "react";
 import { formatListTime } from "../../lib/chat-format";
 import type { ChatConversation } from "../../lib/chat-types";
+import NotificationPermissionBanner from "../chrome/NotificationPermissionBanner";
 import ChatAvatar from "./ChatAvatar";
 import { AlertIcon, GroupIcon, SearchIcon, SupportIcon } from "./chat-icons";
 
@@ -133,6 +134,7 @@ export default function ConversationList({ items, loading, error, activeId, onSe
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      <NotificationPermissionBanner />
       {error ? (
         <div role="status" className="flex shrink-0 items-center gap-2 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
           <AlertIcon className="h-4 w-4 shrink-0" />

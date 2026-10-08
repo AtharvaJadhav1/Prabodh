@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import NotificationPermissionBanner from "../chrome/NotificationPermissionBanner";
 import AppMenu from "./app/AppMenu";
 import { CloseIcon, NewChatIcon, SearchIcon } from "./chat-icons";
 
@@ -136,6 +137,8 @@ export default function ChatAppHome({ tabs, tab, onTab, onTabKey, registerTab, q
           })}
         </div>
       </div>
+
+      {tab === "chats" ? <NotificationPermissionBanner app /> : null}
 
       <div
         id="chat-tabpanel"

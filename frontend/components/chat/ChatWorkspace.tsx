@@ -513,6 +513,7 @@ function ChatWorkspaceCore({
               <ThreadView
                 key={c.id}
                 app
+                encryptionAtRest={convs.encryptionAtRest}
                 conv={c}
                 me={me}
                 meName={meName}
@@ -613,6 +614,7 @@ function ChatWorkspaceCore({
             {activeConv ? (
               <ThreadView
                 key={activeConv.id}
+                encryptionAtRest={convs.encryptionAtRest}
                 conv={activeConv}
                 me={me}
                 meName={meName}
@@ -623,12 +625,7 @@ function ChatWorkspaceCore({
               />
             ) : (
               <div
-                className="flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center"
-                style={{
-                  backgroundColor: "#F4EEE6",
-                  backgroundImage: "radial-gradient(rgba(217,107,39,0.09) 1px, transparent 1.2px)",
-                  backgroundSize: "22px 22px",
-                }}
+                className="chat-wall flex flex-1 flex-col items-center justify-center gap-3 px-8 text-center"
               >
                 <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-brand-primary shadow-xs">
                   <ChatIcon className="h-8 w-8" />

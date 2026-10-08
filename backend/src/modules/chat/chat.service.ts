@@ -31,6 +31,7 @@ import { createNotifications } from '../../lib/notify';
 import { PrismaService } from '../../lib/prisma.service';
 import { consumeToken } from '../../lib/rate-limit';
 import { decryptText, dmAad, encryptText } from '../../lib/message-crypto';
+import { isEncryptionAtRestActive } from '../../lib/message-crypto-status';
 import { getSupportUser } from '../../lib/support-identity';
 import { TeamsService } from '../teams/service';
 
@@ -897,6 +898,10 @@ export class ChatService {
       return a.title.localeCompare(b.title) || a.id.localeCompare(b.id);
     });
     const capped = items.slice(0, MAX_CONVERSATIONS);
-    return { items: capped, unreadTotal: capped.reduce((n, c) => n + c.unread, 0) };
+    return {
+      items: capped,
+      unreadTotal: capped.reduce((n, c) => n + c.unread, 0),
+      encryptionAtRest: isEncryptionAtRestActive(),
+    };
   }
 }

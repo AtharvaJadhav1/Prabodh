@@ -8,6 +8,7 @@ import AppThreadHeader from "./app/AppThreadHeader";
 import MessageActionSheet from "./app/MessageActionSheet";
 import ChatAvatar from "./ChatAvatar";
 import Composer from "./Composer";
+import EncryptionNote from "./EncryptionNote";
 import MessageBubble from "./MessageBubble";
 import MessageMenu, { type MenuState } from "./MessageMenu";
 import { AlertIcon, ArrowDownIcon, BackIcon, CloseIcon, RetryIcon } from "./chat-icons";
@@ -27,15 +28,9 @@ type Props = {
   onViewed: (conv: ChatConversation) => void;
   /** Full-screen mobile style: WhatsApp-like header, wallpaper, bubbles, action sheet and composer. */
   app?: boolean;
+  /** Server confirmed new direct messages are encrypted at rest. Drives the note at the top of 1:1 threads. */
+  encryptionAtRest?: boolean;
 };
-
-const pattern = {
-  backgroundColor: "#F4EEE6",
-  backgroundImage:
-    "radial-gradient(rgba(217,107,39,0.09) 1px, transparent 1.2px), radial-gradient(rgba(91,46,16,0.05) 1px, transparent 1.2px)",
-  backgroundSize: "22px 22px, 22px 22px",
-  backgroundPosition: "0 0, 11px 11px",
-} as const;
 
 function prefersReducedMotion(): boolean {
   return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -66,7 +61,7 @@ function ThreadSkeleton({ app }: { app: boolean }) {
   );
 }
 
-export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, onActivity, onViewed, app = false }: Props) {
+export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, onActivity, onViewed, app = false, encryptionAtRest = false }: Props) {
   const isGroup = conv.type === "group";
   const handleActivity = useCallback(
     (preview: string, createdAt: string) => onActivity(conv, preview, createdAt),
@@ -303,7 +298,7 @@ export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, on
         </div>
       ) : null}
 
-      <div className="relative min-h-0 flex-1" style={app ? undefined : pattern}>
+      <div className={`relative min-h-0 flex-1 ${app ? "" : "chat-wall"}`}>
         <div
           ref={scrollRef}
           onScroll={onScroll}
@@ -340,6 +335,7 @@ export default function ThreadView({ conv, me, meName, onBack, onOpenProfile, on
                   Loading earlier messages...
                 </p>
               ) : null}
+              {encryptionAtRest && !isGroup && !hasMore ? <EncryptionNote app={app} /> : null}
               {messages.length === 0 ? (
                 <div
                   className={`mx-auto mt-10 max-w-xs rounded-2xl px-4 py-3 text-center text-sm font-medium shadow-xs ${

@@ -24,6 +24,7 @@ export function useConversations(enabled: boolean) {
   const [items, setItems] = useState<ChatConversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [encryptionAtRest, setEncryptionAtRest] = useState(false);
   // Conversations we just marked read: the next list responses may still carry the old count.
   const suppressed = useRef(new Map<string, number>());
   const mounted = useRef(true);
@@ -57,6 +58,7 @@ export function useConversations(enabled: boolean) {
       const res = await listConversations({ signal });
       if (!mounted.current) return;
       apply(res.items ?? []);
+      setEncryptionAtRest(res.encryptionAtRest === true);
       setError(null);
       setLoading(false);
     },
@@ -93,5 +95,5 @@ export function useConversations(enabled: boolean) {
     [patch],
   );
 
-  return { items, loading, error, refresh, patch, markReadLocally };
+  return { items, loading, error, encryptionAtRest, refresh, patch, markReadLocally };
 }
