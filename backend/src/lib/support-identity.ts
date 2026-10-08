@@ -12,10 +12,17 @@ let cached: { id: string; fullName: string } | null | undefined;
  */
 export async function getSupportUser(prisma: PrismaService) {
   if (cached !== undefined) return cached;
-  const row = await prisma.user.findFirst({
-    where: { email: SUPPORT_EMAIL, platformRole: PlatformRole.support, isActive: true },
-    select: { id: true, fullName: true },
-  });
-  cached = row ?? null;
-  return cached;
+  try {
+    const row = await prisma.user.findFirst({
+      where: { email: SUPPORT_EMAIL, platformRole: PlatformRole.support, isActive: true },
+      select: { id: true, fullName: true },
+    });
+    cached = row ?? null;
+    return cached;
+  } catch (err) {
+    // e.g. the database does not have the 'support' role value yet: Support is just unavailable,
+    // it must never take the whole chat down. Not cached, so it recovers once the database is fixed.
+    console.error('[chat] support account lookup failed; continuing without Support', err);
+    return null;
+  }
 }

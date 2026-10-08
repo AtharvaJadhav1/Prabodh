@@ -57,16 +57,28 @@ export function loadKeyRing(env: Record<string, string | undefined> = process.en
 }
 
 let cachedRing: KeyRing | null = null;
+let ringError: Error | null = null;
 let warnedNoKey = false;
 
 function defaultRing(): KeyRing {
-  if (!cachedRing) cachedRing = loadKeyRing();
+  if (!cachedRing) {
+    try {
+      cachedRing = loadKeyRing();
+    } catch (err) {
+      // A malformed key in the settings must not take the whole chat down: reading plain/legacy
+      // messages keeps working; writing fails closed (see encryptText) instead of silently storing plain text.
+      ringError = err instanceof Error ? err : new Error(String(err));
+      console.error('[chat] encryption key is misconfigured:', ringError.message);
+      cachedRing = { current: undefined, byId: new Map() };
+    }
+  }
   return cachedRing;
 }
 
 /** Test helper: forget the cached key ring so the next call re-reads the environment. */
 export function resetKeyRingCache() {
   cachedRing = null;
+  ringError = null;
   warnedNoKey = false;
 }
 
@@ -80,6 +92,7 @@ export function dmAad(pairKey: string, senderId: string): string {
 }
 
 export function encryptText(plain: string, aad: string, ring: KeyRing = defaultRing()): string {
+  if (ringError && ring === cachedRing) throw ringError;
   if (!ring.current) {
     if (!warnedNoKey) {
       warnedNoKey = true;
