@@ -84,6 +84,10 @@ export const Turnstile = forwardRef<TurnstileInstance, TurnstileProps>(
   const widgetIdRef = useRef<string | null>(null);
   const tokenRef = useRef<string | null>(null);
   const tokenExpiryRef = useRef<number>(0);
+  const pendingResolverRef = useRef<{
+    resolve: (token: string) => void;
+    reject: (err: Error) => void;
+  } | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [loadError, setLoadError] = useState<Error | null>(null);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -97,31 +101,84 @@ export const Turnstile = forwardRef<TurnstileInstance, TurnstileProps>(
       return null;
     },
     reset: () => {
-      if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.reset(widgetIdRef.current);
+      if (widgetIdRef.current && (window as any).turnstile) {
+        (window as any).turnstile.reset(widgetIdRef.current);
       }
       tokenRef.current = null;
       tokenExpiryRef.current = 0;
+      if (pendingResolverRef.current) {
+        pendingResolverRef.current.reject(new Error("Turnstile was reset"));
+        pendingResolverRef.current = null;
+      }
     },
-    execute: async (customAction?: string) => {
-      if (!widgetIdRef.current || !window.turnstile) {
-        throw new Error("Turnstile not initialized");
+    execute: async (customAction?: string): Promise<string> => {
+      // 1. If we already have a valid token from automatic render execution:
+      if (tokenRef.current && Date.now() < tokenExpiryRef.current) {
+        return tokenRef.current;
       }
-      try {
-        const token = await window.turnstile.execute(widgetIdRef.current, customAction ?? action);
-        tokenRef.current = token;
-        tokenExpiryRef.current = Date.now() + tokenTimeoutMs;
-        onTokenReady?.(token);
-        return token;
-      } catch (err) {
-        const error = err instanceof Error ? err : new Error(String(err));
-        onError?.(error);
-        throw error;
+
+      // 2. Check getResponse if available on widget
+      if (widgetIdRef.current && (window as any).turnstile?.getResponse) {
+        try {
+          const existing = (window as any).turnstile.getResponse(widgetIdRef.current);
+          if (existing) {
+            tokenRef.current = existing;
+            tokenExpiryRef.current = Date.now() + tokenTimeoutMs;
+            return existing;
+          }
+        } catch {
+          // ignore
+        }
       }
+
+      // 3. Wait briefly if widget is still initializing
+      if (!widgetIdRef.current || !(window as any).turnstile) {
+        await new Promise<void>((resolve, reject) => {
+          const start = Date.now();
+          const timer = setInterval(() => {
+            if (widgetIdRef.current && (window as any).turnstile) {
+              clearInterval(timer);
+              resolve();
+            } else if (Date.now() - start > 4000) {
+              clearInterval(timer);
+              reject(new Error("Turnstile not initialized"));
+            }
+          }, 100);
+        });
+      }
+
+      // 4. Trigger execute and return a Promise resolving on callback
+      return new Promise<string>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          if (pendingResolverRef.current) {
+            pendingResolverRef.current = null;
+            reject(new Error("Security check timed out. Please try again."));
+          }
+        }, 15000);
+
+        pendingResolverRef.current = {
+          resolve: (t) => {
+            clearTimeout(timeout);
+            resolve(t);
+          },
+          reject: (err) => {
+            clearTimeout(timeout);
+            reject(err);
+          },
+        };
+
+        try {
+          (window as any).turnstile.execute(widgetIdRef.current, customAction ?? action);
+        } catch (err) {
+          clearTimeout(timeout);
+          pendingResolverRef.current = null;
+          reject(err instanceof Error ? err : new Error(String(err)));
+        }
+      });
     },
     remove: () => {
-      if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.remove(widgetIdRef.current);
+      if (widgetIdRef.current && (window as any).turnstile) {
+        (window as any).turnstile.remove(widgetIdRef.current);
         widgetIdRef.current = null;
       }
     },
@@ -164,12 +221,11 @@ export const Turnstile = forwardRef<TurnstileInstance, TurnstileProps>(
   }, [siteKey, action, theme, tabIndex]);
 
   const initWidget = useCallback(() => {
-    if (!containerRef.current || !window.turnstile || widgetIdRef.current) return;
+    if (!containerRef.current || !(window as any).turnstile || widgetIdRef.current) return;
 
     try {
-      widgetIdRef.current = window.turnstile.render(containerRef.current, {
+      widgetIdRef.current = (window as any).turnstile.render(containerRef.current, {
         sitekey: siteKey!,
-        mode: "invisible",
         theme,
         action,
         "tab-index": tabIndex,
@@ -177,6 +233,10 @@ export const Turnstile = forwardRef<TurnstileInstance, TurnstileProps>(
           tokenRef.current = token;
           tokenExpiryRef.current = Date.now() + tokenTimeoutMs;
           onTokenReady?.(token);
+          if (pendingResolverRef.current) {
+            pendingResolverRef.current.resolve(token);
+            pendingResolverRef.current = null;
+          }
         },
         "expired-callback": () => {
           tokenRef.current = null;
@@ -187,6 +247,10 @@ export const Turnstile = forwardRef<TurnstileInstance, TurnstileProps>(
           tokenRef.current = null;
           tokenExpiryRef.current = 0;
           onError?.(error);
+          if (pendingResolverRef.current) {
+            pendingResolverRef.current.reject(error instanceof Error ? error : new Error(String(error || "CAPTCHA verification failed")));
+            pendingResolverRef.current = null;
+          }
         },
         "timeout-callback": () => {
           tokenRef.current = null;
@@ -207,8 +271,8 @@ export const Turnstile = forwardRef<TurnstileInstance, TurnstileProps>(
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (widgetIdRef.current && window.turnstile) {
-        window.turnstile.remove(widgetIdRef.current);
+      if (widgetIdRef.current && (window as any).turnstile) {
+        (window as any).turnstile.remove(widgetIdRef.current);
         widgetIdRef.current = null;
       }
     };
@@ -229,8 +293,7 @@ export const Turnstile = forwardRef<TurnstileInstance, TurnstileProps>(
   return (
     <div
       ref={containerRef}
-      style={{ display: "none" }}
-      aria-hidden="true"
+      className="flex justify-center my-1"
     />
   );
 });

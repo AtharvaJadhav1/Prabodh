@@ -117,6 +117,7 @@ export default function LoginPasswordForm({
           </p>
         </div>
         {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
+        <Turnstile ref={turnstileRef} action="login" />
         <button
           type="submit"
           disabled={loading}
@@ -125,7 +126,6 @@ export default function LoginPasswordForm({
           {loading ? "Signing in… (first request may take up to a minute)" : submitLabel}
         </button>
       </form>
-      <Turnstile ref={turnstileRef} action="login" />
       {footer}
     </div>
   );
