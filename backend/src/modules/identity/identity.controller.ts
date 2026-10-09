@@ -60,11 +60,19 @@ export class IdentityController {
     // Check if IP is blocked
     const isBlocked = await checkIpBlocked(ip);
     if (isBlocked.blocked) {
+      const retryAfter = isBlocked.retryAfter ?? 60;
+      const minutes = Math.ceil(retryAfter / 60);
+      const timeStr = minutes >= 60 ? `${Math.ceil(minutes / 60)} hour(s)` : `${minutes} minute(s)`;
+      const message =
+        isBlocked.reason === 'security_block'
+          ? `Too many failed attempts across multiple sessions. Your IP has been temporarily blocked for ${timeStr} for security reasons.`
+          : `Too many failed login attempts. Please wait ${timeStr} before trying again.`;
+
       throw new HttpException(
         {
           statusCode: 429,
-          message: "Too many failed attempts. Your IP has been temporarily blocked for security reasons.",
-          retryAfter: isBlocked.retryAfter,
+          message,
+          retryAfter,
         },
         HttpStatus.TOO_MANY_REQUESTS,
       );
@@ -76,13 +84,20 @@ export class IdentityController {
     // Execute login attempt
     try {
       const result = await this.identity.loginWithPassword(parsed);
-      // Clear failed attempts in the current window on successful login
+      // Clear failed attempts in the current window and lockout history on successful login
       await clearFailedAttempts(ip);
       return result;
     } catch (err: any) {
-      // Track failed login attempt and check if auto-block threshold is reached
-      const state = await trackFailedLogin(ip);
-      await autoBlockIpIfNeeded(ip, state.attempts);
+      // Only track failed login attempts for credential failures (wrong password / invalid email),
+      // avoiding penalizing the user for transient server errors (500), portal mismatch (403), etc.
+      const isCredentialFailure =
+        (err instanceof HttpException && err.getStatus() === HttpStatus.UNAUTHORIZED) ||
+        err?.status === 401;
+
+      if (isCredentialFailure) {
+        const state = await trackFailedLogin(ip);
+        await autoBlockIpIfNeeded(ip, state.attempts);
+      }
       throw err;
     }
   }

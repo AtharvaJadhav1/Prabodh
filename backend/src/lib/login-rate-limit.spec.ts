@@ -15,3 +15,4 @@ describe('login rate limit defaults', () => {
     assert.equal(DEFAULT_MAX_LOCKOUTS_BEFORE_BLOCK, 3);
   });
 });
+
