@@ -2,7 +2,7 @@ import { Body, Controller, ForbiddenException, Get, Inject, Patch, Post, Req, Un
 import { CurrentUser } from '../../common/current-user.decorator';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { AUTH_USER_SELECT, AuthUser } from '../../common/auth.types';
-import { checkOtpCooldown, consumeToken, consumeOtpDispatchQuota, getClientIp, refundOtpDispatchQuota } from '../../lib/rate-limit';
+import { consumeToken } from '../../lib/rate-limit';
 import { PrismaService } from '../../lib/prisma.service';
 import { ZodPipe } from '../../common/zod.pipe';
 import { IdentityService } from './service';
@@ -51,7 +51,7 @@ export class IdentityController {
   }
 
   @Post('auth/otp/send')
-  async sendOtp(@Req() req: unknown, @Body(new ZodPipe(otpSendSchema)) body: unknown) {
+  async sendOtp(@Body(new ZodPipe(otpSendSchema)) body: unknown) {
     const parsed = body as {
       email: string;
       purpose: 'login' | 'register';
@@ -60,18 +60,8 @@ export class IdentityController {
       department?: string;
       phone?: string;
     };
-    await checkOtpCooldown(parsed.email, parsed.purpose);
     await consumeToken(`otp-send:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 5));
-    const quota = { email: parsed.email, ip: getClientIp(req) };
-    await consumeOtpDispatchQuota(quota);
-    try {
-      return await this.identity.requestOtp(parsed);
-    } catch (err) {
-      // No email went out: refund the hourly unit so failed sends don't lock
-      // legitimate users out for an hour.
-      await refundOtpDispatchQuota(quota);
-      throw err;
-    }
+    return this.identity.requestOtp(parsed);
   }
 
   @Post('auth/otp/verify')
@@ -87,18 +77,10 @@ export class IdentityController {
   }
 
   @Post('auth/password/forgot')
-  async forgotPassword(@Req() req: unknown, @Body(new ZodPipe(passwordForgotSchema)) body: unknown) {
+  async forgotPassword(@Body(new ZodPipe(passwordForgotSchema)) body: unknown) {
     const parsed = body as { email: string };
-    await checkOtpCooldown(parsed.email, 'reset_password');
     await consumeToken(`pwd-forgot:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 5));
-    const quota = { email: parsed.email, ip: getClientIp(req) };
-    await consumeOtpDispatchQuota(quota);
-    try {
-      return await this.identity.requestPasswordReset(parsed.email);
-    } catch (err) {
-      await refundOtpDispatchQuota(quota);
-      throw err;
-    }
+    return this.identity.requestPasswordReset(parsed.email);
   }
 
   @Post('auth/password/verify')
@@ -116,7 +98,7 @@ export class IdentityController {
   }
 
   @Post('auth/register')
-  async register(@Req() req: unknown, @Body(new ZodPipe(registerSchema)) body: unknown) {
+  async register(@Body(new ZodPipe(registerSchema)) body: unknown) {
     const parsed = body as {
       email: string;
       password: string;
@@ -125,16 +107,7 @@ export class IdentityController {
       department?: string;
       phone?: string;
     };
-    await checkOtpCooldown(parsed.email, 'register');
-    await consumeToken(`register:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 5));
-    const quota = { email: parsed.email, ip: getClientIp(req) };
-    await consumeOtpDispatchQuota(quota);
-    try {
-      return await this.identity.registerWithPassword(parsed);
-    } catch (err) {
-      await refundOtpDispatchQuota(quota);
-      throw err;
-    }
+    return this.identity.registerWithPassword(parsed);
   }
 
   @Post('auth/register/faculty')
