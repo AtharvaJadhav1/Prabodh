@@ -149,7 +149,7 @@ export const Turnstile = forwardRef<TurnstileInstance, TurnstileProps>(
       initWidget();
     };
 
-    window.turnstile?.ready?.(handleReady);
+    (window as any).turnstile?.ready?.(handleReady);
 
     // Also listen for script load
     const script = document.querySelector('script[src*="challenges.cloudflare.com/turnstile"]');
@@ -159,7 +159,7 @@ export const Turnstile = forwardRef<TurnstileInstance, TurnstileProps>(
     }
 
     return () => {
-      window.turnstile?.ready?.(handleReady);
+      (window as any).turnstile?.ready?.(handleReady);
     };
   }, [siteKey, action, theme, tabIndex]);
 
@@ -236,3 +236,5 @@ export const Turnstile = forwardRef<TurnstileInstance, TurnstileProps>(
 });
 
 Turnstile.displayName = "Turnstile";
+
+export default Turnstile;

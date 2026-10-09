@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
