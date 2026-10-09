@@ -34,11 +34,22 @@ export function getClientIp(req: unknown): string {
   const headers = (req as { headers?: Record<string, unknown> })?.headers;
   const fwd = headers?.['x-forwarded-for'];
   const first = (Array.isArray(fwd) ? fwd[0] : String(fwd ?? '')).split(',')[0].trim();
-  if (first) return first.slice(0, 64);
+  if (first) return normalizeIp(first);
   const direct =
     (req as { ip?: unknown })?.ip ??
     (req as { connection?: { remoteAddress?: unknown } })?.connection?.remoteAddress;
-  return String(direct ?? 'unknown').slice(0, 64);
+  return normalizeIp(String(direct ?? 'unknown'));
+}
+
+/**
+ * Node/Azure fallbacks sometimes yield `IP:port` (e.g. `165.99.8.22:63638`).
+ * Strip the port for IPv4 so IP buckets stay stable. IPv6 left untouched.
+ */
+function normalizeIp(value: string): string {
+  const trimmed = value.trim();
+  const ipv4Port = trimmed.match(/^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/);
+  if (ipv4Port) return ipv4Port[1];
+  return trimmed.slice(0, 64) || 'unknown';
 }
 
 /**
@@ -53,16 +64,17 @@ export async function consumeOtpDispatchQuota(opts: { email: string; ip: string 
   const hour = Math.floor(Date.now() / 3_600_000);
   const emailBucket = `otp-hr:email:${email}:${hour}`;
   const ipBucket = `otp-hr:ip:${ip}:${hour}`;
-  let results: Array<[unknown, unknown]> | null;
+  let emailResults: Array<[unknown, unknown]> | null;
+  let ipResults: Array<[unknown, unknown]> | null;
   try {
     const redis = getCacheRedis();
-    results = (await redis
-      .multi()
-      .incr(emailBucket)
-      .expire(emailBucket, 3700)
-      .incr(ipBucket)
-      .expire(ipBucket, 3700)
-      .exec()) as Array<[unknown, unknown]> | null;
+    // NOTE: two single-key MULTIs, not one two-key MULTI. Azure Managed Redis
+    // runs in cluster mode, where a MULTI spanning keys on different hash slots
+    // is rejected with CROSSSLOT (EXECABORT). One key per MULTI is always safe.
+    [emailResults, ipResults] = (await Promise.all([
+      redis.multi().incr(emailBucket).expire(emailBucket, 3700).exec(),
+      redis.multi().incr(ipBucket).expire(ipBucket, 3700).exec(),
+    ])) as [Array<[unknown, unknown]> | null, Array<[unknown, unknown]> | null];
   } catch (err) {
     console.error('[rate-limit] Redis unavailable; failing closed for OTP dispatch', err);
     throw new HttpException(
@@ -70,8 +82,8 @@ export async function consumeOtpDispatchQuota(opts: { email: string; ip: string 
       HttpStatus.SERVICE_UNAVAILABLE,
     );
   }
-  const emailCount = Number(results?.[0]?.[1] ?? 0);
-  const ipCount = Number(results?.[2]?.[1] ?? 0);
+  const emailCount = Number(emailResults?.[0]?.[1] ?? 0);
+  const ipCount = Number(ipResults?.[0]?.[1] ?? 0);
   if (emailCount > otpEmailHourlyLimit()) {
     throw new HttpException(
       'Too many verification emails sent to this address. Try again in an hour.',
