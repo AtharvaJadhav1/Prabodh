@@ -13,6 +13,7 @@ import {
   LogoutIcon,
   XIcon,
   ChevronRightIcon,
+  FileTextIcon,
 } from "../dashboard/icons";
 import { useAuth } from "../auth/AuthProvider";
 import { useAdmin } from "./AdminProvider";
@@ -44,6 +45,7 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }: Props) {
         { label: "Overview", href: "/dashboard/admin", match: "exact", icon: DashboardIcon },
         { label: "Manage Users", href: "/dashboard/admin/users", match: "start", icon: PersonIcon },
         { label: "Teams", href: "/dashboard/admin/teams", match: "start", icon: UsersIcon },
+        { label: "Problem Statements", href: "/dashboard/admin/problem-statements", match: "start", icon: FileTextIcon },
         {
           label: "Mentor Allocation",
           href: "/dashboard/admin/mentor-allocation",
