@@ -6,10 +6,13 @@ export const DEFAULT_BLOCK_DURATION_HOURS = 24;
 export const DEFAULT_MAX_LOCKOUTS_BEFORE_BLOCK = 3;
 
 /**
- * Redis key patterns:
- * - `login:fail:{ip}:{window_index}` - counter for failed attempts in a window
- * - `login:block:{ip}` - stores the block expiry timestamp (in seconds since epoch)
- * - `login:lockout_count:{ip}` - number of times this IP reached max failed attempts across windows
+ * Redis key patterns — all use hash tag `{ip}` so every key for the same IP
+ * lands on the same Redis Cluster hash slot. This lets us safely use pipeline()
+ * and avoids EXECABORT / CROSSSLOT errors on Azure Managed Redis (OSS Cluster mode).
+ *
+ * - `{ip}:login:fail:{window_index}` - failed-attempt counter in a time window
+ * - `{ip}:login:block`              - stores block expiry timestamp (seconds since epoch)
+ * - `{ip}:login:lockout_count`      - number of times this IP triggered a window lockout
  */
 
 export interface IpRateLimitState {
@@ -34,7 +37,7 @@ export async function checkIpBlocked(ip: string): Promise<{
   try {
     const redis = getCacheRedis();
     const now = Math.floor(Date.now() / 1000);
-    const blockKey = `login:block:${normalizedIp}`;
+    const blockKey = `{${normalizedIp}}:login:block`;
 
     // 1. Check for extended security block (e.g. 24 hours after repeated lockouts)
     const blockExpiry = await redis.get(blockKey);
@@ -56,7 +59,7 @@ export async function checkIpBlocked(ip: string): Promise<{
     const windowMinutes = Number(process.env.LOGIN_WINDOW_MINUTES ?? DEFAULT_WINDOW_MINUTES);
     const maxAttempts = Number(process.env.LOGIN_MAX_FAILED_ATTEMPTS ?? DEFAULT_MAX_FAILED_ATTEMPTS);
     const windowIndex = Math.floor(now / (windowMinutes * 60));
-    const failKey = `login:fail:${normalizedIp}:${windowIndex}`;
+    const failKey = `{${normalizedIp}}:login:fail:${windowIndex}`;
 
     const currentFails = await redis.get(failKey);
     if (currentFails && Number(currentFails) >= maxAttempts) {
@@ -79,6 +82,10 @@ export async function checkIpBlocked(ip: string): Promise<{
 /**
  * Track a failed login attempt for a given IP.
  * Returns the current state: attempts count, whether blocked, and block expiry.
+ *
+ * Uses pipeline() (not multi()) so commands are sent as a non-transactional batch.
+ * With hash tags all keys are on the same cluster slot anyway, but pipeline() is
+ * always safe unlike multi() which throws EXECABORT for cross-slot keys.
  */
 export async function trackFailedLogin(ip: string): Promise<IpRateLimitState> {
   const normalizedIp = ip.trim();
@@ -93,11 +100,12 @@ export async function trackFailedLogin(ip: string): Promise<IpRateLimitState> {
 
   try {
     const redis = getCacheRedis();
-    const key = `login:fail:${normalizedIp}:${windowIndex}`;
-    const blockKey = `login:block:${normalizedIp}`;
+    // All keys share the `{normalizedIp}` hash tag → always same cluster slot
+    const key = `{${normalizedIp}}:login:fail:${windowIndex}`;
+    const blockKey = `{${normalizedIp}}:login:block`;
 
-    // Atomically increment failed counter and check existing block
-    const results = await redis.multi()
+    // pipeline() is cluster-safe; multi() would throw EXECABORT on cross-slot keys
+    const results = await redis.pipeline()
       .incr(key)
       .expire(key, windowMinutes * 60)
       .get(blockKey)
@@ -126,7 +134,10 @@ export async function trackFailedLogin(ip: string): Promise<IpRateLimitState> {
  * Only triggers when attemptsInWindow exactly hits maxAttempts (crossing the lockout threshold),
  * preventing rapid multiple failed attempts in the same window from triggering a 24h block prematurely.
  */
-export async function autoBlockIpIfNeeded(ip: string, attemptsInWindow: number): Promise<{
+export async function autoBlockIpIfNeeded(
+  ip: string,
+  attemptsInWindow: number,
+): Promise<{
   newlyBlocked: boolean;
   blockDurationHours: number;
   blockExpiry?: number;
@@ -147,17 +158,18 @@ export async function autoBlockIpIfNeeded(ip: string, attemptsInWindow: number):
   try {
     const redis = getCacheRedis();
     const now = Math.floor(Date.now() / 1000);
-    const blockKey = `login:block:${normalizedIp}`;
-    const lockoutKey = `login:lockout_count:${normalizedIp}`;
+    // Same hash tag → same cluster slot as the fail key for this IP
+    const blockKey = `{${normalizedIp}}:login:block`;
+    const lockoutKey = `{${normalizedIp}}:login:lockout_count`;
 
     // Increment lockout count
     const lockoutCount = await redis.incr(lockoutKey);
-    // Keep lockout count across windows (default 24 hours) so persistent attackers are caught
+    // Keep lockout count across windows (24 hours) so persistent attackers are caught
     await redis.expire(lockoutKey, 24 * 60 * 60);
 
     if (lockoutCount >= maxLockouts) {
       // Auto-block the IP for the block duration
-      const blockUntil = now + (blockDurationHours * 60 * 60);
+      const blockUntil = now + blockDurationHours * 60 * 60;
       await redis.set(blockKey, String(blockUntil), 'EX', blockDurationHours * 60 * 60);
       await redis.del(lockoutKey);
 
@@ -194,8 +206,8 @@ export async function clearFailedAttempts(ip: string): Promise<void> {
     const windowMinutes = Number(process.env.LOGIN_WINDOW_MINUTES ?? DEFAULT_WINDOW_MINUTES);
     const now = Math.floor(Date.now() / 1000);
     const windowIndex = Math.floor(now / (windowMinutes * 60));
-    const key = `login:fail:${normalizedIp}:${windowIndex}`;
-    const lockoutKey = `login:lockout_count:${normalizedIp}`;
+    const key = `{${normalizedIp}}:login:fail:${windowIndex}`;
+    const lockoutKey = `{${normalizedIp}}:login:lockout_count`;
 
     await redis.del(key);
     await redis.del(lockoutKey);
