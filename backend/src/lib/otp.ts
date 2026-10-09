@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomInt } from 'crypto';
 import { getCacheRedis } from './queue';
+import { checkOtpCooldown, markOtpCooldown } from './rate-limit';
 import { resolveOtpFromAddress, sendTransactionalEmail } from './resend';
 import { renderOtpEmail } from '../modules/notifications/templates/render';
 
@@ -43,6 +44,10 @@ export async function sendOtp(opts: {
   const code = generateCode();
   const redis = getCacheRedis();
   const key = otpKey(opts.purpose, email);
+
+  // Resend cooldown: blocks double-clicks / retry loops from burning email quota.
+  // Fail-closed (throws 503 when Redis is down) — enforced before any send.
+  await checkOtpCooldown(email, opts.purpose);
 
   try {
     await redis.set(
@@ -98,10 +103,12 @@ export async function sendOtp(opts: {
       html,
       from: resolveOtpFromAddress(),
     });
+    await markOtpCooldown(email, opts.purpose);
     return {};
   } catch (err) {
     if (process.env.NODE_ENV !== 'production') {
       console.warn('[otp] Email send failed — dev code logged', err);
+      await markOtpCooldown(email, opts.purpose);
       return { devCode: code };
     }
     // Production: no live OTP / plaintext password may linger when delivery failed.

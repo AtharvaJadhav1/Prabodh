@@ -2,7 +2,7 @@ import { Body, Controller, ForbiddenException, Get, Inject, Patch, Post, Req, Un
 import { CurrentUser } from '../../common/current-user.decorator';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { AUTH_USER_SELECT, AuthUser } from '../../common/auth.types';
-import { consumeToken } from '../../lib/rate-limit';
+import { consumeToken, consumeOtpDispatchQuota, getClientIp } from '../../lib/rate-limit';
 import { PrismaService } from '../../lib/prisma.service';
 import { ZodPipe } from '../../common/zod.pipe';
 import { IdentityService } from './service';
@@ -51,7 +51,7 @@ export class IdentityController {
   }
 
   @Post('auth/otp/send')
-  async sendOtp(@Body(new ZodPipe(otpSendSchema)) body: unknown) {
+  async sendOtp(@Req() req: unknown, @Body(new ZodPipe(otpSendSchema)) body: unknown) {
     const parsed = body as {
       email: string;
       purpose: 'login' | 'register';
@@ -61,6 +61,7 @@ export class IdentityController {
       phone?: string;
     };
     await consumeToken(`otp-send:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 5));
+    await consumeOtpDispatchQuota({ email: parsed.email, ip: getClientIp(req) });
     return this.identity.requestOtp(parsed);
   }
 
@@ -77,9 +78,10 @@ export class IdentityController {
   }
 
   @Post('auth/password/forgot')
-  async forgotPassword(@Body(new ZodPipe(passwordForgotSchema)) body: unknown) {
+  async forgotPassword(@Req() req: unknown, @Body(new ZodPipe(passwordForgotSchema)) body: unknown) {
     const parsed = body as { email: string };
     await consumeToken(`pwd-forgot:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 5));
+    await consumeOtpDispatchQuota({ email: parsed.email, ip: getClientIp(req) });
     return this.identity.requestPasswordReset(parsed.email);
   }
 
@@ -98,7 +100,7 @@ export class IdentityController {
   }
 
   @Post('auth/register')
-  async register(@Body(new ZodPipe(registerSchema)) body: unknown) {
+  async register(@Req() req: unknown, @Body(new ZodPipe(registerSchema)) body: unknown) {
     const parsed = body as {
       email: string;
       password: string;
@@ -107,6 +109,8 @@ export class IdentityController {
       department?: string;
       phone?: string;
     };
+    await consumeToken(`register:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 5));
+    await consumeOtpDispatchQuota({ email: parsed.email, ip: getClientIp(req) });
     return this.identity.registerWithPassword(parsed);
   }
 
