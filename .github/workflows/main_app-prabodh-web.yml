@@ -32,6 +32,7 @@ jobs:
           API_URL: https://app-prabodh-app-ghhkd2h9e0apakez.centralindia-01.azurewebsites.net
           NEXT_PUBLIC_API_URL: https://app-prabodh-app-ghhkd2h9e0apakez.centralindia-01.azurewebsites.net/api
           NEXT_PUBLIC_APP_URL: https://incubation.prabodh.app
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ secrets.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
         run: |
           npm install
           npm run build --if-present
