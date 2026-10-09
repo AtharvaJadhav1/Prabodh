@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { apiPost } from "../../lib/api";
 import type { AuthResponse } from "../../lib/auth-login";
 import TextField from "./TextField";
+import Turnstile from "../auth/Turnstile";
 
 type Props = {
   purpose: "login" | "register";
@@ -38,12 +39,18 @@ export default function OtpAuthFlow({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const autoSent = useRef(false);
+  const turnstileRef = useRef<React.ComponentRef<typeof Turnstile>>(null);
 
   async function sendCode() {
     setError("");
     setLoading(true);
     setDevHint("");
     try {
+      // Get CAPTCHA token
+      const captchaToken = await turnstileRef.current?.execute(`otp_${purpose}_send`);
+      if (!captchaToken) {
+        throw new Error("Security check failed. Please refresh the page and try again.");
+      }
       const res = await apiPost<{ message: string; devCode?: string }>("/auth/otp/send", {
         email,
         purpose,
@@ -53,6 +60,7 @@ export default function OtpAuthFlow({
         institute: profile?.institute,
         department: profile?.department,
         phone: profile?.phone,
+        captchaToken,
       });
       if (res.devCode) setDevHint(`Dev code: ${res.devCode}`);
       setStep("otp");
@@ -176,6 +184,7 @@ export default function OtpAuthFlow({
           </button>
         </form>
       )}
+      <Turnstile ref={turnstileRef} action={`otp_${purpose}_send`} />
     </div>
   );
 }

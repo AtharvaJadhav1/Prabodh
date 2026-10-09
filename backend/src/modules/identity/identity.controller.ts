@@ -1,8 +1,11 @@
-import { Body, Controller, ForbiddenException, Get, Inject, Patch, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { getCacheRedis } from '../../lib/queue';
+import { Body, Controller, ForbiddenException, HttpException, HttpStatus, Get, Inject, Ip, Patch, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../../common/current-user.decorator';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { AUTH_USER_SELECT, AuthUser } from '../../common/auth.types';
 import { consumeToken } from '../../lib/rate-limit';
+import { CaptchaService } from '../../lib/captcha';
+import { trackFailedLogin, checkIpBlocked, clearFailedAttempts, autoBlockIpIfNeeded } from '../../lib/login-rate-limit';
 import { PrismaService } from '../../lib/prisma.service';
 import { ZodPipe } from '../../common/zod.pipe';
 import { IdentityService } from './service';
@@ -24,13 +27,16 @@ import {
 export class IdentityController {
   private readonly identity: IdentityService;
   private readonly prisma: PrismaService;
+  private readonly captcha: CaptchaService;
 
   constructor(
     @Inject(IdentityService) identity: IdentityService,
     @Inject(PrismaService) prisma: PrismaService,
+    @Inject(CaptchaService) captcha: CaptchaService,
   ) {
     this.identity = identity;
     this.prisma = prisma;
+    this.captcha = captcha;
   }
 
   @Post('auth/dev-login')
@@ -44,14 +50,50 @@ export class IdentityController {
   }
 
   @Post('auth/login')
-  async login(@Body(new ZodPipe(loginSchema)) body: unknown) {
-    const parsed = body as { email: string; password: string; portal?: 'student' | 'faculty' };
+  async login(
+    @Body(new ZodPipe(loginSchema)) body: unknown,
+    @Ip() ip: string,
+  ) {
+    const parsed = body as { email: string; password: string; portal?: 'student' | 'faculty'; captchaToken?: string };
+
+    // Check if IP is blocked
+    const isBlocked = await checkIpBlocked(ip);
+    if (isBlocked.blocked) {
+      throw new HttpException(
+        {
+          statusCode: 429,
+          message: "Too many failed attempts. Your IP has been temporarily blocked for security reasons.",
+          retryAfter: isBlocked.retryAfter,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    await this.captcha.verifyOrThrow(parsed.captchaToken, ip);
     await consumeToken(`login:${parsed.email}`, Number(process.env.LOGIN_RATE_LIMIT_PER_MIN ?? 15));
-    return this.identity.loginWithPassword(parsed);
+
+    // Execute login attempt
+    try {
+      const result = await this.identity.loginWithPassword(parsed);
+      // Clear failed attempts and lockout count on successful login
+      await clearFailedAttempts(ip);
+      const redis = getCacheRedis();
+      await redis.del(`login:lockout_count:${ip}`);
+      return result;
+    } catch (err: any) {
+      // Track failed login attempt
+      await trackFailedLogin(ip);
+      // Check if auto-block needed
+      const autoBlocked = await autoBlockIpIfNeeded(ip);
+      throw err;
+    }
   }
 
   @Post('auth/otp/send')
-  async sendOtp(@Body(new ZodPipe(otpSendSchema)) body: unknown) {
+  async sendOtp(
+    @Body(new ZodPipe(otpSendSchema)) body: unknown,
+    @Ip() ip: string,
+  ) {
     const parsed = body as {
       email: string;
       purpose: 'login' | 'register';
@@ -59,7 +101,9 @@ export class IdentityController {
       institute?: string;
       department?: string;
       phone?: string;
+      captchaToken?: string;
     };
+    await this.captcha.verifyOrThrow(parsed.captchaToken, ip);
     await consumeToken(`otp-send:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 5));
     return this.identity.requestOtp(parsed);
   }
@@ -77,28 +121,43 @@ export class IdentityController {
   }
 
   @Post('auth/password/forgot')
-  async forgotPassword(@Body(new ZodPipe(passwordForgotSchema)) body: unknown) {
-    const parsed = body as { email: string };
+  async forgotPassword(
+    @Body(new ZodPipe(passwordForgotSchema)) body: unknown,
+    @Ip() ip: string,
+  ) {
+    const parsed = body as { email: string; captchaToken?: string };
+    await this.captcha.verifyOrThrow(parsed.captchaToken, ip);
     await consumeToken(`pwd-forgot:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 5));
     return this.identity.requestPasswordReset(parsed.email);
   }
 
   @Post('auth/password/verify')
-  async verifyResetCode(@Body(new ZodPipe(passwordVerifySchema)) body: unknown) {
-    const parsed = body as { email: string; code: string };
+  async verifyResetCode(
+    @Body(new ZodPipe(passwordVerifySchema)) body: unknown,
+    @Ip() ip: string,
+  ) {
+    const parsed = body as { email: string; code: string; captchaToken?: string };
+    await this.captcha.verifyOrThrow(parsed.captchaToken, ip);
     await consumeToken(`pwd-verify:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 10));
     return this.identity.verifyPasswordResetCode(parsed);
   }
 
   @Post('auth/password/reset')
-  async resetPassword(@Body(new ZodPipe(passwordResetSchema)) body: unknown) {
-    const parsed = body as { email: string; resetToken: string; password: string };
+  async resetPassword(
+    @Body(new ZodPipe(passwordResetSchema)) body: unknown,
+    @Ip() ip: string,
+  ) {
+    const parsed = body as { email: string; resetToken: string; password: string; captchaToken?: string };
+    await this.captcha.verifyOrThrow(parsed.captchaToken, ip);
     await consumeToken(`pwd-reset:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 10));
     return this.identity.resetPasswordWithOtp(parsed);
   }
 
   @Post('auth/register')
-  async register(@Body(new ZodPipe(registerSchema)) body: unknown) {
+  async register(
+    @Body(new ZodPipe(registerSchema)) body: unknown,
+    @Ip() ip: string,
+  ) {
     const parsed = body as {
       email: string;
       password: string;
@@ -106,7 +165,9 @@ export class IdentityController {
       institute?: string;
       department?: string;
       phone?: string;
+      captchaToken?: string;
     };
+    await this.captcha.verifyOrThrow(parsed.captchaToken, ip);
     return this.identity.registerWithPassword(parsed);
   }
 

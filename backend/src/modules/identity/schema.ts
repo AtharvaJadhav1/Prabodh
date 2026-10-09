@@ -7,6 +7,8 @@ export const registerSchema = z.object({
   institute: z.string().min(2).max(200).optional(),
   department: z.string().max(120).optional(),
   phone: z.string().max(30).optional(),
+  /** CAPTCHA token from Cloudflare Turnstile (invisible) */
+  captchaToken: z.string().optional(),
 });
 
 export const loginSchema = z.object({
@@ -14,6 +16,8 @@ export const loginSchema = z.object({
   password: z.string().min(1).max(128),
   /** Optional — when omitted, any role may sign in and the client routes by platformRole. */
   portal: z.enum(['student', 'faculty']).optional(),
+  /** CAPTCHA token from Cloudflare Turnstile (invisible) */
+  captchaToken: z.string().optional(),
 });
 
 export const otpSendSchema = z.object({
@@ -25,6 +29,8 @@ export const otpSendSchema = z.object({
   institute: z.string().min(2).max(200).optional(),
   department: z.string().max(120).optional(),
   phone: z.string().max(30).optional(),
+  /** CAPTCHA token from Cloudflare Turnstile (invisible) */
+  captchaToken: z.string().optional(),
 });
 
 export const otpVerifySchema = z.object({
@@ -36,17 +42,23 @@ export const otpVerifySchema = z.object({
 
 export const passwordForgotSchema = z.object({
   email: z.string().email(),
+  /** CAPTCHA token from Cloudflare Turnstile (invisible) */
+  captchaToken: z.string().optional(),
 });
 
 export const passwordVerifySchema = z.object({
   email: z.string().email(),
   code: z.string().regex(/^\d{6}$/),
+  /** CAPTCHA token from Cloudflare Turnstile (invisible) */
+  captchaToken: z.string().optional(),
 });
 
 export const passwordResetSchema = z.object({
   email: z.string().email(),
   resetToken: z.string().min(16).max(128),
   password: z.string().min(8).max(128),
+  /** CAPTCHA token from Cloudflare Turnstile (invisible) */
+  captchaToken: z.string().optional(),
 });
 
 /**

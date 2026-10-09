@@ -6,6 +6,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
 import { apiPost } from "../../lib/api";
 import TextField from "./TextField";
+import Turnstile from "../auth/Turnstile";
 
 type Step = "email" | "code" | "reset" | "done";
 
@@ -20,13 +21,18 @@ export default function ForgotPasswordForm() {
   const [devHint, setDevHint] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const turnstileRef = useRef<React.ComponentRef<typeof Turnstile>>(null);
 
   async function sendResetCode() {
     setError("");
     setLoading(true);
     setDevHint("");
     try {
-      const res = await apiPost<{ message: string; devCode?: string }>("/auth/password/forgot", { email });
+      const captchaToken = await turnstileRef.current?.execute("forgot_password");
+      if (!captchaToken) {
+        throw new Error("Security check failed. Please refresh the page and try again.");
+      }
+      const res = await apiPost<{ message: string; devCode?: string }>("/auth/password/forgot", { email, captchaToken });
       if (res.devCode) setDevHint(`Dev code: ${res.devCode}`);
       setCode("");
       setStep("code");
@@ -269,6 +275,7 @@ export default function ForgotPasswordForm() {
           {loading ? "Sending code…" : "Send reset code"}
         </button>
       </form>
+      <Turnstile ref={turnstileRef} action="forgot_password" />
       <p className="text-center text-sm text-brand-muted">
         <Link href="/login" className="font-semibold text-brand-primary hover:text-brand-hover">
           Back to sign in

@@ -8,6 +8,7 @@ import OtpAuthFlow from "./OtpAuthFlow";
 import TextField from "./TextField";
 import PasswordField from "./PasswordField";
 import FilterDropdown from "../admin/FilterDropdown";
+import Turnstile from "../auth/Turnstile";
 
 export const INSTITUTES = [
   "Vishwashanti Sangeet Kala Academy",
@@ -50,6 +51,7 @@ export default function RegisterForm() {
   const [institute, setInstitute] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [draft, setDraft] = useState<RegistrationDraft | null>(null);
+  const turnstileRef = useRef<React.ComponentRef<typeof Turnstile>>(null);
 
   if (draft) {
     return (
@@ -113,7 +115,13 @@ export default function RegisterForm() {
             if (!agreed) {
               throw new Error("Please agree to the Privacy Policy to continue.");
             }
-            setDraft(payload);
+            // Get CAPTCHA token before setting draft (which triggers OTP send)
+            const captchaToken = await turnstileRef.current?.execute("register");
+            if (!captchaToken) {
+              throw new Error("Security check failed. Please refresh the page and try again.");
+            }
+            // Store captchaToken with the draft for the OTP send
+            setDraft({ ...payload, captchaToken } as RegistrationDraft & { captchaToken: string });
           } catch (err) {
             setError(err instanceof Error ? err.message : "Registration failed");
           } finally {
@@ -199,6 +207,7 @@ export default function RegisterForm() {
           {loading ? "Sending verification code…" : "Verify email"}
         </button>
       </form>
+      <Turnstile ref={turnstileRef} action="register" />
       <p className="text-center text-sm text-brand-muted">
         Already registered?{" "}
         <a href="/login" className="font-semibold text-brand-primary hover:text-brand-hover">

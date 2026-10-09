@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { getCacheRedis } from './queue';
 import { resolveOtpFromAddress, sendTransactionalEmail } from './resend';
 import { renderOtpEmail, renderOtpText } from '../modules/notifications/templates/render';
+import { logSafe } from './log-sanitizer';
 
 const OTP_TTL_SEC = Number(process.env.OTP_TTL_SEC ?? 600);
 const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS ?? 5);
@@ -60,7 +61,7 @@ export async function sendOtp(opts: {
       await redis.set(profileKey(email), JSON.stringify(opts.profile), 'EX', OTP_TTL_SEC);
     }
   } catch (err) {
-    console.error('[otp] Redis write failed during send', err);
+    console.error('[otp] Redis write failed during send', logSafe({ err }));
     await clearStoredOtp(redis, key, opts.purpose, email);
     throw new Error(
       `OTP storage unavailable: ${err instanceof Error ? err.message : String(err)}`,
@@ -162,7 +163,7 @@ export async function sendOtp(opts: {
     // Production: no live OTP / plaintext password may linger when delivery failed.
     await clearStoredOtp(redis, key, opts.purpose, email);
     const msg = err instanceof Error ? err.message : 'Email send failed';
-    console.error('[otp] Email send failed in production', msg);
+    console.error('[otp] Email send failed in production', logSafe({ msg }));
     throw new Error(msg);
   }
 }
@@ -193,7 +194,7 @@ export async function verifyOtp(opts: {
   try {
     raw = await redis.get(key);
   } catch (err) {
-    console.error('[otp] Redis read failed during verify', err);
+    console.error('[otp] Redis read failed during verify', logSafe({ err }));
     return { ok: false, reason: 'Verification is temporarily unavailable. Try again in a moment.' };
   }
 

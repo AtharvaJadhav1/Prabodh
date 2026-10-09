@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
 import { friendlyAuthError, loginWithPassword, type AuthResponse } from "../../lib/auth-login";
 import TextField from "./TextField";
+import Turnstile from "../auth/Turnstile";
 
 type Props = {
   portal?: "student" | "faculty";
@@ -32,6 +33,7 @@ export default function LoginPasswordForm({
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const turnstileRef = useRef<React.ComponentRef<typeof Turnstile>>(null);
 
   // Email from invite / credentials links can arrive after the first render (Suspense).
   useEffect(() => {
@@ -53,7 +55,12 @@ export default function LoginPasswordForm({
           setError("");
           setLoading(true);
           try {
-            const res = await loginWithPassword(email.trim().toLowerCase(), password.trim(), portal);
+            // Get CAPTCHA token
+            const captchaToken = await turnstileRef.current?.execute("login");
+            if (!captchaToken) {
+              throw new Error("Security check failed. Please refresh the page and try again.");
+            }
+            const res = await loginWithPassword(email.trim().toLowerCase(), password.trim(), portal, captchaToken);
             if (!res?.accessToken || !res?.platformRole) {
               throw new Error("Sign-in succeeded but the server response was incomplete. Try again.");
             }
@@ -118,6 +125,7 @@ export default function LoginPasswordForm({
           {loading ? "Signing in… (first request may take up to a minute)" : submitLabel}
         </button>
       </form>
+      <Turnstile ref={turnstileRef} action="login" />
       {footer}
     </div>
   );

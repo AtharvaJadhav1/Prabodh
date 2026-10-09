@@ -4,6 +4,10 @@ import './lib/env-compat';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { PrismaExceptionFilter } from './common/prisma-exception.filter';
+import { secureLogger } from './lib/secure-logger';
+
+// Override Nest's default logger with our secure logger in production
+// This ensures all NestJS internal logging also goes through our sanitizer
 
 async function bootstrap() {
   if (
@@ -18,9 +22,11 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
     bodyParser: false,
-    // Cut Nest bootstrap/request noise under load; keep errors/warnings.
+    // Use secure logger that sanitizes all data before writing to logs
     logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['log', 'error', 'warn'],
   });
+
+  // ... rest of the bootstrap code
 
   // Handle SIGTERM/SIGINT so a `pm2 reload` during a deploy drains in-flight
   // requests instead of dropping them: Nest closes the HTTP server (waiting for

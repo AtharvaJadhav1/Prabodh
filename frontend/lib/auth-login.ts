@@ -24,24 +24,24 @@ function portalFieldRequired(err: unknown) {
   return Boolean(fieldErrors?.portal?.length);
 }
 
-async function postLogin(email: string, password: string, portal?: "student" | "faculty") {
+async function postLogin(email: string, password: string, portal?: "student" | "faculty", captchaToken?: string) {
   return apiPost<AuthResponse>(
     "/auth/login",
-    portal ? { email, password, portal } : { email, password },
+    portal ? { email, password, portal, captchaToken } : { email, password, captchaToken },
     { timeoutMs: 60_000 },
   );
 }
 
 /** Unified login (no portal) with fallback for APIs that still require student/faculty portal. */
-export async function loginWithPassword(email: string, password: string, portal?: "student" | "faculty") {
+export async function loginWithPassword(email: string, password: string, portal?: "student" | "faculty", captchaToken?: string) {
   try {
-    return await postLogin(email, password, portal);
+    return await postLogin(email, password, portal, captchaToken);
   } catch (err) {
     if (portal || !portalFieldRequired(err)) throw err;
     let last: unknown = err;
     for (const p of ["faculty", "student"] as const) {
       try {
-        return await postLogin(email, password, p);
+        return await postLogin(email, password, p, captchaToken);
       } catch (e) {
         last = e;
       }
