@@ -1,6 +1,7 @@
 import { getCacheRedis } from '../../lib/queue';
-import { Body, Controller, ForbiddenException, HttpException, HttpStatus, Get, Inject, Ip, Patch, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, HttpException, HttpStatus, Get, Inject, Patch, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../../common/current-user.decorator';
+import { ClientIp } from '../../common/client-ip.decorator';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { AUTH_USER_SELECT, AuthUser } from '../../common/auth.types';
 import { consumeToken } from '../../lib/rate-limit';
@@ -52,7 +53,7 @@ export class IdentityController {
   @Post('auth/login')
   async login(
     @Body(new ZodPipe(loginSchema)) body: unknown,
-    @Ip() ip: string,
+    @ClientIp() ip: string,
   ) {
     const parsed = body as { email: string; password: string; portal?: 'student' | 'faculty'; captchaToken?: string };
 
@@ -75,16 +76,13 @@ export class IdentityController {
     // Execute login attempt
     try {
       const result = await this.identity.loginWithPassword(parsed);
-      // Clear failed attempts and lockout count on successful login
+      // Clear failed attempts in the current window on successful login
       await clearFailedAttempts(ip);
-      const redis = getCacheRedis();
-      await redis.del(`login:lockout_count:${ip}`);
       return result;
     } catch (err: any) {
-      // Track failed login attempt
-      await trackFailedLogin(ip);
-      // Check if auto-block needed
-      const autoBlocked = await autoBlockIpIfNeeded(ip);
+      // Track failed login attempt and check if auto-block threshold is reached
+      const state = await trackFailedLogin(ip);
+      await autoBlockIpIfNeeded(ip, state.attempts);
       throw err;
     }
   }
@@ -92,7 +90,7 @@ export class IdentityController {
   @Post('auth/otp/send')
   async sendOtp(
     @Body(new ZodPipe(otpSendSchema)) body: unknown,
-    @Ip() ip: string,
+    @ClientIp() ip: string,
   ) {
     const parsed = body as {
       email: string;
@@ -123,7 +121,7 @@ export class IdentityController {
   @Post('auth/password/forgot')
   async forgotPassword(
     @Body(new ZodPipe(passwordForgotSchema)) body: unknown,
-    @Ip() ip: string,
+    @ClientIp() ip: string,
   ) {
     const parsed = body as { email: string; captchaToken?: string };
     await this.captcha.verifyOrThrow(parsed.captchaToken, ip);
@@ -134,7 +132,7 @@ export class IdentityController {
   @Post('auth/password/verify')
   async verifyResetCode(
     @Body(new ZodPipe(passwordVerifySchema)) body: unknown,
-    @Ip() ip: string,
+    @ClientIp() ip: string,
   ) {
     const parsed = body as { email: string; code: string; captchaToken?: string };
     await this.captcha.verifyOrThrow(parsed.captchaToken, ip);
@@ -145,7 +143,7 @@ export class IdentityController {
   @Post('auth/password/reset')
   async resetPassword(
     @Body(new ZodPipe(passwordResetSchema)) body: unknown,
-    @Ip() ip: string,
+    @ClientIp() ip: string,
   ) {
     const parsed = body as { email: string; resetToken: string; password: string; captchaToken?: string };
     await this.captcha.verifyOrThrow(parsed.captchaToken, ip);
@@ -156,7 +154,7 @@ export class IdentityController {
   @Post('auth/register')
   async register(
     @Body(new ZodPipe(registerSchema)) body: unknown,
-    @Ip() ip: string,
+    @ClientIp() ip: string,
   ) {
     const parsed = body as {
       email: string;

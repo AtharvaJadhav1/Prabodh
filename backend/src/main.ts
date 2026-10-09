@@ -26,6 +26,13 @@ async function bootstrap() {
     logger: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['log', 'error', 'warn'],
   });
 
+  // Trust proxy for reverse proxies (Azure App Service, Cloudflare, etc.)
+  // so req.ip and X-Forwarded-For reflect the true client IP for rate limiting
+  const httpAdapter = app.getHttpAdapter();
+  if (httpAdapter && typeof (httpAdapter.getInstance as () => any)?.()?.set === 'function') {
+    httpAdapter.getInstance().set('trust proxy', 1);
+  }
+
   // ... rest of the bootstrap code
 
   // Handle SIGTERM/SIGINT so a `pm2 reload` during a deploy drains in-flight
