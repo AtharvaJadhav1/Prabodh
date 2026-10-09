@@ -6,20 +6,21 @@ import Image from "next/image";
 import AuthFooter from "./AuthFooter";
 import RightPanel from "./RightPanel";
 
-const INITIAL_SECONDS = 18 * 60 * 60 - 1;
+// Fixed resume time: ~18h from deploy (09 Oct 2026 ~19:12 UTC).
+// UTC ISO so all visitors / tabs / refreshes see the same countdown.
+const MAINTENANCE_END_MS = new Date("2026-10-10T13:15:00Z").getTime();
+
+function getSecondsLeft() {
+  return Math.max(0, Math.floor((MAINTENANCE_END_MS - Date.now()) / 1000));
+}
 
 export default function MaintenanceCountdown() {
-  const [secondsLeft, setSecondsLeft] = useState(INITIAL_SECONDS);
+  const [secondsLeft, setSecondsLeft] = useState(getSecondsLeft);
 
   useEffect(() => {
+    setSecondsLeft(getSecondsLeft());
     const id = window.setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(id);
-          return 0;
-        }
-        return prev - 1;
-      });
+      setSecondsLeft(getSecondsLeft());
     }, 1000);
     return () => clearInterval(id);
   }, []);
