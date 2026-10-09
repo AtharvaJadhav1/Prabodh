@@ -129,3 +129,25 @@ export async function markOtpCooldown(email: string, purpose: string) {
     console.error('[rate-limit] Failed to set OTP cooldown; continuing', err);
   }
 }
+
+/**
+ * Refunds one unit of hourly OTP quota. Call when a dispatch was counted but no
+ * email actually went out (Resend rejection, Redis write failure, validation
+ * error after counting). Best-effort and fail-open: if the refund itself fails,
+ * the user keeps the burned unit rather than us throwing a second error.
+ * Single-key DECRs so this stays safe on cluster-mode Redis.
+ */
+export async function refundOtpDispatchQuota(opts: { email: string; ip: string }) {
+  const email = opts.email.trim().toLowerCase();
+  const ip = (opts.ip || 'unknown').trim().slice(0, 64) || 'unknown';
+  const hour = Math.floor(Date.now() / 3_600_000);
+  try {
+    const redis = getCacheRedis();
+    await Promise.all([
+      redis.decr(`otp-hr:email:${email}:${hour}`),
+      redis.decr(`otp-hr:ip:${ip}:${hour}`),
+    ]);
+  } catch (err) {
+    console.warn('[rate-limit] Failed to refund OTP quota; continuing', err);
+  }
+}
