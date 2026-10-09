@@ -1,11 +1,13 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 
 const DEFAULT_TURNSTILE_SECRET = '0x4AAAAAAFScdoCQRucPoaz-_Vr_YmgkIDo';
+const KNOWN_SITE_KEY = '0x4AAAAAAFScdq-oqhPEqA6p';
 
 function resolveTurnstileSecret(): string {
-  const envVal = process.env.TURNSTILE_SECRET_KEY;
-  if (envVal && envVal.trim()) {
-    return envVal.trim().replace(/^["']|["']$/g, '');
+  const envVal = process.env.TURNSTILE_SECRET_KEY?.trim().replace(/^["']|["']$/g, '');
+  // Guard: if the public site key was mistakenly pasted into TURNSTILE_SECRET_KEY in Azure settings
+  if (envVal && envVal !== KNOWN_SITE_KEY) {
+    return envVal;
   }
   return DEFAULT_TURNSTILE_SECRET;
 }
@@ -84,7 +86,9 @@ export class CaptchaService {
     }
     const check = await this.verifyDetails(token, ip);
     if (!check.success) {
-      const errorMsg = check.errors?.length ? ` (${check.errors.join(', ')})` : '';
+      const secret = resolveTurnstileSecret();
+      const masked = secret ? `...${secret.slice(-6)}` : 'none';
+      const errorMsg = check.errors?.length ? ` (${check.errors.join(', ')} [key: ${masked}])` : '';
       throw new HttpException(`Invalid CAPTCHA token${errorMsg}`, HttpStatus.FORBIDDEN);
     }
   }
