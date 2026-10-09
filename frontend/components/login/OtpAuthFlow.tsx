@@ -68,6 +68,7 @@ export default function OtpAuthFlow({
       setError(err instanceof Error ? err.message : "Could not send code");
     } finally {
       setLoading(false);
+      turnstileRef.current?.reset();
     }
   }
 

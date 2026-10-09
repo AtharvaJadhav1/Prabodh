@@ -69,6 +69,7 @@ export default function LoginPasswordForm({
             setError(friendlyAuthError(err));
           } finally {
             setLoading(false);
+            turnstileRef.current?.reset();
           }
         }}
       >

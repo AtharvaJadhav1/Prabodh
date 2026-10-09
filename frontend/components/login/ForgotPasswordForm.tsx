@@ -40,6 +40,7 @@ export default function ForgotPasswordForm() {
       setError(err instanceof Error ? err.message : "Could not send reset code");
     } finally {
       setLoading(false);
+      turnstileRef.current?.reset();
     }
   }
 

@@ -96,13 +96,20 @@ export const Turnstile = forwardRef<TurnstileInstance, TurnstileProps>(
   useImperativeHandle(ref, () => ({
     getToken: () => {
       if (tokenRef.current && Date.now() < tokenExpiryRef.current) {
-        return tokenRef.current;
+        const token = tokenRef.current;
+        tokenRef.current = null;
+        tokenExpiryRef.current = 0;
+        return token;
       }
       return null;
     },
     reset: () => {
       if (widgetIdRef.current && (window as any).turnstile) {
-        (window as any).turnstile.reset(widgetIdRef.current);
+        try {
+          (window as any).turnstile.reset(widgetIdRef.current);
+        } catch {
+          // ignore
+        }
       }
       tokenRef.current = null;
       tokenExpiryRef.current = 0;
@@ -114,7 +121,10 @@ export const Turnstile = forwardRef<TurnstileInstance, TurnstileProps>(
     execute: async (customAction?: string): Promise<string> => {
       // 1. If we already have a valid token from automatic render execution:
       if (tokenRef.current && Date.now() < tokenExpiryRef.current) {
-        return tokenRef.current;
+        const token = tokenRef.current;
+        tokenRef.current = null;
+        tokenExpiryRef.current = 0;
+        return token;
       }
 
       // 2. Check getResponse if available on widget
@@ -122,8 +132,8 @@ export const Turnstile = forwardRef<TurnstileInstance, TurnstileProps>(
         try {
           const existing = (window as any).turnstile.getResponse(widgetIdRef.current);
           if (existing) {
-            tokenRef.current = existing;
-            tokenExpiryRef.current = Date.now() + tokenTimeoutMs;
+            tokenRef.current = null;
+            tokenExpiryRef.current = 0;
             return existing;
           }
         } catch {
@@ -159,6 +169,9 @@ export const Turnstile = forwardRef<TurnstileInstance, TurnstileProps>(
         pendingResolverRef.current = {
           resolve: (t) => {
             clearTimeout(timeout);
+            // Clear tokenRef upon consumption so it can never be sent twice
+            tokenRef.current = null;
+            tokenExpiryRef.current = 0;
             resolve(t);
           },
           reject: (err) => {

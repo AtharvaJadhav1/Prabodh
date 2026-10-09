@@ -27,7 +27,10 @@ export class CaptchaService {
       const formData = new FormData();
       formData.append('secret', this.secretKey);
       formData.append('response', token);
-      if (ip) formData.append('remoteip', ip);
+      // remoteip is optional in Cloudflare siteverify — omitting it avoids IPv4/IPv6 mismatches behind reverse proxies
+      if (ip && process.env.TURNSTILE_STRICT_IP === 'true') {
+        formData.append('remoteip', ip);
+      }
 
       const response = await fetch(this.verifyUrl, {
         method: 'POST',
@@ -44,12 +47,9 @@ export class CaptchaService {
       };
 
       if (!result.success) {
-        console.warn('[captcha] Verification failed', { errors: result['error-codes'] });
+        console.error('[captcha] Verification failed', { errors: result['error-codes'] });
         return false;
       }
-
-      // Optional: verify action matches expected (e.g., 'login', 'register')
-      // Optional: verify hostname matches your domain
 
       return true;
     } catch (err) {
@@ -83,7 +83,9 @@ export async function verifyTurnstileToken(token: string, ip?: string): Promise<
     const formData = new FormData();
     formData.append('secret', secretKey);
     formData.append('response', token);
-    if (ip) formData.append('remoteip', ip);
+    if (ip && process.env.TURNSTILE_STRICT_IP === 'true') {
+      formData.append('remoteip', ip);
+    }
 
     const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
@@ -91,6 +93,10 @@ export async function verifyTurnstileToken(token: string, ip?: string): Promise<
     });
 
     const result = await response.json() as { success: boolean; 'error-codes'?: string[] };
+    if (!result.success) {
+      console.error('[captcha] Verification failed', { errors: result['error-codes'] });
+      return false;
+    }
     return result.success === true;
   } catch {
     return process.env.NODE_ENV !== 'production';

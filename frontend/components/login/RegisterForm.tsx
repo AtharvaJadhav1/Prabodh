@@ -124,6 +124,7 @@ export default function RegisterForm() {
             setDraft({ ...payload, captchaToken } as RegistrationDraft & { captchaToken: string });
           } catch (err) {
             setError(err instanceof Error ? err.message : "Registration failed");
+            turnstileRef.current?.reset();
           } finally {
             setLoading(false);
           }
