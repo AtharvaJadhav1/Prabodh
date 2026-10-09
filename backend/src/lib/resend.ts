@@ -44,10 +44,29 @@ export function resolveFromForTemplate(template: string) {
 /** Where replies go: every email is automated, so "Reply" opens a message to support. */
 export const REPLY_TO_ADDRESS = 'support@prabodh.app';
 
+/** Minimal HTML -> text fallback so Gmail never receives HTML-only mail. */
+function stripHtmlToText(html: string): string {
+  return html
+    .replace(/<(br|p|div|tr|li)[^>]*>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, 8000);
+}
+
 export async function sendTransactionalEmail(opts: {
   to: string;
   subject: string;
   html: string;
+  /** Plain-text fallback. Strongly recommended: HTML-only mail scores as spam on Gmail. */
+  text?: string;
   /** Override From (e.g. otp@ for auth codes). Defaults to RESEND_FROM_EMAIL. */
   from?: string;
 }): Promise<string> {
@@ -63,6 +82,7 @@ export async function sendTransactionalEmail(opts: {
     to: opts.to,
     subject: opts.subject,
     html: opts.html,
+    text: opts.text ?? stripHtmlToText(opts.html),
     attachments: logo
       ? [{ filename: 'prabodh-logo.png', content: logo, contentType: 'image/png', inlineContentId: LOGO_CID }]
       : undefined,

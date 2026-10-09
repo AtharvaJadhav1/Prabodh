@@ -326,3 +326,27 @@ export function renderOtpEmail(opts: {
     footerNote: `This code expires in ${opts.expiresMinutes} minutes. If you did not request this code, please disregard this email.`,
   });
 }
+
+/** Plain-text OTP body. Passing explicit text avoids HTML-only spam penalties on Gmail. */
+export function renderOtpText(opts: {
+  title: string;
+  lead: string;
+  code: string;
+  expiresMinutes: number;
+  recipientName?: string;
+}): string {
+  const greeting = opts.recipientName?.trim() ? `Dear ${opts.recipientName.trim()},` : 'Dear User,';
+  return [
+    `${greeting}`,
+    ``,
+    `${opts.title}`,
+    `${opts.lead}`,
+    `Kindly enter this code in Prabodh to continue. It can be used only once.`,
+    ``,
+    `Code: ${opts.code}`,
+    `This code expires in ${opts.expiresMinutes} minutes. If you did not request this code, please disregard this email.`,
+    ``,
+    `Yours sincerely,`,
+    `The Prabodh Team`,
+  ].join('\n');
+}

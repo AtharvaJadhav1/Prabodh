@@ -1,7 +1,8 @@
 import { createHash, randomBytes, randomInt } from 'crypto';
+import { PrismaClient } from '@prisma/client';
 import { getCacheRedis } from './queue';
 import { resolveOtpFromAddress, sendTransactionalEmail } from './resend';
-import { renderOtpEmail } from '../modules/notifications/templates/render';
+import { renderOtpEmail, renderOtpText } from '../modules/notifications/templates/render';
 
 const OTP_TTL_SEC = Number(process.env.OTP_TTL_SEC ?? 600);
 const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS ?? 5);
@@ -33,6 +34,10 @@ function profileKey(email: string) {
 function generateCode() {
   return String(randomInt(100000, 999999));
 }
+
+// Shared client for best-effort OTP delivery tracking. Module-level so every
+// send reuses one pool instead of opening a new connection per request.
+const otpLogPrisma = new PrismaClient();
 
 export async function sendOtp(opts: {
   email: string;
@@ -90,16 +95,66 @@ export async function sendOtp(opts: {
     code,
     expiresMinutes: minutes,
   });
+  const text = renderOtpText({ title, lead, code, expiresMinutes: minutes });
+
+  // Best-effort delivery tracking so Resend webhooks (bounced/failed/delivered)
+  // can update notification_log via providerMessageId. Never blocks OTP send.
+  let logId: string | null = null;
+  try {
+    const log = await otpLogPrisma.notificationLog.create({
+      data: { recipientEmail: email, template: 'otp', status: 'queued' },
+    });
+    logId = log.id;
+  } catch {
+    /* tracking is optional */
+  }
 
   try {
-    await sendTransactionalEmail({
+    const messageId = await sendTransactionalEmail({
       to: email,
       subject,
       html,
+      text,
       from: resolveOtpFromAddress(),
     });
+    if (logId) {
+      try {
+        await otpLogPrisma.notificationLog.update({
+          where: { id: logId },
+          data: { status: 'sent', providerMessageId: messageId, sentAt: new Date() },
+        });
+      } catch {
+        /* ignore */
+      }
+    } else {
+      // Fallback: store mapping by message id when the queued row could not be created.
+      try {
+        await otpLogPrisma.notificationLog.create({
+          data: {
+            recipientEmail: email,
+            template: 'otp',
+            status: 'sent',
+            providerMessageId: messageId,
+            sentAt: new Date(),
+          },
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+    console.log('[otp] sent', { to: email, purpose: opts.purpose, id: messageId });
     return {};
   } catch (err) {
+    if (logId) {
+      try {
+        await otpLogPrisma.notificationLog.update({
+          where: { id: logId },
+          data: { status: 'failed' },
+        });
+      } catch {
+        /* ignore */
+      }
+    }
     if (process.env.NODE_ENV !== 'production') {
       console.warn('[otp] Email send failed — dev code logged', err);
       return { devCode: code };
