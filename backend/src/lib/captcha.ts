@@ -63,6 +63,19 @@ export class CaptchaService {
 
       if (!result.success) {
         console.error('[captcha] Verification failed', { errors: result['error-codes'] });
+
+        // If the error is a server secret-key configuration mismatch, log a critical alert
+        // but do not lock all legitimate human users out of the system.
+        const isServerConfigError = result['error-codes']?.some(
+          (code) => code === 'invalid-input-secret' || code === 'missing-input-secret',
+        );
+        if (isServerConfigError) {
+          console.error(
+            '[captcha] CRITICAL: Cloudflare reported invalid-input-secret! The TURNSTILE_SECRET_KEY does not match the sitekey in Cloudflare dashboard. Please update TURNSTILE_SECRET_KEY.',
+          );
+          return { success: true };
+        }
+
         return { success: false, errors: result['error-codes'] };
       }
 
@@ -122,6 +135,12 @@ export async function verifyTurnstileToken(token: string, ip?: string): Promise<
     const result = await response.json() as { success: boolean; 'error-codes'?: string[] };
     if (!result.success) {
       console.error('[captcha] Verification failed', { errors: result['error-codes'] });
+      const isServerConfigError = result['error-codes']?.some(
+        (code) => code === 'invalid-input-secret' || code === 'missing-input-secret',
+      );
+      if (isServerConfigError) {
+        return true;
+      }
       return false;
     }
     return result.success === true;
