@@ -11,11 +11,12 @@ import { secureLogger } from './lib/secure-logger';
 
 async function bootstrap() {
   if (
-    process.env.NODE_ENV === 'production' &&
+    process.env.NODE_ENV !== 'development' &&
+    process.env.NODE_ENV !== 'test' &&
     (!process.env.AUTH_JWT_SECRET || process.env.AUTH_JWT_SECRET === 'dev-only-change-me')
   ) {
-    console.error(
-      'WARNING: AUTH_JWT_SECRET is not set — sign-in will fail until you configure it in App Service settings.',
+    throw new Error(
+      'FATAL: AUTH_JWT_SECRET is not set or using default. Configure it in environment variables before startup.',
     );
   }
 
@@ -99,7 +100,7 @@ async function bootstrap() {
       const host = new URL(origin).hostname;
       if (host === 'localhost' || host === '127.0.0.1') return true;
       if (host === 'prabodh.app' || host.endsWith('.prabodh.app')) return true;
-      if (host.endsWith('.azurewebsites.net')) return true;
+      if (host.startsWith('app-prabodh-') && host.endsWith('.azurewebsites.net')) return true;
     } catch {
       return false;
     }

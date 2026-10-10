@@ -1,15 +1,8 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 
-const DEFAULT_TURNSTILE_SECRET = '0x4AAAAAAFScdoCQRucPoaz-_Vr_YmgkIDo';
-const KNOWN_SITE_KEY = '0x4AAAAAAFScdq-oqhPEqA6p';
-
-function resolveTurnstileSecret(): string {
+function resolveTurnstileSecret(): string | null {
   const envVal = process.env.TURNSTILE_SECRET_KEY?.trim().replace(/^["']|["']$/g, '');
-  // Guard: if the public site key was mistakenly pasted into TURNSTILE_SECRET_KEY in Azure settings
-  if (envVal && envVal !== KNOWN_SITE_KEY) {
-    return envVal;
-  }
-  return DEFAULT_TURNSTILE_SECRET;
+  return envVal || null;
 }
 
 @Injectable()
@@ -64,16 +57,13 @@ export class CaptchaService {
       if (!result.success) {
         console.error('[captcha] Verification failed', { errors: result['error-codes'] });
 
-        // If the error is a server secret-key configuration mismatch, log a critical alert
-        // but do not lock all legitimate human users out of the system.
         const isServerConfigError = result['error-codes']?.some(
           (code) => code === 'invalid-input-secret' || code === 'missing-input-secret',
         );
         if (isServerConfigError) {
           console.error(
-            '[captcha] CRITICAL: Cloudflare reported invalid-input-secret! The TURNSTILE_SECRET_KEY does not match the sitekey in Cloudflare dashboard. Please update TURNSTILE_SECRET_KEY.',
+            '[captcha] CRITICAL: Cloudflare reported invalid-input-secret or missing-input-secret. Update TURNSTILE_SECRET_KEY in server configuration immediately.',
           );
-          return { success: true };
         }
 
         return { success: false, errors: result['error-codes'] };
@@ -99,9 +89,7 @@ export class CaptchaService {
     }
     const check = await this.verifyDetails(token, ip);
     if (!check.success) {
-      const secret = resolveTurnstileSecret();
-      const masked = secret ? `...${secret.slice(-6)}` : 'none';
-      const errorMsg = check.errors?.length ? ` (${check.errors.join(', ')} [key: ${masked}])` : '';
+      const errorMsg = check.errors?.length ? ` (${check.errors.join(', ')})` : '';
       throw new HttpException(`Invalid CAPTCHA token${errorMsg}`, HttpStatus.FORBIDDEN);
     }
   }
@@ -139,7 +127,9 @@ export async function verifyTurnstileToken(token: string, ip?: string): Promise<
         (code) => code === 'invalid-input-secret' || code === 'missing-input-secret',
       );
       if (isServerConfigError) {
-        return true;
+        console.error(
+          '[captcha] CRITICAL: Cloudflare reported invalid/missing secret key in verifyTurnstileToken.',
+        );
       }
       return false;
     }

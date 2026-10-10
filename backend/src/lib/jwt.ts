@@ -17,12 +17,16 @@ let cachedSecret: string | null = null;
 
 function secret() {
   if (cachedSecret) return cachedSecret;
-  const key = process.env.AUTH_JWT_SECRET ?? 'dev-only-change-me';
-  if (process.env.NODE_ENV === 'production' && key === 'dev-only-change-me') {
-    throw new Error('AUTH_JWT_SECRET must be set in production');
+  const key = process.env.AUTH_JWT_SECRET;
+  if (
+    process.env.NODE_ENV !== 'development' &&
+    process.env.NODE_ENV !== 'test' &&
+    (!key || key === 'dev-only-change-me')
+  ) {
+    throw new Error('AUTH_JWT_SECRET must be set in all non-development environments');
   }
-  cachedSecret = key;
-  return key;
+  cachedSecret = key ?? 'dev-only-change-me';
+  return cachedSecret;
 }
 
 function b64url(input: string | Buffer) {
