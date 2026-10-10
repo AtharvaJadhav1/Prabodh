@@ -74,6 +74,20 @@ const sections: { title: string; body: React.ReactNode }[] = [
           We rely on essential third-party infrastructure (e.g. database hosting, cloud storage, transactional email
           services) solely to operate the platform.
         </li>
+        <li>
+          We use Cloudflare Turnstile (in invisible mode) to protect the platform from bots and abuse. When you submit
+          a form, Turnstile processes technical signals such as your IP address and browser characteristics. Cloudflare
+          handles this data under its{" "}
+          <a
+            href="https://www.cloudflare.com/turnstile-privacy-policy/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-brand-primary hover:text-brand-hover"
+          >
+            Turnstile Privacy Addendum
+          </a>
+          .
+        </li>
       </ul>
     ),
   },
