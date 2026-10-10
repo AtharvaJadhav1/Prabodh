@@ -48,11 +48,20 @@ export default function ForgotPasswordForm() {
     setError("");
     setLoading(true);
     try {
-      const res = await apiPost<{ resetToken: string }>("/auth/password/verify", { email, code });
+      const captchaToken = await turnstileRef.current?.execute("forgot_password");
+      if (!captchaToken) {
+        throw new Error("Security check failed. Please refresh the page and try again.");
+      }
+      const res = await apiPost<{ resetToken: string }>("/auth/password/verify", {
+        email,
+        code,
+        captchaToken,
+      });
       setResetToken(res.resetToken);
       setStep("reset");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not verify the code");
+      turnstileRef.current?.reset();
     } finally {
       setLoading(false);
     }
@@ -68,10 +77,15 @@ export default function ForgotPasswordForm() {
       if (password !== confirm) {
         throw new Error("Passwords do not match.");
       }
-      await apiPost("/auth/password/reset", { email, resetToken, password });
+      const captchaToken = await turnstileRef.current?.execute("forgot_password");
+      if (!captchaToken) {
+        throw new Error("Security check failed. Please refresh the page and try again.");
+      }
+      await apiPost("/auth/password/reset", { email, resetToken, password, captchaToken });
       setStep("done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not reset password");
+      turnstileRef.current?.reset();
     } finally {
       setLoading(false);
     }
@@ -138,6 +152,7 @@ export default function ForgotPasswordForm() {
           />
           {devHint ? <p className="break-words text-xs font-mono text-amber-800">{devHint}</p> : null}
           {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
+          <Turnstile ref={turnstileRef} action="forgot_password" theme="light" />
           <button
             type="submit"
             disabled={loading || code.length !== 6}
@@ -225,6 +240,7 @@ export default function ForgotPasswordForm() {
             />
           </div>
           {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
+          <Turnstile ref={turnstileRef} action="forgot_password" theme="light" />
           <button
             type="submit"
             disabled={loading || password.length < 8 || !confirm}
