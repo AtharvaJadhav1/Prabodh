@@ -5,6 +5,13 @@ import { apiPost } from "../../lib/api";
 import type { AuthResponse } from "../../lib/auth-login";
 import TextField from "./TextField";
 import Turnstile from "../auth/Turnstile";
+import { useResendCooldown } from "./useResendCooldown";
+
+function formatCountdown(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const secs = (totalSeconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${secs}`;
+}
 
 type Props = {
   purpose: "login" | "register";
@@ -40,6 +47,13 @@ export default function OtpAuthFlow({
   const [loading, setLoading] = useState(false);
   const autoSent = useRef(false);
   const turnstileRef = useRef<React.ComponentRef<typeof Turnstile>>(null);
+  const resend = useResendCooldown(`otp:${purpose}:${email.trim().toLowerCase()}`, 300);
+
+  // Entering the OTP screen resumes (after refresh) or starts the cooldown.
+  useEffect(() => {
+    if (step === "otp") resend.sync();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, email]);
 
   async function sendCode() {
     setError("");
@@ -64,6 +78,7 @@ export default function OtpAuthFlow({
       });
       if (res.devCode) setDevHint(`Dev code: ${res.devCode}`);
       setStep("otp");
+      resend.start();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send code");
     } finally {
@@ -166,11 +181,19 @@ export default function OtpAuthFlow({
           </button>
           <button
             type="button"
-            disabled={loading}
-            onClick={() => void sendCode()}
-            className="w-full text-sm font-semibold text-brand-primary hover:text-brand-hover disabled:opacity-60"
+            disabled={loading || resend.isActive}
+            onClick={() => {
+              resend.start();
+              void sendCode();
+            }}
+            className={
+              "w-full text-sm font-semibold transition-colors " +
+              (resend.isActive
+                ? "cursor-not-allowed text-brand-muted"
+                : "text-brand-primary hover:text-brand-hover disabled:opacity-60")
+            }
           >
-            Resend code
+            {resend.isActive ? `Resend code in ${formatCountdown(resend.secondsLeft)}` : "Resend code"}
           </button>
           <button
             type="button"

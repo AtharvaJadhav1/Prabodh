@@ -4,7 +4,7 @@ import { CurrentUser } from '../../common/current-user.decorator';
 import { ClientIp } from '../../common/client-ip.decorator';
 import { JwtAuthGuard } from '../../common/jwt-auth.guard';
 import { AUTH_USER_SELECT, AuthUser } from '../../common/auth.types';
-import { consumeToken } from '../../lib/rate-limit';
+import { consumeToken, enforceOtpResendCooldown } from '../../lib/rate-limit';
 import { CaptchaService } from '../../lib/captcha';
 import { trackFailedLogin, checkIpBlocked, clearFailedAttempts, autoBlockIpIfNeeded } from '../../lib/login-rate-limit';
 import { PrismaService } from '../../lib/prisma.service';
@@ -117,6 +117,7 @@ export class IdentityController {
       captchaToken?: string;
     };
     await this.captcha.verifyOrThrow(parsed.captchaToken, ip);
+    await enforceOtpResendCooldown(`otp-send:${parsed.purpose}`, parsed.email);
     await consumeToken(`otp-send:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 5));
     return this.identity.requestOtp(parsed);
   }
@@ -140,6 +141,7 @@ export class IdentityController {
   ) {
     const parsed = body as { email: string; captchaToken?: string };
     await this.captcha.verifyOrThrow(parsed.captchaToken, ip);
+    await enforceOtpResendCooldown('pwd-forgot', parsed.email);
     await consumeToken(`pwd-forgot:${parsed.email}`, Number(process.env.OTP_RATE_LIMIT_PER_MIN ?? 5));
     return this.identity.requestPasswordReset(parsed.email);
   }

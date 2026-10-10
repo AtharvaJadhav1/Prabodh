@@ -1,14 +1,24 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ViewIcon, ViewOffIcon } from "@hugeicons/core-free-icons";
 import { apiPost } from "../../lib/api";
 import TextField from "./TextField";
 import Turnstile from "../auth/Turnstile";
+import { useResendCooldown, getResendRemaining } from "./useResendCooldown";
 
 type Step = "email" | "code" | "reset" | "done";
+
+const FORGOT_EMAIL_KEY = "prabodh:forgotPassword:email";
+const FORGOT_STEP_KEY = "prabodh:forgotPassword:step";
+
+function formatCountdown(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const secs = (totalSeconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${secs}`;
+}
 
 export default function ForgotPasswordForm() {
   const [step, setStep] = useState<Step>("email");
@@ -22,6 +32,55 @@ export default function ForgotPasswordForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const turnstileRef = useRef<React.ComponentRef<typeof Turnstile>>(null);
+  const resend = useResendCooldown(`forgot:${email.trim().toLowerCase()}`, 300);
+
+  // Restore the verification screen after a refresh so the cooldown keeps ticking.
+  useEffect(() => {
+    try {
+      const savedStep = window.localStorage.getItem(FORGOT_STEP_KEY);
+      const savedEmail = window.localStorage.getItem(FORGOT_EMAIL_KEY);
+      if (savedStep === "code" && savedEmail && getResendRemaining(`forgot:${savedEmail.trim().toLowerCase()}`) > 0) {
+        setEmail(savedEmail);
+        setStep("code");
+      }
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist only the "code" step; reset/done are one-shot and must not be restored.
+  useEffect(() => {
+    try {
+      if (step === "code") {
+        window.localStorage.setItem(FORGOT_STEP_KEY, "code");
+        if (email) window.localStorage.setItem(FORGOT_EMAIL_KEY, email);
+      } else {
+        window.localStorage.removeItem(FORGOT_STEP_KEY);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [step, email]);
+
+  // Entering (or re-entering) the verification screen resumes or starts the cooldown.
+  useEffect(() => {
+    if (step === "code") resend.sync();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, email]);
+
+  // Flow complete — drop persisted state so a later visit starts clean.
+  useEffect(() => {
+    if (step !== "done") return;
+    try {
+      window.localStorage.removeItem(FORGOT_STEP_KEY);
+      window.localStorage.removeItem(FORGOT_EMAIL_KEY);
+    } catch {
+      /* ignore */
+    }
+    resend.clear();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   async function sendResetCode() {
     setError("");
@@ -36,6 +95,7 @@ export default function ForgotPasswordForm() {
       if (res.devCode) setDevHint(`Dev code: ${res.devCode}`);
       setCode("");
       setStep("code");
+      resend.start();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send reset code");
     } finally {
@@ -142,11 +202,19 @@ export default function ForgotPasswordForm() {
             labelAction={
               <button
                 type="button"
-                disabled={loading}
-                onClick={() => void sendResetCode()}
-                className="shrink-0 text-xs font-semibold text-brand-primary transition-colors hover:text-brand-hover disabled:opacity-60"
+                disabled={loading || resend.isActive}
+                onClick={() => {
+                  resend.start();
+                  void sendResetCode();
+                }}
+                className={
+                  "shrink-0 text-xs font-semibold transition-colors " +
+                  (resend.isActive
+                    ? "cursor-not-allowed text-brand-muted"
+                    : "text-brand-primary hover:text-brand-hover disabled:opacity-60")
+                }
               >
-                Resend code
+                {resend.isActive ? `Resend code in ${formatCountdown(resend.secondsLeft)}` : "Resend code"}
               </button>
             }
           />
