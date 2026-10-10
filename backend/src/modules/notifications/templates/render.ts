@@ -1,6 +1,3 @@
-import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
-
 /**
  * Shared Prabodh transactional email shell.
  * Every outbound email uses this layout so branding, header, and buttons stay uniform.
@@ -47,29 +44,17 @@ export function appOrigin() {
   return first;
 }
 
-export const LOGO_CID = 'prabodh-logo';
-
-let logoBuffer: Buffer | null | undefined;
-
-/** Logo bytes bundled with the backend (assets/prabodh-logo.png), or null when missing. */
-export function logoAttachmentContent(): Buffer | null {
-  if (logoBuffer !== undefined) return logoBuffer;
-  const candidates = [
-    join(__dirname, '../../../../assets/prabodh-logo.png'),
-    join(process.cwd(), 'assets/prabodh-logo.png'),
-    join(process.cwd(), 'backend/assets/prabodh-logo.png'),
-  ];
-  const found = candidates.find((f) => existsSync(f));
-  logoBuffer = found ? readFileSync(found) : null;
-  return logoBuffer;
-}
-
-function logoUrl() {
-  // Full horizontal wordmark — centred at the top of every mail. Embedded inline (CID) so it
-  // always renders; falls back to the hosted copy if the bundled file is unavailable.
-  if (logoAttachmentContent()) return `cid:${LOGO_CID}`;
-  return `${appOrigin()}/images/logo/Prabodh_Horizontal_Logo_Web_1000px.png`;
-}
+/**
+ * Public HTTPS URL of the email header logo.
+ *
+ * Hosted (never attached or inlined) so Gmail does not surface it as a
+ * downloadable attachment chip and no Base64 bloats the payload. The URL lives
+ * on the same registrable domain as the sender (`prabodh.app`) to keep sender
+ * alignment/trust. Override with EMAIL_LOGO_URL when the asset moves.
+ */
+export const EMAIL_LOGO_URL =
+  (process.env.EMAIL_LOGO_URL ?? '').trim() ||
+  `${appOrigin()}/images/logo/prabodh-email-logo.png`;
 
 export function escapeHtml(s: string) {
   return s.replace(
@@ -156,7 +141,7 @@ export function layout(opts: LayoutOptions) {
         <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:${BRAND.white};border-radius:16px;border:1px solid ${BRAND.softline};overflow:hidden">
           <!-- Header: Prabodh logo -->
           <tr><td align="center" style="padding:32px 32px 24px;background:${BRAND.cream}">
-            <img src="${logoUrl()}" width="180" alt="Prabodh" style="display:block;width:180px;max-width:100%;height:auto;margin:0 auto;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic" />
+            <img src="${EMAIL_LOGO_URL}" width="180" height="42" alt="Prabodh Logo" style="display:block;width:180px;height:42px;max-width:100%;margin:0 auto;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;color:${BRAND.deep};font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;line-height:42px" />
           </td></tr>
           <!-- Divider -->
           <tr><td style="padding:0 32px"><div style="height:1px;background:${BRAND.softline};line-height:1px;font-size:1px">&nbsp;</div></td></tr>
