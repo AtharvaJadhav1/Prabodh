@@ -208,7 +208,7 @@ export default function RegisterForm() {
           {loading ? "Sending verification code…" : "Verify email"}
         </button>
       </form>
-      <Turnstile ref={turnstileRef} action="register" />
+      <Turnstile ref={turnstileRef} action="register" theme="light" />
       <p className="text-center text-sm text-brand-muted">
         Already registered?{" "}
         <a href="/login" className="font-semibold text-brand-primary hover:text-brand-hover">

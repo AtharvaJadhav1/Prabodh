@@ -118,7 +118,7 @@ export default function LoginPasswordForm({
           </p>
         </div>
         {error ? <p className="break-words text-sm font-medium text-red-700">{error}</p> : null}
-        <Turnstile ref={turnstileRef} action="login" />
+        <Turnstile ref={turnstileRef} action="login" theme="light" />
         <button
           type="submit"
           disabled={loading}

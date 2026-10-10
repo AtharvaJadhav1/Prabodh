@@ -185,7 +185,7 @@ export default function OtpAuthFlow({
           </button>
         </form>
       )}
-      <Turnstile ref={turnstileRef} action={`otp_${purpose}_send`} />
+      <Turnstile ref={turnstileRef} action={`otp_${purpose}_send`} theme="light" />
     </div>
   );
 }

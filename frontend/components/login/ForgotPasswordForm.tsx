@@ -276,7 +276,7 @@ export default function ForgotPasswordForm() {
           {loading ? "Sending code…" : "Send reset code"}
         </button>
       </form>
-      <Turnstile ref={turnstileRef} action="forgot_password" />
+      <Turnstile ref={turnstileRef} action="forgot_password" theme="light" />
       <p className="text-center text-sm text-brand-muted">
         <Link href="/login" className="font-semibold text-brand-primary hover:text-brand-hover">
           Back to sign in
